@@ -25,3 +25,14 @@ class Transcript(BaseModel):
     @property
     def full_text(self) -> str:
         return " ".join(s.text for s in self.segments)
+
+
+class ArticleMeta(BaseModel):
+    url: str
+    title: str
+    published_at: datetime | None = None
+    author: str | None = None
+
+
+class Article(ArticleMeta):
+    content_html: str
