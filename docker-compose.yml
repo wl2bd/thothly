@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: thothly-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_DIR: /data
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: thothly-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped

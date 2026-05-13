@@ -1,0 +1,9 @@
+[project]
+name = "thothly-backend"
+version = "0.0.1"
+description = "Thothly backend — compile YouTube + blog sources into clean EPUBs"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.136.1",
+    "uvicorn[standard]>=0.46.0",
+]

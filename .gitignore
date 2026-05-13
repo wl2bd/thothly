@@ -1,0 +1,39 @@
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+.pnpm-store/
+next-env.d.ts
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Generated data (SQLite DB, EPUBs, scratch files)
+data/*
+!data/.gitkeep
+
+# Editor / OS / agent state
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
