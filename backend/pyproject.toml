@@ -7,6 +7,8 @@ dependencies = [
     "fastapi>=0.136.1",
     "pydantic-settings>=2.14.1",
     "uvicorn[standard]>=0.46.0",
+    "yt-dlp>=2024.1.1",
+    "youtube-transcript-api>=0.6.0",
 ]
 
 [dependency-groups]
