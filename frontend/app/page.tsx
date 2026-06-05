@@ -4,47 +4,37 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { createJob, type Source, type SourceType } from "@/lib/api";
-
-const SOURCE_TYPES: { value: SourceType; label: string }[] = [
-  { value: "youtube_playlist", label: "Playlist YouTube" },
-  { value: "youtube_channel", label: "Chaîne YouTube" },
-  { value: "blog_rss", label: "Blog (flux RSS)" },
-  { value: "blog_url", label: "Blog (sans RSS)" },
-];
-
-const PLACEHOLDERS: Record<SourceType, string> = {
-  youtube_playlist: "https://youtube.com/playlist?list=…",
-  youtube_channel: "https://youtube.com/@chaine",
-  blog_rss: "https://blog.example.com/feed",
-  blog_url: "https://blog.example.com",
-};
+import { createJob } from "@/lib/api";
 
 export default function Home() {
   const router = useRouter();
-  const [rows, setRows] = useState<Source[]>([{ type: "youtube_playlist", url: "" }]);
+  const [urls, setUrls] = useState<string[]>([""]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function updateRow(index: number, patch: Partial<Source>) {
-    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  function updateUrl(index: number, value: string) {
+    setUrls((prev) => prev.map((url, i) => (i === index ? value : url)));
   }
 
   function addRow() {
-    setRows((prev) => [...prev, { type: "youtube_playlist", url: "" }]);
+    setUrls((prev) => [...prev, ""]);
   }
 
   function removeRow(index: number) {
-    setRows((prev) => prev.filter((_, i) => i !== index));
+    setUrls((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
 
-    const sources = rows.filter((row) => row.url.trim() !== "");
+    const sources = urls
+      .map((url) => url.trim())
+      .filter((url) => url !== "")
+      .map((url) => ({ url }));
+
     if (sources.length === 0) {
-      setError("Ajoute au moins une source avec une URL.");
+      setError("Colle au moins un lien.");
       return;
     }
 
@@ -63,30 +53,21 @@ export default function Home() {
       <header className="flex flex-col gap-1">
         <h1 className="text-3xl font-semibold tracking-tight">Thothly</h1>
         <p className="text-muted-foreground text-sm">
-          Compile des sources YouTube et blogs en un EPUB pour ta liseuse.
+          Colle des liens YouTube (vidéo, playlist, chaîne) ou de blogs — le type
+          est détecté automatiquement.
         </p>
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3">
-          {rows.map((row, index) => (
+        <div className="flex flex-col gap-2">
+          {urls.map((url, index) => (
             <div key={index} className="flex items-center gap-2">
-              <select
-                value={row.type}
-                onChange={(e) => updateRow(index, { type: e.target.value as SourceType })}
-                className="h-9 rounded-lg border border-border bg-background px-2 text-sm"
-              >
-                {SOURCE_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
               <input
-                type="url"
-                value={row.url}
-                onChange={(e) => updateRow(index, { url: e.target.value })}
-                placeholder={PLACEHOLDERS[row.type]}
+                type="text"
+                inputMode="url"
+                value={url}
+                onChange={(e) => updateUrl(index, e.target.value)}
+                placeholder="https://youtube.com/watch?v=… ou https://unblog.com"
                 className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm"
               />
               <Button
@@ -94,8 +75,8 @@ export default function Home() {
                 variant="ghost"
                 size="icon"
                 onClick={() => removeRow(index)}
-                disabled={rows.length === 1}
-                aria-label="Retirer la source"
+                disabled={urls.length === 1}
+                aria-label="Retirer le lien"
               >
                 ×
               </Button>
@@ -105,7 +86,7 @@ export default function Home() {
 
         <div className="flex items-center justify-between">
           <Button type="button" variant="outline" size="sm" onClick={addRow}>
-            + Ajouter une source
+            + Ajouter un lien
           </Button>
           <Button type="submit" disabled={submitting}>
             {submitting ? "Création…" : "Découvrir les sources"}

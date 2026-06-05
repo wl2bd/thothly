@@ -18,7 +18,7 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
     try:
         items: list[DiscoveredItemResponse] = []
         for index, source in enumerate(sources):
-            discovered = discover_source(source.type, str(source.url), index)
+            discovered = discover_source(str(source.url), index)
             items.extend(
                 DiscoveredItemResponse(
                     id=f"{job_id}-{d.source_index}-{d.item_index}",

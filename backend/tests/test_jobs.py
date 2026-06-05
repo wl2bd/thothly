@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from app.jobs import repository
 from app.jobs.models import DiscoveredItemResponse
 
-VALID_SOURCE = {"type": "youtube_playlist", "url": "https://youtube.com/playlist?list=PLtest123"}
+VALID_SOURCE = {"url": "https://youtube.com/playlist?list=PLtest123"}
 
 
 @patch("app.jobs.router.run_discovery")
@@ -33,8 +33,8 @@ def test_get_job_unknown_id_returns_404(client: TestClient) -> None:
     assert resp.status_code == 404
 
 
-def test_create_job_invalid_source_type_returns_422(client: TestClient) -> None:
-    resp = client.post("/jobs", json={"sources": [{"type": "podcasts", "url": "https://example.com"}]})
+def test_create_job_invalid_url_returns_422(client: TestClient) -> None:
+    resp = client.post("/jobs", json={"sources": [{"url": "not-a-valid-url"}]})
     assert resp.status_code == 422
 
 
@@ -46,8 +46,8 @@ def test_create_job_empty_sources_returns_422(client: TestClient) -> None:
 @patch("app.jobs.router.run_discovery")
 def test_create_job_multiple_sources(mock_discovery, client: TestClient) -> None:
     sources = [
-        {"type": "youtube_playlist", "url": "https://youtube.com/playlist?list=PLtest"},
-        {"type": "blog_rss", "url": "https://example.com/feed.xml"},
+        {"url": "https://youtube.com/playlist?list=PLtest"},
+        {"url": "https://example.com/feed.xml"},
     ]
     resp = client.post("/jobs", json={"sources": sources})
     assert resp.status_code == 201

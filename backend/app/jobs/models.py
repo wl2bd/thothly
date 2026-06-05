@@ -3,8 +3,6 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
-SourceType = Literal["youtube_channel", "youtube_playlist", "blog_rss", "blog_url"]
-
 ItemType = Literal["youtube", "blog"]
 
 JobStatus = Literal[
@@ -18,7 +16,8 @@ JobStatus = Literal[
 
 
 class Source(BaseModel):
-    type: SourceType
+    """A source is just a URL — its kind is auto-detected during discovery."""
+
     url: HttpUrl
 
 

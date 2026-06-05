@@ -4,7 +4,7 @@ from app.jobs import phases
 from app.jobs.models import Source
 from app.sources.discovery import DiscoveredItem
 
-SOURCE = Source(type="youtube_playlist", url="https://youtube.com/playlist?list=x")
+SOURCE = Source(url="https://youtube.com/playlist?list=x")
 
 
 @patch("app.jobs.phases.update_job_status")

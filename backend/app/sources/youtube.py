@@ -38,6 +38,17 @@ def list_videos(url: str) -> list[VideoMeta]:
     return [_entry_to_video_meta(e) for e in entries if e is not None]
 
 
+def fetch_video_meta(url: str) -> VideoMeta:
+    """Metadata for a single video URL (title, duration) without downloading."""
+    opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+    with YoutubeDL(opts) as ydl:
+        try:
+            info = ydl.extract_info(url, download=False)
+        except DownloadError as exc:
+            raise YouTubeUnavailable(str(exc)) from exc
+    return _entry_to_video_meta(info)
+
+
 def fetch_transcript(
     video_id: str,
     languages: list[str] | None = None,

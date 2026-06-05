@@ -9,11 +9,12 @@ from app.core.config import settings
 from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
-from app.sources.youtube import list_videos
+from app.sources.youtube import fetch_video_meta, list_videos
 
 logger = logging.getLogger(__name__)
 
 _RSS_PATHS = ["/feed", "/rss", "/feed.xml", "/index.xml", "/rss.xml"]
+_CHANNEL_TABS = ("/videos", "/streams", "/shorts", "/featured")
 
 _EXCLUDE_PATTERNS = [
     "/about", "/contact", "/newsletter", "/privacy", "/terms",
@@ -38,18 +39,32 @@ class DiscoveredItem:
     preview_html: str | None = None
 
 
-def discover_source(source_type: str, url: str, source_index: int) -> list[DiscoveredItem]:
-    logger.info("Discovering source %d (type=%s, url=%s)", source_index, source_type, url)
+def detect_kind(url: str) -> str:
+    """Classify a pasted URL so the user never has to pick a source type.
 
-    if source_type in ("youtube_channel", "youtube_playlist"):
+    Returns one of: youtube_playlist, youtube_video, youtube_channel, blog.
+    """
+    u = url.lower()
+    if "list=" in u:
+        return "youtube_playlist"
+    if "youtube.com/watch" in u or "youtu.be/" in u:
+        return "youtube_video"
+    if re.search(r"youtube\.com/(@|channel/|c/|user/)", u):
+        return "youtube_channel"
+    return "blog"
+
+
+def discover_source(url: str, source_index: int) -> list[DiscoveredItem]:
+    kind = detect_kind(url)
+    logger.info("Discovering source %d (kind=%s, url=%s)", source_index, kind, url)
+
+    if kind == "youtube_playlist":
         return _discover_youtube(url, source_index)
-    if source_type == "blog_rss":
-        return _discover_rss(url, source_index)
-    if source_type == "blog_url":
-        return _discover_blog(url, source_index)
-
-    logger.warning("Unknown source type: %s", source_type)
-    return []
+    if kind == "youtube_channel":
+        return _discover_youtube(_channel_videos_url(url), source_index)
+    if kind == "youtube_video":
+        return _discover_youtube_video(url, source_index)
+    return _discover_blog(url, source_index)
 
 
 def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
@@ -67,45 +82,77 @@ def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
     ]
 
 
-def _discover_rss(url: str, source_index: int) -> list[DiscoveredItem]:
-    articles = list_feed(url)[: settings.max_items_per_source]
-    return [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
+def _discover_youtube_video(url: str, source_index: int) -> list[DiscoveredItem]:
+    video = fetch_video_meta(url)
+    return [
+        DiscoveredItem(
+            title=video.title or f"Vidéo YouTube {video.id}",
+            url=video.url,
+            item_type="youtube",
+            source_index=source_index,
+            item_index=0,
+            estimated_duration_s=video.duration_s,
+        )
+    ]
 
 
-def _discover_blog(homepage_url: str, source_index: int) -> list[DiscoveredItem]:
-    feed_items = _try_autodetect_rss(homepage_url, source_index)
-    if feed_items:
+def _channel_videos_url(url: str) -> str:
+    base = url.split("?")[0].rstrip("/")
+    for tab in _CHANNEL_TABS:
+        if base.endswith(tab):
+            base = base[: -len(tab)]
+            break
+    return f"{base.rstrip('/')}/videos"
+
+
+def _discover_blog(url: str, source_index: int) -> list[DiscoveredItem]:
+    # 1) the URL might already be a feed — try it directly.
+    feed_items = _feed_to_items(url, source_index)
+    if feed_items is not None:
         return feed_items
 
-    html = _fetch_url(homepage_url, settings.scrape_timeout_s)
-    if not html:
-        raise RuntimeError(f"Could not fetch homepage: {homepage_url}")
+    # 2) try common feed paths on the same host.
+    autodetected = _try_autodetect_rss(url, source_index)
+    if autodetected:
+        return autodetected
 
-    links = _extract_article_links(html, homepage_url)
+    # 3) otherwise treat it as a homepage and extract article links.
+    html = _fetch_url(url, settings.scrape_timeout_s)
+    if not html:
+        raise RuntimeError(f"Could not fetch homepage: {url}")
+
+    links = _extract_article_links(html, url)
     return [
         DiscoveredItem(
             title=title,
-            url=url,
+            url=link,
             item_type="blog",
             source_index=source_index,
             item_index=i,
         )
-        for i, (url, title) in enumerate(links[: settings.max_items_per_source])
+        for i, (link, title) in enumerate(links[: settings.max_items_per_source])
     ]
+
+
+def _feed_to_items(feed_url: str, source_index: int) -> list[DiscoveredItem] | None:
+    try:
+        articles = list_feed(feed_url)
+    except FeedUnavailable:
+        return None
+    if not articles:
+        return None
+    articles = articles[: settings.max_items_per_source]
+    return [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
 
 
 def _try_autodetect_rss(homepage_url: str, source_index: int) -> list[DiscoveredItem] | None:
     parsed = urlparse(homepage_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
     for path in _RSS_PATHS:
-        try:
-            articles = list_feed(f"{base}{path}")
-        except FeedUnavailable:
-            continue
-        if articles:
-            articles = articles[: settings.max_items_per_source]
+        items = _feed_to_items(f"{base}{path}", source_index)
+        if items:
             logger.info("Auto-detected feed %s%s", base, path)
-            return [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
+            return items
     return None
 
 
@@ -117,9 +164,7 @@ def _extract_article_links(html: str, base_url: str) -> list[tuple[str, str]]:
 
     for tag in soup.find_all("a", href=True):
         href = urljoin(base_url, tag["href"]).split("#")[0]
-        if href in seen:
-            continue
-        if not _looks_like_article(href, base_url):
+        if href in seen or not _looks_like_article(href, base_url):
             continue
         seen.add(href)
         text = tag.get_text(strip=True)

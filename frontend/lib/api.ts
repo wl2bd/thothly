@@ -1,9 +1,3 @@
-export type SourceType =
-  | "youtube_channel"
-  | "youtube_playlist"
-  | "blog_rss"
-  | "blog_url";
-
 export type JobStatus =
   | "pending"
   | "discovering"
@@ -13,7 +7,6 @@ export type JobStatus =
   | "failed";
 
 export interface Source {
-  type: SourceType;
   url: string;
 }
 
