@@ -84,57 +84,76 @@ export default function JobPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-8">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Thothly</h1>
-        <Link href="/" className="text-muted-foreground text-sm hover:underline">
-          ← Nouvelle compilation
-        </Link>
-      </header>
+    <main className="flex min-h-screen justify-center p-6">
+      <div className="flex w-full max-w-xl flex-col gap-6 py-8">
+        <header className="flex items-baseline justify-between">
+          <Link href="/" className="text-2xl font-semibold tracking-tight">
+            Thothly
+          </Link>
+          <Link href="/" className="text-muted-foreground text-sm hover:underline">
+            ← Nouvelle compilation
+          </Link>
+        </header>
 
-      {error && <p className="text-destructive text-sm">{error}</p>}
-
-      {!job ? (
-        <p className="text-muted-foreground text-sm">Chargement…</p>
-      ) : job.status === "pending" || job.status === "discovering" ? (
-        <StatusMessage label="Découverte des sources en cours…" />
-      ) : job.status === "reviewing" ? (
-        <ReviewList
-          items={job.discovered_items}
-          selected={selected}
-          confirming={confirming}
-          onToggle={toggle}
-          onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
-          onSelectNone={() => setSelected(new Set())}
-          onConfirm={onConfirm}
-        />
-      ) : job.status === "processing" ? (
-        <StatusMessage label="Compilation de l'EPUB en cours…" />
-      ) : job.status === "completed" ? (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm">
-            EPUB prêt{job.book_title ? ` : ${job.book_title}` : ""}.
+        {error && (
+          <p className="text-destructive bg-destructive/10 rounded-lg px-3 py-2 text-sm">
+            {error}
           </p>
-          <a href={getDownloadUrl(id)} download className={buttonVariants()}>
-            Télécharger l&apos;EPUB
-          </a>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <p className="text-destructive text-sm">La compilation a échoué.</p>
-          {job.error && (
-            <p className="text-muted-foreground font-mono text-xs">{job.error}</p>
+        )}
+
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+          {!job ? (
+            <StatusMessage label="Chargement…" />
+          ) : job.status === "pending" || job.status === "discovering" ? (
+            <StatusMessage label="Découverte des sources en cours…" />
+          ) : job.status === "reviewing" ? (
+            <ReviewList
+              items={job.discovered_items}
+              selected={selected}
+              confirming={confirming}
+              onToggle={toggle}
+              onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
+              onSelectNone={() => setSelected(new Set())}
+              onConfirm={onConfirm}
+            />
+          ) : job.status === "processing" ? (
+            <StatusMessage label="Compilation de l'EPUB en cours…" />
+          ) : job.status === "completed" ? (
+            <div className="flex flex-col items-start gap-4">
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-medium">Ton EPUB est prêt 🎉</p>
+                {job.book_title && (
+                  <p className="text-muted-foreground text-sm">{job.book_title}</p>
+                )}
+              </div>
+              <a
+                href={getDownloadUrl(id)}
+                download
+                className={buttonVariants({ size: "lg" })}
+              >
+                Télécharger l&apos;EPUB
+              </a>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-destructive text-sm font-medium">
+                La compilation a échoué.
+              </p>
+              {job.error && (
+                <p className="text-muted-foreground font-mono text-xs">{job.error}</p>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </main>
   );
 }
 
 function StatusMessage({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="border-muted-foreground/40 border-t-foreground inline-block size-3 animate-spin rounded-full border-2" />
+    <div className="text-muted-foreground flex items-center gap-3 text-sm">
+      <span className="border-muted-foreground/30 border-t-foreground inline-block size-4 animate-spin rounded-full border-2" />
       {label}
     </div>
   );
@@ -161,11 +180,10 @@ function ReviewList({
 }: ReviewListProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">
-          {items.length} élément{items.length > 1 ? "s" : ""} trouvé
-          {items.length > 1 ? "s" : ""} — {selected.size} sélectionné
-          {selected.size > 1 ? "s" : ""}
+          {items.length} élément{items.length > 1 ? "s" : ""} — {selected.size}{" "}
+          sélectionné{selected.size > 1 ? "s" : ""}
         </p>
         <div className="flex gap-1">
           <Button type="button" variant="ghost" size="xs" onClick={onSelectAll}>
@@ -177,15 +195,15 @@ function ReviewList({
         </div>
       </div>
 
-      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+      <ul className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
         {items.map((item) => (
           <li key={item.id}>
-            <label className="flex cursor-pointer items-center gap-3 px-3 py-2">
+            <label className="hover:bg-muted/60 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition-colors">
               <input
                 type="checkbox"
                 checked={selected.has(item.id)}
                 onChange={() => onToggle(item.id)}
-                className="size-4"
+                className="size-4 shrink-0 accent-primary"
               />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm">{item.title}</span>
@@ -199,8 +217,14 @@ function ReviewList({
         ))}
       </ul>
 
-      <Button onClick={onConfirm} disabled={confirming || selected.size === 0}>
-        {confirming ? "Lancement…" : `Compiler ${selected.size} élément${selected.size > 1 ? "s" : ""}`}
+      <Button
+        size="lg"
+        onClick={onConfirm}
+        disabled={confirming || selected.size === 0}
+      >
+        {confirming
+          ? "Lancement…"
+          : `Compiler ${selected.size} élément${selected.size > 1 ? "s" : ""}`}
       </Button>
     </div>
   );
