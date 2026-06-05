@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     )
 
     data_dir: Path = Path("/data")
-    mistral_api_key: str = ""
+    pandoc_binary: str = "pandoc"
+    scrape_timeout_s: int = 30
+    max_items_per_source: int = 250
 
 
 settings = Settings()

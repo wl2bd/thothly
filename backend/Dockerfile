@@ -4,6 +4,11 @@ FROM python:3.12-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /usr/local/bin/
 
+# Pandoc is required at runtime to render EPUBs from Markdown.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends pandoc \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1 \

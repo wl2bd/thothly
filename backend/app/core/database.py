@@ -17,8 +17,27 @@ def init_db() -> None:
                 id          TEXT PRIMARY KEY,
                 status      TEXT NOT NULL DEFAULT 'pending',
                 sources     TEXT NOT NULL,
+                book_title  TEXT,
+                output_path TEXT,
+                error       TEXT,
                 created_at  TEXT NOT NULL,
                 updated_at  TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS job_discovered_items (
+                id                   TEXT PRIMARY KEY,
+                job_id               TEXT NOT NULL REFERENCES jobs(id),
+                source_index         INTEGER NOT NULL,
+                item_index           INTEGER NOT NULL,
+                item_type            TEXT NOT NULL,
+                title                TEXT NOT NULL,
+                url                  TEXT NOT NULL,
+                estimated_duration_s INTEGER,
+                estimated_size_chars INTEGER,
+                preview_html         TEXT,
+                selected             INTEGER NOT NULL DEFAULT 0,
+                created_at           TEXT NOT NULL
             )
         """)
         conn.commit()
