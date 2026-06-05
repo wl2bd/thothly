@@ -7,7 +7,6 @@ services:
       - "8000:8000"
     environment:
       DATA_DIR: /data
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
     volumes:
       - ./data:/data
     restart: unless-stopped
