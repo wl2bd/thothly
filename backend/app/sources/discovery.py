@@ -45,10 +45,12 @@ def detect_kind(url: str) -> str:
     Returns one of: youtube_playlist, youtube_video, youtube_channel, blog.
     """
     u = url.lower()
-    if "list=" in u:
-        return "youtube_playlist"
-    if "youtube.com/watch" in u or "youtu.be/" in u:
+    # An explicit video id wins over a playlist context: a link to a specific
+    # video (even one carrying `?list=…`) means "this video", not the whole list.
+    if ("youtube.com/watch" in u and "v=" in u) or "youtu.be/" in u:
         return "youtube_video"
+    if "list=" in u or "youtube.com/playlist" in u:
+        return "youtube_playlist"
     if re.search(r"youtube\.com/(@|channel/|c/|user/)", u):
         return "youtube_channel"
     return "blog"
@@ -83,7 +85,7 @@ def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
 
 
 def _discover_youtube_video(url: str, source_index: int) -> list[DiscoveredItem]:
-    video = fetch_video_meta(url)
+    video = fetch_video_meta(_clean_video_url(url))
     return [
         DiscoveredItem(
             title=video.title or f"Vidéo YouTube {video.id}",
@@ -94,6 +96,14 @@ def _discover_youtube_video(url: str, source_index: int) -> list[DiscoveredItem]
             estimated_duration_s=video.duration_s,
         )
     ]
+
+
+def _clean_video_url(url: str) -> str:
+    """Strip playlist/extra params: a single-video URL must extract one video."""
+    match = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{6,})", url)
+    if match:
+        return f"https://www.youtube.com/watch?v={match.group(1)}"
+    return url
 
 
 def _channel_videos_url(url: str) -> str:

@@ -13,7 +13,9 @@ from app.sources.models import Article, VideoMeta
         ("https://www.youtube.com/watch?v=abc123", "youtube_video"),
         ("https://youtu.be/abc123", "youtube_video"),
         ("https://www.youtube.com/playlist?list=PL123", "youtube_playlist"),
-        ("https://www.youtube.com/watch?v=abc&list=PL123", "youtube_playlist"),
+        # An explicit video id wins over a playlist context.
+        ("https://www.youtube.com/watch?v=abc&list=PL123", "youtube_video"),
+        ("https://youtu.be/8XFMRd34fKk?list=PL0LLIK", "youtube_video"),
         ("https://www.youtube.com/@veritasium", "youtube_channel"),
         ("https://www.youtube.com/channel/UC123", "youtube_channel"),
         ("https://blog.example.com", "blog"),

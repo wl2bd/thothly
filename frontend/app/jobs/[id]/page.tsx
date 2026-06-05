@@ -207,13 +207,12 @@ function ReviewList({
 }
 
 function formatMeta(item: DiscoveredItem): string | null {
+  // Only the YouTube duration is reliable. The blog char-count reflected the
+  // RSS summary (often truncated or empty), not the real article, so it's hidden.
   if (item.estimated_duration_s != null) {
     const m = Math.floor(item.estimated_duration_s / 60);
     const s = item.estimated_duration_s % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
-  }
-  if (item.estimated_size_chars != null) {
-    return `${Math.round(item.estimated_size_chars / 1000)} k caractères`;
   }
   return null;
 }
