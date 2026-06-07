@@ -205,11 +205,14 @@ function ReviewList({
                 onChange={() => onToggle(item.id)}
                 className="size-4 shrink-0 accent-primary"
               />
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="truncate text-sm">{item.title}</span>
-                <span className="text-muted-foreground text-xs">
-                  {item.item_type === "youtube" ? "YouTube" : "Article"}
-                  {formatMeta(item) ? ` · ${formatMeta(item)}` : ""}
+                <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+                  <span>{item.item_type === "youtube" ? "YouTube" : "Article"}</span>
+                  {formatMeta(item).map((part) => (
+                    <span key={part}>· {part}</span>
+                  ))}
+                  {statusBadge(item)}
                 </span>
               </span>
             </label>
@@ -230,13 +233,52 @@ function ReviewList({
   );
 }
 
-function formatMeta(item: DiscoveredItem): string | null {
-  // Only the YouTube duration is reliable. The blog char-count reflected the
-  // RSS summary (often truncated or empty), not the real article, so it's hidden.
+function formatMeta(item: DiscoveredItem): string[] {
+  // Reading time (from the transcript word count) is the most relevant figure
+  // for an EPUB, so it leads; the video duration and language follow. The blog
+  // char-count reflected the RSS summary (often truncated), so it stays hidden.
+  const parts: string[] = [];
+  if (item.reading_time_min != null) {
+    parts.push(`~${item.reading_time_min} min de lecture`);
+  }
+  if (item.word_count != null) {
+    parts.push(`${item.word_count.toLocaleString("fr-FR")} mots`);
+  }
   if (item.estimated_duration_s != null) {
     const m = Math.floor(item.estimated_duration_s / 60);
     const s = item.estimated_duration_s % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
+    parts.push(`${m}:${String(s).padStart(2, "0")}`);
   }
-  return null;
+  if (item.transcript_lang) {
+    parts.push(item.transcript_lang.toUpperCase());
+  }
+  return parts;
+}
+
+// Per-video readiness, shown so the user knows before compiling whether a
+// transcript reads cleanly, will need an LLM cleanup, or is missing entirely.
+function statusBadge(item: DiscoveredItem) {
+  if (item.item_type !== "youtube") return null;
+
+  let label: string;
+  let className: string;
+  if (item.has_transcript === false) {
+    label = "⛔ Pas de sous-titres";
+    className = "bg-destructive/10 text-destructive";
+  } else if (item.has_transcript == null) {
+    label = "❓ Sous-titres non vérifiés";
+    className = "bg-muted text-muted-foreground";
+  } else if (item.is_punctuated) {
+    label = "✅ Ponctué";
+    className = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  } else {
+    label = "⚠️ Nettoyage LLM";
+    className = "bg-amber-500/10 text-amber-700 dark:text-amber-500";
+  }
+
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
+      {label}
+    </span>
+  );
 }

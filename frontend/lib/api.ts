@@ -21,6 +21,13 @@ export interface DiscoveredItem {
   estimated_size_chars: number | null;
   preview_html: string | null;
   selected: boolean;
+  // YouTube transcript info computed at discovery. has_transcript is tri-state:
+  // true = usable subtitles, false = none (skipped), null = unknown.
+  has_transcript: boolean | null;
+  transcript_lang: string | null;
+  is_punctuated: boolean | null;
+  word_count: number | null;
+  reading_time_min: number | null;
 }
 
 export interface JobResponse {
