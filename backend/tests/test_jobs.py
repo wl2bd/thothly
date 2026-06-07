@@ -80,6 +80,37 @@ def test_confirm_selects_items_and_starts_processing(
 
 
 @patch("app.jobs.router.run_discovery")
+def test_transcript_metadata_roundtrip_and_api_exclusion(
+    mock_discovery, client: TestClient
+) -> None:
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    item = DiscoveredItemResponse(
+        id="item-1", source_index=0, item_index=0, item_type="youtube",
+        title="A video", url="https://www.youtube.com/watch?v=abc123",
+        has_transcript=True, transcript_lang="fr", is_punctuated=False,
+        word_count=1200, reading_time_min=6,
+        transcript_segments=["hello", "world"],
+    )
+    repository.save_discovered_items(job_id, [item])
+    repository.update_job_status(job_id, "reviewing")
+
+    # Review metadata is persisted and exposed to the client...
+    api_item = client.get(f"/jobs/{job_id}").json()["discovered_items"][0]
+    assert api_item["has_transcript"] is True
+    assert api_item["transcript_lang"] == "fr"
+    assert api_item["is_punctuated"] is False
+    assert api_item["word_count"] == 1200
+    assert api_item["reading_time_min"] == 6
+    # ...but the cached transcript itself never leaks over the API.
+    assert "transcript_segments" not in api_item
+
+    # The compile path, however, reads the cached transcript back.
+    repository.confirm_items(job_id, ["item-1"])
+    selected = repository.get_selected_items(job_id)
+    assert selected[0].transcript_segments == ["hello", "world"]
+
+
+@patch("app.jobs.router.run_discovery")
 def test_confirm_requires_reviewing_status(mock_discovery, client: TestClient) -> None:
     job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
     resp = client.post(f"/jobs/{job_id}/confirm", json={"selected_ids": ["x"]})

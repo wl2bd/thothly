@@ -30,6 +30,12 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
                     estimated_duration_s=d.estimated_duration_s,
                     estimated_size_chars=d.estimated_size_chars,
                     preview_html=d.preview_html,
+                    has_transcript=d.has_transcript,
+                    transcript_lang=d.transcript_lang,
+                    is_punctuated=d.is_punctuated,
+                    word_count=d.word_count,
+                    reading_time_min=d.reading_time_min,
+                    transcript_segments=d.transcript_segments,
                 )
                 for d in discovered
             )

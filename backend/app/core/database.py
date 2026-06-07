@@ -40,4 +40,30 @@ def init_db() -> None:
                 created_at           TEXT NOT NULL
             )
         """)
+        _migrate_discovered_items(conn)
         conn.commit()
+
+
+# Columns added after the initial schema. ALTER TABLE ADD COLUMN is the SQLite
+# way to evolve in place; each is wrapped so re-running on an up-to-date DB is a
+# no-op (SQLite has no "ADD COLUMN IF NOT EXISTS").
+_DISCOVERED_ITEM_ADDED_COLUMNS = (
+    ("has_transcript", "INTEGER"),
+    ("transcript_lang", "TEXT"),
+    ("is_punctuated", "INTEGER"),
+    ("word_count", "INTEGER"),
+    ("reading_time_min", "INTEGER"),
+    ("transcript_segments", "TEXT"),
+)
+
+
+def _migrate_discovered_items(conn: sqlite3.Connection) -> None:
+    existing = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(job_discovered_items)")
+    }
+    for name, decl in _DISCOVERED_ITEM_ADDED_COLUMNS:
+        if name not in existing:
+            conn.execute(
+                f"ALTER TABLE job_discovered_items ADD COLUMN {name} {decl}"
+            )

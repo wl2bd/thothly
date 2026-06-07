@@ -6,15 +6,22 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
+from app.pipeline.compiler import is_punctuated
 from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
-from app.sources.youtube import fetch_video_meta, list_videos
+from app.sources.youtube import (
+    YouTubeUnavailable,
+    fetch_transcript,
+    fetch_video_meta,
+    list_videos,
+)
 
 logger = logging.getLogger(__name__)
 
 _RSS_PATHS = ["/feed", "/rss", "/feed.xml", "/index.xml", "/rss.xml"]
 _CHANNEL_TABS = ("/videos", "/streams", "/shorts", "/featured")
+_WORDS_PER_MINUTE = 200  # average silent reading speed, for time estimates
 
 _EXCLUDE_PATTERNS = [
     "/about", "/contact", "/newsletter", "/privacy", "/terms",
@@ -37,6 +44,13 @@ class DiscoveredItem:
     estimated_duration_s: int | None = None
     estimated_size_chars: int | None = None
     preview_html: str | None = None
+    # Filled in for YouTube items by _enrich_youtube_item (see below).
+    has_transcript: bool | None = None
+    transcript_lang: str | None = None
+    is_punctuated: bool | None = None
+    word_count: int | None = None
+    reading_time_min: int | None = None
+    transcript_segments: list[str] | None = None
 
 
 def detect_kind(url: str) -> str:
@@ -71,7 +85,7 @@ def discover_source(url: str, source_index: int) -> list[DiscoveredItem]:
 
 def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
     videos = list_videos(url)[: settings.max_items_per_source]
-    return [
+    items = [
         DiscoveredItem(
             title=video.title,
             url=video.url,
@@ -82,20 +96,63 @@ def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
         )
         for i, video in enumerate(videos)
     ]
+    for item in items:
+        _enrich_youtube_item(item)
+    return items
 
 
 def _discover_youtube_video(url: str, source_index: int) -> list[DiscoveredItem]:
     video = fetch_video_meta(_clean_video_url(url))
-    return [
-        DiscoveredItem(
-            title=video.title or f"Vidéo YouTube {video.id}",
-            url=video.url,
-            item_type="youtube",
-            source_index=source_index,
-            item_index=0,
-            estimated_duration_s=video.duration_s,
-        )
-    ]
+    item = DiscoveredItem(
+        title=video.title or f"Vidéo YouTube {video.id}",
+        url=video.url,
+        item_type="youtube",
+        source_index=source_index,
+        item_index=0,
+        estimated_duration_s=video.duration_s,
+    )
+    _enrich_youtube_item(item)
+    return [item]
+
+
+def _enrich_youtube_item(item: DiscoveredItem) -> None:
+    """Fetch the transcript once, here, to drive the review screen.
+
+    This is the deliberate cost the user accepted: discovery is no longer free
+    for YouTube, but in exchange the review screen can show, per video, whether
+    it has usable subtitles, in which language, how long it is to read, and
+    whether the text is punctuated (clean) or will need an LLM cleanup pass. The
+    transcript is cached on the item so compilation reuses it instead of hitting
+    YouTube a second time. Best-effort: any failure leaves the item flagged and
+    never breaks discovery.
+    """
+    video_id = _video_id(item.url)
+    try:
+        transcript = fetch_transcript(video_id)
+    except YouTubeUnavailable as exc:
+        logger.warning("Transcript probe failed for %s: %s", video_id, exc)
+        item.has_transcript = None  # unknown — couldn't reach YouTube
+        return
+
+    if transcript is None:
+        item.has_transcript = False  # no native subtitles → will be skipped
+        return
+
+    texts = [s.text for s in transcript.segments]
+    full_text = " ".join(t.strip() for t in texts if t and t.strip())
+    word_count = len(full_text.split())
+
+    item.has_transcript = True
+    item.transcript_lang = transcript.language
+    item.transcript_segments = texts
+    item.is_punctuated = is_punctuated(full_text)
+    item.word_count = word_count
+    item.reading_time_min = max(1, round(word_count / _WORDS_PER_MINUTE))
+
+
+def _video_id(url: str) -> str:
+    match = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]+)", url)
+    return match.group(1) if match else url.rstrip("/").split("/")[-1]
 
 
 def _clean_video_url(url: str) -> str:

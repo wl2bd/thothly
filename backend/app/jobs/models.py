@@ -41,6 +41,21 @@ class DiscoveredItemResponse(BaseModel):
     preview_html: str | None = None
     selected: bool = False
 
+    # Per-item reading info computed at discovery (YouTube). has_transcript is
+    # tri-state: True = usable subtitles, False = none (item will be skipped),
+    # None = unknown (couldn't reach YouTube). is_punctuated drives whether the
+    # transcript reads cleanly as-is or needs an LLM cleanup pass.
+    has_transcript: bool | None = None
+    transcript_lang: str | None = None
+    is_punctuated: bool | None = None
+    word_count: int | None = None
+    reading_time_min: int | None = None
+
+    # Server-side cache of the raw subtitle segments, fetched once at discovery
+    # and reused at compile time so we don't hit YouTube twice. Excluded from
+    # API responses.
+    transcript_segments: list[str] | None = Field(default=None, exclude=True)
+
 
 class JobResponse(BaseModel):
     id: str
