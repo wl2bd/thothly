@@ -4,12 +4,11 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.jobs.models import DiscoveredItemResponse
-from app.jobs.repository import get_selected_items, update_job_status
+from app.jobs.repository import get_job, get_selected_items, update_job_status
 from app.pipeline.compiler import (
     CompilationError,
     compile_book,
     demote_headings,
-    derive_book_title,
     html_to_markdown,
     strip_leading_title,
     transcript_to_markdown,
@@ -56,7 +55,9 @@ def run_compilation(job_id: str) -> None:
                 "self-hosted server, a residential proxy avoids it."
             )
 
-        book = compile_book(chapters, derive_book_title(_source_labels(items)))
+        job = get_job(job_id)
+        book_title = (job.book_title if job else None) or "Compilation Thothly"
+        book = compile_book(chapters, book_title)
         output_path = _render(book, job_id)
         update_job_status(
             job_id, "completed", book_title=book.title, output_path=output_path
@@ -118,18 +119,6 @@ def _blog_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter 
         published_at=published_at,
         content_md=content_md,
     )
-
-
-def _source_labels(items: list[DiscoveredItemResponse]) -> list[str]:
-    youtube_count = sum(1 for it in items if it.item_type == "youtube")
-    blog_count = sum(1 for it in items if it.item_type == "blog")
-
-    labels: list[str] = []
-    if youtube_count:
-        labels.append(f"{youtube_count} YouTube video{'s' if youtube_count > 1 else ''}")
-    if blog_count:
-        labels.append(f"{blog_count} article{'s' if blog_count > 1 else ''}")
-    return labels
 
 
 def _extract_video_id(url: str) -> str:

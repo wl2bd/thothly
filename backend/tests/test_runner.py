@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.jobs import runner
@@ -19,17 +20,19 @@ def _blog_item() -> DiscoveredItemResponse:
     )
 
 
+@patch("app.jobs.runner.get_job")
 @patch("app.jobs.runner.update_job_status")
 @patch("app.jobs.runner.render_epub")
 @patch("app.jobs.runner.load_transcript")
 @patch("app.jobs.runner.get_selected_items")
 def test_run_compilation_youtube_completes(
-    mock_selected, mock_fetch, mock_render, mock_update, tmp_path, monkeypatch
+    mock_selected, mock_fetch, mock_render, mock_update, mock_job, tmp_path, monkeypatch
 ):
     import app.core.config as cfg
     monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
 
     mock_selected.return_value = [_youtube_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
     mock_fetch.return_value = Transcript(
         video_id="abc123", language="en",
         segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
@@ -41,17 +44,19 @@ def test_run_compilation_youtube_completes(
     assert mock_update.call_args.args[1] == "completed"
 
 
+@patch("app.jobs.runner.get_job")
 @patch("app.jobs.runner.update_job_status")
 @patch("app.jobs.runner.render_epub")
 @patch("app.jobs.runner.scrape_article")
 @patch("app.jobs.runner.get_selected_items")
 def test_run_compilation_blog_completes(
-    mock_selected, mock_scrape, mock_render, mock_update, tmp_path, monkeypatch
+    mock_selected, mock_scrape, mock_render, mock_update, mock_job, tmp_path, monkeypatch
 ):
     import app.core.config as cfg
     monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
 
     mock_selected.return_value = [_blog_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
     mock_scrape.return_value = Article(
         url="https://blog.example.com/posts/hello", title="An article",
         author="Bob", content_html="<p>Article body.</p>",

@@ -69,7 +69,15 @@ def detect_kind(url: str) -> str:
     return "blog"
 
 
-def discover_source(url: str, source_index: int) -> list[DiscoveredItem]:
+def discover_source(
+    url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]]:
+    """Return the (source name, items) for a pasted URL.
+
+    The source name (playlist/channel/feed/site title) feeds a meaningful
+    default book title; it's captured from the same calls that list the items,
+    so it costs no extra request.
+    """
     kind = detect_kind(url)
     logger.info("Discovering source %d (kind=%s, url=%s)", source_index, kind, url)
 
@@ -82,8 +90,11 @@ def discover_source(url: str, source_index: int) -> list[DiscoveredItem]:
     return _discover_blog(url, source_index)
 
 
-def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
-    videos = list_videos(url)[: settings.max_items_per_source]
+def _discover_youtube(
+    url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]]:
+    title, videos = list_videos(url)
+    videos = videos[: settings.max_items_per_source]
     items = [
         DiscoveredItem(
             title=video.title,
@@ -97,10 +108,12 @@ def _discover_youtube(url: str, source_index: int) -> list[DiscoveredItem]:
     ]
     for item in items:
         _enrich_youtube_item(item)
-    return items
+    return title, items
 
 
-def _discover_youtube_video(url: str, source_index: int) -> list[DiscoveredItem]:
+def _discover_youtube_video(
+    url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]]:
     video = fetch_video_meta(_clean_video_url(url))
     item = DiscoveredItem(
         title=video.title or f"Vidéo YouTube {video.id}",
@@ -111,7 +124,7 @@ def _discover_youtube_video(url: str, source_index: int) -> list[DiscoveredItem]
         estimated_duration_s=video.duration_s,
     )
     _enrich_youtube_item(item)
-    return [item]
+    return video.title or None, [item]
 
 
 def _enrich_youtube_item(item: DiscoveredItem) -> None:
@@ -173,7 +186,9 @@ def _channel_videos_url(url: str) -> str:
     return f"{base.rstrip('/')}/videos"
 
 
-def _discover_blog(url: str, source_index: int) -> list[DiscoveredItem]:
+def _discover_blog(
+    url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]]:
     # 1) the URL might already be a feed — try it directly.
     feed_items = _feed_to_items(url, source_index)
     if feed_items is not None:
@@ -181,7 +196,7 @@ def _discover_blog(url: str, source_index: int) -> list[DiscoveredItem]:
 
     # 2) try common feed paths on the same host.
     autodetected = _try_autodetect_rss(url, source_index)
-    if autodetected:
+    if autodetected is not None:
         return autodetected
 
     # 3) otherwise treat it as a homepage and extract article links.
@@ -190,7 +205,7 @@ def _discover_blog(url: str, source_index: int) -> list[DiscoveredItem]:
         raise RuntimeError(f"Could not fetch homepage: {url}")
 
     links = _extract_article_links(html, url)
-    return [
+    items = [
         DiscoveredItem(
             title=title,
             url=link,
@@ -200,27 +215,40 @@ def _discover_blog(url: str, source_index: int) -> list[DiscoveredItem]:
         )
         for i, (link, title) in enumerate(links[: settings.max_items_per_source])
     ]
+    return _html_title(html), items
 
 
-def _feed_to_items(feed_url: str, source_index: int) -> list[DiscoveredItem] | None:
+def _feed_to_items(
+    feed_url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]] | None:
     try:
-        articles = list_feed(feed_url)
+        feed_title, articles = list_feed(feed_url)
     except FeedUnavailable:
         return None
     if not articles:
         return None
     articles = articles[: settings.max_items_per_source]
-    return [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
+    items = [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
+    return feed_title, items
 
 
-def _try_autodetect_rss(homepage_url: str, source_index: int) -> list[DiscoveredItem] | None:
+def _try_autodetect_rss(
+    homepage_url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]] | None:
     parsed = urlparse(homepage_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
     for path in _RSS_PATHS:
-        items = _feed_to_items(f"{base}{path}", source_index)
-        if items:
+        result = _feed_to_items(f"{base}{path}", source_index)
+        if result is not None:
             logger.info("Auto-detected feed %s%s", base, path)
-            return items
+            return result
+    return None
+
+
+def _html_title(html: str) -> str | None:
+    soup = BeautifulSoup(html, "html.parser")
+    if soup.title and soup.title.string:
+        return soup.title.string.strip() or None
     return None
 
 

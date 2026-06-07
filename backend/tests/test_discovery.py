@@ -29,10 +29,12 @@ def test_detect_kind(url, expected):
 @patch("app.sources.discovery.load_transcript", return_value=None)
 @patch("app.sources.discovery.list_videos")
 def test_discover_playlist_maps_videos(mock_list, mock_load):
-    mock_list.return_value = [
-        VideoMeta(id="a", title="A", url="https://www.youtube.com/watch?v=a", duration_s=60),
-    ]
-    items = discovery.discover_source("https://www.youtube.com/playlist?list=x", 0)
+    mock_list.return_value = (
+        "Ma Playlist",
+        [VideoMeta(id="a", title="A", url="https://www.youtube.com/watch?v=a", duration_s=60)],
+    )
+    name, items = discovery.discover_source("https://www.youtube.com/playlist?list=x", 0)
+    assert name == "Ma Playlist"
     assert len(items) == 1
     assert items[0].item_type == "youtube"
     assert items[0].estimated_duration_s == 60
@@ -41,7 +43,7 @@ def test_discover_playlist_maps_videos(mock_list, mock_load):
 
 @patch("app.sources.discovery.list_videos")
 def test_discover_channel_normalizes_to_videos_tab(mock_list):
-    mock_list.return_value = []
+    mock_list.return_value = (None, [])
     discovery.discover_source("https://www.youtube.com/@veritasium", 0)
     mock_list.assert_called_once_with("https://www.youtube.com/@veritasium/videos")
 
@@ -53,7 +55,8 @@ def test_discover_single_video(mock_meta, mock_load):
         id="abc123", title="My Video",
         url="https://www.youtube.com/watch?v=abc123", duration_s=120,
     )
-    items = discovery.discover_source("https://www.youtube.com/watch?v=abc123", 0)
+    name, items = discovery.discover_source("https://www.youtube.com/watch?v=abc123", 0)
+    assert name == "My Video"  # single video -> its title seeds the book title
     assert len(items) == 1
     assert items[0].title == "My Video"
     assert items[0].item_type == "youtube"
@@ -61,8 +64,12 @@ def test_discover_single_video(mock_meta, mock_load):
 
 @patch("app.sources.discovery.list_feed")
 def test_discover_blog_uses_url_as_feed(mock_feed):
-    mock_feed.return_value = [Article(url="https://b.com/p1", title="P1", content_html="<p>hi</p>")]
-    items = discovery.discover_source("https://b.com/feed", 1)
+    mock_feed.return_value = (
+        "Example Blog",
+        [Article(url="https://b.com/p1", title="P1", content_html="<p>hi</p>")],
+    )
+    name, items = discovery.discover_source("https://b.com/feed", 1)
+    assert name == "Example Blog"
     assert items[0].item_type == "blog"
     assert items[0].source_index == 1
     assert items[0].estimated_size_chars == len("<p>hi</p>")
@@ -73,12 +80,13 @@ def test_discover_blog_uses_url_as_feed(mock_feed):
 def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
     mock_feed.side_effect = FeedUnavailable("no feed")
     mock_fetch.return_value = (
-        '<html><body>'
+        '<html><head><title>My Site</title></head><body>'
         '<a href="/2024/01/great-article">Great Article</a>'
         '<a href="/about">About</a>'
         '</body></html>'
     )
-    items = discovery.discover_source("https://blog.example.com", 0)
+    name, items = discovery.discover_source("https://blog.example.com", 0)
+    assert name == "My Site"  # homepage <title> seeds the book title
     assert len(items) == 1
     assert items[0].url == "https://blog.example.com/2024/01/great-article"
     assert items[0].title == "Great Article"

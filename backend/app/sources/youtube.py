@@ -35,7 +35,13 @@ _YDL_OPTS: dict = {
 }
 
 
-def list_videos(url: str) -> list[VideoMeta]:
+def list_videos(url: str) -> tuple[str | None, list[VideoMeta]]:
+    """Return the (collection title, videos) for a playlist or channel.
+
+    The title (playlist name / channel name) comes from the same extract_info
+    call, so capturing it costs nothing extra — it feeds a meaningful default
+    book title.
+    """
     with YoutubeDL(_YDL_OPTS) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
@@ -43,7 +49,8 @@ def list_videos(url: str) -> list[VideoMeta]:
             raise YouTubeUnavailable(str(exc)) from exc
 
     entries = info.get("entries") or []
-    return [_entry_to_video_meta(e) for e in entries if e is not None]
+    videos = [_entry_to_video_meta(e) for e in entries if e is not None]
+    return info.get("title"), videos
 
 
 def fetch_video_meta(url: str) -> VideoMeta:

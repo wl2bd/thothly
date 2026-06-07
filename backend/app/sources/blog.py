@@ -21,12 +21,15 @@ class ScrapeUnavailable(Exception):
     pass
 
 
-def list_feed(feed_url: str) -> list[Article]:
+def list_feed(feed_url: str) -> tuple[str | None, list[Article]]:
+    """Return the (feed title, articles) for an RSS/Atom feed."""
     result = feedparser.parse(feed_url)
     status = getattr(result, "status", 200)
     if status is not None and status >= 400:
         raise FeedUnavailable(f"HTTP {status} fetching {feed_url}")
-    return [_entry_to_article(entry) for entry in result.entries]
+    feed = getattr(result, "feed", None)
+    title = (feed.get("title") if feed else None) or None
+    return title, [_entry_to_article(entry) for entry in result.entries]
 
 
 def scrape_article(url: str) -> Article:

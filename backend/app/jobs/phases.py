@@ -2,6 +2,7 @@ import logging
 
 from app.jobs.models import DiscoveredItemResponse, Source
 from app.jobs.repository import save_discovered_items, update_job_status
+from app.pipeline.compiler import derive_book_title
 from app.sources.discovery import discover_source
 
 logger = logging.getLogger(__name__)
@@ -13,12 +14,15 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
     Discovery stays light — it only enumerates items (video/article metadata).
     The expensive per-item work (fetching subtitles, scraping articles) is
     deferred to compilation and runs only for the items the user selects.
+    It also captures each source's name to seed a default book title.
     """
     logger.info("Discovery starting for job %s (%d sources)", job_id, len(sources))
     try:
         items: list[DiscoveredItemResponse] = []
+        source_names: list[str | None] = []
         for index, source in enumerate(sources):
-            discovered = discover_source(str(source.url), index)
+            source_name, discovered = discover_source(str(source.url), index)
+            source_names.append(source_name)
             items.extend(
                 DiscoveredItemResponse(
                     id=f"{job_id}-{d.source_index}-{d.item_index}",
@@ -44,7 +48,9 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
             return
 
         save_discovered_items(job_id, items)
-        update_job_status(job_id, "reviewing")
+        update_job_status(
+            job_id, "reviewing", book_title=derive_book_title(source_names)
+        )
         logger.info("Discovery done for job %s: %d items", job_id, len(items))
 
     except Exception as exc:

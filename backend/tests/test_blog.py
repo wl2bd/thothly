@@ -31,8 +31,16 @@ def _make_entry(
     return entry
 
 
-def _make_feed_result(entries: list, status: int = 200) -> SimpleNamespace:
-    return SimpleNamespace(entries=entries, status=status)
+def _make_feed_result(entries: list, status: int = 200, title: str | None = None) -> SimpleNamespace:
+    feed = {"title": title} if title is not None else {}
+    return SimpleNamespace(entries=entries, status=status, feed=feed)
+
+
+@patch("app.sources.blog.feedparser.parse")
+def test_list_feed_returns_feed_title(mock_parse):
+    mock_parse.return_value = _make_feed_result([_make_entry()], title="My Blog")
+    title, _articles = list_feed("https://blog.example.com/feed.xml")
+    assert title == "My Blog"
 
 
 # ── list_feed ────────────────────────────────────────────────────────────────
@@ -54,7 +62,7 @@ def test_list_feed_returns_articles(mock_parse):
         ),
     ])
 
-    result = list_feed("https://blog.example.com/feed.xml")
+    _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert len(result) == 2
     assert all(isinstance(a, Article) for a in result)
@@ -79,7 +87,7 @@ def test_list_feed_prefers_content_over_summary(mock_parse):
     )
     mock_parse.return_value = _make_feed_result([entry])
 
-    result = list_feed("https://blog.example.com/feed.xml")
+    _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert result[0].content_html == "<p>Full content.</p>"
 
@@ -89,7 +97,7 @@ def test_list_feed_falls_back_to_summary(mock_parse):
     entry = _make_entry(content=[], summary="<p>Only a summary.</p>")
     mock_parse.return_value = _make_feed_result([entry])
 
-    result = list_feed("https://blog.example.com/feed.xml")
+    _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert result[0].content_html == "<p>Only a summary.</p>"
 
@@ -99,7 +107,7 @@ def test_list_feed_empty_content_html_when_no_content(mock_parse):
     entry = _make_entry(content=[], summary=None)
     mock_parse.return_value = _make_feed_result([entry])
 
-    result = list_feed("https://blog.example.com/feed.xml")
+    _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert result[0].content_html == ""
 
@@ -108,7 +116,7 @@ def test_list_feed_empty_content_html_when_no_content(mock_parse):
 def test_list_feed_empty_feed(mock_parse):
     mock_parse.return_value = _make_feed_result([])
 
-    result = list_feed("https://blog.example.com/feed.xml")
+    _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert result == []
 
@@ -126,6 +134,6 @@ def test_list_feed_no_published_date(mock_parse):
     entry = _make_entry(published_parsed=None)
     mock_parse.return_value = _make_feed_result([entry])
 
-    result = list_feed("https://blog.example.com/feed.xml")
+    _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert result[0].published_at is None

@@ -9,9 +9,9 @@ from app.sources.models import Transcript, VideoMeta
 from app.sources.youtube import YouTubeUnavailable, fetch_transcript, list_videos
 
 
-def _make_ydl_mock(entries: list) -> MagicMock:
+def _make_ydl_mock(entries: list, title: str | None = None) -> MagicMock:
     mock_ydl = MagicMock()
-    mock_ydl.extract_info.return_value = {"entries": entries}
+    mock_ydl.extract_info.return_value = {"entries": entries, "title": title}
     return mock_ydl
 
 
@@ -39,14 +39,15 @@ def _transcript_ydl(info: dict, payload: bytes) -> MagicMock:
 # ── list_videos ──────────────────────────────────────────────────────────────
 
 @patch("app.sources.youtube.YoutubeDL")
-def test_list_videos_returns_video_meta(mock_cls):
+def test_list_videos_returns_title_and_video_meta(mock_cls):
     mock_cls.return_value.__enter__.return_value = _make_ydl_mock([
         {"id": "abc123", "title": "Episode 1", "duration": 120, "upload_date": "20240101"},
         {"id": "def456", "title": "Episode 2", "duration": 300, "upload_date": "20240215"},
-    ])
+    ], title="My Playlist")
 
-    result = list_videos("https://youtube.com/playlist?list=PLtest")
+    playlist_title, result = list_videos("https://youtube.com/playlist?list=PLtest")
 
+    assert playlist_title == "My Playlist"
     assert len(result) == 2
     assert all(isinstance(v, VideoMeta) for v in result)
     assert result[0].id == "abc123"
@@ -63,7 +64,7 @@ def test_list_videos_skips_none_entries(mock_cls):
         None,
     ])
 
-    result = list_videos("https://youtube.com/playlist?list=PLtest")
+    _title, result = list_videos("https://youtube.com/playlist?list=PLtest")
 
     assert len(result) == 1
     assert result[0].id == "abc123"
@@ -73,7 +74,7 @@ def test_list_videos_skips_none_entries(mock_cls):
 def test_list_videos_empty_playlist(mock_cls):
     mock_cls.return_value.__enter__.return_value = _make_ydl_mock([])
 
-    result = list_videos("https://youtube.com/playlist?list=PLtest")
+    _title, result = list_videos("https://youtube.com/playlist?list=PLtest")
 
     assert result == []
 
