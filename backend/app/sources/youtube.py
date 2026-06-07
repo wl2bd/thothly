@@ -1,11 +1,6 @@
+import json
 from datetime import datetime
 
-from youtube_transcript_api import (
-    CouldNotRetrieveTranscript,
-    NoTranscriptFound,
-    TranscriptsDisabled,
-    YouTubeTranscriptApi,
-)
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
@@ -71,28 +66,107 @@ def fetch_transcript(
     video_id: str,
     languages: list[str] | None = None,
 ) -> Transcript | None:
+    """Fetch a video's subtitles through yt-dlp.
+
+    We go through yt-dlp rather than the lighter timedtext endpoint because it
+    emulates a real YouTube client, which is far more resilient to the IP
+    rate-limiting/blocking YouTube applies to scrapers. Track preference: human
+    subtitles over auto-captions, and among auto-captions the video's *original*
+    language over a machine translation (so the body stays coherent with the
+    original-language title). Raises YouTubeUnavailable when YouTube refuses the
+    request (e.g. an IP block); returns None when no subtitles exist.
+    """
     if languages is None:
         languages = settings.preferred_languages
 
-    api = YouTubeTranscriptApi()
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extractor_args": _lang_extractor_args(),
+    }
     try:
-        transcript_list = api.list(video_id)
-        transcript = transcript_list.find_transcript(languages)
-        fetched = transcript.fetch()
-    except (TranscriptsDisabled, NoTranscriptFound):
-        return None
-    except CouldNotRetrieveTranscript as exc:
+        with YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            track = _pick_subtitle_track(info, languages)
+            if track is None:
+                return None
+            language, sub_url = track
+            raw = ydl.urlopen(sub_url).read().decode("utf-8", "replace")
+    except DownloadError as exc:
         raise YouTubeUnavailable(str(exc)) from exc
 
-    segments = [
-        TranscriptSegment(text=s.text, start_s=s.start, duration_s=s.duration)
-        for s in fetched
-    ]
-    return Transcript(
-        video_id=video_id,
-        language=transcript.language_code,
-        segments=segments,
-    )
+    segments = _parse_json3(raw)
+    if not segments:
+        return None
+    return Transcript(video_id=video_id, language=language, segments=segments)
+
+
+def _pick_subtitle_track(info: dict, languages: list[str]) -> tuple[str, str] | None:
+    """Choose (language_code, json3_url) for the best available subtitle track."""
+    manual = info.get("subtitles") or {}
+    auto = info.get("automatic_captions") or {}
+    original = (info.get("language") or "").split("-")[0]
+
+    # 1) Human-made subtitles in a preferred language.
+    for lang in languages:
+        picked = _match_track(manual, lang)
+        if picked:
+            return picked
+    # 2) The original-language auto-caption (real ASR, never a translation).
+    if original:
+        picked = _match_track(auto, original)
+        if picked:
+            return picked
+    # 3) Last resort: an auto-caption in a preferred language (may be translated).
+    for lang in languages:
+        picked = _match_track(auto, lang)
+        if picked:
+            return picked
+    return None
+
+
+def _match_track(tracks: dict, lang: str) -> tuple[str, str] | None:
+    """Find a track whose code matches lang exactly or by base (fr ~ fr-FR)."""
+    for code, formats in tracks.items():
+        if code == lang or code.split("-")[0] == lang:
+            url = _json3_url(formats)
+            if url:
+                return code, url
+    return None
+
+
+def _json3_url(formats: list[dict]) -> str | None:
+    for fmt in formats:
+        if fmt.get("ext") == "json3" and fmt.get("url"):
+            return fmt["url"]
+    return None
+
+
+def _parse_json3(raw: str) -> list[TranscriptSegment]:
+    """Parse YouTube's json3 caption payload into timed segments."""
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+
+    segments: list[TranscriptSegment] = []
+    for event in data.get("events", []):
+        segs = event.get("segs")
+        if not segs:
+            continue
+        text = "".join(seg.get("utf8", "") for seg in segs).strip()
+        if not text:
+            continue
+        segments.append(
+            TranscriptSegment(
+                text=text,
+                start_s=event.get("tStartMs", 0) / 1000.0,
+                duration_s=event.get("dDurationMs", 0) / 1000.0,
+            )
+        )
+    return segments
 
 
 def _entry_to_video_meta(entry: dict) -> VideoMeta:
