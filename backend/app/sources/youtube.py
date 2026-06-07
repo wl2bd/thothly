@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from yt_dlp import YoutubeDL
-from yt_dlp.utils import DownloadError
+from yt_dlp.utils import YoutubeDLError
 
 from app.core.config import settings
 from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
@@ -39,7 +39,7 @@ def list_videos(url: str) -> list[VideoMeta]:
     with YoutubeDL(_YDL_OPTS) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
-        except DownloadError as exc:
+        except YoutubeDLError as exc:
             raise YouTubeUnavailable(str(exc)) from exc
 
     entries = info.get("entries") or []
@@ -57,7 +57,7 @@ def fetch_video_meta(url: str) -> VideoMeta:
     with YoutubeDL(opts) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
-        except DownloadError as exc:
+        except YoutubeDLError as exc:
             raise YouTubeUnavailable(str(exc)) from exc
     return _entry_to_video_meta(info)
 
@@ -94,7 +94,7 @@ def fetch_transcript(
                 return None
             language, sub_url = track
             raw = ydl.urlopen(sub_url).read().decode("utf-8", "replace")
-    except DownloadError as exc:
+    except YoutubeDLError as exc:
         raise YouTubeUnavailable(str(exc)) from exc
 
     segments = _parse_json3(raw)

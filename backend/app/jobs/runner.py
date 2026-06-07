@@ -32,14 +32,27 @@ def run_compilation(job_id: str) -> None:
     try:
         items = get_selected_items(job_id)
         chapters: list[CompiledChapter] = []
+        youtube_unavailable = False
 
         for item in items:
-            if item.item_type == "youtube":
-                chapter = _youtube_chapter(item, job_id)
-            else:
-                chapter = _blog_chapter(item, job_id)
+            try:
+                if item.item_type == "youtube":
+                    chapter = _youtube_chapter(item, job_id)
+                else:
+                    chapter = _blog_chapter(item, job_id)
+            except YouTubeUnavailable as exc:
+                logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
+                youtube_unavailable = True
+                continue
             if chapter is not None:
                 chapters.append(chapter)
+
+        if not chapters and youtube_unavailable:
+            raise CompilationError(
+                "YouTube is rate-limiting transcript requests (HTTP 429) from this "
+                "IP. This usually clears after a while — try again later. For a "
+                "self-hosted server, a residential proxy avoids it."
+            )
 
         book = compile_book(chapters, derive_book_title(_source_labels(items)))
         output_path = _render(book, job_id)
@@ -58,13 +71,10 @@ def run_compilation(job_id: str) -> None:
 
 def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter | None:
     video_id = _extract_video_id(item.url)
-    try:
-        # Cache hit from discovery (full segments + chapters); falls back to a
-        # live fetch only if the cache was never populated.
-        transcript = load_transcript(video_id)
-    except YouTubeUnavailable as exc:
-        logger.error("YouTube unavailable for %s (job %s): %s", video_id, job_id, exc)
-        return None
+    # Cache hit from discovery (full segments + chapters); falls back to a live
+    # fetch only if the cache was never populated. A YouTubeUnavailable here
+    # (e.g. a 429) propagates so run_compilation can report it clearly.
+    transcript = load_transcript(video_id)
     if transcript is None:
         logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
         return None
