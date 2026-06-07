@@ -23,6 +23,9 @@ __pycache__/
 # Generated data (SQLite DB, EPUBs, scratch files)
 data/*
 !data/.gitkeep
+backend/data/
+*.db
+*.epub
 
 # Editor / OS / agent state
 .vscode/
