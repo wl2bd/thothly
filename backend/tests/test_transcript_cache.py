@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.sources.models import Transcript, TranscriptSegment
+from app.sources.models import Chapter, Transcript, TranscriptSegment
 
 
 @pytest.fixture
@@ -34,6 +34,22 @@ def test_successful_fetch_is_cached(mock_fetch, db):
     assert first.language == "fr"
     assert second.segments[0].text == "bonjour"
     mock_fetch.assert_called_once()  # second call served from cache
+
+
+@patch("app.sources.transcript_cache.fetch_transcript")
+def test_chapters_survive_the_cache(mock_fetch, db):
+    from app.sources.transcript_cache import load_transcript
+
+    transcript = _transcript("vid")
+    transcript.chapters = [Chapter(title="Introduction", start_s=0.0, end_s=10.0)]
+    mock_fetch.return_value = transcript
+
+    load_transcript("vid")  # stores
+    cached = load_transcript("vid")  # reads back from cache
+
+    assert cached.chapters[0].title == "Introduction"
+    assert cached.chapters[0].end_s == 10.0
+    mock_fetch.assert_called_once()
 
 
 @patch("app.sources.transcript_cache.fetch_transcript")

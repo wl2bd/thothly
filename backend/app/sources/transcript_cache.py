@@ -15,7 +15,7 @@ import json
 from datetime import datetime, timezone
 
 from app.core.database import get_connection
-from app.sources.models import Transcript, TranscriptSegment
+from app.sources.models import Chapter, Transcript, TranscriptSegment
 from app.sources.youtube import fetch_transcript
 
 
@@ -40,22 +40,30 @@ def _get_cached(video_id: str) -> Transcript | None:
     if row is None:
         return None
     segments = [TranscriptSegment(**s) for s in json.loads(row["segments"])]
+    chapters_json = row["chapters"]
+    chapters = [Chapter(**c) for c in json.loads(chapters_json)] if chapters_json else []
     return Transcript(
-        video_id=video_id, language=row["language"], segments=segments
+        video_id=video_id,
+        language=row["language"],
+        segments=segments,
+        chapters=chapters,
     )
 
 
 def _store(transcript: Transcript) -> None:
-    payload = json.dumps([s.model_dump() for s in transcript.segments])
+    segments_json = json.dumps([s.model_dump() for s in transcript.segments])
+    chapters_json = json.dumps([c.model_dump() for c in transcript.chapters])
     with get_connection() as conn:
         conn.execute(
             "INSERT OR REPLACE INTO transcript_cache "
-            "(video_id, language, segments, fetched_at) VALUES (?, ?, ?, ?)",
+            "(video_id, language, segments, fetched_at, chapters) "
+            "VALUES (?, ?, ?, ?, ?)",
             (
                 transcript.video_id,
                 transcript.language,
-                payload,
+                segments_json,
                 datetime.now(timezone.utc).isoformat(),
+                chapters_json,
             ),
         )
         conn.commit()

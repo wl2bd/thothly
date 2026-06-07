@@ -5,7 +5,7 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
 from app.core.config import settings
-from app.sources.models import Transcript, TranscriptSegment, VideoMeta
+from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
 
 
 class YouTubeUnavailable(Exception):
@@ -100,7 +100,24 @@ def fetch_transcript(
     segments = _parse_json3(raw)
     if not segments:
         return None
-    return Transcript(video_id=video_id, language=language, segments=segments)
+    return Transcript(
+        video_id=video_id,
+        language=language,
+        segments=segments,
+        chapters=_parse_chapters(info),
+    )
+
+
+def _parse_chapters(info: dict) -> list[Chapter]:
+    """Read YouTube's timestamped chapters, if the video defines them."""
+    chapters: list[Chapter] = []
+    for chapter in info.get("chapters") or []:
+        title = (chapter.get("title") or "").strip()
+        start = chapter.get("start_time")
+        end = chapter.get("end_time")
+        if title and start is not None and end is not None:
+            chapters.append(Chapter(title=title, start_s=float(start), end_s=float(end)))
+    return chapters
 
 
 def _pick_subtitle_track(info: dict, languages: list[str]) -> tuple[str, str] | None:

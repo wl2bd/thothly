@@ -10,7 +10,7 @@ from app.pipeline.compiler import (
     compile_book,
     derive_book_title,
     html_to_markdown,
-    segments_to_markdown,
+    transcript_to_markdown,
 )
 from app.pipeline.models import CompiledChapter
 from app.render.epub import render_epub
@@ -69,7 +69,7 @@ def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapt
         logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
         return None
 
-    content_md = segments_to_markdown([s.text for s in transcript.segments])
+    content_md = transcript_to_markdown(transcript)
     if not content_md:
         return None
 

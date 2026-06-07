@@ -17,10 +17,20 @@ class TranscriptSegment(BaseModel):
     duration_s: float
 
 
+class Chapter(BaseModel):
+    """A YouTube video chapter (timestamped section), used to structure the
+    transcript into sub-headings in the EPUB."""
+
+    title: str
+    start_s: float
+    end_s: float
+
+
 class Transcript(BaseModel):
     video_id: str
     language: str
     segments: list[TranscriptSegment]
+    chapters: list[Chapter] = []
 
     @property
     def full_text(self) -> str:

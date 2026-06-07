@@ -1,9 +1,11 @@
 import re
+from bisect import bisect_right
 from datetime import datetime, timezone
 
 from markdownify import markdownify as md
 
 from app.pipeline.models import CompiledBook, CompiledChapter
+from app.sources.models import Transcript
 
 
 class CompilationError(Exception):
@@ -86,6 +88,31 @@ def segments_to_markdown(segment_texts: list[str], group_size: int = 8) -> str:
         for i in range(0, len(cleaned), group_size)
     ]
     return "\n\n".join(paragraphs)
+
+
+def transcript_to_markdown(transcript: Transcript) -> str:
+    """Render a transcript, using YouTube chapters as sub-headings when present.
+
+    Chapters give readable structure independent of punctuation: each section
+    becomes an H3 heading with its own paragraphs. Each segment is assigned to
+    the last chapter that started at or before it (so nothing is dropped at the
+    boundaries). Without chapters we fall back to flat paragraphs.
+    """
+    if not transcript.chapters:
+        return segments_to_markdown([s.text for s in transcript.segments])
+
+    starts = [c.start_s for c in transcript.chapters]
+    buckets: list[list[str]] = [[] for _ in transcript.chapters]
+    for segment in transcript.segments:
+        index = max(0, bisect_right(starts, segment.start_s) - 1)
+        buckets[index].append(segment.text)
+
+    sections: list[str] = []
+    for chapter, texts in zip(transcript.chapters, buckets):
+        body = segments_to_markdown(texts)
+        if body:
+            sections.append(f"### {chapter.title}\n\n{body}")
+    return "\n\n".join(sections)
 
 
 def compile_book(chapters: list[CompiledChapter], title: str) -> CompiledBook:

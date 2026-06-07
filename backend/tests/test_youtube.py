@@ -149,6 +149,29 @@ def test_fetch_transcript_picks_original_over_translation(mock_cls):
 
 
 @patch("app.sources.youtube.YoutubeDL")
+def test_fetch_transcript_includes_chapters(mock_cls):
+    info = {
+        "language": "fr",
+        "subtitles": {},
+        "automatic_captions": {"fr": _track("http://x/fr.json3")},
+        "chapters": [
+            {"title": "Introduction", "start_time": 0.0, "end_time": 10.0},
+            {"title": "", "start_time": 10.0, "end_time": 20.0},  # blank -> skipped
+        ],
+    }
+    mock_cls.return_value.__enter__.return_value = _transcript_ydl(
+        info, _json3(_event("Bonjour", 0, 1000))
+    )
+
+    result = fetch_transcript("vid")
+
+    assert len(result.chapters) == 1
+    assert result.chapters[0].title == "Introduction"
+    assert result.chapters[0].start_s == 0.0
+    assert result.chapters[0].end_s == 10.0
+
+
+@patch("app.sources.youtube.YoutubeDL")
 def test_fetch_transcript_returns_none_when_no_subtitles(mock_cls):
     info = {"language": "fr", "subtitles": {}, "automatic_captions": {}}
     mock_cls.return_value.__enter__.return_value = _transcript_ydl(info, b"")

@@ -7,8 +7,14 @@ from app.pipeline.compiler import (
     html_to_markdown,
     is_punctuated,
     segments_to_markdown,
+    transcript_to_markdown,
 )
 from app.pipeline.models import CompiledChapter
+from app.sources.models import Chapter, Transcript, TranscriptSegment
+
+
+def _seg(text: str, start: float) -> TranscriptSegment:
+    return TranscriptSegment(text=text, start_s=start, duration_s=1.0)
 
 
 def test_segments_to_markdown_groups_unpunctuated_by_segment_count():
@@ -38,6 +44,36 @@ def test_segments_to_markdown_splits_punctuated_on_sentences():
     result = segments_to_markdown(segments)
     for paragraph in result.split("\n\n"):
         assert paragraph.endswith(".")
+
+
+def test_transcript_to_markdown_structures_by_chapters():
+    transcript = Transcript(
+        video_id="v", language="fr",
+        segments=[
+            _seg("intro un", 0.0), _seg("intro deux", 5.0),
+            _seg("corps un", 20.0), _seg("corps deux", 25.0),
+        ],
+        chapters=[
+            Chapter(title="Introduction", start_s=0.0, end_s=15.0),
+            Chapter(title="Le corps", start_s=15.0, end_s=40.0),
+        ],
+    )
+    md = transcript_to_markdown(transcript)
+    assert "### Introduction" in md
+    assert "### Le corps" in md
+    assert md.index("### Introduction") < md.index("### Le corps")
+    assert "intro un intro deux" in md
+    assert "corps un corps deux" in md
+
+
+def test_transcript_to_markdown_without_chapters_is_flat():
+    transcript = Transcript(
+        video_id="v", language="fr",
+        segments=[_seg("a", 0.0), _seg("b", 1.0)], chapters=[],
+    )
+    md = transcript_to_markdown(transcript)
+    assert "###" not in md
+    assert "a b" in md
 
 
 def test_html_to_markdown():

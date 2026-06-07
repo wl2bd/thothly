@@ -45,10 +45,12 @@ def init_db() -> None:
                 video_id   TEXT PRIMARY KEY,
                 language   TEXT NOT NULL,
                 segments   TEXT NOT NULL,
-                fetched_at TEXT NOT NULL
+                fetched_at TEXT NOT NULL,
+                chapters   TEXT
             )
         """)
-        _migrate_discovered_items(conn)
+        _add_missing_columns(conn, "job_discovered_items", _DISCOVERED_ITEM_ADDED_COLUMNS)
+        _add_missing_columns(conn, "transcript_cache", _TRANSCRIPT_CACHE_ADDED_COLUMNS)
         conn.commit()
 
 
@@ -63,14 +65,15 @@ _DISCOVERED_ITEM_ADDED_COLUMNS = (
     ("reading_time_min", "INTEGER"),
 )
 
+_TRANSCRIPT_CACHE_ADDED_COLUMNS = (
+    ("chapters", "TEXT"),
+)
 
-def _migrate_discovered_items(conn: sqlite3.Connection) -> None:
-    existing = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(job_discovered_items)")
-    }
-    for name, decl in _DISCOVERED_ITEM_ADDED_COLUMNS:
+
+def _add_missing_columns(
+    conn: sqlite3.Connection, table: str, columns: tuple[tuple[str, str], ...]
+) -> None:
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    for name, decl in columns:
         if name not in existing:
-            conn.execute(
-                f"ALTER TABLE job_discovered_items ADD COLUMN {name} {decl}"
-            )
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
