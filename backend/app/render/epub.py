@@ -57,7 +57,8 @@ def _build_command(
         "-o",
         str(output_path),
         "--toc",
-        "--toc-depth=2",
+        "--toc-depth=3",
+        "--epub-chapter-level=2",
         f"--metadata-file={metadata_path}",
     ]
     if _CSS_PATH.exists():

@@ -8,6 +8,7 @@ from app.jobs.repository import get_selected_items, update_job_status
 from app.pipeline.compiler import (
     CompilationError,
     compile_book,
+    demote_headings,
     derive_book_title,
     html_to_markdown,
     transcript_to_markdown,
@@ -103,7 +104,7 @@ def _blog_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter 
         logger.warning("Scrape failed for %s (job %s), using RSS preview", item.url, job_id)
         content_html = item.preview_html or ""
 
-    content_md = html_to_markdown(content_html)
+    content_md = demote_headings(html_to_markdown(content_html))
     if not content_md:
         return None
 

@@ -3,6 +3,7 @@ import pytest
 from app.pipeline.compiler import (
     CompilationError,
     compile_book,
+    demote_headings,
     derive_book_title,
     html_to_markdown,
     is_punctuated,
@@ -79,6 +80,25 @@ def test_transcript_to_markdown_without_chapters_is_flat():
 def test_html_to_markdown():
     assert "hello" in html_to_markdown("<p>hello</p>")
     assert html_to_markdown("") == ""
+
+
+def test_demote_headings_nests_under_chapter_and_keeps_structure():
+    md = "# Article Title\n\nIntro.\n\n## A Section\n\nBody."
+    out = demote_headings(md)  # floor h3
+    assert "### Article Title" in out
+    assert "#### A Section" in out  # relative depth preserved (h1->h3, h2->h4)
+
+
+def test_demote_headings_noop_when_already_deep_enough():
+    md = "### Already a subsection\n\ntext"
+    assert demote_headings(md) == md
+
+
+def test_demote_headings_leaves_code_fences_alone():
+    md = "```\n# not a heading\n```\n\n## Real heading"
+    out = demote_headings(md)
+    assert "# not a heading" in out  # inside fence, untouched
+    assert "### Real heading" in out  # real h2 shifted to h3
 
 
 def test_compile_book_raises_when_no_usable_content():

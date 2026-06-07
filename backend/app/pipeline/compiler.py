@@ -66,6 +66,55 @@ def html_to_markdown(html: str) -> str:
     return md(html, heading_style="ATX", bullets="-").strip()
 
 
+_ATX_HEADING = re.compile(r"^(#{1,6})(\s.*)$")
+
+
+def demote_headings(markdown: str, floor: int = 3) -> str:
+    """Shift a chapter body's headings so they nest under its title.
+
+    Scraped articles keep their own h1/h2 headings; left as-is they sit at the
+    same level as the chapter title (an h2 in the book), flattening the table
+    of contents. We shift every heading down so the shallowest becomes `floor`
+    (h3 by default, i.e. just under the chapter), preserving the article's own
+    relative structure. Code fences are left untouched so '#' comments aren't
+    mistaken for headings.
+    """
+    lines = markdown.split("\n")
+    levels = [len(m.group(1)) for _, m in _heading_lines(lines) if m]
+    if not levels:
+        return markdown
+    shift = floor - min(levels)
+    if shift <= 0:
+        return markdown
+
+    out: list[str] = []
+    for line, in_code in _with_fence_state(lines):
+        match = None if in_code else _ATX_HEADING.match(line)
+        if match:
+            level = min(6, len(match.group(1)) + shift)
+            line = "#" * level + match.group(2)
+        out.append(line)
+    return "\n".join(out)
+
+
+def _with_fence_state(lines: list[str]):
+    """Yield (line, inside_code_fence) for each line."""
+    in_fence = False
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            yield line, in_fence  # the fence line itself isn't a heading
+            continue
+        yield line, in_fence
+
+
+def _heading_lines(lines: list[str]):
+    """Yield (line, match) for heading lines outside code fences."""
+    for line, in_code in _with_fence_state(lines):
+        if not in_code:
+            yield line, _ATX_HEADING.match(line)
+
+
 def segments_to_markdown(segment_texts: list[str], group_size: int = 8) -> str:
     """Turn subtitle segments into readable paragraphs, adaptively.
 
