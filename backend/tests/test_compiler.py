@@ -146,9 +146,25 @@ def test_compiled_book_to_markdown_includes_attribution():
     )
     md = book.to_markdown()
     assert "My Book" not in md  # title lives in EPUB metadata, not the body
+    assert "# Sources" in md  # opening index page
     assert "# A" in md  # chapter is the top-level (H1) heading
     assert ".source-attribution" in md
     assert "body" in md
+
+
+def test_compiled_book_sources_page_lists_every_source():
+    book = compile_book(
+        [
+            CompiledChapter(title="A", source_type="blog", source_url="https://a.test", content_md="x"),
+            CompiledChapter(title="B", source_type="youtube", source_url="https://b.test", content_md="y"),
+        ],
+        "Title",
+    )
+    md = book.to_markdown()
+    sources_section = md.split("# A")[0]  # everything before the first chapter
+    assert "# Sources" in sources_section
+    assert "[A](https://a.test)" in sources_section
+    assert "[B](https://b.test)" in sources_section
 
 
 def test_derive_book_title():

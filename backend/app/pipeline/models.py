@@ -23,6 +23,16 @@ class CompiledBook(BaseModel):
         # (title page + a redundant TOC root). Chapters are the top-level
         # headings (H1); their inner sections are H2/H3 beneath them.
         parts: list[str] = []
+
+        # An opening "Sources" page: a clickable index of every source, so the
+        # whole reading list is reachable from one place at the front.
+        if self.chapters:
+            parts.append("# Sources")
+            parts.append("")
+            for chapter in self.chapters:
+                parts.append(f"- [{chapter.title}]({chapter.source_url})")
+            parts.append("")
+
         for chapter in self.chapters:
             parts.append(f"# {chapter.title}")
 
