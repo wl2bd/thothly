@@ -61,9 +61,9 @@ def test_transcript_to_markdown_structures_by_chapters():
         ],
     )
     md = transcript_to_markdown(transcript)
-    assert "### Introduction" in md
-    assert "### Le corps" in md
-    assert md.index("### Introduction") < md.index("### Le corps")
+    assert "## Introduction" in md
+    assert "## Le corps" in md
+    assert md.index("## Introduction") < md.index("## Le corps")
     assert "intro un intro deux" in md
     assert "corps un corps deux" in md
 
@@ -85,13 +85,13 @@ def test_html_to_markdown():
 
 def test_demote_headings_nests_under_chapter_and_keeps_structure():
     md = "# Article Title\n\nIntro.\n\n## A Section\n\nBody."
-    out = demote_headings(md)  # floor h3
-    assert "### Article Title" in out
-    assert "#### A Section" in out  # relative depth preserved (h1->h3, h2->h4)
+    out = demote_headings(md)  # floor h2 (chapter is h1)
+    assert "## Article Title" in out
+    assert "### A Section" in out  # relative depth preserved (h1->h2, h2->h3)
 
 
 def test_demote_headings_noop_when_already_deep_enough():
-    md = "### Already a subsection\n\ntext"
+    md = "## Already under the chapter\n\ntext"
     assert demote_headings(md) == md
 
 
@@ -99,7 +99,7 @@ def test_strip_leading_title_removes_duplicate_then_sections_lift():
     md = "# The Pegged Asset Swap Wars\n\nIntro.\n\n## Early Days\n\nbody"
     out = demote_headings(strip_leading_title(md, "The Pegged Asset Swap Wars"))
     assert "Pegged Asset Swap Wars" not in out  # duplicate title gone
-    assert "### Early Days" in out  # section lifts from h2 to h3 (in the TOC)
+    assert "## Early Days" in out  # section stays h2, just under the chapter h1
 
 
 def test_strip_leading_title_matches_despite_site_suffix():
@@ -115,10 +115,10 @@ def test_strip_leading_title_keeps_non_matching_heading():
 
 
 def test_demote_headings_leaves_code_fences_alone():
-    md = "```\n# not a heading\n```\n\n## Real heading"
+    md = "```\n# not a heading\n```\n\n# Real heading"
     out = demote_headings(md)
     assert "# not a heading" in out  # inside fence, untouched
-    assert "### Real heading" in out  # real h2 shifted to h3
+    assert "## Real heading" in out  # real h1 shifted to h2
 
 
 def test_compile_book_raises_when_no_usable_content():
@@ -145,8 +145,8 @@ def test_compiled_book_to_markdown_includes_attribution():
         "My Book",
     )
     md = book.to_markdown()
-    assert "# My Book" in md
-    assert "## A" in md
+    assert "My Book" not in md  # title lives in EPUB metadata, not the body
+    assert "# A" in md  # chapter is the top-level (H1) heading
     assert ".source-attribution" in md
     assert "body" in md
 

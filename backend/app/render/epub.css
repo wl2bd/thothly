@@ -234,8 +234,26 @@ nav ul {
     padding-left: 0;
 }
 
+/* Indent nested TOC levels so the chapter -> section hierarchy is visible. */
+nav ol ol,
+nav ul ul {
+    padding-left: 1.25em;
+}
+
 nav li {
-    margin-bottom: 0.4em;
+    margin-bottom: 0.35em;
+}
+
+/* Top-level entries (chapters) stand out; nested ones (sections) read lighter. */
+nav > ol > li {
+    font-weight: 600;
+    margin-top: 0.7em;
+}
+
+nav ol ol li {
+    font-weight: normal;
+    font-size: 0.95em;
+    margin-top: 0.15em;
 }
 
 nav a {

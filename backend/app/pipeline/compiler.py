@@ -97,13 +97,13 @@ def strip_leading_title(markdown: str, title: str) -> str:
     return "\n".join(lines).lstrip("\n")
 
 
-def demote_headings(markdown: str, floor: int = 3) -> str:
+def demote_headings(markdown: str, floor: int = 2) -> str:
     """Shift a chapter body's headings so they nest under its title.
 
-    Scraped articles keep their own h1/h2 headings; left as-is they sit at the
-    same level as the chapter title (an h2 in the book), flattening the table
-    of contents. We shift every heading down so the shallowest becomes `floor`
-    (h3 by default, i.e. just under the chapter), preserving the article's own
+    Scraped articles keep their own headings; left as-is they can sit at or
+    above the chapter title (an h1 in the book), flattening the table of
+    contents. We shift every heading down so the shallowest becomes `floor`
+    (h2 by default, i.e. just under the chapter), preserving the article's own
     relative structure. Code fences are left untouched so '#' comments aren't
     mistaken for headings.
     """
@@ -171,9 +171,10 @@ def transcript_to_markdown(transcript: Transcript) -> str:
     """Render a transcript, using YouTube chapters as sub-headings when present.
 
     Chapters give readable structure independent of punctuation: each section
-    becomes an H3 heading with its own paragraphs. Each segment is assigned to
-    the last chapter that started at or before it (so nothing is dropped at the
-    boundaries). Without chapters we fall back to flat paragraphs.
+    becomes an H2 heading (under the video's H1 title) with its own paragraphs.
+    Each segment is assigned to the last chapter that started at or before it
+    (so nothing is dropped at the boundaries). Without chapters we fall back to
+    flat paragraphs.
     """
     if not transcript.chapters:
         return segments_to_markdown([s.text for s in transcript.segments])
@@ -188,7 +189,7 @@ def transcript_to_markdown(transcript: Transcript) -> str:
     for chapter, texts in zip(transcript.chapters, buckets):
         body = segments_to_markdown(texts)
         if body:
-            sections.append(f"### {chapter.title}\n\n{body}")
+            sections.append(f"## {chapter.title}\n\n{body}")
     return "\n\n".join(sections)
 
 

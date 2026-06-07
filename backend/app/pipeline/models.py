@@ -18,9 +18,13 @@ class CompiledBook(BaseModel):
     chapters: list[CompiledChapter]
 
     def to_markdown(self) -> str:
-        parts: list[str] = [f"# {self.title}", ""]
+        # No book-level heading: Pandoc already builds a title page from the
+        # EPUB metadata, so emitting the title here too would show it twice
+        # (title page + a redundant TOC root). Chapters are the top-level
+        # headings (H1); their inner sections are H2/H3 beneath them.
+        parts: list[str] = []
         for chapter in self.chapters:
-            parts.append(f"## {chapter.title}")
+            parts.append(f"# {chapter.title}")
 
             meta_parts = [f"*Source : [{chapter.source_type}]({chapter.source_url})*"]
             if chapter.author:

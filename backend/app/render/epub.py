@@ -44,6 +44,7 @@ def _metadata_yaml(book: CompiledBook) -> str:
         f'title: "{book.title}"\n'
         'creator: "Thothly"\n'
         'lang: "fr"\n'
+        'toc-title: "Table des matières"\n'
         f'date: "{book.generated_at.strftime("%Y-%m-%d")}"\n'
     )
 
@@ -57,8 +58,8 @@ def _build_command(
         "-o",
         str(output_path),
         "--toc",
-        "--toc-depth=3",
-        "--epub-chapter-level=2",
+        "--toc-depth=2",
+        "--split-level=1",
         f"--metadata-file={metadata_path}",
     ]
     if _CSS_PATH.exists():
