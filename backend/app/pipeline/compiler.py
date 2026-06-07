@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 
 from markdownify import markdownify as md
@@ -7,6 +8,44 @@ from app.pipeline.models import CompiledBook, CompiledChapter
 
 class CompilationError(Exception):
     pass
+
+
+# Split on sentence-ending punctuation followed by whitespace. Keeps the
+# terminator attached to the sentence it ends.
+_SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
+
+
+def is_punctuated(text: str) -> bool:
+    """Heuristic: does this text carry real sentence punctuation?
+
+    YouTube auto-captions are inconsistent — newer ASR adds punctuation, older
+    tracks have none at all. We only get clean sentence-based paragraphs when
+    the source is actually punctuated, so we detect that with a density check
+    (roughly one sentence-ending mark per 50 words). A stray mark or two in an
+    otherwise raw transcript stays below the threshold.
+    """
+    words = len(text.split())
+    if words < 20:
+        return False
+    marks = sum(text.count(c) for c in ".!?")
+    return marks / words >= 0.02
+
+
+def _sentences_to_paragraphs(text: str, target_chars: int = 450) -> str:
+    """Group sentences into evenly sized paragraphs at real sentence breaks."""
+    sentences = [s.strip() for s in _SENTENCE_END.split(text.strip()) if s.strip()]
+    paragraphs: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for sentence in sentences:
+        current.append(sentence)
+        current_len += len(sentence)
+        if current_len >= target_chars:
+            paragraphs.append(" ".join(current))
+            current, current_len = [], 0
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n\n".join(paragraphs)
 
 
 def derive_book_title(source_labels: list[str]) -> str:
@@ -26,15 +65,21 @@ def html_to_markdown(html: str) -> str:
 
 
 def segments_to_markdown(segment_texts: list[str], group_size: int = 8) -> str:
-    """Turn raw subtitle segments into readable paragraphs.
+    """Turn subtitle segments into readable paragraphs, adaptively.
 
-    Native YouTube captions have no punctuation or paragraph breaks. With a
-    zero-LLM policy we don't rewrite them — we only group consecutive segments
-    into paragraphs so the EPUB isn't a single wall of text.
+    If the captions are punctuated (newer YouTube ASR), we split on real
+    sentence boundaries and group those into evenly sized paragraphs — clean,
+    zero-LLM. If they're raw (no punctuation), there are no sentences to split
+    on, so we fall back to grouping consecutive segments; that case is the one
+    an LLM cleanup pass is meant to handle later.
     """
     cleaned = [t.strip() for t in segment_texts if t and t.strip()]
     if not cleaned:
         return ""
+
+    full_text = " ".join(cleaned)
+    if is_punctuated(full_text):
+        return _sentences_to_paragraphs(full_text)
 
     paragraphs = [
         " ".join(cleaned[i : i + group_size])
