@@ -11,6 +11,7 @@ from app.pipeline.compiler import (
     demote_headings,
     derive_book_title,
     html_to_markdown,
+    strip_leading_title,
     transcript_to_markdown,
 )
 from app.pipeline.models import CompiledChapter
@@ -104,7 +105,8 @@ def _blog_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter 
         logger.warning("Scrape failed for %s (job %s), using RSS preview", item.url, job_id)
         content_html = item.preview_html or ""
 
-    content_md = demote_headings(html_to_markdown(content_html))
+    content_md = html_to_markdown(content_html)
+    content_md = demote_headings(strip_leading_title(content_md, item.title))
     if not content_md:
         return None
 

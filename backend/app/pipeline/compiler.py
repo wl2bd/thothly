@@ -69,6 +69,34 @@ def html_to_markdown(html: str) -> str:
 _ATX_HEADING = re.compile(r"^(#{1,6})(\s.*)$")
 
 
+def _normalize_title(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def strip_leading_title(markdown: str, title: str) -> str:
+    """Drop a leading heading that merely repeats the chapter title.
+
+    Article extractors (trafilatura) keep the article's own <h1> title at the
+    top of the extracted content. Since we already emit that title as the
+    chapter heading, it shows up twice in a row — and worse, it makes the real
+    sections one level deeper, pushing them out of the table of contents.
+    Remove the first heading when it matches the title.
+    """
+    lines = markdown.split("\n")
+    for i, line in enumerate(lines):
+        match = _ATX_HEADING.match(line)
+        if not match:
+            continue
+        heading = _normalize_title(match.group(2))
+        wanted = _normalize_title(title)
+        if heading == wanted or heading.startswith(wanted) or wanted.startswith(heading):
+            del lines[i]
+            if i < len(lines) and not lines[i].strip():
+                del lines[i]
+        break  # only the first heading can be the duplicated title
+    return "\n".join(lines).lstrip("\n")
+
+
 def demote_headings(markdown: str, floor: int = 3) -> str:
     """Shift a chapter body's headings so they nest under its title.
 

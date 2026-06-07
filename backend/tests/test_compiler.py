@@ -8,6 +8,7 @@ from app.pipeline.compiler import (
     html_to_markdown,
     is_punctuated,
     segments_to_markdown,
+    strip_leading_title,
     transcript_to_markdown,
 )
 from app.pipeline.models import CompiledChapter
@@ -92,6 +93,25 @@ def test_demote_headings_nests_under_chapter_and_keeps_structure():
 def test_demote_headings_noop_when_already_deep_enough():
     md = "### Already a subsection\n\ntext"
     assert demote_headings(md) == md
+
+
+def test_strip_leading_title_removes_duplicate_then_sections_lift():
+    md = "# The Pegged Asset Swap Wars\n\nIntro.\n\n## Early Days\n\nbody"
+    out = demote_headings(strip_leading_title(md, "The Pegged Asset Swap Wars"))
+    assert "Pegged Asset Swap Wars" not in out  # duplicate title gone
+    assert "### Early Days" in out  # section lifts from h2 to h3 (in the TOC)
+
+
+def test_strip_leading_title_matches_despite_site_suffix():
+    md = "# My Post | TokenBrice\n\nbody"
+    out = strip_leading_title(md, "My Post")
+    assert "TokenBrice" not in out
+    assert out.strip() == "body"
+
+
+def test_strip_leading_title_keeps_non_matching_heading():
+    md = "## A Real Section\n\nbody"
+    assert strip_leading_title(md, "Some Other Title") == md
 
 
 def test_demote_headings_leaves_code_fences_alone():
