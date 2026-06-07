@@ -27,6 +27,7 @@ class JobCreate(BaseModel):
 
 class JobConfirm(BaseModel):
     selected_ids: Annotated[list[str], Field(min_length=1)]
+    book_title: str | None = None
 
 
 class DiscoveredItemResponse(BaseModel):

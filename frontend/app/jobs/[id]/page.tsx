@@ -22,6 +22,7 @@ export default function JobPage() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [title, setTitle] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [pollKey, setPollKey] = useState(0);
 
@@ -57,8 +58,9 @@ export default function JobPage() {
   useEffect(() => {
     if (job?.status === "reviewing") {
       setSelected(new Set(job.discovered_items.map((it) => it.id)));
+      setTitle(job.book_title ?? "");
     }
-  }, [job?.status, job?.discovered_items]);
+  }, [job?.status, job?.discovered_items, job?.book_title]);
 
   const toggle = useCallback((itemId: string) => {
     setSelected((prev) => {
@@ -73,7 +75,7 @@ export default function JobPage() {
     setConfirming(true);
     setError(null);
     try {
-      const updated = await confirmJob(id, [...selected]);
+      const updated = await confirmJob(id, [...selected], title.trim() || undefined);
       setJob(updated);
       setPollKey((k) => k + 1); // resume polling for the compilation phase
     } catch (err) {
@@ -110,7 +112,9 @@ export default function JobPage() {
             <ReviewList
               items={job.discovered_items}
               selected={selected}
+              title={title}
               confirming={confirming}
+              onTitleChange={setTitle}
               onToggle={toggle}
               onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
               onSelectNone={() => setSelected(new Set())}
@@ -162,7 +166,9 @@ function StatusMessage({ label }: { label: string }) {
 interface ReviewListProps {
   items: DiscoveredItem[];
   selected: Set<string>;
+  title: string;
   confirming: boolean;
+  onTitleChange: (title: string) => void;
   onToggle: (id: string) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
@@ -172,7 +178,9 @@ interface ReviewListProps {
 function ReviewList({
   items,
   selected,
+  title,
   confirming,
+  onTitleChange,
   onToggle,
   onSelectAll,
   onSelectNone,
@@ -180,6 +188,19 @@ function ReviewList({
 }: ReviewListProps) {
   return (
     <div className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-xs font-medium">
+          Titre du livre
+        </span>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder="Titre de la compilation"
+          className="border-border bg-background focus:ring-primary/40 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+        />
+      </label>
+
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">
           {items.length} élément{items.length > 1 ? "s" : ""} — {selected.size}{" "}

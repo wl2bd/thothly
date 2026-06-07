@@ -99,6 +99,47 @@ def test_transcript_metadata_roundtrip(mock_discovery, client: TestClient) -> No
     assert api_item["reading_time_min"] == 6
 
 
+@patch("app.jobs.router.run_compilation")
+@patch("app.jobs.router.run_discovery")
+def test_confirm_overrides_book_title(
+    mock_discovery, mock_compilation, client: TestClient
+) -> None:
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    item = DiscoveredItemResponse(
+        id="item-1", source_index=0, item_index=0, item_type="youtube",
+        title="A video", url="https://www.youtube.com/watch?v=abc123",
+    )
+    repository.save_discovered_items(job_id, [item])
+    repository.update_job_status(job_id, "reviewing", book_title="Default Name")
+
+    resp = client.post(
+        f"/jobs/{job_id}/confirm",
+        json={"selected_ids": ["item-1"], "book_title": "  My Custom Title  "},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["book_title"] == "My Custom Title"  # trimmed, overridden
+
+
+@patch("app.jobs.router.run_compilation")
+@patch("app.jobs.router.run_discovery")
+def test_confirm_blank_title_keeps_default(
+    mock_discovery, mock_compilation, client: TestClient
+) -> None:
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    item = DiscoveredItemResponse(
+        id="item-1", source_index=0, item_index=0, item_type="youtube",
+        title="A video", url="https://www.youtube.com/watch?v=abc123",
+    )
+    repository.save_discovered_items(job_id, [item])
+    repository.update_job_status(job_id, "reviewing", book_title="Default Name")
+
+    resp = client.post(
+        f"/jobs/{job_id}/confirm",
+        json={"selected_ids": ["item-1"], "book_title": "   "},
+    )
+    assert resp.json()["book_title"] == "Default Name"  # blank -> keep default
+
+
 @patch("app.jobs.router.run_discovery")
 def test_confirm_requires_reviewing_status(mock_discovery, client: TestClient) -> None:
     job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]

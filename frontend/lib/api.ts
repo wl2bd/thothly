@@ -63,11 +63,15 @@ export async function fetchJob(id: string): Promise<JobResponse> {
   return res.json();
 }
 
-export async function confirmJob(id: string, selectedIds: string[]): Promise<JobResponse> {
+export async function confirmJob(
+  id: string,
+  selectedIds: string[],
+  bookTitle?: string,
+): Promise<JobResponse> {
   const res = await fetch(`/api/jobs/${id}/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selected_ids: selectedIds }),
+    body: JSON.stringify({ selected_ids: selectedIds, book_title: bookTitle }),
   });
   if (!res.ok) return parseError(res);
   return res.json();

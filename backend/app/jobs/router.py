@@ -52,7 +52,10 @@ def confirm_job(
             detail="None of the selected ids match discovered items",
         )
 
-    repository.update_job_status(job_id, "processing")
+    # A blank title keeps the discovery-derived default (book_title=None leaves
+    # the stored value untouched).
+    title = payload.book_title.strip() if payload.book_title else None
+    repository.update_job_status(job_id, "processing", book_title=title or None)
     background_tasks.add_task(run_compilation, job_id)
     return repository.get_job(job_id)
 
