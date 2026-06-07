@@ -50,7 +50,6 @@ class DiscoveredItem:
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None
-    transcript_segments: list[str] | None = None
 
 
 def detect_kind(url: str) -> str:
@@ -138,13 +137,15 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
         item.has_transcript = False  # no native subtitles → will be skipped
         return
 
-    texts = [s.text for s in transcript.segments]
-    full_text = " ".join(t.strip() for t in texts if t and t.strip())
+    full_text = " ".join(
+        s.text.strip() for s in transcript.segments if s.text and s.text.strip()
+    )
     word_count = len(full_text.split())
 
+    # The transcript itself is now in the video-keyed cache (load_transcript
+    # stored it); we only keep the derived review metadata on the item.
     item.has_transcript = True
     item.transcript_lang = transcript.language
-    item.transcript_segments = texts
     item.is_punctuated = is_punctuated(full_text)
     item.word_count = word_count
     item.reading_time_min = max(1, round(word_count / _WORDS_PER_MINUTE))

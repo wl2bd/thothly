@@ -57,21 +57,19 @@ def run_compilation(job_id: str) -> None:
 
 
 def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter | None:
-    segment_texts = item.transcript_segments
-    if segment_texts is None:
-        # No cached transcript (e.g. discovery couldn't reach YouTube) — fetch now.
-        video_id = _extract_video_id(item.url)
-        try:
-            transcript = load_transcript(video_id)
-        except YouTubeUnavailable as exc:
-            logger.error("YouTube unavailable for %s (job %s): %s", video_id, job_id, exc)
-            return None
-        if transcript is None:
-            logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
-            return None
-        segment_texts = [s.text for s in transcript.segments]
+    video_id = _extract_video_id(item.url)
+    try:
+        # Cache hit from discovery (full segments + chapters); falls back to a
+        # live fetch only if the cache was never populated.
+        transcript = load_transcript(video_id)
+    except YouTubeUnavailable as exc:
+        logger.error("YouTube unavailable for %s (job %s): %s", video_id, job_id, exc)
+        return None
+    if transcript is None:
+        logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
+        return None
 
-    content_md = segments_to_markdown(segment_texts)
+    content_md = segments_to_markdown([s.text for s in transcript.segments])
     if not content_md:
         return None
 

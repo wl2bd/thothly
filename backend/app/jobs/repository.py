@@ -89,8 +89,8 @@ def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> N
                (id, job_id, source_index, item_index, item_type, title, url,
                 estimated_duration_s, estimated_size_chars, preview_html,
                 selected, created_at, has_transcript, transcript_lang,
-                is_punctuated, word_count, reading_time_min, transcript_segments)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                is_punctuated, word_count, reading_time_min)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     item.id,
@@ -110,9 +110,6 @@ def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> N
                     _bool_to_int(item.is_punctuated),
                     item.word_count,
                     item.reading_time_min,
-                    json.dumps(item.transcript_segments)
-                    if item.transcript_segments is not None
-                    else None,
                 )
                 for item in items
             ],
@@ -158,7 +155,6 @@ def _get_discovered_items(job_id: str) -> list[DiscoveredItemResponse]:
 
 
 def _item_row_to_response(row) -> DiscoveredItemResponse:
-    segments_json = row["transcript_segments"]
     return DiscoveredItemResponse(
         id=row["id"],
         source_index=row["source_index"],
@@ -175,7 +171,6 @@ def _item_row_to_response(row) -> DiscoveredItemResponse:
         is_punctuated=_int_to_bool(row["is_punctuated"]),
         word_count=row["word_count"],
         reading_time_min=row["reading_time_min"],
-        transcript_segments=json.loads(segments_json) if segments_json else None,
     )
 
 

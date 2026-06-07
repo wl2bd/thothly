@@ -61,7 +61,6 @@ _DISCOVERED_ITEM_ADDED_COLUMNS = (
     ("is_punctuated", "INTEGER"),
     ("word_count", "INTEGER"),
     ("reading_time_min", "INTEGER"),
-    ("transcript_segments", "TEXT"),
 )
 
 
