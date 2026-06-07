@@ -9,6 +9,7 @@ from youtube_transcript_api import (
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
+from app.core.config import settings
 from app.sources.models import Transcript, TranscriptSegment, VideoMeta
 
 
@@ -20,10 +21,22 @@ class TranscriptNotFound(Exception):
     pass
 
 
+def _lang_extractor_args() -> dict:
+    """Ask YouTube for metadata in our preferred language(s).
+
+    Without this, titles come back localized to the viewer's UI language
+    (e.g. an English UI turns a French video's title into an English
+    auto-translation), which then clashes with the original-language
+    transcript. Requesting the original language keeps title and body coherent.
+    """
+    return {"youtube": {"lang": settings.preferred_languages}}
+
+
 _YDL_OPTS: dict = {
     "extract_flat": True,
     "quiet": True,
     "no_warnings": True,
+    "extractor_args": _lang_extractor_args(),
 }
 
 
@@ -40,7 +53,12 @@ def list_videos(url: str) -> list[VideoMeta]:
 
 def fetch_video_meta(url: str) -> VideoMeta:
     """Metadata for a single video URL (title, duration) without downloading."""
-    opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extractor_args": _lang_extractor_args(),
+    }
     with YoutubeDL(opts) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
@@ -54,7 +72,7 @@ def fetch_transcript(
     languages: list[str] | None = None,
 ) -> Transcript | None:
     if languages is None:
-        languages = ["fr", "en"]
+        languages = settings.preferred_languages
 
     api = YouTubeTranscriptApi()
     try:
