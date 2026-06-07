@@ -263,11 +263,24 @@ def _extract_article_links(html: str, base_url: str) -> list[tuple[str, str]]:
         if href in seen or not _looks_like_article(href, base_url):
             continue
         seen.add(href)
-        text = tag.get_text(strip=True)
+        text = re.sub(r"\s+", " ", tag.get_text(separator=" ", strip=True)).strip()
+        text = _collapse_repeated_text(text)
         title = text if len(text) >= 4 else _slug_from_url(href)
         links.append((href, title))
 
     return links
+
+
+def _collapse_repeated_text(text: str) -> str:
+    """Card links sometimes duplicate their text (responsive variants kept in
+    the DOM), yielding 'Title Title Title'. If the words are an exact k-fold
+    repetition, keep a single copy."""
+    words = text.split()
+    n = len(words)
+    for k in (4, 3, 2):
+        if n % k == 0 and words[: n // k] * k == words:
+            return " ".join(words[: n // k])
+    return text
 
 
 def _looks_like_article(href: str, base_url: str) -> bool:

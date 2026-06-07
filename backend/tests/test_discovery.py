@@ -92,6 +92,14 @@ def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
     assert items[0].title == "Great Article"
 
 
+def test_collapse_repeated_text():
+    # responsive-variant duplication (3x) collapses to one copy
+    assert discovery._collapse_repeated_text("Title Sub Title Sub Title Sub") == "Title Sub"
+    assert discovery._collapse_repeated_text("A B A B") == "A B"
+    # non-repeating text is left alone
+    assert discovery._collapse_repeated_text("A normal unique title") == "A normal unique title"
+
+
 def test_looks_like_article_accepts_and_rejects():
     base = "https://blog.example.com"
     assert discovery._looks_like_article("https://blog.example.com/2024/01/my-post", base)

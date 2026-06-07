@@ -26,7 +26,9 @@ class CompiledBook(BaseModel):
         for chapter in self.chapters:
             parts.append(f"# {chapter.title}")
 
-            meta_parts = [f"*Source : [{chapter.source_type}]({chapter.source_url})*"]
+            # Show the actual source URL as a clickable link so each chapter is
+            # traceable back to (and re-openable from) its origin.
+            meta_parts = [f"*Source : [{chapter.source_url}]({chapter.source_url})*"]
             if chapter.author:
                 meta_parts.append(f"*Auteur : {chapter.author}*")
             if chapter.published_at:
