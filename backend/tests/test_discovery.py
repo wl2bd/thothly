@@ -26,8 +26,9 @@ def test_detect_kind(url, expected):
     assert discovery.detect_kind(url) == expected
 
 
+@patch("app.sources.discovery.load_transcript", return_value=None)
 @patch("app.sources.discovery.list_videos")
-def test_discover_playlist_maps_videos(mock_list):
+def test_discover_playlist_maps_videos(mock_list, mock_load):
     mock_list.return_value = [
         VideoMeta(id="a", title="A", url="https://www.youtube.com/watch?v=a", duration_s=60),
     ]
@@ -35,6 +36,7 @@ def test_discover_playlist_maps_videos(mock_list):
     assert len(items) == 1
     assert items[0].item_type == "youtube"
     assert items[0].estimated_duration_s == 60
+    assert items[0].has_transcript is False  # enrichment ran, no subtitles
 
 
 @patch("app.sources.discovery.list_videos")
@@ -44,8 +46,9 @@ def test_discover_channel_normalizes_to_videos_tab(mock_list):
     mock_list.assert_called_once_with("https://www.youtube.com/@veritasium/videos")
 
 
+@patch("app.sources.discovery.load_transcript", return_value=None)
 @patch("app.sources.discovery.fetch_video_meta")
-def test_discover_single_video(mock_meta):
+def test_discover_single_video(mock_meta, mock_load):
     mock_meta.return_value = VideoMeta(
         id="abc123", title="My Video",
         url="https://www.youtube.com/watch?v=abc123", duration_s=120,

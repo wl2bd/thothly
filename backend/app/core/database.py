@@ -40,6 +40,14 @@ def init_db() -> None:
                 created_at           TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS transcript_cache (
+                video_id   TEXT PRIMARY KEY,
+                language   TEXT NOT NULL,
+                segments   TEXT NOT NULL,
+                fetched_at TEXT NOT NULL
+            )
+        """)
         _migrate_discovered_items(conn)
         conn.commit()
 

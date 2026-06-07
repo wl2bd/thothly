@@ -15,7 +15,8 @@ from app.pipeline.compiler import (
 from app.pipeline.models import CompiledChapter
 from app.render.epub import render_epub
 from app.sources.blog import ScrapeUnavailable, scrape_article
-from app.sources.youtube import YouTubeUnavailable, fetch_transcript
+from app.sources.transcript_cache import load_transcript
+from app.sources.youtube import YouTubeUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapt
         # No cached transcript (e.g. discovery couldn't reach YouTube) — fetch now.
         video_id = _extract_video_id(item.url)
         try:
-            transcript = fetch_transcript(video_id)
+            transcript = load_transcript(video_id)
         except YouTubeUnavailable as exc:
             logger.error("YouTube unavailable for %s (job %s): %s", video_id, job_id, exc)
             return None

@@ -10,9 +10,9 @@ from app.pipeline.compiler import is_punctuated
 from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
+from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import (
     YouTubeUnavailable,
-    fetch_transcript,
     fetch_video_meta,
     list_videos,
 )
@@ -128,7 +128,7 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
     """
     video_id = _video_id(item.url)
     try:
-        transcript = fetch_transcript(video_id)
+        transcript = load_transcript(video_id)
     except YouTubeUnavailable as exc:
         logger.warning("Transcript probe failed for %s: %s", video_id, exc)
         item.has_transcript = None  # unknown — couldn't reach YouTube

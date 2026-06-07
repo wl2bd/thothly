@@ -21,7 +21,7 @@ def _blog_item() -> DiscoveredItemResponse:
 
 @patch("app.jobs.runner.update_job_status")
 @patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.fetch_transcript")
+@patch("app.jobs.runner.load_transcript")
 @patch("app.jobs.runner.get_selected_items")
 def test_run_compilation_youtube_completes(
     mock_selected, mock_fetch, mock_render, mock_update, tmp_path, monkeypatch
@@ -65,7 +65,7 @@ def test_run_compilation_blog_completes(
 
 @patch("app.jobs.runner.update_job_status")
 @patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.fetch_transcript")
+@patch("app.jobs.runner.load_transcript")
 @patch("app.jobs.runner.get_selected_items")
 def test_run_compilation_fails_when_no_subtitles(
     mock_selected, mock_fetch, mock_render, mock_update, tmp_path, monkeypatch
