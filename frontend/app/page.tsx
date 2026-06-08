@@ -79,16 +79,17 @@ export default function Home() {
                       onChange={(e) => updateUrl(index, e.target.value)}
                       placeholder="https://youtube.com/watch?v=…  ou  https://unblog.com"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRow(index)}
-                      disabled={urls.length === 1}
-                      aria-label="Retirer le lien"
-                    >
-                      <XIcon />
-                    </Button>
+                    {urls.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeRow(index)}
+                        aria-label="Retirer le lien"
+                      >
+                        <XIcon />
+                      </Button>
+                    )}
                   </div>
                 ))}
 
