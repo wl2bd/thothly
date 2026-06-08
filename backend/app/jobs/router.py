@@ -8,6 +8,7 @@ from app.jobs import repository
 from app.jobs.models import JobConfirm, JobCreate, JobResponse
 from app.jobs.phases import run_discovery
 from app.jobs.runner import run_compilation
+from app.pipeline.roles import get_role
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -51,6 +52,11 @@ def confirm_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="None of the selected ids match discovered items",
         )
+
+    # Keep only known role ids; the compile only acts on them when an LLM is
+    # actually configured (otherwise they are ignored — the free path).
+    valid_roles = [r for r in payload.llm_roles if get_role(r) is not None]
+    repository.set_job_llm_roles(job_id, valid_roles)
 
     # A blank title keeps the discovery-derived default (book_title=None leaves
     # the stored value untouched).

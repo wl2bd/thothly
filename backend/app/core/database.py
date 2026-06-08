@@ -49,6 +49,20 @@ def init_db() -> None:
                 chapters   TEXT
             )
         """)
+        # Cleaned-content cache for the LLM roles, keyed by the content (video id
+        # or blog url), the applied role set, and the model — so a re-compile with
+        # the same choices never re-calls the LLM.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS transcript_llm_cache (
+                content_key TEXT NOT NULL,
+                roles_key   TEXT NOT NULL,
+                model       TEXT NOT NULL,
+                content_md  TEXT NOT NULL,
+                created_at  TEXT NOT NULL,
+                PRIMARY KEY (content_key, roles_key, model)
+            )
+        """)
+        _add_missing_columns(conn, "jobs", _JOB_ADDED_COLUMNS)
         _add_missing_columns(conn, "job_discovered_items", _DISCOVERED_ITEM_ADDED_COLUMNS)
         _add_missing_columns(conn, "transcript_cache", _TRANSCRIPT_CACHE_ADDED_COLUMNS)
         conn.commit()
@@ -57,6 +71,10 @@ def init_db() -> None:
 # Columns added after the initial schema. ALTER TABLE ADD COLUMN is the SQLite
 # way to evolve in place; each is wrapped so re-running on an up-to-date DB is a
 # no-op (SQLite has no "ADD COLUMN IF NOT EXISTS").
+_JOB_ADDED_COLUMNS = (
+    ("llm_roles", "TEXT"),  # JSON list of selected LLM role ids for the compile
+)
+
 _DISCOVERED_ITEM_ADDED_COLUMNS = (
     ("has_transcript", "INTEGER"),
     ("transcript_lang", "TEXT"),

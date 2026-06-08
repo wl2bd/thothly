@@ -42,6 +42,18 @@ export interface JobResponse {
   discovered_items: DiscoveredItem[];
 }
 
+export interface LlmRole {
+  id: string;
+  label: string;
+  description: string;
+  scope: "item" | "book";
+}
+
+export interface LlmConfig {
+  available: boolean;
+  roles: LlmRole[];
+}
+
 async function parseError(res: Response): Promise<never> {
   const data = await res.json().catch(() => ({ detail: `Request failed: ${res.status}` }));
   throw new Error(data.detail ?? `Request failed: ${res.status}`);
@@ -63,15 +75,26 @@ export async function fetchJob(id: string): Promise<JobResponse> {
   return res.json();
 }
 
+export async function fetchLlmConfig(): Promise<LlmConfig> {
+  const res = await fetch("/api/llm", { cache: "no-store" });
+  if (!res.ok) return parseError(res);
+  return res.json();
+}
+
 export async function confirmJob(
   id: string,
   selectedIds: string[],
   bookTitle?: string,
+  llmRoles: string[] = [],
 ): Promise<JobResponse> {
   const res = await fetch(`/api/jobs/${id}/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selected_ids: selectedIds, book_title: bookTitle }),
+    body: JSON.stringify({
+      selected_ids: selectedIds,
+      book_title: bookTitle,
+      llm_roles: llmRoles,
+    }),
   });
   if (!res.ok) return parseError(res);
   return res.json();

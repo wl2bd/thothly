@@ -117,6 +117,26 @@ def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> N
         conn.commit()
 
 
+def set_job_llm_roles(job_id: str, roles: list[str]) -> None:
+    """Persist the LLM roles chosen for this compile (read back by the runner)."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE jobs SET llm_roles = ? WHERE id = ?",
+            (json.dumps(roles), job_id),
+        )
+        conn.commit()
+
+
+def get_job_llm_roles(job_id: str) -> list[str]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT llm_roles FROM jobs WHERE id = ?", (job_id,)
+        ).fetchone()
+    if row is None or not row["llm_roles"]:
+        return []
+    return json.loads(row["llm_roles"])
+
+
 def confirm_items(job_id: str, selected_ids: list[str]) -> list[DiscoveredItemResponse]:
     with get_connection() as conn:
         conn.execute(

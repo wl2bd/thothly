@@ -14,9 +14,11 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   confirmJob,
   fetchJob,
+  fetchLlmConfig,
   getDownloadUrl,
   type DiscoveredItem,
   type JobResponse,
+  type LlmConfig,
 } from "@/lib/api";
 
 const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
@@ -31,6 +33,14 @@ export default function JobPage() {
   const [title, setTitle] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [pollKey, setPollKey] = useState(0);
+  const [llm, setLlm] = useState<LlmConfig | null>(null);
+  const [roles, setRoles] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchLlmConfig()
+      .then(setLlm)
+      .catch(() => setLlm({ available: false, roles: [] }));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,11 +87,25 @@ export default function JobPage() {
     });
   }, []);
 
+  const toggleRole = useCallback((roleId: string) => {
+    setRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(roleId)) next.delete(roleId);
+      else next.add(roleId);
+      return next;
+    });
+  }, []);
+
   async function onConfirm() {
     setConfirming(true);
     setError(null);
     try {
-      const updated = await confirmJob(id, [...selected], title.trim() || undefined);
+      const updated = await confirmJob(
+        id,
+        [...selected],
+        title.trim() || undefined,
+        [...roles],
+      );
       setJob(updated);
       setPollKey((k) => k + 1); // resume polling for the compilation phase
     } catch (err) {
@@ -124,6 +148,9 @@ export default function JobPage() {
               selected={selected}
               title={title}
               confirming={confirming}
+              llm={llm}
+              selectedRoles={roles}
+              onToggleRole={toggleRole}
               onTitleChange={setTitle}
               onToggle={toggle}
               onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
@@ -179,6 +206,9 @@ interface ReviewListProps {
   selected: Set<string>;
   title: string;
   confirming: boolean;
+  llm: LlmConfig | null;
+  selectedRoles: Set<string>;
+  onToggleRole: (id: string) => void;
   onTitleChange: (title: string) => void;
   onToggle: (id: string) => void;
   onSelectAll: () => void;
@@ -191,12 +221,24 @@ function ReviewList({
   selected,
   title,
   confirming,
+  llm,
+  selectedRoles,
+  onToggleRole,
   onTitleChange,
   onToggle,
   onSelectAll,
   onSelectNone,
   onConfirm,
 }: ReviewListProps) {
+  // How many *selected* videos read raw (would benefit from the punctuate role).
+  const unpunctuatedSelected = items.filter(
+    (it) =>
+      selected.has(it.id) &&
+      it.item_type === "youtube" &&
+      it.has_transcript === true &&
+      it.is_punctuated === false,
+  ).length;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
@@ -250,6 +292,15 @@ function ReviewList({
         ))}
       </ul>
 
+      {llm && llm.roles.length > 0 && (
+        <RoleSelector
+          llm={llm}
+          selectedRoles={selectedRoles}
+          onToggleRole={onToggleRole}
+          unpunctuatedSelected={unpunctuatedSelected}
+        />
+      )}
+
       <Button
         size="lg"
         onClick={onConfirm}
@@ -260,6 +311,61 @@ function ReviewList({
           ? "Lancement…"
           : `Compiler ${selected.size} élément${selected.size > 1 ? "s" : ""}`}
       </Button>
+    </div>
+  );
+}
+
+interface RoleSelectorProps {
+  llm: LlmConfig;
+  selectedRoles: Set<string>;
+  onToggleRole: (id: string) => void;
+  unpunctuatedSelected: number;
+}
+
+function RoleSelector({
+  llm,
+  selectedRoles,
+  onToggleRole,
+  unpunctuatedSelected,
+}: RoleSelectorProps) {
+  const disabled = !llm.available;
+  return (
+    <div className="border-border flex flex-col gap-3 rounded-xl border border-dashed p-4">
+      <div className="flex flex-col gap-0.5">
+        <p className="text-sm font-medium">Nettoyage IA</p>
+        <p className="text-muted-foreground text-xs">
+          {disabled
+            ? "Configure un LLM côté serveur (LLM_BASE_URL / LLM_MODEL) pour l'activer."
+            : unpunctuatedSelected > 0
+              ? `${unpunctuatedSelected} vidéo${unpunctuatedSelected > 1 ? "s" : ""} non ponctuée${unpunctuatedSelected > 1 ? "s" : ""} parmi la sélection — la ponctuation les rendra lisibles.`
+              : "Améliore les transcripts sélectionnés. Sans coût sur le chemin par défaut."}
+        </p>
+      </div>
+
+      <ul className="flex flex-col gap-2.5">
+        {llm.roles.map((role) => (
+          <li key={role.id}>
+            <label
+              className={`flex items-start gap-3 ${
+                disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+              }`}
+            >
+              <Checkbox
+                checked={selectedRoles.has(role.id)}
+                onCheckedChange={() => onToggleRole(role.id)}
+                disabled={disabled}
+                className="mt-0.5"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm leading-none font-medium">{role.label}</span>
+                <span className="text-muted-foreground text-xs">
+                  {role.description}
+                </span>
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

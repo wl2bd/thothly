@@ -134,6 +134,25 @@ pnpm install
 BACKEND_URL=http://localhost:8000 pnpm dev
 ```
 
+## Optional LLM cleanup
+
+By default Thothly is **zero-LLM**: punctuated captions are split into clean
+paragraphs for free, and raw (unpunctuated) captions fall back to a simple
+grouping. You can optionally enable an LLM layer that, at compile time and only
+on the items you selected, runs the roles you tick in the review screen:
+
+- **Ponctuation** — restores punctuation and paragraphs to raw transcripts.
+- **Correction** — removes filler words and obvious ASR mistakes.
+- **Sections** — infers section headings for content without chapters.
+- **Préface** — generates a short opening preface for the book.
+
+One OpenAI-compatible endpoint covers every provider — point `LLM_BASE_URL`,
+`LLM_MODEL` (and `LLM_API_KEY` when required) at Ollama (local, free), Mistral,
+OpenAI, OpenRouter, etc. See `.env.example`. Results are cached per
+(content, role-set, model), so re-compiling is free, and any LLM failure falls
+back to the zero-LLM path — it never breaks a compile. Leave the variables empty
+to keep Thothly fully free.
+
 ## What's next
 
 The next ticket (`POST /jobs`) introduces job state in SQLite and the

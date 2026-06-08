@@ -16,6 +16,9 @@ class CompiledBook(BaseModel):
     title: str
     generated_at: datetime
     chapters: list[CompiledChapter]
+    # Optional LLM-generated opening preface (the `preface` role). Front matter,
+    # so it is rendered before the chapters and carries no source attribution.
+    preface: str | None = None
 
     def to_markdown(self) -> str:
         # No book-level heading: Pandoc already builds a title page from the
@@ -31,6 +34,13 @@ class CompiledBook(BaseModel):
             parts.append("")
             for chapter in self.chapters:
                 parts.append(f"- [{chapter.title}]({chapter.source_url})")
+            parts.append("")
+
+        # The generated preface opens the book, as its own front-matter heading.
+        if self.preface and self.preface.strip():
+            parts.append("# Préface")
+            parts.append("")
+            parts.append(self.preface.strip())
             parts.append("")
 
         for chapter in self.chapters:

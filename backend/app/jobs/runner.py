@@ -4,7 +4,13 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.jobs.models import DiscoveredItemResponse
-from app.jobs.repository import get_job, get_selected_items, update_job_status
+from app.jobs.repository import (
+    get_job,
+    get_job_llm_roles,
+    get_selected_items,
+    update_job_status,
+)
+from app.pipeline.cleanup import clean_markdown, clean_transcript, generate_preface
 from app.pipeline.compiler import (
     CompilationError,
     compile_book,
@@ -13,7 +19,9 @@ from app.pipeline.compiler import (
     strip_leading_title,
     transcript_to_markdown,
 )
+from app.pipeline.llm import llm_available
 from app.pipeline.models import CompiledChapter
+from app.pipeline.roles import PREFACE, has_role
 from app.render.epub import render_epub
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.transcript_cache import load_transcript
@@ -25,22 +33,26 @@ logger = logging.getLogger(__name__)
 def run_compilation(job_id: str) -> None:
     """Background phase: turn the selected items into a single EPUB.
 
-    Zero-LLM policy: YouTube content is the native subtitles, grouped into
-    paragraphs but never rewritten. Videos without subtitles are skipped (no
-    Voxtral fallback). Blog content comes from the article page (or the RSS
-    preview if scraping fails).
+    Default is zero-LLM: native subtitles grouped into paragraphs, never
+    rewritten; videos without subtitles are skipped; blogs come from the article
+    page (or the RSS preview if scraping fails). When the user selected LLM roles
+    *and* an LLM is configured, the selected items are run through the cleanup
+    engine instead (cached, with graceful fallback to the free path on failure).
     """
     try:
         items = get_selected_items(job_id)
+        # Active only when roles were chosen AND an LLM endpoint is configured.
+        roles = get_job_llm_roles(job_id) if llm_available() else []
+        model = settings.llm_model or ""
         chapters: list[CompiledChapter] = []
         youtube_unavailable = False
 
         for item in items:
             try:
                 if item.item_type == "youtube":
-                    chapter = _youtube_chapter(item, job_id)
+                    chapter = _youtube_chapter(item, job_id, roles, model)
                 else:
-                    chapter = _blog_chapter(item, job_id)
+                    chapter = _blog_chapter(item, job_id, roles, model)
             except YouTubeUnavailable as exc:
                 logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
                 youtube_unavailable = True
@@ -58,6 +70,8 @@ def run_compilation(job_id: str) -> None:
         job = get_job(job_id)
         book_title = (job.book_title if job else None) or "Compilation Thothly"
         book = compile_book(chapters, book_title)
+        if has_role(roles, PREFACE):
+            book.preface = generate_preface(book.title, [c.title for c in book.chapters])
         output_path = _render(book, job_id)
         update_job_status(
             job_id, "completed", book_title=book.title, output_path=output_path
@@ -72,7 +86,9 @@ def run_compilation(job_id: str) -> None:
         update_job_status(job_id, "failed", error=str(exc))
 
 
-def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter | None:
+def _youtube_chapter(
+    item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
+) -> CompiledChapter | None:
     video_id = _extract_video_id(item.url)
     # Cache hit from discovery (full segments + chapters); falls back to a live
     # fetch only if the cache was never populated. A YouTubeUnavailable here
@@ -82,7 +98,10 @@ def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapt
         logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
         return None
 
-    content_md = transcript_to_markdown(transcript)
+    if roles:
+        content_md = clean_transcript(transcript, roles, model)
+    else:
+        content_md = transcript_to_markdown(transcript)
     if not content_md:
         return None
 
@@ -94,7 +113,9 @@ def _youtube_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapt
     )
 
 
-def _blog_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter | None:
+def _blog_chapter(
+    item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
+) -> CompiledChapter | None:
     author = None
     published_at = None
     try:
@@ -110,6 +131,9 @@ def _blog_chapter(item: DiscoveredItemResponse, job_id: str) -> CompiledChapter 
     content_md = demote_headings(strip_leading_title(content_md, item.title))
     if not content_md:
         return None
+
+    if roles:
+        content_md = clean_markdown(content_md, roles, model, content_key=item.url)
 
     return CompiledChapter(
         title=item.title,

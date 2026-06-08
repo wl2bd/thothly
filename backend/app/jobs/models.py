@@ -28,6 +28,8 @@ class JobCreate(BaseModel):
 class JobConfirm(BaseModel):
     selected_ids: Annotated[list[str], Field(min_length=1)]
     book_title: str | None = None
+    # Selected LLM role ids (see app/pipeline/roles.py). Empty = zero-LLM compile.
+    llm_roles: list[str] = []
 
 
 class DiscoveredItemResponse(BaseModel):
