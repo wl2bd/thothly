@@ -5,6 +5,10 @@ services:
     container_name: thothly-backend
     ports:
       - "8000:8000"
+    # Pass through .env (optional LLM_* keys, etc.); DATA_DIR below overrides any
+    # host value so the container always writes to the mounted volume.
+    env_file:
+      - .env
     environment:
       DATA_DIR: /data
     volumes:
