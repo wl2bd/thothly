@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { createJob } from "@/lib/api";
+import { XIcon } from "lucide-react";
 
-const INPUT_CLASS =
-  "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { createJob } from "@/lib/api";
 
 export default function Home() {
   const router = useRouter();
@@ -52,56 +53,68 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="flex w-full max-w-xl flex-col gap-6">
-        <header className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-4xl font-semibold tracking-tight">Thothly</h1>
-          <p className="text-muted-foreground text-sm">
+    <main className="flex min-h-screen items-center justify-center p-8 sm:p-12">
+      <div className="flex w-full max-w-xl flex-col gap-12">
+        <header className="flex flex-col items-center gap-3 text-center">
+          <h1 className="font-heading text-5xl font-semibold tracking-tight text-foreground">
+            Thothly
+          </h1>
+          <p className="text-muted-foreground max-w-md text-pretty text-[0.95rem] leading-relaxed">
             Colle des liens YouTube (vidéo, playlist, chaîne) ou de blogs, et
-            reçois un EPUB pour ta liseuse. Le type est détecté automatiquement.
+            reçois un EPUB soigné pour ta liseuse. Le type est détecté
+            automatiquement.
           </p>
         </header>
 
-        <form
-          onSubmit={onSubmit}
-          className="bg-card flex flex-col gap-5 rounded-xl border border-border p-6 shadow-sm"
-        >
-          <div className="flex flex-col gap-2">
-            {urls.map((url, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  inputMode="url"
-                  value={url}
-                  onChange={(e) => updateUrl(index, e.target.value)}
-                  placeholder="https://youtube.com/watch?v=…  ou  https://unblog.com"
-                  className={INPUT_CLASS}
-                />
+        <Card>
+          <CardContent>
+            <form onSubmit={onSubmit} className="flex flex-col gap-7">
+              <div className="flex flex-col gap-3">
+                {urls.map((url, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      inputMode="url"
+                      value={url}
+                      onChange={(e) => updateUrl(index, e.target.value)}
+                      placeholder="https://youtube.com/watch?v=…  ou  https://unblog.com"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeRow(index)}
+                      disabled={urls.length === 1}
+                      aria-label="Retirer le lien"
+                    >
+                      <XIcon />
+                    </Button>
+                  </div>
+                ))}
+
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeRow(index)}
-                  disabled={urls.length === 1}
-                  aria-label="Retirer le lien"
+                  variant="outline"
+                  onClick={addRow}
+                  className="text-muted-foreground w-full justify-center border-dashed"
                 >
-                  ×
+                  + Ajouter un lien
                 </Button>
               </div>
-            ))}
-          </div>
 
-          <div className="flex items-center justify-between">
-            <Button type="button" variant="outline" size="sm" onClick={addRow}>
-              + Ajouter un lien
-            </Button>
-            <Button type="submit" size="lg" disabled={submitting}>
-              {submitting ? "Création…" : "Découvrir les sources"}
-            </Button>
-          </div>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={submitting}
+                className="w-full"
+              >
+                {submitting ? "Création…" : "Découvrir les sources"}
+              </Button>
 
-          {error && <p className="text-destructive text-sm">{error}</p>}
-        </form>
+              {error && <p className="text-destructive text-sm">{error}</p>}
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

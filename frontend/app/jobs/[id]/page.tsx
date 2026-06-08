@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import {
   confirmJob,
   fetchJob,
@@ -86,10 +92,13 @@ export default function JobPage() {
   }
 
   return (
-    <main className="flex min-h-screen justify-center p-6">
-      <div className="flex w-full max-w-xl flex-col gap-6 py-8">
+    <main className="flex min-h-screen justify-center p-8 sm:p-12">
+      <div className="flex w-full max-w-xl flex-col gap-10 py-12">
         <header className="flex items-baseline justify-between">
-          <Link href="/" className="text-2xl font-semibold tracking-tight">
+          <Link
+            href="/"
+            className="font-heading text-2xl font-semibold tracking-tight"
+          >
             Thothly
           </Link>
           <Link href="/" className="text-muted-foreground text-sm hover:underline">
@@ -103,7 +112,8 @@ export default function JobPage() {
           </p>
         )}
 
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+        <Card>
+          <CardContent>
           {!job ? (
             <StatusMessage label="Chargement…" />
           ) : job.status === "pending" || job.status === "discovering" ? (
@@ -123,8 +133,8 @@ export default function JobPage() {
           ) : job.status === "processing" ? (
             <StatusMessage label="Compilation de l'EPUB en cours…" />
           ) : job.status === "completed" ? (
-            <div className="flex flex-col items-start gap-4">
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-col items-start gap-6">
+              <div className="flex flex-col gap-1.5">
                 <p className="text-sm font-medium">Ton EPUB est prêt 🎉</p>
                 {job.book_title && (
                   <p className="text-muted-foreground text-sm">{job.book_title}</p>
@@ -148,7 +158,8 @@ export default function JobPage() {
               )}
             </div>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );
@@ -157,7 +168,7 @@ export default function JobPage() {
 function StatusMessage({ label }: { label: string }) {
   return (
     <div className="text-muted-foreground flex items-center gap-3 text-sm">
-      <span className="border-muted-foreground/30 border-t-foreground inline-block size-4 animate-spin rounded-full border-2" />
+      <Spinner />
       {label}
     </div>
   );
@@ -187,19 +198,19 @@ function ReviewList({
   onConfirm,
 }: ReviewListProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1">
-        <span className="text-muted-foreground text-xs font-medium">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="book-title" className="text-muted-foreground text-xs">
           Titre du livre
-        </span>
-        <input
+        </Label>
+        <Input
+          id="book-title"
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Titre de la compilation"
-          className="border-border bg-background focus:ring-primary/40 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
         />
-      </label>
+      </div>
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">
@@ -219,12 +230,10 @@ function ReviewList({
       <ul className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
         {items.map((item) => (
           <li key={item.id}>
-            <label className="hover:bg-muted/60 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition-colors">
-              <input
-                type="checkbox"
+            <label className="hover:bg-muted/60 flex cursor-pointer items-center gap-3.5 rounded-lg px-3 py-2.5 transition-colors">
+              <Checkbox
                 checked={selected.has(item.id)}
-                onChange={() => onToggle(item.id)}
-                className="size-4 shrink-0 accent-primary"
+                onCheckedChange={() => onToggle(item.id)}
               />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="truncate text-sm">{item.title}</span>
@@ -245,6 +254,7 @@ function ReviewList({
         size="lg"
         onClick={onConfirm}
         disabled={confirming || selected.size === 0}
+        className="w-full"
       >
         {confirming
           ? "Lancement…"
@@ -281,25 +291,22 @@ function formatMeta(item: DiscoveredItem): string[] {
 function statusBadge(item: DiscoveredItem) {
   if (item.item_type !== "youtube") return null;
 
-  let label: string;
-  let className: string;
   if (item.has_transcript === false) {
-    label = "⛔ Pas de sous-titres";
-    className = "bg-destructive/10 text-destructive";
-  } else if (item.has_transcript == null) {
-    label = "❓ Sous-titres non vérifiés";
-    className = "bg-muted text-muted-foreground";
-  } else if (item.is_punctuated) {
-    label = "✅ Ponctué";
-    className = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
-  } else {
-    label = "⚠️ Nettoyage LLM";
-    className = "bg-amber-500/10 text-amber-700 dark:text-amber-500";
+    return <Badge variant="destructive">⛔ Pas de sous-titres</Badge>;
   }
-
+  if (item.has_transcript == null) {
+    return <Badge variant="secondary">❓ Sous-titres non vérifiés</Badge>;
+  }
+  if (item.is_punctuated) {
+    return (
+      <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+        ✅ Ponctué
+      </Badge>
+    );
+  }
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
-      {label}
-    </span>
+    <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-500">
+      ⚠️ Nettoyage LLM
+    </Badge>
   );
 }
