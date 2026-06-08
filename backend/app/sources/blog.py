@@ -42,7 +42,17 @@ def scrape_article(url: str) -> Article:
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
 
-    content_html = trafilatura.extract(downloaded, output_format="html", url=url)
+    # include_formatting/include_links keep bold, italics and hyperlinks (both
+    # default to False, which would flatten the article to plain text). Tables
+    # are kept by trafilatura's include_tables default. This preserves the
+    # author's emphasis in the EPUB without any LLM involvement.
+    content_html = trafilatura.extract(
+        downloaded,
+        output_format="html",
+        url=url,
+        include_formatting=True,
+        include_links=True,
+    )
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")
 

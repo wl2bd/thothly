@@ -4,8 +4,20 @@ from unittest.mock import patch
 
 import pytest
 
+from app.pipeline.compiler import html_to_markdown
 from app.sources.models import Article
-from app.sources.blog import FeedUnavailable, list_feed
+from app.sources.blog import FeedUnavailable, list_feed, scrape_article
+
+_ARTICLE_HTML = """<html><head><title>Test</title></head><body><article>
+<h1>Un titre d'article</h1>
+<p>Voici un paragraphe avec du texte en <strong>gras important</strong> et aussi
+de l'<em>italique subtil</em> pour appuyer le propos sur plusieurs mots ici.</p>
+<p>Un second paragraphe qui contient un <a href="https://example.com/page">lien
+vers une ressource</a> externe, et encore du contenu pour que trafilatura
+considère ceci comme un vrai article à extraire correctement.</p>
+<p>Un troisième paragraphe de remplissage avec assez de texte pour dépasser le
+seuil de densité de trafilatura et garantir une extraction stable du corps.</p>
+</article></body></html>"""
 
 
 def _make_content_item(value: str) -> SimpleNamespace:
@@ -137,3 +149,24 @@ def test_list_feed_no_published_date(mock_parse):
     _title, result = list_feed("https://blog.example.com/feed.xml")
 
     assert result[0].published_at is None
+
+
+# ── scrape_article (formatting fidelity) ─────────────────────────────────────
+
+@patch("app.sources.blog._fetch_url")
+def test_scrape_article_preserves_bold_italic_links(mock_fetch):
+    mock_fetch.return_value = _ARTICLE_HTML
+    article = scrape_article("https://x.test/article")
+
+    # Inline formatting and links survive trafilatura extraction...
+    assert "<strong>" in article.content_html
+    assert "<i>" in article.content_html or "<em>" in article.content_html
+    assert 'href="https://example.com/page"' in article.content_html
+
+    # ...all the way to the Markdown that feeds Pandoc.
+    md = html_to_markdown(article.content_html)
+    assert "**gras important**" in md
+    assert "*italique subtil*" in md
+    assert "[lien\nvers une ressource](https://example.com/page)" in md or (
+        "](https://example.com/page)" in md
+    )

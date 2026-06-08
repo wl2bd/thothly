@@ -39,12 +39,14 @@ _PUNCTUATE_PROMPT = (
 )
 
 _COPYEDIT_PROMPT = (
-    "Tu es un correcteur. On te donne une transcription déjà ponctuée. Supprime "
-    "les tics de langage et hésitations (euh, hum, ben, « voilà quoi », faux "
-    "départs répétés), corrige les fautes évidentes de reconnaissance vocale et "
-    "améliore légèrement la fluidité — sans changer le sens, sans résumer et sans "
-    "ajouter d'idées. Conserve la langue d'origine et la structure en paragraphes. "
-    "Réponds uniquement avec le texte corrigé en Markdown, sans commentaire."
+    "Tu es un correcteur. On te donne un texte déjà ponctué. Supprime les tics de "
+    "langage et hésitations (euh, hum, ben, « voilà quoi », faux départs répétés), "
+    "corrige les fautes évidentes de reconnaissance vocale et améliore légèrement "
+    "la fluidité — sans changer le sens, sans résumer et sans ajouter d'idées. "
+    "Conserve la langue d'origine, la structure en paragraphes et tout le "
+    "formatage Markdown existant (gras **, italique *, liens [texte](url), "
+    "listes, tableaux). Réponds uniquement avec le texte corrigé en Markdown, "
+    "sans commentaire."
 )
 
 _SECTIONS_PROMPT = (
