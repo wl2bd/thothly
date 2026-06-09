@@ -76,6 +76,22 @@ def test_discover_blog_uses_url_as_feed(mock_feed):
 
 
 @patch("app.sources.discovery._fetch_url")
+def test_discover_blog_article_url_returns_single_item(mock_fetch):
+    # A directly-pasted article URL must yield just that article — not the
+    # whole site or the page's next/previous/nav links.
+    mock_fetch.return_value = (
+        "<html><head><title>My Great Article</title></head>"
+        "<body><a href='/next-article-here'>Next</a></body></html>"
+    )
+    name, items = discovery.discover_source(
+        "https://blog.example.com/2024/01/my-great-article", 0
+    )
+    assert len(items) == 1
+    assert items[0].url == "https://blog.example.com/2024/01/my-great-article"
+    assert items[0].title == "My Great Article"
+
+
+@patch("app.sources.discovery._fetch_url")
 @patch("app.sources.discovery.list_feed")
 def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
     mock_feed.side_effect = FeedUnavailable("no feed")

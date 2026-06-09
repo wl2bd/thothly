@@ -189,6 +189,12 @@ def _channel_videos_url(url: str) -> str:
 def _discover_blog(
     url: str, source_index: int
 ) -> tuple[str | None, list[DiscoveredItem]]:
+    # 0) a specific article URL → just that article. Otherwise we'd treat the
+    # page as a homepage and crawl its links (next/previous, related, nav…),
+    # flooding the review list with junk the user never asked for.
+    if _looks_like_article(url, url):
+        return _single_article(url, source_index)
+
     # 1) the URL might already be a feed — try it directly.
     feed_items = _feed_to_items(url, source_index)
     if feed_items is not None:
@@ -243,6 +249,22 @@ def _try_autodetect_rss(
             logger.info("Auto-detected feed %s%s", base, path)
             return result
     return None
+
+
+def _single_article(
+    url: str, source_index: int
+) -> tuple[str | None, list[DiscoveredItem]]:
+    """One discovered item for a directly-pasted article URL (no crawling)."""
+    html = _fetch_url(url, settings.scrape_timeout_s)
+    title = (_html_title(html) if html else None) or _slug_from_url(url)
+    item = DiscoveredItem(
+        title=title,
+        url=url,
+        item_type="blog",
+        source_index=source_index,
+        item_index=0,
+    )
+    return title, [item]
 
 
 def _html_title(html: str) -> str | None:
