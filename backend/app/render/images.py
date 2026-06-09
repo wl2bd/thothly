@@ -11,6 +11,7 @@ can't fetch is dropped rather than left as a dead link — the book stays valid.
 """
 
 import hashlib
+import io
 import logging
 import re
 from pathlib import Path
@@ -18,6 +19,13 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
+
+# Cap embedded images at a sensible reading width and re-encode them, so a
+# 4000px hero photo doesn't bloat the EPUB. Vector (SVG) and possibly-animated
+# (GIF) formats are left untouched. Recompression needs Pillow; if it isn't
+# importable we embed the original bytes rather than fail.
+_MAX_IMAGE_WIDTH = 1600
+_PIL_FORMAT = {".jpg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
 
 # ![alt](url "optional title") — title is kept so captions/hover text survive.
 _MD_IMAGE = re.compile(
@@ -89,10 +97,46 @@ def _download(url: str, media_dir: Path, timeout: float) -> Path | None:
         return None
 
     extension = _EXT_BY_TYPE.get(content_type) or _extension_from_url(url) or ".img"
+    data = _recompress(data, extension)
     name = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16] + extension
     path = media_dir / name
     path.write_bytes(data)
     return path
+
+
+def _recompress(data: bytes, extension: str) -> bytes:
+    """Downscale oversized raster images and re-encode them; original on failure.
+
+    Only the result is used when it's actually smaller, so already-optimized
+    images are never bloated by a needless re-encode.
+    """
+    fmt = _PIL_FORMAT.get(extension)
+    if not fmt:
+        return data
+    try:
+        from PIL import Image
+
+        image = Image.open(io.BytesIO(data))
+        image.load()
+        if image.width > _MAX_IMAGE_WIDTH:
+            height = round(image.height * _MAX_IMAGE_WIDTH / image.width)
+            image = image.resize((_MAX_IMAGE_WIDTH, height))
+
+        buffer = io.BytesIO()
+        if fmt == "JPEG":
+            if image.mode in ("RGBA", "P", "LA"):
+                image = image.convert("RGB")
+            image.save(buffer, format="JPEG", quality=82, optimize=True)
+        elif fmt == "PNG":
+            image.save(buffer, format="PNG", optimize=True)
+        else:  # WEBP
+            image.save(buffer, format="WEBP", quality=82)
+    except Exception as exc:  # Pillow missing, or an unreadable/odd image
+        logger.warning("Could not recompress image (%s); embedding as-is: %s", fmt, exc)
+        return data
+
+    recompressed = buffer.getvalue()
+    return recompressed if len(recompressed) < len(data) else data
 
 
 def _extension_from_url(url: str) -> str | None:

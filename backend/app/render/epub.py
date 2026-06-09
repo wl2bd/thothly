@@ -1,8 +1,10 @@
 import json
 import logging
+import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 
 from app.core.config import settings
@@ -40,6 +42,7 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
         if not output_path.exists():
             raise RenderError(f"Pandoc produced no output at {output_path}")
 
+        _add_bodymatter_landmark(output_path)
         logger.info("EPUB generated: %s", output_path)
         return output_path
     finally:
@@ -85,6 +88,64 @@ def _build_command(
     if _CSS_PATH.exists():
         cmd.append(f"--css={_CSS_PATH}")
     return cmd
+
+
+def _add_bodymatter_landmark(epub_path: Path) -> None:
+    """Add a "start of text" (bodymatter) landmark to nav.xhtml.
+
+    Pandoc only emits titlepage + toc landmarks and offers no flag for the
+    start-of-reading landmark, so we add one ourselves, pointing at the first
+    content location (the first TOC link). Best-effort: any failure leaves the
+    valid EPUB pandoc already produced untouched.
+    """
+    try:
+        with zipfile.ZipFile(epub_path) as archive:
+            names = archive.namelist()
+            nav_name = next((n for n in names if n.endswith("nav.xhtml")), None)
+            if nav_name is None:
+                return
+            nav = archive.read(nav_name).decode("utf-8")
+            entries = [(n, archive.read(n)) for n in names]
+
+        patched = _inject_bodymatter(nav)
+        if patched == nav:
+            return  # nothing to add (already present, or structure unexpected)
+
+        tmp = epub_path.with_suffix(".tmp.epub")
+        with zipfile.ZipFile(tmp, "w") as out:
+            # OCF requires "mimetype" to be the first entry and uncompressed.
+            for name, data in entries:
+                if name == "mimetype":
+                    out.writestr(
+                        zipfile.ZipInfo("mimetype"), data, compress_type=zipfile.ZIP_STORED
+                    )
+            for name, data in entries:
+                if name == "mimetype":
+                    continue
+                content = patched.encode("utf-8") if name == nav_name else data
+                out.writestr(name, content, compress_type=zipfile.ZIP_DEFLATED)
+        tmp.replace(epub_path)
+    except (OSError, zipfile.BadZipFile) as exc:
+        logger.warning("Could not add bodymatter landmark: %s", exc)
+
+
+def _inject_bodymatter(nav: str) -> str:
+    toc = re.search(r'epub:type="toc".*?</nav>', nav, re.DOTALL)
+    if not toc:
+        return nav
+    first_link = re.search(r'href="([^"]+)"', toc.group(0))
+    landmarks = re.search(
+        r'(<nav epub:type="landmarks".*?<ol>)(.*?)(\s*</ol>)', nav, re.DOTALL
+    )
+    if not first_link or not landmarks or 'epub:type="bodymatter"' in landmarks.group(0):
+        return nav
+
+    item = (
+        f'\n    <li>\n      <a href="{first_link.group(1)}" '
+        'epub:type="bodymatter">Début du texte</a>\n    </li>'
+    )
+    block = landmarks.group(1) + landmarks.group(2) + item + landmarks.group(3)
+    return nav[: landmarks.start()] + block + nav[landmarks.end() :]
 
 
 def _write_temp(content: str, suffix: str) -> Path:

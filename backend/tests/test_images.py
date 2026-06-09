@@ -80,3 +80,20 @@ def test_oversized_image_is_dropped(tmp_path, monkeypatch):
 
     assert result == ""
     assert list((tmp_path / "media").iterdir()) == []
+
+
+def test_recompress_downscales_wide_image():
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (4000, 1000), color=(123, 200, 50)).save(buffer, format="JPEG")
+    original = buffer.getvalue()
+
+    result = images._recompress(original, ".jpg")
+
+    assert len(result) < len(original)
+    assert Image.open(io.BytesIO(result)).width == images._MAX_IMAGE_WIDTH
+
+
+def test_recompress_unknown_format_is_passthrough():
+    assert images._recompress(b"<svg/>", ".svg") == b"<svg/>"
