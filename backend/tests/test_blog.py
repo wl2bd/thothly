@@ -27,6 +27,19 @@ def test_clean_extracted_html_converts_trafilatura_table():
     assert "| Hype | Ship milestones |" in md
 
 
+def test_clean_extracted_html_collapses_line_number_code_table():
+    # A Chroma/Hugo lntable: gutter <pre> of line numbers + a code <pre>.
+    html = (
+        "<row><cell class='lntd'><pre>1\n2\n3</pre></cell>"
+        "<cell class='lntd'><pre>def f():\n    return 1</pre></cell></row>"
+    )
+    md = html_to_markdown(_clean_extracted_html(html))
+    assert "def f():" in md
+    assert "return 1" in md
+    assert "| 1 2 3" not in md  # the line-number gutter is gone
+    assert not any(l.strip().startswith("|") for l in md.splitlines())  # no table
+
+
 def test_clean_extracted_html_drops_empty_code_blocks():
     html = "<p>Texte</p><pre><code></code></pre><p><code>kept</code></p>"
     cleaned = _clean_extracted_html(html)

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from time import struct_time
@@ -85,7 +86,12 @@ def scrape_article(url: str) -> Article:
 def _clean_extracted_html(html: str) -> str:
     """Tidy trafilatura's extracted HTML before it becomes Markdown.
 
-    Two fixes:
+    Three fixes:
+    - Code tables: syntax highlighters (Chroma/Hugo lntable, Pygments…) lay a
+      code block out as a table with a line-number gutter column. Left alone it
+      flattens into a garbage row (line numbers in one cell, code mashed in the
+      other). We collapse any table/row containing a <pre> into a real code
+      block, dropping the pure line-number gutter.
     - Tables: trafilatura emits <table><row><cell role="head"><p>…</p></cell>…,
       which markdownify doesn't recognise — the cells flatten into loose text.
       We map <row>→<tr>, <cell role="head">→<th>, <cell>→<td> and flatten each
@@ -97,6 +103,23 @@ def _clean_extracted_html(html: str) -> str:
         return html  # standard HTML with nothing to fix (e.g. RSS content)
 
     soup = BeautifulSoup(html, "html.parser")
+
+    # Code-layout tables first, before the generic <row>/<cell> rewrite below.
+    for container in soup.find_all(["table", "row"]):
+        pres = container.find_all("pre")
+        if not pres:
+            continue
+        code_parts = [
+            pre.get_text().rstrip("\n")
+            for pre in pres
+            # drop the line-number gutter (a <pre> of only digits/whitespace)
+            if pre.get_text().strip() and not re.fullmatch(r"[\s\d]+", pre.get_text())
+        ]
+        replacement = soup.new_tag("pre")
+        if code_parts:
+            replacement.string = "\n".join(code_parts)
+        container.replace_with(replacement)
+
     for cell in soup.find_all("cell"):
         cell.name = "th" if cell.get("role") == "head" else "td"
         if cell.has_attr("role"):
