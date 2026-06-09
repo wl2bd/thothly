@@ -6,11 +6,12 @@ import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.core.config import settings
 from app.pipeline.models import CompiledBook
 from app.render.cover import generate_cover
-from app.render.images import localize_images
+from app.render.images import fetch_favicon, localize_images
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +67,37 @@ def _chapter_authors(book: CompiledBook) -> list[str]:
 def _make_cover(book: CompiledBook, media_dir: Path) -> Path | None:
     """Render the editorial cover; None (no cover) if generation fails."""
     try:
-        return generate_cover(book.title, _chapter_authors(book), media_dir / "cover.png")
+        emblem = _source_emblem(book, media_dir)
+        return generate_cover(
+            book.title, _chapter_authors(book), media_dir / "cover.png", emblem
+        )
     except Exception as exc:  # never let a cover problem block the EPUB
         logger.warning("Cover generation failed; rendering without a cover: %s", exc)
+        return None
+
+
+def _source_emblem(book: CompiledBook, media_dir: Path) -> Path | None:
+    """The cover emblem: a single blog source's own favicon, else the default.
+
+    When every chapter comes from one website (e.g. a blog), its favicon is the
+    most fitting mark, so we fetch it. With multiple sites — or YouTube, whose
+    favicon is just the generic logo, not the channel — we fall back to the
+    bundled Thothly emblem (generate_cover's default).
+    """
+    domains = {
+        urlparse(c.source_url).netloc
+        for c in book.chapters
+        if c.source_type == "blog" and c.source_url
+    }
+    has_other = any(c.source_type != "blog" for c in book.chapters)
+    if len(domains) != 1 or has_other:
+        return None
+
+    page_url = next(c.source_url for c in book.chapters if c.source_type == "blog")
+    try:
+        return fetch_favicon(page_url, media_dir / "emblem_source.png")
+    except Exception as exc:
+        logger.info("Source favicon fetch failed; using default emblem: %s", exc)
         return None
 
 

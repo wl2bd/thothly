@@ -16,6 +16,7 @@ import logging
 import re
 from pathlib import Path
 from urllib.error import URLError
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
@@ -142,3 +143,71 @@ def _recompress(data: bytes, extension: str) -> bytes:
 def _extension_from_url(url: str) -> str | None:
     suffix = Path(url.split("?", 1)[0].split("#", 1)[0]).suffix.lower()
     return suffix if suffix in set(_EXT_BY_TYPE.values()) else None
+
+
+def _http_bytes(url: str, timeout: float) -> bytes | None:
+    try:
+        request = Request(url, headers={"User-Agent": _USER_AGENT})
+        with urlopen(request, timeout=timeout) as response:
+            data = response.read(_MAX_BYTES + 1)
+        return data if data and len(data) <= _MAX_BYTES else None
+    except (URLError, ValueError, OSError) as exc:
+        logger.info("Fetch failed for %s: %s", url, exc)
+        return None
+
+
+def fetch_favicon(page_url: str, dest_path: Path, timeout: float = 15.0) -> Path | None:
+    """Download a site's favicon to use as a cover emblem; None on failure.
+
+    Prefers the largest declared icon (apple-touch-icon / <link rel=icon>) so
+    the emblem isn't a blurry 16px upscale, falling back to /favicon.ico. The
+    icon is normalised to PNG; anything smaller than 48px is rejected as too
+    low-res to look good on the cover.
+    """
+    from bs4 import BeautifulSoup
+    from PIL import Image
+
+    parsed = urlparse(page_url)
+    root = f"{parsed.scheme}://{parsed.netloc}"
+
+    candidates: list[tuple[int, str]] = []
+    html = _http_get_text(page_url, timeout)
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+        for link in soup.find_all("link", rel=True):
+            rels = " ".join(link.get("rel")).lower()
+            href = link.get("href")
+            if "icon" in rels and href:
+                candidates.append((_parse_icon_size(link.get("sizes")), urljoin(root, href)))
+    candidates.sort(key=lambda c: c[0], reverse=True)
+    candidates.append((0, urljoin(root, "/favicon.ico")))
+
+    for _, icon_url in candidates:
+        data = _http_bytes(icon_url, timeout)
+        if not data:
+            continue
+        try:
+            image = Image.open(io.BytesIO(data))
+            image.load()
+        except Exception:
+            continue
+        if max(image.size) < 48:
+            continue  # too small to render well as an emblem
+        image.convert("RGBA").save(dest_path, format="PNG")
+        return dest_path
+    logger.info("No usable favicon found for %s", root)
+    return None
+
+
+def _http_get_text(url: str, timeout: float) -> str | None:
+    data = _http_bytes(url, timeout)
+    if not data:
+        return None
+    return data.decode("utf-8", errors="replace")
+
+
+def _parse_icon_size(sizes: str | None) -> int:
+    """Largest dimension from a <link sizes="WxH"> attribute (0 if absent)."""
+    if not sizes:
+        return 0
+    return max((int(n) for n in re.findall(r"\d+", sizes)), default=0)

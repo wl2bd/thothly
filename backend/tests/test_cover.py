@@ -1,6 +1,55 @@
+from datetime import datetime, timezone
+from pathlib import Path
+
 from PIL import Image
 
+from app.render import epub as epub_module
 from app.render.cover import _oklch_to_rgb, generate_cover
+from app.render.images import _parse_icon_size
+from app.pipeline.models import CompiledBook, CompiledChapter
+
+
+def _book(chapters):
+    return CompiledBook(
+        title="T", generated_at=datetime.now(timezone.utc), chapters=chapters
+    )
+
+
+def _ch(source_type, url):
+    return CompiledChapter(title="c", source_type=source_type, source_url=url, content_md="x")
+
+
+def test_parse_icon_size():
+    assert _parse_icon_size(None) == 0
+    assert _parse_icon_size("32x32") == 32
+    assert _parse_icon_size("180x180") == 180
+    assert _parse_icon_size("any") == 0
+
+
+def test_source_emblem_uses_favicon_for_single_blog(tmp_path, monkeypatch):
+    called = {}
+
+    def fake_fetch(url, dest, timeout=15.0):
+        called["url"] = url
+        dest.write_bytes(b"x")
+        return dest
+
+    monkeypatch.setattr(epub_module, "fetch_favicon", fake_fetch)
+    book = _book([_ch("blog", "https://learnweb3.design/notes/a")])
+    out = epub_module._source_emblem(book, tmp_path)
+    assert out is not None and called["url"].startswith("https://learnweb3.design")
+
+
+def test_source_emblem_none_for_multiple_domains(tmp_path, monkeypatch):
+    monkeypatch.setattr(epub_module, "fetch_favicon", lambda *a, **k: 1 / 0)
+    book = _book([_ch("blog", "https://a.com/x"), _ch("blog", "https://b.com/y")])
+    assert epub_module._source_emblem(book, tmp_path) is None
+
+
+def test_source_emblem_none_when_youtube_present(tmp_path, monkeypatch):
+    monkeypatch.setattr(epub_module, "fetch_favicon", lambda *a, **k: 1 / 0)
+    book = _book([_ch("blog", "https://a.com/x"), _ch("youtube", "https://youtube.com/watch?v=1")])
+    assert epub_module._source_emblem(book, tmp_path) is None
 
 
 def test_generate_cover_produces_portrait_png(tmp_path):
