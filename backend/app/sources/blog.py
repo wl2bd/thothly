@@ -44,14 +44,17 @@ def scrape_article(url: str) -> Article:
 
     # include_formatting/include_links keep bold, italics and hyperlinks (both
     # default to False, which would flatten the article to plain text). Tables
-    # are kept by trafilatura's include_tables default. This preserves the
-    # author's emphasis in the EPUB without any LLM involvement.
+    # are kept by trafilatura's include_tables default. include_images keeps the
+    # article's figures; the EPUB renderer downloads and embeds them, dropping
+    # any that can't be fetched. This preserves the author's structure and
+    # emphasis in the EPUB without any LLM involvement.
     content_html = trafilatura.extract(
         downloaded,
         output_format="html",
         url=url,
         include_formatting=True,
         include_links=True,
+        include_images=True,
     )
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")

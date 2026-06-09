@@ -1,10 +1,13 @@
+import json
 import logging
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
 from app.core.config import settings
 from app.pipeline.models import CompiledBook
+from app.render.images import localize_images
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +21,12 @@ class RenderError(Exception):
 def render_epub(book: CompiledBook, output_path: Path) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    markdown_path = _write_temp(book.to_markdown(), suffix=".md")
+    # Remote images are downloaded and embedded so the EPUB is self-contained;
+    # the media dir holds those files on disk while Pandoc packages them.
+    media_dir = Path(tempfile.mkdtemp(prefix="thothly-media-"))
+    markdown = localize_images(book.to_markdown(), media_dir, settings.scrape_timeout_s)
+
+    markdown_path = _write_temp(markdown, suffix=".md")
     metadata_path = _write_temp(_metadata_yaml(book), suffix=".yaml")
     try:
         cmd = _build_command(markdown_path, output_path, metadata_path)
@@ -37,16 +45,28 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
     finally:
         markdown_path.unlink(missing_ok=True)
         metadata_path.unlink(missing_ok=True)
+        shutil.rmtree(media_dir, ignore_errors=True)
 
 
 def _metadata_yaml(book: CompiledBook) -> str:
-    return (
-        f'title: "{book.title}"\n'
-        'creator: "Thothly"\n'
-        'lang: "fr"\n'
-        'toc-title: "Table des matières"\n'
-        f'date: "{book.generated_at.strftime("%Y-%m-%d")}"\n'
-    )
+    # dc:creator should name the people who wrote the sources, not the tool.
+    # Collect the chapters' authors (de-duplicated, order preserved); fall back
+    # to "Thothly" only when no source carries an author. json.dumps quotes and
+    # escapes each value safely for YAML.
+    seen: dict[str, None] = {}
+    for chapter in book.chapters:
+        if chapter.author and chapter.author.strip():
+            seen.setdefault(chapter.author.strip(), None)
+    authors = list(seen) or ["Thothly"]
+
+    lines = [f"title: {json.dumps(book.title)}", "author:"]
+    lines += [f"  - {json.dumps(name)}" for name in authors]
+    lines += [
+        'lang: "fr"',
+        'toc-title: "Table des matières"',
+        f'date: "{book.generated_at.strftime("%Y-%m-%d")}"',
+    ]
+    return "\n".join(lines) + "\n"
 
 
 def _build_command(
