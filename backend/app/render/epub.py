@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.pipeline.models import CompiledBook
+from app.render.cover import generate_cover
 from app.render.images import localize_images
 
 logger = logging.getLogger(__name__)
@@ -24,14 +25,16 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Remote images are downloaded and embedded so the EPUB is self-contained;
-    # the media dir holds those files on disk while Pandoc packages them.
+    # the media dir holds those files (and the generated cover) on disk while
+    # Pandoc packages them.
     media_dir = Path(tempfile.mkdtemp(prefix="thothly-media-"))
     markdown = localize_images(book.to_markdown(), media_dir, settings.scrape_timeout_s)
 
+    cover_path = _make_cover(book, media_dir)
     markdown_path = _write_temp(markdown, suffix=".md")
     metadata_path = _write_temp(_metadata_yaml(book), suffix=".yaml")
     try:
-        cmd = _build_command(markdown_path, output_path, metadata_path)
+        cmd = _build_command(markdown_path, output_path, metadata_path, cover_path)
         logger.info("Running pandoc: %s", " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
@@ -51,16 +54,29 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
         shutil.rmtree(media_dir, ignore_errors=True)
 
 
-def _metadata_yaml(book: CompiledBook) -> str:
-    # dc:creator should name the people who wrote the sources, not the tool.
-    # Collect the chapters' authors (de-duplicated, order preserved); fall back
-    # to "Thothly" only when no source carries an author. json.dumps quotes and
-    # escapes each value safely for YAML.
+def _chapter_authors(book: CompiledBook) -> list[str]:
+    """Unique source authors, order preserved (empty list if none carry one)."""
     seen: dict[str, None] = {}
     for chapter in book.chapters:
         if chapter.author and chapter.author.strip():
             seen.setdefault(chapter.author.strip(), None)
-    authors = list(seen) or ["Thothly"]
+    return list(seen)
+
+
+def _make_cover(book: CompiledBook, media_dir: Path) -> Path | None:
+    """Render the editorial cover; None (no cover) if generation fails."""
+    try:
+        return generate_cover(book.title, _chapter_authors(book), media_dir / "cover.png")
+    except Exception as exc:  # never let a cover problem block the EPUB
+        logger.warning("Cover generation failed; rendering without a cover: %s", exc)
+        return None
+
+
+def _metadata_yaml(book: CompiledBook) -> str:
+    # dc:creator should name the people who wrote the sources, not the tool.
+    # json.dumps quotes and escapes each value safely for YAML; fall back to
+    # "Thothly" only when no source carries an author.
+    authors = _chapter_authors(book) or ["Thothly"]
 
     lines = [f"title: {json.dumps(book.title)}", "author:"]
     lines += [f"  - {json.dumps(name)}" for name in authors]
@@ -73,7 +89,10 @@ def _metadata_yaml(book: CompiledBook) -> str:
 
 
 def _build_command(
-    input_path: Path, output_path: Path, metadata_path: Path
+    input_path: Path,
+    output_path: Path,
+    metadata_path: Path,
+    cover_path: Path | None = None,
 ) -> list[str]:
     cmd = [
         settings.pandoc_binary,
@@ -85,6 +104,8 @@ def _build_command(
         "--split-level=1",
         f"--metadata-file={metadata_path}",
     ]
+    if cover_path is not None and cover_path.exists():
+        cmd.append(f"--epub-cover-image={cover_path}")
     if _CSS_PATH.exists():
         cmd.append(f"--css={_CSS_PATH}")
     return cmd
