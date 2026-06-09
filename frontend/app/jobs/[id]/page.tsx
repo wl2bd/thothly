@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
   type DiscoveredItem,
   type JobResponse,
   type LlmConfig,
+  type Source,
 } from "@/lib/api";
 
 const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
@@ -87,6 +89,18 @@ export default function JobPage() {
     });
   }, []);
 
+  // Bulk (de)select a set of ids at once — used by the per-source headers.
+  const selectItems = useCallback((ids: string[], value: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (value) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
   const toggleRole = useCallback((roleId: string) => {
     setRoles((prev) => {
       const next = new Set(prev);
@@ -145,6 +159,7 @@ export default function JobPage() {
           ) : job.status === "reviewing" ? (
             <ReviewList
               items={job.discovered_items}
+              sources={job.sources}
               selected={selected}
               title={title}
               confirming={confirming}
@@ -153,6 +168,7 @@ export default function JobPage() {
               onToggleRole={toggleRole}
               onTitleChange={setTitle}
               onToggle={toggle}
+              onSelectItems={selectItems}
               onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
               onSelectNone={() => setSelected(new Set())}
               onConfirm={onConfirm}
@@ -203,6 +219,7 @@ function StatusMessage({ label }: { label: string }) {
 
 interface ReviewListProps {
   items: DiscoveredItem[];
+  sources: Source[];
   selected: Set<string>;
   title: string;
   confirming: boolean;
@@ -211,6 +228,7 @@ interface ReviewListProps {
   onToggleRole: (id: string) => void;
   onTitleChange: (title: string) => void;
   onToggle: (id: string) => void;
+  onSelectItems: (ids: string[], value: boolean) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
   onConfirm: () => void;
@@ -218,6 +236,7 @@ interface ReviewListProps {
 
 function ReviewList({
   items,
+  sources,
   selected,
   title,
   confirming,
@@ -226,10 +245,14 @@ function ReviewList({
   onToggleRole,
   onTitleChange,
   onToggle,
+  onSelectItems,
   onSelectAll,
   onSelectNone,
   onConfirm,
 }: ReviewListProps) {
+  const [query, setQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+
   // How many *selected* videos read raw (would benefit from the punctuate role).
   const unpunctuatedSelected = items.filter(
     (it) =>
@@ -238,6 +261,35 @@ function ReviewList({
       it.has_transcript === true &&
       it.is_punctuated === false,
   ).length;
+
+  const needle = query.trim().toLowerCase();
+  const filtered = useMemo(
+    () =>
+      needle
+        ? items.filter((it) => it.title.toLowerCase().includes(needle))
+        : items,
+    [items, needle],
+  );
+
+  // Group by source so a multi-source compilation stays legible instead of one
+  // giant mixed list. Source order is preserved.
+  const groups = useMemo(() => {
+    const map = new Map<number, DiscoveredItem[]>();
+    for (const it of filtered) {
+      const bucket = map.get(it.source_index);
+      if (bucket) bucket.push(it);
+      else map.set(it.source_index, [it]);
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]);
+  }, [filtered]);
+
+  const toggleCollapse = (index: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
 
   return (
     <div className="flex flex-col gap-6">
@@ -269,28 +321,83 @@ function ReviewList({
         </div>
       </div>
 
-      <ul className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
-        {items.map((item) => (
-          <li key={item.id}>
-            <label className="hover:bg-muted/60 flex cursor-pointer items-center gap-3.5 rounded-lg px-3 py-2.5 transition-colors">
-              <Checkbox
-                checked={selected.has(item.id)}
-                onCheckedChange={() => onToggle(item.id)}
-              />
-              <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="truncate text-sm">{item.title}</span>
-                <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-                  <span>{item.item_type === "youtube" ? "YouTube" : "Article"}</span>
-                  {formatMeta(item).map((part) => (
-                    <span key={part}>· {part}</span>
+      {items.length > 8 && (
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Rechercher dans les titres…"
+        />
+      )}
+
+      <div className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
+        {groups.length === 0 ? (
+          <p className="text-muted-foreground px-3 py-8 text-center text-sm">
+            Aucun résultat pour « {query} ».
+          </p>
+        ) : (
+          groups.map(([sourceIndex, groupItems]) => {
+            const ids = groupItems.map((it) => it.id);
+            const selectedCount = ids.filter((id) => selected.has(id)).length;
+            const allSelected = selectedCount === ids.length;
+            const isCollapsed = collapsed.has(sourceIndex);
+            return (
+              <div key={sourceIndex} className="flex flex-col">
+                <div className="bg-card/95 sticky top-0 z-10 flex items-center gap-2 px-3 py-2 backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => toggleCollapse(sourceIndex)}
+                    className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 items-center gap-1.5 transition-colors"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="size-4 shrink-0" />
+                    ) : (
+                      <ChevronDown className="size-4 shrink-0" />
+                    )}
+                    <span className="truncate text-xs font-semibold tracking-wide uppercase">
+                      {sourceLabel(sources[sourceIndex]?.url)}
+                    </span>
+                    <span className="text-muted-foreground/70 shrink-0 text-xs normal-case">
+                      {selectedCount}/{groupItems.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectItems(ids, !allSelected)}
+                    className="text-muted-foreground hover:text-foreground shrink-0 text-xs hover:underline"
+                  >
+                    {allSelected ? "Décocher" : "Cocher"}
+                  </button>
+                </div>
+                {!isCollapsed &&
+                  groupItems.map((item) => (
+                    <label
+                      key={item.id}
+                      className="hover:bg-muted/60 flex cursor-pointer items-center gap-3.5 rounded-lg px-3 py-2.5 transition-colors"
+                    >
+                      <Checkbox
+                        checked={selected.has(item.id)}
+                        onCheckedChange={() => onToggle(item.id)}
+                      />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="truncate text-sm">{item.title}</span>
+                        <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+                          <span>
+                            {item.item_type === "youtube" ? "YouTube" : "Article"}
+                          </span>
+                          {formatMeta(item).map((part) => (
+                            <span key={part}>· {part}</span>
+                          ))}
+                          {statusBadge(item)}
+                        </span>
+                      </span>
+                    </label>
                   ))}
-                  {statusBadge(item)}
-                </span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
+              </div>
+            );
+          })
+        )}
+      </div>
 
       {llm && llm.roles.length > 0 && (
         <RoleSelector
@@ -368,6 +475,21 @@ function RoleSelector({
       </ul>
     </div>
   );
+}
+
+// A compact, recognizable label for a source group, derived from the URL the
+// user entered (e.g. "youtube.com/@channel", "jakub.kr"). Friendlier source
+// names (channel/blog titles) would need the backend to surface them.
+function sourceLabel(url: string | undefined): string {
+  if (!url) return "Source";
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const path = parsed.pathname.replace(/\/+$/, "");
+    return path && path !== "" ? `${host}${path}` : host;
+  } catch {
+    return url;
+  }
 }
 
 function formatMeta(item: DiscoveredItem): string[] {
