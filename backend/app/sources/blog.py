@@ -8,6 +8,7 @@ from urllib.request import Request, urlopen
 
 import feedparser
 import trafilatura
+from bs4 import BeautifulSoup
 
 from app.core.config import settings
 from app.sources.models import Article
@@ -69,6 +70,8 @@ def scrape_article(url: str) -> Article:
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")
 
+    content_html = _clean_extracted_html(content_html)
+
     title, author, published_at = _extract_metadata(downloaded, url)
     return Article(
         url=url,
@@ -77,6 +80,40 @@ def scrape_article(url: str) -> Article:
         author=author,
         content_html=content_html,
     )
+
+
+def _clean_extracted_html(html: str) -> str:
+    """Tidy trafilatura's extracted HTML before it becomes Markdown.
+
+    Two fixes:
+    - Tables: trafilatura emits <table><row><cell role="head"><p>…</p></cell>…,
+      which markdownify doesn't recognise — the cells flatten into loose text.
+      We map <row>→<tr>, <cell role="head">→<th>, <cell>→<td> and flatten each
+      cell to inline text so markdownify produces a real pipe table.
+    - Empty code blocks: interactive widgets often extract as empty <code>/<pre>,
+      which render as ugly empty boxes; we drop them.
+    """
+    if not any(tag in html for tag in ("<row", "<cell", "<code", "<pre")):
+        return html  # standard HTML with nothing to fix (e.g. RSS content)
+
+    soup = BeautifulSoup(html, "html.parser")
+    for cell in soup.find_all("cell"):
+        cell.name = "th" if cell.get("role") == "head" else "td"
+        if cell.has_attr("role"):
+            del cell["role"]
+        # Pipe-table cells can't hold block elements; collapse to inline text.
+        text = cell.get_text(" ", strip=True)
+        cell.clear()
+        if text:
+            cell.append(text)
+    for row in soup.find_all("row"):
+        row.name = "tr"
+        if row.has_attr("span"):
+            del row["span"]
+    for code in soup.find_all(["code", "pre"]):
+        if not code.get_text(strip=True):
+            code.decompose()
+    return str(soup)
 
 
 def _fetch_url(url: str, timeout: float) -> str | None:

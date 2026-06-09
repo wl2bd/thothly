@@ -6,7 +6,37 @@ import pytest
 
 from app.pipeline.compiler import html_to_markdown
 from app.sources.models import Article
-from app.sources.blog import FeedUnavailable, list_feed, scrape_article
+from app.sources.blog import (
+    FeedUnavailable,
+    _clean_extracted_html,
+    list_feed,
+    scrape_article,
+)
+
+
+def test_clean_extracted_html_converts_trafilatura_table():
+    html = (
+        "<table><row><cell role='head'><p>Pitfall</p></cell>"
+        "<cell role='head'><p>Mitigation</p></cell></row>"
+        "<row><cell><p>Hype</p></cell><cell><p>Ship milestones</p></cell></row></table>"
+    )
+    md = html_to_markdown(_clean_extracted_html(html))
+    lines = [l for l in md.splitlines() if l.strip().startswith("|")]
+    assert len(lines) == 3  # header, separator, one data row
+    assert "| Pitfall | Mitigation |" in md
+    assert "| Hype | Ship milestones |" in md
+
+
+def test_clean_extracted_html_drops_empty_code_blocks():
+    html = "<p>Texte</p><pre><code></code></pre><p><code>kept</code></p>"
+    cleaned = _clean_extracted_html(html)
+    assert "kept" in cleaned
+    assert "<pre>" not in cleaned  # empty code block removed
+
+
+def test_clean_extracted_html_passes_standard_html_through():
+    html = "<p>Rien a nettoyer</p>"
+    assert _clean_extracted_html(html) == html
 
 _ARTICLE_HTML = """<html><head><title>Test</title></head><body><article>
 <h1>Un titre d'article</h1>
