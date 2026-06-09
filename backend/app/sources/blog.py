@@ -60,6 +60,9 @@ def scrape_article(url: str) -> Article:
     # article's figures; the EPUB renderer downloads and embeds them, dropping
     # any that can't be fetched. This preserves the author's structure and
     # emphasis in the EPUB without any LLM involvement.
+    # favor_recall keeps the full article body. The default (precision-first)
+    # mode can latch onto one dense block — e.g. a large embedded code sample —
+    # and discard the surrounding prose, so the EPUB shows only that block.
     content_html = trafilatura.extract(
         downloaded,
         output_format="html",
@@ -67,6 +70,7 @@ def scrape_article(url: str) -> Article:
         include_formatting=True,
         include_links=True,
         include_images=True,
+        favor_recall=True,
     )
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")
