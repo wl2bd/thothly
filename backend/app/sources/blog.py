@@ -3,6 +3,8 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from time import struct_time
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 import feedparser
 import trafilatura
@@ -11,6 +13,14 @@ from app.core.config import settings
 from app.sources.models import Article
 
 logger = logging.getLogger(__name__)
+
+# A browser-like User-Agent. trafilatura's own downloader is rejected outright
+# by some hosts (returns nothing), even though the page loads fine in a normal
+# client — so we keep this for a fallback fetch.
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
 
 
 class FeedUnavailable(Exception):
@@ -70,18 +80,41 @@ def scrape_article(url: str) -> Article:
 
 
 def _fetch_url(url: str, timeout: float) -> str | None:
-    """Run trafilatura.fetch_url under a hard timeout.
+    """Download a page's HTML, robustly.
 
-    trafilatura's fetch_url has no timeout parameter, so we bound it with a
-    worker thread to avoid hanging the discovery/compilation phase.
+    trafilatura.fetch_url (no timeout of its own, so we bound it with a worker
+    thread) is tried first; some hosts reject its downloader and return nothing
+    even though the page is perfectly reachable, so we then retry with a
+    browser-like User-Agent before giving up.
     """
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(trafilatura.fetch_url, url)
         try:
-            return future.result(timeout=timeout)
+            downloaded = future.result(timeout=timeout)
         except FuturesTimeoutError:
             logger.warning("Timed out downloading %s after %ss", url, timeout)
-            return None
+            downloaded = None
+
+    if downloaded:
+        return downloaded
+
+    logger.info("trafilatura fetched nothing for %s; retrying with browser UA", url)
+    return _browser_fetch(url, timeout)
+
+
+def _browser_fetch(url: str, timeout: float) -> str | None:
+    try:
+        request = Request(
+            url,
+            headers={"User-Agent": _BROWSER_UA, "Accept-Language": "fr,en;q=0.8"},
+        )
+        with urlopen(request, timeout=timeout) as response:
+            raw = response.read()
+            charset = response.headers.get_content_charset() or "utf-8"
+        return raw.decode(charset, errors="replace")
+    except (URLError, ValueError, OSError) as exc:
+        logger.warning("Browser-UA fetch failed for %s: %s", url, exc)
+        return None
 
 
 def _extract_metadata(
