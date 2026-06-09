@@ -20,6 +20,21 @@ export default function Home() {
     setUrls((prev) => prev.map((url, i) => (i === index ? value : url)));
   }
 
+  // Tidy a pasted link: add https:// when no scheme is given, so the user
+  // doesn't have to type it every time.
+  function normalizeUrl(raw: string): string {
+    const trimmed = raw.trim();
+    if (trimmed === "") return "";
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed.replace(/^\/+/, "")}`;
+  }
+
+  function normalizeRow(index: number) {
+    setUrls((prev) =>
+      prev.map((url, i) => (i === index ? normalizeUrl(url) : url)),
+    );
+  }
+
   function addRow() {
     setUrls((prev) => [...prev, ""]);
   }
@@ -33,7 +48,7 @@ export default function Home() {
     setError(null);
 
     const sources = urls
-      .map((url) => url.trim())
+      .map(normalizeUrl)
       .filter((url) => url !== "")
       .map((url) => ({ url }));
 
@@ -77,7 +92,8 @@ export default function Home() {
                       inputMode="url"
                       value={url}
                       onChange={(e) => updateUrl(index, e.target.value)}
-                      placeholder="https://youtube.com/watch?v=…  ou  https://unblog.com"
+                      onBlur={() => normalizeRow(index)}
+                      placeholder="youtube.com/watch?v=…  ou  unblog.com"
                     />
                     {urls.length > 1 && (
                       <Button
