@@ -9,6 +9,7 @@ from app.sources.models import Article
 from app.sources.blog import (
     FeedUnavailable,
     _clean_extracted_html,
+    _unwrap_image_links,
     list_feed,
     scrape_article,
 )
@@ -20,7 +21,7 @@ def test_clean_extracted_html_converts_trafilatura_table():
         "<cell role='head'><p>Mitigation</p></cell></row>"
         "<row><cell><p>Hype</p></cell><cell><p>Ship milestones</p></cell></row></table>"
     )
-    md = html_to_markdown(_clean_extracted_html(html))
+    md = html_to_markdown(_clean_extracted_html(html, "https://x.test/post"))
     lines = [l for l in md.splitlines() if l.strip().startswith("|")]
     assert len(lines) == 3  # header, separator, one data row
     assert "| Pitfall | Mitigation |" in md
@@ -33,7 +34,7 @@ def test_clean_extracted_html_collapses_line_number_code_table():
         "<row><cell class='lntd'><pre>1\n2\n3</pre></cell>"
         "<cell class='lntd'><pre>def f():\n    return 1</pre></cell></row>"
     )
-    md = html_to_markdown(_clean_extracted_html(html))
+    md = html_to_markdown(_clean_extracted_html(html, "https://x.test/post"))
     assert "def f():" in md
     assert "return 1" in md
     assert "| 1 2 3" not in md  # the line-number gutter is gone
@@ -42,14 +43,52 @@ def test_clean_extracted_html_collapses_line_number_code_table():
 
 def test_clean_extracted_html_drops_empty_code_blocks():
     html = "<p>Texte</p><pre><code></code></pre><p><code>kept</code></p>"
-    cleaned = _clean_extracted_html(html)
+    cleaned = _clean_extracted_html(html, "https://x.test/post")
     assert "kept" in cleaned
     assert "<pre>" not in cleaned  # empty code block removed
 
 
 def test_clean_extracted_html_passes_standard_html_through():
     html = "<p>Rien a nettoyer</p>"
-    assert _clean_extracted_html(html) == html
+    assert _clean_extracted_html(html, "https://x.test/post") == html
+
+
+def test_clean_extracted_html_converts_graphic_to_image():
+    # trafilatura emits images as <graphic>, doubled for linked images: once
+    # protocol-relative inside the <a>, once bare. Both must collapse to one
+    # <img> that markdownify renders, with an absolute URL.
+    html = (
+        '<a href="https://x.test/file"><graphic src="//cdn.test/fig.png"/></a>'
+        '<graphic src="http://cdn.test/fig.png"/>'
+    )
+    cleaned = _clean_extracted_html(html, "https://x.test/post/")
+    assert cleaned.count("<img") == 1  # the duplicate is dropped
+    md = html_to_markdown(cleaned)
+    assert "![](https://cdn.test/fig.png)" in md or "(https://cdn.test/fig.png)" in md
+
+
+def test_unwrap_image_links_removes_image_only_anchors():
+    # Substack-style "click to enlarge" wrapper: trafilatura would prune the
+    # whole figure as a high-link-density block, losing the image.
+    html = '<figure><a href="https://x.test/big.png"><img src="https://x.test/fig.png"/></a></figure>'
+    out = _unwrap_image_links(html)
+    assert "<a" not in out  # the wrapping anchor is gone
+    assert '<img src="https://x.test/fig.png"' in out  # the image survives
+
+
+def test_unwrap_image_links_keeps_text_links_intact():
+    # A genuine text link must not be de-linked, even if it carries an icon.
+    html = '<p><a href="https://x.test/page"><img src="i.png"/> Read more</a></p>'
+    out = _unwrap_image_links(html)
+    assert '<a href="https://x.test/page"' in out  # link preserved
+
+
+def test_clean_extracted_html_absolutizes_relative_image():
+    # trafilatura often leaves <img src> site-root-relative; left alone the
+    # renderer treats it as a local file and drops it. Resolve against the page.
+    html = '<p>x</p><img src="/post/./fig.jpg" alt="a"/>'
+    cleaned = _clean_extracted_html(html, "https://x.test/post/")
+    assert 'src="https://x.test/post/fig.jpg"' in cleaned
 
 _ARTICLE_HTML = """<html><head><title>Test</title></head><body><article>
 <h1>Un titre d'article</h1>

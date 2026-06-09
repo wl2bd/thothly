@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 from datetime import datetime
 from time import struct_time
 from urllib.error import URLError
+from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
 import feedparser
@@ -54,6 +55,8 @@ def scrape_article(url: str) -> Article:
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
 
+    downloaded = _unwrap_image_links(downloaded)
+
     # include_formatting/include_links keep bold, italics and hyperlinks (both
     # default to False, which would flatten the article to plain text). Tables
     # are kept by trafilatura's include_tables default. include_images keeps the
@@ -75,7 +78,7 @@ def scrape_article(url: str) -> Article:
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")
 
-    content_html = _clean_extracted_html(content_html)
+    content_html = _clean_extracted_html(content_html, url)
 
     title, author, published_at = _extract_metadata(downloaded, url)
     return Article(
@@ -87,10 +90,41 @@ def scrape_article(url: str) -> Article:
     )
 
 
-def _clean_extracted_html(html: str) -> str:
+def _unwrap_image_links(html: str) -> str:
+    """Unwrap <a> elements whose only content is an image, before extraction.
+
+    Many CMSs (Substack chief among them) wrap each content image in a
+    "click to enlarge" link: <a href="…big.png"><img …></a>. trafilatura's
+    link-density filter then treats the whole figure as boilerplate and prunes
+    it, so the article's images silently vanish from the extraction. Removing
+    just the wrapping anchor — keeping the image and any caption — lets the
+    figure survive. Only image-only anchors are unwrapped, so genuine text
+    links (which may legitimately contain a small icon) are left intact.
+    """
+    if "<img" not in html and "<picture" not in html:
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    changed = False
+    for anchor in soup.find_all("a"):
+        if anchor.find(["img", "picture"]) and not anchor.get_text(strip=True):
+            anchor.unwrap()
+            changed = True
+    return str(soup) if changed else html
+
+
+def _clean_extracted_html(html: str, base_url: str) -> str:
     """Tidy trafilatura's extracted HTML before it becomes Markdown.
 
-    Three fixes:
+    Four fixes:
+    - Images: trafilatura emits figures as TEI <graphic> elements (even with
+      output_format="html"), which markdownify doesn't recognise — so every
+      image silently vanishes on the way to Markdown. We rewrite them to <img>
+      so they survive (and the EPUB renderer can embed them), dropping the
+      duplicate trafilatura emits for each linked image (one inside its <a>, one
+      bare). Every image src is then resolved to an absolute URL against the
+      page: trafilatura often leaves them site-root-relative (e.g.
+      "/post/./fig.jpg"), which the renderer would mistake for a local file and
+      leave as a dead link.
     - Code tables: syntax highlighters (Chroma/Hugo lntable, Pygments…) lay a
       code block out as a table with a line-number gutter column. Left alone it
       flattens into a garbage row (line numbers in one cell, code mashed in the
@@ -103,10 +137,32 @@ def _clean_extracted_html(html: str) -> str:
     - Empty code blocks: interactive widgets often extract as empty <code>/<pre>,
       which render as ugly empty boxes; we drop them.
     """
-    if not any(tag in html for tag in ("<row", "<cell", "<code", "<pre")):
+    if not any(tag in html for tag in ("<graphic", "<img", "<row", "<cell", "<code", "<pre")):
         return html  # standard HTML with nothing to fix (e.g. RSS content)
 
     soup = BeautifulSoup(html, "html.parser")
+
+    # <graphic> → <img>, deduped by scheme-insensitive URL (same image is often
+    # emitted twice: once protocol-relative inside its <a>, once bare as http:).
+    seen_images: set[str] = set()
+    for graphic in soup.find_all("graphic"):
+        src = (graphic.get("src") or "").strip()
+        key = re.sub(r"^https?:", "", src)
+        if not src or key in seen_images:
+            graphic.decompose()
+            continue
+        seen_images.add(key)
+        img = soup.new_tag("img", src=src)
+        if graphic.get("alt"):
+            img["alt"] = graphic["alt"]
+        graphic.replace_with(img)
+
+    # Absolutize every image URL against the page (skipping data: URIs, which
+    # are already self-contained) so the EPUB renderer can fetch and embed it.
+    for img in soup.find_all("img"):
+        src = (img.get("src") or "").strip()
+        if src and not src.startswith("data:"):
+            img["src"] = urljoin(base_url, src)
 
     # Code-layout tables first, before the generic <row>/<cell> rewrite below.
     for container in soup.find_all(["table", "row"]):

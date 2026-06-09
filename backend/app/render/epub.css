@@ -200,8 +200,31 @@ hr {
 }
 
 img {
+    display: block;
     max-width: 100%;
     height: auto;
+    /* Breathing room so images don't crowd the surrounding text. */
+    margin: 1.8em auto;
+}
+
+/* Pandoc wraps a stand-alone image in a <figure> with the alt text as its
+   caption; give the whole block room and centre the caption beneath it. */
+figure {
+    margin: 2em 0;
+    text-align: center;
+    page-break-inside: avoid;
+}
+
+figure img {
+    margin: 0 auto 0.6em auto;
+}
+
+figcaption {
+    font-size: 0.85em;
+    font-style: italic;
+    color: #555;
+    line-height: 1.5;
+    text-align: center;
 }
 
 table {
