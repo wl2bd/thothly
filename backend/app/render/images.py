@@ -165,7 +165,6 @@ def fetch_favicon(page_url: str, dest_path: Path, timeout: float = 15.0) -> Path
     low-res to look good on the cover.
     """
     from bs4 import BeautifulSoup
-    from PIL import Image
 
     parsed = urlparse(page_url)
     root = f"{parsed.scheme}://{parsed.netloc}"
@@ -183,20 +182,35 @@ def fetch_favicon(page_url: str, dest_path: Path, timeout: float = 15.0) -> Path
     candidates.append((0, urljoin(root, "/favicon.ico")))
 
     for _, icon_url in candidates:
-        data = _http_bytes(icon_url, timeout)
-        if not data:
-            continue
-        try:
-            image = Image.open(io.BytesIO(data))
-            image.load()
-        except Exception:
-            continue
-        if max(image.size) < 48:
-            continue  # too small to render well as an emblem
-        image.convert("RGBA").save(dest_path, format="PNG")
-        return dest_path
+        if fetch_remote_icon(icon_url, dest_path, timeout):
+            return dest_path
     logger.info("No usable favicon found for %s", root)
     return None
+
+
+def fetch_remote_icon(
+    url: str, dest_path: Path, timeout: float = 15.0, min_px: int = 48
+) -> Path | None:
+    """Download a single image URL and save it to *dest_path* as PNG; None on
+    failure or if it's too small (< *min_px*) to render well as a cover emblem.
+
+    Shared by the blog favicon path and the YouTube channel-avatar path.
+    """
+    from PIL import Image
+
+    data = _http_bytes(url, timeout)
+    if not data:
+        return None
+    try:
+        image = Image.open(io.BytesIO(data))
+        image.load()
+    except Exception:
+        return None
+    if max(image.size) < min_px:
+        return None
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    image.convert("RGBA").save(dest_path, format="PNG")
+    return dest_path
 
 
 def _http_get_text(url: str, timeout: float) -> str | None:

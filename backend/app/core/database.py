@@ -85,6 +85,8 @@ _DISCOVERED_ITEM_ADDED_COLUMNS = (
 
 _TRANSCRIPT_CACHE_ADDED_COLUMNS = (
     ("chapters", "TEXT"),
+    ("uploader", "TEXT"),  # channel name → chapter author
+    ("channel_url", "TEXT"),  # channel page → cover avatar emblem
 )
 
 

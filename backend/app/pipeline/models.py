@@ -10,6 +10,9 @@ class CompiledChapter(BaseModel):
     author: str | None = None
     published_at: datetime | None = None
     content_md: str
+    # YouTube only: the channel page URL, used to source the cover avatar emblem
+    # when every chapter comes from one channel.
+    channel_url: str | None = None
 
 
 class CompiledBook(BaseModel):

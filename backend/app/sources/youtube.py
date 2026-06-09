@@ -112,7 +112,55 @@ def fetch_transcript(
         language=language,
         segments=segments,
         chapters=_parse_chapters(info),
+        uploader=info.get("channel") or info.get("uploader") or None,
+        channel_url=info.get("channel_url") or info.get("uploader_url") or None,
     )
+
+
+def fetch_channel_avatar_url(channel_url: str) -> str | None:
+    """Return a channel's avatar image URL, or None if unavailable.
+
+    Extracts only the channel's own metadata (playlist_items="0" skips listing
+    its videos, keeping this to one cheap call) and picks the uncropped avatar.
+    The avatar lives on yt3.googleusercontent.com — outside the subtitle
+    endpoints YouTube IP-blocks — so the cover emblem still works even when
+    transcript fetches are being rate-limited. Best-effort: any failure returns
+    None so the book simply falls back to the bundled emblem.
+    """
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extract_flat": True,
+        "playlist_items": "0",
+        "extractor_args": _lang_extractor_args(),
+    }
+    try:
+        with YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(channel_url, download=False)
+    except YoutubeDLError:
+        return None
+    return _pick_avatar(info.get("thumbnails") or [])
+
+
+def _pick_avatar(thumbnails: list[dict]) -> str | None:
+    """The channel avatar URL: the uncropped one, else the largest square icon.
+
+    yt-dlp tags the avatar "avatar_uncropped"; the wide "banner_uncropped" is
+    deliberately ignored. The square-icon fallback covers extractor changes.
+    """
+    by_id = {t.get("id"): t.get("url") for t in thumbnails}
+    if by_id.get("avatar_uncropped"):
+        return by_id["avatar_uncropped"]
+    squares = [
+        t
+        for t in thumbnails
+        if t.get("url") and t.get("width") and t.get("height")
+        and abs(t["width"] - t["height"]) <= 2
+    ]
+    if squares:
+        return max(squares, key=lambda t: t["width"])["url"]
+    return None
 
 
 def _parse_chapters(info: dict) -> list[Chapter]:

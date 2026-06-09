@@ -6,7 +6,12 @@ import pytest
 from yt_dlp.utils import DownloadError
 
 from app.sources.models import Transcript, VideoMeta
-from app.sources.youtube import YouTubeUnavailable, fetch_transcript, list_videos
+from app.sources.youtube import (
+    YouTubeUnavailable,
+    _pick_avatar,
+    fetch_transcript,
+    list_videos,
+)
 
 
 def _make_ydl_mock(entries: list, title: str | None = None) -> MagicMock:
@@ -188,6 +193,54 @@ def test_fetch_transcript_raises_on_download_error(mock_cls):
 
     with pytest.raises(YouTubeUnavailable):
         fetch_transcript("dQw4w9WgXcQ")
+
+
+@patch("app.sources.youtube.YoutubeDL")
+def test_fetch_transcript_captures_channel(mock_cls):
+    info = {
+        "language": "fr",
+        "subtitles": {},
+        "automatic_captions": {"fr": _track("http://x/fr.json3")},
+        "channel": "3Blue1Brown",
+        "channel_url": "https://www.youtube.com/channel/UCYO",
+    }
+    mock_cls.return_value.__enter__.return_value = _transcript_ydl(
+        info, _json3(_event("Bonjour", 0, 1000))
+    )
+
+    result = fetch_transcript("vid")
+
+    assert result.uploader == "3Blue1Brown"
+    assert result.channel_url == "https://www.youtube.com/channel/UCYO"
+
+
+# ── _pick_avatar ─────────────────────────────────────────────────────────────
+
+def test_pick_avatar_prefers_uncropped():
+    thumbs = [
+        {"id": "0", "url": "banner.png", "width": 2560, "height": 424},
+        {"id": "7", "url": "square.png", "width": 900, "height": 900},
+        {"id": "avatar_uncropped", "url": "avatar.png"},
+    ]
+    assert _pick_avatar(thumbs) == "avatar.png"
+
+
+def test_pick_avatar_falls_back_to_largest_square():
+    thumbs = [
+        {"id": "0", "url": "banner.png", "width": 2560, "height": 424},
+        {"id": "a", "url": "small.png", "width": 88, "height": 88},
+        {"id": "b", "url": "big.png", "width": 900, "height": 900},
+    ]
+    assert _pick_avatar(thumbs) == "big.png"
+
+
+def test_pick_avatar_ignores_banner_only():
+    thumbs = [{"id": "0", "url": "banner.png", "width": 2560, "height": 424}]
+    assert _pick_avatar(thumbs) is None
+
+
+def test_pick_avatar_empty():
+    assert _pick_avatar([]) is None
 
 
 @patch("app.sources.youtube.YoutubeDL")

@@ -109,6 +109,8 @@ def _youtube_chapter(
         title=item.title,
         source_type="youtube",
         source_url=item.url,
+        author=transcript.uploader,
+        channel_url=transcript.channel_url,
         content_md=content_md,
     )
 

@@ -47,6 +47,8 @@ def _get_cached(video_id: str) -> Transcript | None:
         language=row["language"],
         segments=segments,
         chapters=chapters,
+        uploader=row["uploader"],
+        channel_url=row["channel_url"],
     )
 
 
@@ -56,14 +58,16 @@ def _store(transcript: Transcript) -> None:
     with get_connection() as conn:
         conn.execute(
             "INSERT OR REPLACE INTO transcript_cache "
-            "(video_id, language, segments, fetched_at, chapters) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "(video_id, language, segments, fetched_at, chapters, uploader, channel_url) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 transcript.video_id,
                 transcript.language,
                 segments_json,
                 datetime.now(timezone.utc).isoformat(),
                 chapters_json,
+                transcript.uploader,
+                transcript.channel_url,
             ),
         )
         conn.commit()

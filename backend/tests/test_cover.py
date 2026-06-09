@@ -15,8 +15,11 @@ def _book(chapters):
     )
 
 
-def _ch(source_type, url):
-    return CompiledChapter(title="c", source_type=source_type, source_url=url, content_md="x")
+def _ch(source_type, url, channel_url=None):
+    return CompiledChapter(
+        title="c", source_type=source_type, source_url=url,
+        content_md="x", channel_url=channel_url,
+    )
 
 
 def test_parse_icon_size():
@@ -46,9 +49,39 @@ def test_source_emblem_none_for_multiple_domains(tmp_path, monkeypatch):
     assert epub_module._source_emblem(book, tmp_path) is None
 
 
-def test_source_emblem_none_when_youtube_present(tmp_path, monkeypatch):
+def test_source_emblem_none_for_mixed_blog_and_youtube(tmp_path, monkeypatch):
     monkeypatch.setattr(epub_module, "fetch_favicon", lambda *a, **k: 1 / 0)
-    book = _book([_ch("blog", "https://a.com/x"), _ch("youtube", "https://youtube.com/watch?v=1")])
+    monkeypatch.setattr(epub_module, "fetch_channel_avatar_url", lambda *a, **k: 1 / 0)
+    book = _book([
+        _ch("blog", "https://a.com/x"),
+        _ch("youtube", "https://youtube.com/watch?v=1", channel_url="https://youtube.com/channel/C"),
+    ])
+    assert epub_module._source_emblem(book, tmp_path) is None
+
+
+def test_source_emblem_uses_avatar_for_single_channel(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        epub_module, "fetch_channel_avatar_url", lambda url: "https://yt3/avatar.png"
+    )
+
+    def fake_icon(url, dest, *a, **k):
+        dest.write_bytes(b"x")
+        return dest
+
+    monkeypatch.setattr(epub_module, "fetch_remote_icon", fake_icon)
+    book = _book([
+        _ch("youtube", "https://youtube.com/watch?v=1", channel_url="https://youtube.com/channel/C"),
+        _ch("youtube", "https://youtube.com/watch?v=2", channel_url="https://youtube.com/channel/C"),
+    ])
+    assert epub_module._source_emblem(book, tmp_path) is not None
+
+
+def test_source_emblem_none_for_multiple_channels(tmp_path, monkeypatch):
+    monkeypatch.setattr(epub_module, "fetch_channel_avatar_url", lambda *a, **k: 1 / 0)
+    book = _book([
+        _ch("youtube", "https://youtube.com/watch?v=1", channel_url="https://youtube.com/channel/A"),
+        _ch("youtube", "https://youtube.com/watch?v=2", channel_url="https://youtube.com/channel/B"),
+    ])
     assert epub_module._source_emblem(book, tmp_path) is None
 
 

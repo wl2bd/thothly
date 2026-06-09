@@ -31,6 +31,9 @@ class Transcript(BaseModel):
     language: str
     segments: list[TranscriptSegment]
     chapters: list[Chapter] = []
+    # Channel name → chapter author; channel page URL → cover avatar emblem.
+    uploader: str | None = None
+    channel_url: str | None = None
 
     @property
     def full_text(self) -> str:
