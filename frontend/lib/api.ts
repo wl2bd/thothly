@@ -54,6 +54,36 @@ export interface LlmConfig {
   roles: LlmRole[];
 }
 
+export type ResultType =
+  | "video"
+  | "playlist"
+  | "channel"
+  | "podcast"
+  | "episode"
+  | "web";
+
+export interface SearchResult {
+  id: string;
+  type: ResultType;
+  title: string;
+  url: string;
+  thumbnail: string | null;
+  duration_s: number | null;
+  author: string | null;
+  source: string;
+  meta: Record<string, unknown>;
+}
+
+export interface ProviderError {
+  provider: string;
+  message: string;
+}
+
+export interface SearchResponse {
+  results: SearchResult[];
+  errors: ProviderError[];
+}
+
 async function parseError(res: Response): Promise<never> {
   const data = await res.json().catch(() => ({ detail: `Request failed: ${res.status}` }));
   throw new Error(data.detail ?? `Request failed: ${res.status}`);
@@ -102,4 +132,16 @@ export async function confirmJob(
 
 export function getDownloadUrl(id: string): string {
   return `/api/jobs/${id}/download`;
+}
+
+export async function search(
+  query: string,
+  signal?: AbortSignal,
+): Promise<SearchResponse> {
+  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+    cache: "no-store",
+    signal,
+  });
+  if (!res.ok) return parseError(res);
+  return res.json();
 }
