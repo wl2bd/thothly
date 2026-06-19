@@ -54,18 +54,17 @@ def derive_book_title(source_names: list[str | None]) -> str:
     """A meaningful default book title from the source names.
 
     Uses the actual source name (playlist/channel/feed/site title) rather than
-    a generic count, so the EPUB is called e.g. "Récits et analyses
-    théologiques" instead of "Thothly — 2 YouTube videos". The user can still
-    override it before compiling.
+    a generic count, so the EPUB takes the real source name (e.g. a channel or
+    blog title) instead of a generic "Thothly - 2 YouTube videos". The user can
+    still override it before compiling.
     """
     names = [n.strip() for n in source_names if n and n.strip()]
     if not names:
-        return "Compilation Thothly"
+        return "Thothly compilation"
     if len(names) == 1:
         return names[0]
     rest = len(names) - 1
-    suffix = "s" if rest > 1 else ""
-    return f"{names[0]} (+{rest} autre{suffix})"
+    return f"{names[0]} (+{rest} more)"
 
 
 def html_to_markdown(html: str) -> str:

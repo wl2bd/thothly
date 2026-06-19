@@ -140,7 +140,7 @@ export default function JobPage() {
             Thothly
           </Link>
           <Link href="/" className="text-muted-foreground text-sm hover:underline">
-            ← Nouvelle compilation
+            ← New compilation
           </Link>
         </header>
 
@@ -153,9 +153,9 @@ export default function JobPage() {
         <Card>
           <CardContent>
           {!job ? (
-            <StatusMessage label="Chargement…" />
+            <StatusMessage label="Loading…" />
           ) : job.status === "pending" || job.status === "discovering" ? (
-            <StatusMessage label="Découverte des sources en cours…" />
+            <StatusMessage label="Discovering sources…" />
           ) : job.status === "reviewing" ? (
             <ReviewList
               items={job.discovered_items}
@@ -174,11 +174,11 @@ export default function JobPage() {
               onConfirm={onConfirm}
             />
           ) : job.status === "processing" ? (
-            <StatusMessage label="Compilation de l'EPUB en cours…" />
+            <StatusMessage label="Compiling the EPUB…" />
           ) : job.status === "completed" ? (
             <div className="flex flex-col items-start gap-6">
               <div className="flex flex-col gap-1.5">
-                <p className="text-sm font-medium">Ton EPUB est prêt 🎉</p>
+                <p className="text-sm font-medium">Your EPUB is ready 🎉</p>
                 {job.book_title && (
                   <p className="text-muted-foreground text-sm">{job.book_title}</p>
                 )}
@@ -188,13 +188,13 @@ export default function JobPage() {
                 download
                 className={buttonVariants({ size: "lg" })}
               >
-                Télécharger l&apos;EPUB
+                Download the EPUB
               </a>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <p className="text-destructive text-sm font-medium">
-                La compilation a échoué.
+                Compilation failed.
               </p>
               {job.error && (
                 <p className="text-muted-foreground font-mono text-xs">{job.error}</p>
@@ -295,28 +295,28 @@ function ReviewList({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="book-title" className="text-muted-foreground text-xs">
-          Titre du livre
+          Book title
         </Label>
         <Input
           id="book-title"
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Titre de la compilation"
+          placeholder="Compilation title"
         />
       </div>
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">
-          {items.length} élément{items.length > 1 ? "s" : ""} — {selected.size}{" "}
-          sélectionné{selected.size > 1 ? "s" : ""}
+          {items.length} item{items.length !== 1 ? "s" : ""} — {selected.size}{" "}
+          selected
         </p>
         <div className="flex gap-1">
           <Button type="button" variant="ghost" size="xs" onClick={onSelectAll}>
-            Tout cocher
+            Select all
           </Button>
           <Button type="button" variant="ghost" size="xs" onClick={onSelectNone}>
-            Tout décocher
+            Deselect all
           </Button>
         </div>
       </div>
@@ -326,14 +326,14 @@ function ReviewList({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher dans les titres…"
+          placeholder="Search titles…"
         />
       )}
 
       <div className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
         {groups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-8 text-center text-sm">
-            Aucun résultat pour « {query} ».
+            No results for “{query}”.
           </p>
         ) : (
           groups.map(([sourceIndex, groupItems]) => {
@@ -366,7 +366,7 @@ function ReviewList({
                     onClick={() => onSelectItems(ids, !allSelected)}
                     className="text-muted-foreground hover:text-foreground shrink-0 text-xs hover:underline"
                   >
-                    {allSelected ? "Décocher" : "Cocher"}
+                    {allSelected ? "Deselect" : "Select"}
                   </button>
                 </div>
                 {!isCollapsed &&
@@ -415,8 +415,8 @@ function ReviewList({
         className="w-full"
       >
         {confirming
-          ? "Lancement…"
-          : `Compiler ${selected.size} élément${selected.size > 1 ? "s" : ""}`}
+          ? "Starting…"
+          : `Compile ${selected.size} item${selected.size !== 1 ? "s" : ""}`}
       </Button>
     </div>
   );
@@ -439,13 +439,13 @@ function RoleSelector({
   return (
     <div className="border-border flex flex-col gap-3 rounded-xl border border-dashed p-4">
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-medium">Nettoyage IA</p>
+        <p className="text-sm font-medium">AI cleanup</p>
         <p className="text-muted-foreground text-xs">
           {disabled
-            ? "Configure un LLM côté serveur (LLM_BASE_URL / LLM_MODEL) pour l'activer."
+            ? "Configure an LLM on the server (LLM_BASE_URL / LLM_MODEL) to enable it."
             : unpunctuatedSelected > 0
-              ? `${unpunctuatedSelected} vidéo${unpunctuatedSelected > 1 ? "s" : ""} non ponctuée${unpunctuatedSelected > 1 ? "s" : ""} parmi la sélection — la ponctuation les rendra lisibles.`
-              : "Améliore les transcripts sélectionnés. Sans coût sur le chemin par défaut."}
+              ? `${unpunctuatedSelected} unpunctuated video${unpunctuatedSelected !== 1 ? "s" : ""} in the selection — punctuation will make them readable.`
+              : "Improves the selected transcripts. No cost on the default path."}
         </p>
       </div>
 
@@ -498,10 +498,10 @@ function formatMeta(item: DiscoveredItem): string[] {
   // char-count reflected the RSS summary (often truncated), so it stays hidden.
   const parts: string[] = [];
   if (item.reading_time_min != null) {
-    parts.push(`~${item.reading_time_min} min de lecture`);
+    parts.push(`~${item.reading_time_min} min read`);
   }
   if (item.word_count != null) {
-    parts.push(`${item.word_count.toLocaleString("fr-FR")} mots`);
+    parts.push(`${item.word_count.toLocaleString("en-US")} words`);
   }
   if (item.estimated_duration_s != null) {
     const m = Math.floor(item.estimated_duration_s / 60);
@@ -520,21 +520,21 @@ function statusBadge(item: DiscoveredItem) {
   if (item.item_type !== "youtube") return null;
 
   if (item.has_transcript === false) {
-    return <Badge variant="destructive">⛔ Pas de sous-titres</Badge>;
+    return <Badge variant="destructive">⛔ No subtitles</Badge>;
   }
   if (item.has_transcript == null) {
-    return <Badge variant="secondary">❓ Sous-titres non vérifiés</Badge>;
+    return <Badge variant="secondary">❓ Subtitles unchecked</Badge>;
   }
   if (item.is_punctuated) {
     return (
       <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-        ✅ Ponctué
+        ✅ Punctuated
       </Badge>
     );
   }
   return (
     <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-500">
-      ⚠️ Nettoyage LLM
+      ⚠️ LLM cleanup
     </Badge>
   );
 }

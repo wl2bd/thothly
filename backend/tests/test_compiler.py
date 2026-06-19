@@ -168,10 +168,10 @@ def test_compiled_book_sources_page_lists_every_source():
 
 
 def test_derive_book_title():
-    assert derive_book_title([]) == "Compilation Thothly"
-    assert derive_book_title([None, None]) == "Compilation Thothly"
+    assert derive_book_title([]) == "Thothly compilation"
+    assert derive_book_title([None, None]) == "Thothly compilation"
     assert derive_book_title(["Récits théologiques"]) == "Récits théologiques"
-    assert derive_book_title(["X", "Y"]) == "X (+1 autre)"
-    assert derive_book_title(["X", "Y", "Z"]) == "X (+2 autres)"
+    assert derive_book_title(["X", "Y"]) == "X (+1 more)"
+    assert derive_book_title(["X", "Y", "Z"]) == "X (+2 more)"
     # None entries are ignored, real names kept
     assert derive_book_title([None, "TokenBrice"]) == "TokenBrice"

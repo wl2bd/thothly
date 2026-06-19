@@ -29,41 +29,40 @@ class Role:
 
 
 _PUNCTUATE_PROMPT = (
-    "Tu es un éditeur de transcriptions. On te donne le texte brut d'une "
-    "transcription automatique (sous-titres) sans ponctuation ni majuscules. "
-    "Restaure la ponctuation, les majuscules et découpe le texte en paragraphes "
-    "lisibles. Ne résume pas, n'ajoute rien et ne supprime aucun contenu : "
-    "conserve tous les mots et leur ordre. Conserve la langue d'origine. "
-    "Réponds uniquement avec le texte corrigé en Markdown (paragraphes séparés "
-    "par une ligne vide), sans aucun commentaire."
+    "You are a transcript editor. You are given the raw text of an automatic "
+    "transcription (subtitles) with no punctuation or capitalization. Restore "
+    "punctuation and capitalization, and break the text into readable "
+    "paragraphs. Do not summarize, add, or remove any content: keep every word "
+    "and its order. Keep the original language (do not translate). Reply only "
+    "with the corrected text in Markdown (paragraphs separated by a blank line), "
+    "with no commentary."
 )
 
 _COPYEDIT_PROMPT = (
-    "Tu es un correcteur. On te donne un texte déjà ponctué. Supprime les tics de "
-    "langage et hésitations (euh, hum, ben, « voilà quoi », faux départs répétés), "
-    "corrige les fautes évidentes de reconnaissance vocale et améliore légèrement "
-    "la fluidité — sans changer le sens, sans résumer et sans ajouter d'idées. "
-    "Conserve la langue d'origine, la structure en paragraphes et tout le "
-    "formatage Markdown existant (gras **, italique *, liens [texte](url), "
-    "listes, tableaux). Réponds uniquement avec le texte corrigé en Markdown, "
-    "sans commentaire."
+    "You are a copy editor. You are given an already-punctuated text. Remove "
+    "filler words and hesitations (uh, um, you know, repeated false starts), fix "
+    "obvious speech-recognition errors, and lightly improve the flow — without "
+    "changing the meaning, summarizing, or adding ideas. Keep the original "
+    "language (do not translate), the paragraph structure, and all existing "
+    "Markdown formatting (bold **, italics *, links [text](url), lists, tables). "
+    "Reply only with the corrected text in Markdown, with no commentary."
 )
 
 _SECTIONS_PROMPT = (
-    "Tu es un éditeur. On te donne un texte continu (transcription ou article). "
-    "Insère des titres de section de niveau 2 en Markdown (## Titre) là où le "
-    "sujet change, pour structurer la lecture. N'ajoute, ne supprime et ne "
-    "reformule aucun contenu en dehors de ces titres. Les titres doivent être "
-    "courts et dans la langue du texte. Réponds uniquement avec le texte "
-    "structuré en Markdown, sans commentaire."
+    "You are an editor. You are given a continuous text (a transcript or "
+    "article). Insert level-2 Markdown section headings (## Title) wherever the "
+    "topic changes, to structure the reading. Do not add, remove, or rephrase "
+    "any content other than these headings. The headings must be short and in "
+    "the language of the text (do not translate). Reply only with the structured "
+    "text in Markdown, with no commentary."
 )
 
 _PREFACE_PROMPT = (
-    "Tu es l'éditeur d'un recueil de lecture. On te donne le titre du livre et la "
-    "liste de ses chapitres. Rédige une courte préface (2 à 4 paragraphes) qui "
-    "présente le recueil et ce que le lecteur va y trouver. Écris dans la langue "
-    "des titres, sur un ton sobre et éditorial. Réponds uniquement avec le texte "
-    "de la préface en Markdown, sans titre ni commentaire."
+    "You are the editor of a reading collection. You are given the book's title "
+    "and the list of its chapters. Write a short preface (2 to 4 paragraphs) "
+    "that introduces the collection and what the reader will find in it. Write "
+    "in English, in a sober, editorial tone. Reply only with the preface text in "
+    "Markdown, with no title or commentary."
 )
 
 
@@ -72,20 +71,20 @@ _PREFACE_PROMPT = (
 ROLES: list[Role] = [
     Role(
         id=PUNCTUATE,
-        label="Ponctuation",
+        label="Punctuation",
         description=(
-            "Restaure la ponctuation et les paragraphes des transcriptions non "
-            "ponctuées. N'agit que sur les vidéos signalées « à nettoyer »."
+            "Restores punctuation and paragraphs to unpunctuated transcripts. "
+            "Only acts on videos flagged “to clean up”."
         ),
         scope="item",
         system_prompt=_PUNCTUATE_PROMPT,
     ),
     Role(
         id=COPYEDIT,
-        label="Correction",
+        label="Copyedit",
         description=(
-            "Retire les tics de langage et corrige les fautes de reconnaissance "
-            "vocale, sans changer le sens."
+            "Removes filler words and fixes speech-recognition errors, without "
+            "changing the meaning."
         ),
         scope="item",
         system_prompt=_COPYEDIT_PROMPT,
@@ -94,16 +93,16 @@ ROLES: list[Role] = [
         id=SECTIONS,
         label="Sections",
         description=(
-            "Ajoute des titres de section pour les contenus sans structure "
-            "(vidéos sans chapitres), pour une meilleure table des matières."
+            "Adds section headings to content with no structure (videos without "
+            "chapters), for a better table of contents."
         ),
         scope="item",
         system_prompt=_SECTIONS_PROMPT,
     ),
     Role(
         id=PREFACE,
-        label="Préface",
-        description="Génère une courte préface en ouverture du livre.",
+        label="Preface",
+        description="Generates a short preface to open the book.",
         scope="book",
         system_prompt=_PREFACE_PROMPT,
     ),

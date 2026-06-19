@@ -53,7 +53,7 @@ export default function Home() {
       .map((url) => ({ url }));
 
     if (sources.length === 0) {
-      setError("Colle au moins un lien.");
+      setError("Paste at least one link.");
       return;
     }
 
@@ -75,9 +75,9 @@ export default function Home() {
             Thothly
           </h1>
           <p className="text-muted-foreground max-w-md text-pretty text-[0.95rem] leading-relaxed">
-            Colle des liens YouTube (vidéo, playlist, chaîne) ou de blogs, et
-            reçois un EPUB soigné pour ta liseuse. Le type est détecté
-            automatiquement.
+            Paste YouTube links (video, playlist, channel) or blogs, and get a
+            polished EPUB for your e-reader. The type is detected
+            automatically.
           </p>
         </header>
 
@@ -93,7 +93,7 @@ export default function Home() {
                       value={url}
                       onChange={(e) => updateUrl(index, e.target.value)}
                       onBlur={() => normalizeRow(index)}
-                      placeholder="youtube.com/watch?v=…  ou  unblog.com"
+                      placeholder="youtube.com/watch?v=…  or  someblog.com"
                     />
                     {urls.length > 1 && (
                       <Button
@@ -101,7 +101,7 @@ export default function Home() {
                         variant="ghost"
                         size="icon"
                         onClick={() => removeRow(index)}
-                        aria-label="Retirer le lien"
+                        aria-label="Remove link"
                       >
                         <XIcon />
                       </Button>
@@ -115,7 +115,7 @@ export default function Home() {
                   onClick={addRow}
                   className="text-muted-foreground w-full justify-center border-dashed"
                 >
-                  + Ajouter un lien
+                  + Add a link
                 </Button>
               </div>
 
@@ -125,7 +125,7 @@ export default function Home() {
                 disabled={submitting}
                 className="w-full"
               >
-                {submitting ? "Création…" : "Découvrir les sources"}
+                {submitting ? "Creating…" : "Discover sources"}
               </Button>
 
               {error && <p className="text-destructive text-sm">{error}</p>}

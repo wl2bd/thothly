@@ -41,7 +41,7 @@ class CompiledBook(BaseModel):
 
         # The generated preface opens the book, as its own front-matter heading.
         if self.preface and self.preface.strip():
-            parts.append("# Préface")
+            parts.append("# Preface")
             parts.append("")
             parts.append(self.preface.strip())
             parts.append("")
@@ -51,11 +51,11 @@ class CompiledBook(BaseModel):
 
             # Show the actual source URL as a clickable link so each chapter is
             # traceable back to (and re-openable from) its origin.
-            meta_parts = [f"*Source : [{chapter.source_url}]({chapter.source_url})*"]
+            meta_parts = [f"*Source: [{chapter.source_url}]({chapter.source_url})*"]
             if chapter.author:
-                meta_parts.append(f"*Auteur : {chapter.author}*")
+                meta_parts.append(f"*Author: {chapter.author}*")
             if chapter.published_at:
-                meta_parts.append(f"*Date : {chapter.published_at.strftime('%Y-%m-%d')}*")
+                meta_parts.append(f"*Date: {chapter.published_at.strftime('%Y-%m-%d')}*")
 
             parts.append("::: {.source-attribution}")
             parts.append(" | ".join(meta_parts))

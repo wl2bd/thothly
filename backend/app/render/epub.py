@@ -121,8 +121,8 @@ def _metadata_yaml(book: CompiledBook) -> str:
     lines = [f"title: {json.dumps(book.title)}", "author:"]
     lines += [f"  - {json.dumps(name)}" for name in authors]
     lines += [
-        'lang: "fr"',
-        'toc-title: "Table des matières"',
+        'lang: "en"',
+        'toc-title: "Table of contents"',
         f'date: "{book.generated_at.strftime("%Y-%m-%d")}"',
     ]
     return "\n".join(lines) + "\n"
@@ -203,7 +203,7 @@ def _inject_bodymatter(nav: str) -> str:
 
     item = (
         f'\n    <li>\n      <a href="{first_link.group(1)}" '
-        'epub:type="bodymatter">Début du texte</a>\n    </li>'
+        'epub:type="bodymatter">Start of content</a>\n    </li>'
     )
     block = landmarks.group(1) + landmarks.group(2) + item + landmarks.group(3)
     return nav[: landmarks.start()] + block + nav[landmarks.end() :]

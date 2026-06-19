@@ -116,7 +116,7 @@ def _discover_youtube_video(
 ) -> tuple[str | None, list[DiscoveredItem]]:
     video = fetch_video_meta(_clean_video_url(url))
     item = DiscoveredItem(
-        title=video.title or f"Vidéo YouTube {video.id}",
+        title=video.title or f"YouTube video {video.id}",
         url=video.url,
         item_type="youtube",
         source_index=source_index,
