@@ -8,6 +8,7 @@ from yt_dlp.utils import DownloadError
 
 import app.search.service as service
 from app.search.models import SearchResult
+from app.search.podcast_provider import PodcastProvider
 from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider
 
@@ -155,6 +156,56 @@ def test_web_provider_raises_on_http_error(mock_post):
 
     with pytest.raises(RuntimeError):
         WebProvider().search("q", limit=5)
+
+
+# ── PodcastProvider (iTunes Search API) mapping ──────────────────────────────
+
+_ITUNES_PAYLOAD = {
+    "results": [
+        {
+            "trackId": 4242,
+            "trackName": "Episode 1: Origins",
+            "collectionName": "The Show",
+            "episodeUrl": "https://cdn.example/ep1.mp3",
+            "trackTimeMillis": 3_600_000,
+            "artworkUrl600": "https://art/600.jpg",
+            "artworkUrl100": "https://art/100.jpg",
+            "feedUrl": "https://show.example/feed.xml",
+            "releaseDate": "2026-01-02T00:00:00Z",
+            "trackViewUrl": "https://podcasts.apple.com/ep1",
+        },
+        # No audio enclosure -> dropped (can't be transcribed into a chapter).
+        {"trackId": 7, "trackName": "Trailer", "collectionName": "The Show"},
+    ]
+}
+
+
+@patch("app.search.podcast_provider.httpx.get")
+def test_podcast_provider_maps_episodes(mock_get):
+    mock_get.return_value = _httpx_response("")
+    mock_get.return_value.json.return_value = _ITUNES_PAYLOAD
+
+    results = PodcastProvider().search("origins", limit=5)
+
+    assert len(results) == 1  # trailer without episodeUrl dropped
+    r = results[0]
+    assert r.id == "podcast:4242"
+    assert r.type == "episode"
+    assert r.source == "podcast"
+    assert r.title == "Episode 1: Origins"
+    assert r.url == "https://cdn.example/ep1.mp3"
+    assert r.duration_s == 3600  # 3_600_000 ms
+    assert r.author == "The Show"
+    assert r.thumbnail == "https://art/600.jpg"  # largest artwork
+    assert r.meta["feed_url"] == "https://show.example/feed.xml"
+
+
+@patch("app.search.podcast_provider.httpx.get")
+def test_podcast_provider_raises_on_http_error(mock_get):
+    mock_get.side_effect = httpx.ConnectError("boom")
+
+    with pytest.raises(RuntimeError):
+        PodcastProvider().search("q", limit=5)
 
 
 # ── service: parallel merge + per-provider isolation ─────────────────────────

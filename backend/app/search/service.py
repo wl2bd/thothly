@@ -3,6 +3,7 @@ import logging
 
 from app.search.base import Provider
 from app.search.models import ProviderError, SearchResponse, SearchResult
+from app.search.podcast_provider import PodcastProvider
 from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # The provider registry. Adding a source kind = add one class here; the service,
 # endpoint, and frontend stay untouched.
-PROVIDERS: list[Provider] = [YouTubeProvider(), WebProvider()]
+PROVIDERS: list[Provider] = [YouTubeProvider(), WebProvider(), PodcastProvider()]
 
 # Per-provider wall-clock budget: a slow or hung provider must never hold up the
 # results the others already produced, so each is capped independently.
