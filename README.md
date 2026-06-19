@@ -79,6 +79,21 @@ silently rewrite your book. Results are cached per (content, role-set, model),
 so re-compiling is free, and any failure falls back to the zero-LLM path — it
 never breaks a compile. Leave the variables empty to keep Thothly fully free.
 
+## Optional podcast transcription
+
+Search also covers **podcasts** (Apple's keyless iTunes index). A picked
+episode is audio, so turning it into a chapter needs a speech-to-text endpoint —
+the only outbound dependency beyond the keyless scrapers. Point `STT_BASE_URL`,
+`STT_MODEL` (and `STT_API_KEY` when required) at any OpenAI-compatible
+`audio/transcriptions` endpoint: **Mistral Voxtral** (`voxtral-mini-latest`), a
+local vLLM/whisper.cpp server (no key), or OpenAI. See `.env.example`.
+
+Transcription runs lazily — only for the episodes you select — and is cached by
+audio URL, so re-compiling never re-pays for it. Long episodes are split into
+≤25-min chunks, which needs `ffmpeg` installed (short ones transcribe without
+it). Leave the variables empty and episodes are simply skipped; many podcasts
+are also on YouTube, where native subtitles already cover them for free.
+
 ## Configuration
 
 All settings have sensible defaults; see `.env.example` for the full list.
@@ -88,6 +103,7 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `DATA_DIR` | `/data` | SQLite DB + generated EPUBs (mounted from `./data` in Compose) |
 | `BACKEND_URL` | `http://backend:8000` | Frontend → backend (set by Compose; override only outside it) |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
+| `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
 
 ## Running without Docker
 
