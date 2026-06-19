@@ -1,6 +1,5 @@
 import logging
 import re
-from pathlib import Path
 
 from app.core.config import settings
 from app.jobs.models import DiscoveredItemResponse
@@ -24,6 +23,7 @@ from app.pipeline.models import CompiledChapter
 from app.pipeline.roles import PREFACE, has_role
 from app.render.epub import render_epub
 from app.sources.blog import ScrapeUnavailable, scrape_article
+from app.sources.podcast import load_episode_transcript
 from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import YouTubeUnavailable
 
@@ -51,6 +51,8 @@ def run_compilation(job_id: str) -> None:
             try:
                 if item.item_type == "youtube":
                     chapter = _youtube_chapter(item, job_id, roles, model)
+                elif item.item_type == "podcast":
+                    chapter = _podcast_chapter(item, job_id, roles, model)
                 else:
                     chapter = _blog_chapter(item, job_id, roles, model)
             except YouTubeUnavailable as exc:
@@ -111,6 +113,33 @@ def _youtube_chapter(
         source_url=item.url,
         author=transcript.uploader,
         channel_url=transcript.channel_url,
+        content_md=content_md,
+    )
+
+
+def _podcast_chapter(
+    item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
+) -> CompiledChapter | None:
+    # Transcribe lazily (and cached by audio URL): a metered API call runs once,
+    # only for selected episodes. No STT endpoint, or a download/transcription
+    # failure, leaves transcript None → the episode is skipped, like a video
+    # without subtitles.
+    transcript = load_episode_transcript(item.url)
+    if transcript is None:
+        logger.info("No transcript for podcast %s, skipping (job %s)", item.url, job_id)
+        return None
+
+    if roles:
+        content_md = clean_transcript(transcript, roles, model)
+    else:
+        content_md = transcript_to_markdown(transcript)
+    if not content_md:
+        return None
+
+    return CompiledChapter(
+        title=item.title,
+        source_type="podcast",
+        source_url=item.url,
         content_md=content_md,
     )
 

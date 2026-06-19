@@ -49,6 +49,17 @@ def init_db() -> None:
                 chapters   TEXT
             )
         """)
+        # Episode transcripts produced by the speech-to-text layer, keyed by the
+        # audio URL. Transcription is metered (a paid API call), so caching it
+        # means re-compiling — or changing LLM roles — never re-transcribes.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS podcast_transcript_cache (
+                audio_url  TEXT PRIMARY KEY,
+                language   TEXT NOT NULL,
+                segments   TEXT NOT NULL,
+                fetched_at TEXT NOT NULL
+            )
+        """)
         # Cleaned-content cache for the LLM roles, keyed by the content (video id
         # or blog url), the applied role set, and the model — so a re-compile with
         # the same choices never re-calls the LLM.

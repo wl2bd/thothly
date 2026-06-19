@@ -8,13 +8,17 @@ export type JobStatus =
 
 export interface Source {
   url: string;
+  // Optional hints the backend uses only for podcast episodes (whose audio URL
+  // isn't self-identifying and carries no title); omitted for pasted links.
+  kind?: string;
+  title?: string;
 }
 
 export interface DiscoveredItem {
   id: string;
   source_index: number;
   item_index: number;
-  item_type: "youtube" | "blog";
+  item_type: "youtube" | "blog" | "podcast";
   title: string;
   url: string;
   estimated_duration_s: number | null;

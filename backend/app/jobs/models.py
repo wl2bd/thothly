@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
-ItemType = Literal["youtube", "blog"]
+ItemType = Literal["youtube", "blog", "podcast"]
 
 JobStatus = Literal[
     "pending",
@@ -16,9 +16,17 @@ JobStatus = Literal[
 
 
 class Source(BaseModel):
-    """A source is just a URL — its kind is auto-detected during discovery."""
+    """A source is a URL; its kind is auto-detected during discovery.
+
+    The search-staging flow may add optional hints a pasted URL can't supply: a
+    picked podcast episode sets kind="podcast" (its audio enclosure URL isn't
+    self-identifying) and carries the episode title (not derivable from the URL).
+    Both are ignored for kinds that re-derive their own metadata (youtube, blog).
+    """
 
     url: HttpUrl
+    kind: str | None = None
+    title: str | None = None
 
 
 class JobCreate(BaseModel):

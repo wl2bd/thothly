@@ -44,6 +44,56 @@ def test_run_compilation_youtube_completes(
     assert mock_update.call_args.args[1] == "completed"
 
 
+def _podcast_item() -> DiscoveredItemResponse:
+    return DiscoveredItemResponse(
+        id="j-2-0", source_index=2, item_index=0, item_type="podcast",
+        title="Episode 1", url="https://cdn.example/ep1.mp3",
+    )
+
+
+@patch("app.jobs.runner.get_job")
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_episode_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_run_compilation_podcast_completes(
+    mock_selected, mock_tx, mock_render, mock_update, mock_job, tmp_path, monkeypatch
+):
+    import app.core.config as cfg
+    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+
+    mock_selected.return_value = [_podcast_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
+    mock_tx.return_value = Transcript(
+        video_id="https://cdn.example/ep1.mp3", language="",
+        segments=[TranscriptSegment(text="Welcome to the show.", start_s=0.0, duration_s=1.0)],
+    )
+
+    runner.run_compilation("job1")
+
+    mock_render.assert_called_once()
+    assert mock_update.call_args.args[1] == "completed"
+
+
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_episode_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_run_compilation_skips_podcast_without_transcript(
+    mock_selected, mock_tx, mock_render, mock_update, tmp_path, monkeypatch
+):
+    import app.core.config as cfg
+    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+
+    mock_selected.return_value = [_podcast_item()]
+    mock_tx.return_value = None  # no STT configured / transcription failed
+
+    runner.run_compilation("job1")
+
+    mock_render.assert_not_called()
+    assert mock_update.call_args.args[1] == "failed"  # no usable content
+
+
 @patch("app.jobs.runner.get_job")
 @patch("app.jobs.runner.update_job_status")
 @patch("app.jobs.runner.render_epub")

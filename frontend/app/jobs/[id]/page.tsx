@@ -383,7 +383,11 @@ function ReviewList({
                         <span className="truncate text-sm">{item.title}</span>
                         <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
                           <span>
-                            {item.item_type === "youtube" ? "YouTube" : "Article"}
+                            {item.item_type === "youtube"
+                              ? "YouTube"
+                              : item.item_type === "podcast"
+                                ? "Podcast"
+                                : "Article"}
                           </span>
                           {formatMeta(item).map((part) => (
                             <span key={part}>· {part}</span>

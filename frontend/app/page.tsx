@@ -155,7 +155,15 @@ export default function Home() {
     setSubmitting(true);
     setError(null);
     try {
-      const job = await createJob(staged.map((s) => ({ url: s.url })));
+      const job = await createJob(
+        staged.map((s) =>
+          // A podcast episode's audio URL isn't self-identifying and carries no
+          // title, so pass both as hints. Other kinds re-derive their own.
+          s.source === "podcast"
+            ? { url: s.url, kind: "podcast", title: s.title }
+            : { url: s.url },
+        ),
+      );
       router.push(`/jobs/${job.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

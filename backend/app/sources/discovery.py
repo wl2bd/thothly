@@ -1,6 +1,7 @@
 import logging
 import re
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -52,10 +53,14 @@ class DiscoveredItem:
     reading_time_min: int | None = None
 
 
+_AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav")
+
+
 def detect_kind(url: str) -> str:
     """Classify a pasted URL so the user never has to pick a source type.
 
-    Returns one of: youtube_playlist, youtube_video, youtube_channel, blog.
+    Returns one of: youtube_playlist, youtube_video, youtube_channel, podcast,
+    blog.
     """
     u = url.lower()
     # An explicit video id wins over a playlist context: a link to a specific
@@ -66,28 +71,55 @@ def detect_kind(url: str) -> str:
         return "youtube_playlist"
     if re.search(r"youtube\.com/(@|channel/|c/|user/)", u):
         return "youtube_channel"
+    # A bare audio enclosure (pasted, or wrapped only by query/fragment) is an
+    # episode. Picked podcast results skip this by passing kind="podcast".
+    if urlparse(u).path.endswith(_AUDIO_EXTENSIONS):
+        return "podcast"
     return "blog"
 
 
 def discover_source(
-    url: str, source_index: int
+    url: str, source_index: int, *, kind: str | None = None, title: str | None = None
 ) -> tuple[str | None, list[DiscoveredItem]]:
-    """Return the (source name, items) for a pasted URL.
+    """Return the (source name, items) for a source URL.
 
     The source name (playlist/channel/feed/site title) feeds a meaningful
     default book title; it's captured from the same calls that list the items,
     so it costs no extra request.
-    """
-    kind = detect_kind(url)
-    logger.info("Discovering source %d (kind=%s, url=%s)", source_index, kind, url)
 
-    if kind == "youtube_playlist":
+    `kind`/`title` are optional hints from the search-staging flow: a picked
+    podcast episode passes kind="podcast" (its audio URL isn't self-identifying)
+    and its title. A pasted URL leaves them None and the kind is auto-detected.
+    """
+    resolved = kind or detect_kind(url)
+    logger.info("Discovering source %d (kind=%s, url=%s)", source_index, resolved, url)
+
+    if resolved == "podcast":
+        return _discover_podcast(url, source_index, title)
+    if resolved == "youtube_playlist":
         return _discover_youtube(url, source_index)
-    if kind == "youtube_channel":
+    if resolved == "youtube_channel":
         return _discover_youtube(_channel_videos_url(url), source_index)
-    if kind == "youtube_video":
+    if resolved == "youtube_video":
         return _discover_youtube_video(url, source_index)
     return _discover_blog(url, source_index)
+
+
+def _discover_podcast(
+    url: str, source_index: int, title: str | None
+) -> tuple[str | None, list[DiscoveredItem]]:
+    """One item for a podcast episode. The audio enclosure isn't probed here —
+    transcription is metered, so it's deferred to compile and runs only for the
+    episodes the user actually selects (unlike YouTube's free subtitle probe)."""
+    episode_title = title or _episode_title_from_url(url)
+    item = DiscoveredItem(
+        title=episode_title,
+        url=url,
+        item_type="podcast",
+        source_index=source_index,
+        item_index=0,
+    )
+    return episode_title, [item]
 
 
 def _discover_youtube(
@@ -337,6 +369,13 @@ def _article_to_item(article: Article, source_index: int, item_index: int) -> Di
         estimated_size_chars=len(article.content_html) if article.content_html else None,
         preview_html=preview,
     )
+
+
+def _episode_title_from_url(url: str) -> str:
+    """A readable fallback episode title from a bare audio URL: the filename
+    without its audio extension (e.g. ".../ep1.mp3" -> "Ep1")."""
+    stem = PurePosixPath(urlparse(url).path).stem
+    return stem.replace("-", " ").replace("_", " ").strip().title() or url
 
 
 def _slug_from_url(url: str) -> str:

@@ -21,7 +21,9 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
         items: list[DiscoveredItemResponse] = []
         source_names: list[str | None] = []
         for index, source in enumerate(sources):
-            source_name, discovered = discover_source(str(source.url), index)
+            source_name, discovered = discover_source(
+                str(source.url), index, kind=source.kind, title=source.title
+            )
             source_names.append(source_name)
             items.extend(
                 DiscoveredItemResponse(
