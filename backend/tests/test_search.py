@@ -1,12 +1,14 @@
 import asyncio
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from yt_dlp.utils import DownloadError
 
 import app.search.service as service
 from app.search.models import SearchResult
+from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider
 
 
@@ -88,6 +90,71 @@ def test_youtube_provider_raises_on_ydl_error(mock_cls):
 
     with pytest.raises(RuntimeError):
         YouTubeProvider().search("q", limit=5)
+
+
+# ── WebProvider (DuckDuckGo HTML) mapping ────────────────────────────────────
+
+# A trimmed DuckDuckGo HTML results page: one normal hit (via the /l/ redirect),
+# one sponsored hit that must be skipped, and a duplicate of the first.
+_DDG_HTML = """
+<div class="result results_links results_links_deep web-result">
+  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fpost&rut=x">
+    Example Post
+  </a>
+  <a class="result__snippet">A snippet about the post.</a>
+</div>
+<div class="result result--ad">
+  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fad.example%2Fbuy">Ad</a>
+</div>
+<div class="result web-result">
+  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fpost">Dup</a>
+</div>
+"""
+
+
+def _httpx_response(text: str, status: int = 200) -> MagicMock:
+    resp = MagicMock()
+    resp.text = text
+    resp.raise_for_status.return_value = None
+    return resp
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_parses_results(mock_post):
+    mock_post.return_value = _httpx_response(_DDG_HTML)
+
+    results = WebProvider().search("example", limit=5)
+
+    # Ad skipped, duplicate collapsed → one normalized hit.
+    assert len(results) == 1
+    r = results[0]
+    assert r.id == "web:https://example.com/post"
+    assert r.type == "web"
+    assert r.source == "web"
+    assert r.title == "Example Post"
+    assert r.url == "https://example.com/post"
+    assert r.author == "example.com"
+    assert r.meta["snippet"] == "A snippet about the post."
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_respects_limit(mock_post):
+    rows = "".join(
+        f'<div class="result"><a class="result__a" '
+        f'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fe.com%2F{i}">T{i}</a></div>'
+        for i in range(10)
+    )
+    mock_post.return_value = _httpx_response(rows)
+
+    assert len(WebProvider().search("q", limit=3)) == 3
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_raises_on_http_error(mock_post):
+    mock_post.side_effect = httpx.ConnectError("boom")
+
+    with pytest.raises(RuntimeError):
+        WebProvider().search("q", limit=5)
 
 
 # ── service: parallel merge + per-provider isolation ─────────────────────────
