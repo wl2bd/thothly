@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 import app.sources.podcast as podcast
+from app.pipeline.transcribe import STTResult, STTSegment
 from app.sources.discovery import detect_kind, discover_source
 from app.sources.podcast import load_episode_transcript
 
@@ -43,6 +44,13 @@ def test_discover_podcast_falls_back_to_url_slug():
     assert items[0].title == "Ep1"  # derived from the .mp3 slug
 
 
+def test_discover_podcast_carries_duration_for_cost_estimate():
+    # The episode length (from the search result) must reach the discovered item,
+    # or the review screen's transcription cost estimate reads as $0.
+    _, items = discover_source(AUDIO_URL, 0, kind="podcast", duration_s=1470)
+    assert items[0].estimated_duration_s == 1470
+
+
 # ── transcript assembly + cache ───────────────────────────────────────────────
 
 def test_transcribe_episode_assembles_transcript(db):
@@ -53,7 +61,9 @@ def test_transcribe_episode_assembles_transcript(db):
         return path
 
     with patch.object(podcast, "_download", side_effect=fake_download), patch.object(
-        podcast, "transcribe_file", return_value="Hello world. This is the show."
+        podcast,
+        "transcribe_file",
+        return_value=STTResult(text="Hello world. This is the show.", segments=[]),
     ) as mock_tx:
         transcript = load_episode_transcript(AUDIO_URL)
 
@@ -63,6 +73,29 @@ def test_transcribe_episode_assembles_transcript(db):
     assert mock_tx.call_count == 1
 
 
+def test_transcribe_episode_keeps_segments_and_speakers(db):
+    """A diarized single-request result becomes timed, speaker-labelled segments."""
+    def fake_download(url, workdir):
+        path = workdir / "episode.mp3"
+        path.write_bytes(b"audio")
+        return path
+
+    result = STTResult(
+        text="Hi. Hello back.",
+        segments=[
+            STTSegment(text="Hi.", start=0.0, end=1.0, speaker="speaker_1"),
+            STTSegment(text="Hello back.", start=1.2, end=2.5, speaker="speaker_2"),
+        ],
+    )
+    with patch.object(podcast, "_download", side_effect=fake_download), patch.object(
+        podcast, "transcribe_file", return_value=result
+    ):
+        transcript = load_episode_transcript(AUDIO_URL)
+
+    assert [s.speaker for s in transcript.segments] == ["speaker_1", "speaker_2"]
+    assert transcript.segments[1].start_s == 1.2  # single chunk → no offset
+
+
 def test_transcribe_episode_is_cached(db):
     def fake_download(url, workdir):
         path = workdir / "episode.mp3"
@@ -70,7 +103,9 @@ def test_transcribe_episode_is_cached(db):
         return path
 
     with patch.object(podcast, "_download", side_effect=fake_download), patch.object(
-        podcast, "transcribe_file", return_value="cached text"
+        podcast,
+        "transcribe_file",
+        return_value=STTResult(text="cached text", segments=[]),
     ) as mock_tx:
         first = load_episode_transcript(AUDIO_URL)
         second = load_episode_transcript(AUDIO_URL)  # served from the DB cache

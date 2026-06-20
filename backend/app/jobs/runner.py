@@ -9,18 +9,24 @@ from app.jobs.repository import (
     get_selected_items,
     update_job_status,
 )
-from app.pipeline.cleanup import clean_markdown, clean_transcript, generate_preface
+from app.pipeline.cleanup import (
+    clean_markdown,
+    clean_transcript,
+    generate_preface,
+    map_speaker_names,
+)
 from app.pipeline.compiler import (
     CompilationError,
     compile_book,
     demote_headings,
     html_to_markdown,
+    is_punctuated,
     strip_leading_title,
     transcript_to_markdown,
 )
 from app.pipeline.llm import llm_available
 from app.pipeline.models import CompiledChapter
-from app.pipeline.roles import PREFACE, has_role
+from app.pipeline.roles import PREFACE, PUNCTUATE, has_role
 from app.render.epub import render_epub
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.podcast import load_episode_transcript
@@ -100,8 +106,15 @@ def _youtube_chapter(
         logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
         return None
 
-    if roles:
-        content_md = clean_transcript(transcript, roles, model)
+    # Raw (unpunctuated) auto-captions have no sentences and overlapping cue
+    # timing, so there's no zero-LLM way to paragraph them — they read as a wall
+    # of mid-sentence breaks. When an LLM is configured, auto-add Punctuation
+    # (it restores punctuation + real paragraphs, fidelity-checked) so the
+    # default output is readable, like the podcast path. Punctuated videos are
+    # left on the free path.
+    effective_roles = _effective_youtube_roles(roles, transcript)
+    if effective_roles:
+        content_md = clean_transcript(transcript, effective_roles, model)
     else:
         content_md = transcript_to_markdown(transcript)
     if not content_md:
@@ -129,10 +142,15 @@ def _podcast_chapter(
         logger.info("No transcript for podcast %s, skipping (job %s)", item.url, job_id)
         return None
 
-    if roles:
-        content_md = clean_transcript(transcript, roles, model)
-    else:
-        content_md = transcript_to_markdown(transcript)
+    # Podcasts keep their diarized dialogue with speaker labels. The Voxtral
+    # transcript is already punctuated and clean, so we deliberately do NOT run
+    # the content-editing roles here — that path flattens the text and drops the
+    # who-speaks labels. Real speaker names via the LLM are opt-in
+    # (podcast_speaker_naming); off by default → simple "Speaker N" titles.
+    speaker_names = (
+        map_speaker_names(transcript, model) if settings.podcast_speaker_naming else {}
+    )
+    content_md = transcript_to_markdown(transcript, speaker_names)
     if not content_md:
         return None
 
@@ -174,6 +192,24 @@ def _blog_chapter(
         published_at=published_at,
         content_md=content_md,
     )
+
+
+def _effective_youtube_roles(roles: list[str], transcript) -> list[str]:
+    """The roles to actually apply to a YouTube transcript.
+
+    User-selected roles, plus an automatic Punctuation pass when the transcript
+    is unpunctuated and an LLM is configured (the free path can't paragraph raw
+    captions sensibly). Returns [] when nothing applies — the caller then uses
+    the zero-LLM renderer.
+    """
+    effective = list(roles)
+    if (
+        llm_available()
+        and PUNCTUATE not in effective
+        and not is_punctuated(transcript.full_text)
+    ):
+        effective.append(PUNCTUATE)
+    return effective
 
 
 def _extract_video_id(url: str) -> str:

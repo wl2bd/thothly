@@ -79,7 +79,12 @@ def detect_kind(url: str) -> str:
 
 
 def discover_source(
-    url: str, source_index: int, *, kind: str | None = None, title: str | None = None
+    url: str,
+    source_index: int,
+    *,
+    kind: str | None = None,
+    title: str | None = None,
+    duration_s: int | None = None,
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """Return the (source name, items) for a source URL.
 
@@ -87,15 +92,16 @@ def discover_source(
     default book title; it's captured from the same calls that list the items,
     so it costs no extra request.
 
-    `kind`/`title` are optional hints from the search-staging flow: a picked
-    podcast episode passes kind="podcast" (its audio URL isn't self-identifying)
-    and its title. A pasted URL leaves them None and the kind is auto-detected.
+    `kind`/`title`/`duration_s` are optional hints from the search-staging flow:
+    a picked podcast episode passes kind="podcast" (its audio URL isn't
+    self-identifying), its title, and its length (the audio isn't probed here).
+    A pasted URL leaves them None and the kind is auto-detected.
     """
     resolved = kind or detect_kind(url)
     logger.info("Discovering source %d (kind=%s, url=%s)", source_index, resolved, url)
 
     if resolved == "podcast":
-        return _discover_podcast(url, source_index, title)
+        return _discover_podcast(url, source_index, title, duration_s)
     if resolved == "youtube_playlist":
         return _discover_youtube(url, source_index)
     if resolved == "youtube_channel":
@@ -106,11 +112,13 @@ def discover_source(
 
 
 def _discover_podcast(
-    url: str, source_index: int, title: str | None
+    url: str, source_index: int, title: str | None, duration_s: int | None = None
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """One item for a podcast episode. The audio enclosure isn't probed here —
     transcription is metered, so it's deferred to compile and runs only for the
-    episodes the user actually selects (unlike YouTube's free subtitle probe)."""
+    episodes the user actually selects (unlike YouTube's free subtitle probe).
+    The length comes from the search result (the only place it's known) so the
+    review screen can show reading time and a transcription cost estimate."""
     episode_title = title or _episode_title_from_url(url)
     item = DiscoveredItem(
         title=episode_title,
@@ -118,6 +126,7 @@ def _discover_podcast(
         item_type="podcast",
         source_index=source_index,
         item_index=0,
+        estimated_duration_s=duration_s,
     )
     return episode_title, [item]
 

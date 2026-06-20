@@ -39,12 +39,32 @@ class Settings(BaseSettings):
     stt_base_url: str | None = None
     stt_api_key: str | None = None
     stt_model: str | None = None
-    stt_timeout_s: int = 300  # a single chunk can be ~25 min of audio
-    # Per-request audio length cap. Hosted transcription endpoints reject very
-    # long files (Voxtral: 30 min), so longer episodes are split into chunks of
-    # at most this many minutes before transcription. Kept under the 30-min cap.
-    stt_max_chunk_minutes: int = 25
+    stt_timeout_s: int = 600  # a single request can be a whole ~1 h episode
+    # Speaker diarization: ask the provider to label who is speaking (Mistral
+    # Voxtral). Requested via the transcription call; a provider that doesn't
+    # support it (whisper.cpp, OpenAI) falls back to a plain transcription, so
+    # this is safe to leave on. Off → never request it.
+    stt_diarize: bool = True
+    # Per-request audio length cap. The whole episode goes in a single request
+    # when it fits under this — diarization speaker ids are only consistent
+    # within one request, so we avoid chunking when we can. Mistral's general
+    # transcription limit is 60 min; we stay just under it and only split
+    # longer episodes (each chunk then diarized independently). Needs ffmpeg.
+    stt_max_chunk_minutes: int = 55
     stt_max_concurrency: int = 4  # chunks transcribed in parallel
+    # Podcasts render as diarized dialogue with speaker labels. Off → simple
+    # "Speaker N" titles (the Voxtral transcript is already clean, so no LLM is
+    # needed just to know who speaks). On → an LLM pass maps the ids to real
+    # names/roles (Host, Guest, …) when they can be inferred from the dialogue.
+    podcast_speaker_naming: bool = False
+
+    # Approximate provider pricing (USD), used ONLY to show a pre-compile cost
+    # estimate in the review screen — we never bill anything. Defaults track
+    # Mistral (Voxtral $0.003/min; Mistral Small ~$0.20/$0.60 per 1M tokens).
+    # Override to match your provider so the estimate stays meaningful.
+    stt_price_per_minute: float = 0.003
+    llm_price_per_mtok_in: float = 0.20
+    llm_price_per_mtok_out: float = 0.60
 
 
 

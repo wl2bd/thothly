@@ -60,6 +60,7 @@ def init_db() -> None:
                 fetched_at TEXT NOT NULL
             )
         """)
+        _add_missing_columns(conn, "podcast_transcript_cache", _PODCAST_CACHE_ADDED_COLUMNS)
         # Cleaned-content cache for the LLM roles, keyed by the content (video id
         # or blog url), the applied role set, and the model — so a re-compile with
         # the same choices never re-calls the LLM.
@@ -98,6 +99,12 @@ _TRANSCRIPT_CACHE_ADDED_COLUMNS = (
     ("chapters", "TEXT"),
     ("uploader", "TEXT"),  # channel name → chapter author
     ("channel_url", "TEXT"),  # channel page → cover avatar emblem
+)
+
+_PODCAST_CACHE_ADDED_COLUMNS = (
+    # Schema version of the stored segments. Rows from before diarization /
+    # per-segment timing (NULL or older) are ignored on read and re-transcribed.
+    ("format_version", "INTEGER"),
 )
 
 

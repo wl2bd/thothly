@@ -6,6 +6,7 @@ free. Any LLM failure falls back to the free zero-LLM path and is never fatal �
 a cleaned result is only cached when every call in it succeeded.
 """
 
+import json
 import logging
 import re
 from bisect import bisect_right
@@ -16,7 +17,7 @@ from difflib import SequenceMatcher
 from app.core.config import settings
 from app.core.database import get_connection
 from app.pipeline.compiler import is_punctuated, segments_to_markdown
-from app.pipeline.llm import LLMError, complete
+from app.pipeline.llm import LLMError, complete, llm_available
 from app.pipeline.roles import (
     COPYEDIT,
     PREFACE,
@@ -75,6 +76,107 @@ def clean_markdown(
     if ok:
         _store(content_key, roles_key, model, body)
     return body
+
+
+_SPEAKER_NAMES_PROMPT = (
+    "You are given a transcript of a conversation where each line is labelled "
+    "with an anonymous speaker id (speaker_1, speaker_2, ...). Work out who each "
+    "speaker is from the context — names they state, introductions, how they are "
+    "addressed, or their role. Reply ONLY with a compact JSON object mapping "
+    "every speaker id to a short display name: the person's real name when it is "
+    "stated in the transcript, otherwise a role such as \"Host\" or \"Guest\". "
+    "Use the language of the transcript for role words. Never invent a name that "
+    "the text does not support; when unsure, use a role. JSON only, no commentary."
+)
+
+
+def map_speaker_names(transcript, model: str) -> dict[str, str]:
+    """Map diarization speaker ids (speaker_1, …) to display names via the LLM.
+
+    Returns {} — so the renderer falls back to generic "Speaker N" labels —
+    when the LLM is unconfigured, the episode isn't multi-speaker, or anything
+    fails. Cached per (episode, model) so a re-compile never re-calls the LLM.
+    """
+    speakers = _distinct_speakers(transcript.segments)
+    if len(speakers) < 2 or not llm_available():
+        return {}
+
+    cached = _get_cached(transcript.video_id, _SPEAKER_NAMES_KEY, model)
+    if cached is not None:
+        return _filter_map(_safe_json(cached), speakers)
+
+    try:
+        raw = complete(_SPEAKER_NAMES_PROMPT, _dialogue_sample(transcript.segments), max_tokens=400)
+    except LLMError as exc:
+        logger.warning("Speaker-name mapping failed: %s", exc)
+        return {}
+
+    mapping = _parse_speaker_map(raw, speakers)
+    if mapping:
+        _store(transcript.video_id, _SPEAKER_NAMES_KEY, model, json.dumps(mapping))
+    return mapping
+
+
+_SPEAKER_NAMES_KEY = "speaker-names"
+
+
+def _distinct_speakers(segments) -> list[str]:
+    seen: dict[str, None] = {}
+    for s in segments:
+        if s.speaker:
+            seen.setdefault(s.speaker, None)
+    return list(seen)
+
+
+def _dialogue_sample(segments, max_chars: int = 4000) -> str:
+    """A speaker-labelled excerpt for the mapping prompt — consecutive same-
+    speaker segments joined, capped so the call stays cheap (intros, where names
+    are stated, come early anyway)."""
+    lines: list[str] = []
+    current: list[str] = []
+    current_speaker: str | None = None
+    total = 0
+    for seg in segments:
+        text = seg.text.strip()
+        if not text:
+            continue
+        speaker = seg.speaker or "speaker_?"
+        if current and speaker != current_speaker:
+            lines.append(f"{current_speaker}: {' '.join(current)}")
+            current = []
+        if not current:
+            current_speaker = speaker
+        current.append(text)
+        total += len(text)
+        if total >= max_chars:
+            break
+    if current:
+        lines.append(f"{current_speaker}: {' '.join(current)}")
+    return "\n".join(lines)
+
+
+def _parse_speaker_map(raw: str, speakers: list[str]) -> dict[str, str]:
+    match = re.search(r"\{.*\}", raw, re.S)
+    if not match:
+        return {}
+    return _filter_map(_safe_json(match.group(0)), speakers)
+
+
+def _safe_json(text: str) -> dict:
+    try:
+        data = json.loads(text)
+    except (ValueError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _filter_map(data: dict, speakers: list[str]) -> dict[str, str]:
+    """Keep only known speaker ids mapped to short, non-empty names."""
+    return {
+        k: v.strip()
+        for k, v in data.items()
+        if k in speakers and isinstance(v, str) and v.strip() and len(v.strip()) <= 60
+    }
 
 
 def generate_preface(book_title: str, chapter_titles: list[str]) -> str | None:

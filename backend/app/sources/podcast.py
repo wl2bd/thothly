@@ -1,9 +1,11 @@
 """Turn a podcast episode's audio into a Transcript via the speech-to-text layer.
 
-A picked episode's `url` is its audio enclosure. We download it, split it into
-chunks under the provider's per-request length cap (Voxtral: 30 min), transcribe
-each chunk, and assemble a Transcript — the same shape YouTube produces, so the
-whole cleanup/compile/EPUB path downstream is reused unchanged.
+A picked episode's `url` is its audio enclosure. We download it and transcribe
+it — in a single request when it fits under the provider's length cap (so the
+diarization speaker ids stay consistent across the whole episode), splitting
+into chunks only for very long ones. Each segment keeps its timestamp and, when
+the provider diarizes (Voxtral), its speaker — the same shape YouTube produces,
+so the cleanup/compile/EPUB path downstream is reused unchanged.
 
 The transcript is cached by audio URL: transcription is a metered API call, so a
 re-compile (or an LLM-role change) must never pay to transcribe the same episode
@@ -25,7 +27,12 @@ import httpx
 
 from app.core.config import settings
 from app.core.database import get_connection
-from app.pipeline.transcribe import TranscribeError, stt_available, transcribe_file
+from app.pipeline.transcribe import (
+    STTResult,
+    TranscribeError,
+    stt_available,
+    transcribe_file,
+)
 from app.sources.models import Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
@@ -35,6 +42,10 @@ _BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
+
+# Bumped whenever the stored segment shape changes (cache invalidation): v2
+# added per-segment timestamps + speaker diarization.
+_CACHE_FORMAT_VERSION = 2
 
 
 def load_episode_transcript(audio_url: str) -> Transcript | None:
@@ -60,7 +71,7 @@ def _transcribe_episode(audio_url: str) -> Transcript | None:
         if audio_path is None:
             return None
         chunks = _split(audio_path, settings.stt_max_chunk_minutes)
-        texts = _transcribe_chunks(chunks)
+        results = _transcribe_chunks(chunks)
     except TranscribeError as exc:
         # One chunk failing leaves a gap, so we drop the whole episode rather
         # than emit a silently-incomplete chapter (the spent calls are wasted,
@@ -73,19 +84,53 @@ def _transcribe_episode(audio_url: str) -> Transcript | None:
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 
-    parts = [t for t in texts if t and t.strip()]
-    if not parts:
+    segments = _assemble_segments(chunks, results)
+    if not segments:
         return None
-
-    # One segment per chunk, with synthetic timing from the chunk offset. There
-    # are no chapters, so timing is only nominal — cleanup joins the segment text
-    # anyway; Voxtral output is punctuated, so it paragraphs cleanly with no LLM.
-    chunk_s = settings.stt_max_chunk_minutes * 60
-    segments = [
-        TranscriptSegment(text=text.strip(), start_s=float(i * chunk_s), duration_s=float(chunk_s))
-        for i, text in enumerate(parts)
-    ]
     return Transcript(video_id=audio_url, language="", segments=segments)
+
+
+def _assemble_segments(
+    chunks: list[Path], results: list[STTResult]
+) -> list[TranscriptSegment]:
+    """Flatten the per-chunk results into one globally-timed segment list.
+
+    Each chunk's timestamps are local to that chunk, so we offset them by the
+    cumulative duration of the earlier chunks. Speaker ids are only consistent
+    within a single request, so we keep them only when the whole episode was one
+    chunk; across chunks we drop them (timing stays) rather than assert a
+    speaker identity we can't verify.
+    """
+    single = len(chunks) == 1
+    durations = [(_probe_duration(c) or 0.0) for c in chunks]
+
+    segments: list[TranscriptSegment] = []
+    offset = 0.0
+    for chunk_dur, result in zip(durations, results):
+        if result.segments:
+            for s in result.segments:
+                segments.append(
+                    TranscriptSegment(
+                        text=s.text,
+                        start_s=offset + s.start,
+                        duration_s=max(0.0, s.end - s.start),
+                        speaker=s.speaker if single else None,
+                    )
+                )
+            # Trust the segments' own span over a separate probe when available.
+            chunk_dur = max((s.end for s in result.segments), default=chunk_dur)
+        elif result.text.strip():
+            # Provider returned only flat text (no segments): one coarse segment.
+            segments.append(
+                TranscriptSegment(
+                    text=result.text.strip(),
+                    start_s=offset,
+                    duration_s=chunk_dur,
+                    speaker=None,
+                )
+            )
+        offset += chunk_dur
+    return segments
 
 
 def _download(audio_url: str, workdir: Path) -> Path | None:
@@ -118,9 +163,9 @@ def _split(path: Path, max_minutes: int) -> list[Path]:
     """Split audio into <= max_minutes chunks for the per-request length cap.
 
     Needs ffmpeg. Without it (or if probing/splitting fails) we fall back to the
-    whole file as a single chunk: fine for short episodes, while long ones will
-    be rejected by the provider and skipped. ffmpeg is therefore an optional
-    system dependency that unlocks long-episode support.
+    whole file as a single chunk: fine for typical episodes, while very long
+    ones will be rejected by the provider and skipped. ffmpeg is therefore an
+    optional system dependency that unlocks long-episode support.
     """
     if shutil.which("ffmpeg") is None:
         logger.info("ffmpeg not found; transcribing %s whole (long episodes may fail)", path.name)
@@ -163,7 +208,7 @@ def _probe_duration(path: Path) -> float | None:
         return None
 
 
-def _transcribe_chunks(chunks: list[Path]) -> list[str]:
+def _transcribe_chunks(chunks: list[Path]) -> list[STTResult]:
     """Transcribe chunks in parallel, preserving order. A single chunk's failure
     propagates (TranscribeError) so the caller drops the whole episode."""
     workers = max(1, settings.stt_max_concurrency)
@@ -186,6 +231,11 @@ def _get_cached(audio_url: str) -> Transcript | None:
         ).fetchone()
     if row is None:
         return None
+    # Ignore rows written by an older segment shape so they re-transcribe with
+    # timestamps + diarization (the column may not exist on very old DBs).
+    version = row["format_version"] if "format_version" in row.keys() else None
+    if version != _CACHE_FORMAT_VERSION:
+        return None
     segments = [TranscriptSegment(**s) for s in json.loads(row["segments"])]
     return Transcript(video_id=audio_url, language=row["language"], segments=segments)
 
@@ -195,12 +245,14 @@ def _store(transcript: Transcript) -> None:
     with get_connection() as conn:
         conn.execute(
             "INSERT OR REPLACE INTO podcast_transcript_cache "
-            "(audio_url, language, segments, fetched_at) VALUES (?, ?, ?, ?)",
+            "(audio_url, language, segments, fetched_at, format_version) "
+            "VALUES (?, ?, ?, ?, ?)",
             (
                 transcript.video_id,
                 transcript.language,
                 segments_json,
                 datetime.now(timezone.utc).isoformat(),
+                _CACHE_FORMAT_VERSION,
             ),
         )
         conn.commit()

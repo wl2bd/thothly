@@ -15,6 +15,10 @@ class TranscriptSegment(BaseModel):
     text: str
     start_s: float
     duration_s: float
+    # Speaker label from diarization (e.g. "speaker_1"), when the source supports
+    # it (Voxtral podcasts). None for YouTube subtitles and any provider that
+    # doesn't diarize — the rendering then falls back to plain paragraphs.
+    speaker: str | None = None
 
 
 class Chapter(BaseModel):

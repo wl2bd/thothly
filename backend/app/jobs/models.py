@@ -27,6 +27,10 @@ class Source(BaseModel):
     url: HttpUrl
     kind: str | None = None
     title: str | None = None
+    # Episode length (seconds) from the podcast search result. The audio isn't
+    # probed at discovery (transcription is deferred), so this is the only place
+    # the duration is known — it drives the review screen's reading/cost figures.
+    duration_s: int | None = None
 
 
 class JobCreate(BaseModel):
