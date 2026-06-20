@@ -41,7 +41,14 @@ export default function JobPage() {
   useEffect(() => {
     fetchLlmConfig()
       .then(setLlm)
-      .catch(() => setLlm({ available: false, roles: [] }));
+      .catch(() =>
+        setLlm({
+          available: false,
+          stt_available: false,
+          roles: [],
+          pricing: { stt_per_minute: 0, llm_per_mtok_in: 0, llm_per_mtok_out: 0 },
+        }),
+      );
   }, []);
 
   useEffect(() => {
@@ -262,6 +269,13 @@ function ReviewList({
       it.is_punctuated === false,
   ).length;
 
+  // Live estimate of what this compile will cost in metered API calls, given
+  // the current selection + roles. Recomputed as either changes.
+  const cost = useMemo(
+    () => estimateCost(items, selected, selectedRoles, llm),
+    [items, selected, selectedRoles, llm],
+  );
+
   const needle = query.trim().toLowerCase();
   const filtered = useMemo(
     () =>
@@ -412,6 +426,8 @@ function ReviewList({
         />
       )}
 
+      {selected.size > 0 && <CostEstimate cost={cost} />}
+
       <Button
         size="lg"
         onClick={onConfirm}
@@ -540,5 +556,87 @@ function statusBadge(item: DiscoveredItem) {
     <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-500">
       ⚠️ LLM cleanup
     </Badge>
+  );
+}
+
+// --- Pre-compile cost estimate -------------------------------------------------
+// Mirrors the backend's auto-passes so the figure matches what will actually run:
+// podcasts are transcribed (STT) + speaker-named (small LLM call), raw YouTube
+// captions are auto-punctuated (LLM), and any ticked roles add a pass. Token
+// counts are rough (faithful passes keep ~the same length), so it's a ballpark.
+const TOKENS_PER_WORD = 1.33;
+
+function estimateCost(
+  items: DiscoveredItem[],
+  selected: Set<string>,
+  roles: Set<string>,
+  llm: LlmConfig | null,
+): { stt: number; llm: number } {
+  if (!llm) return { stt: 0, llm: 0 };
+  const { available, stt_available, pricing } = llm;
+  const hasPunctuate = roles.has("punctuate");
+  const hasCopyedit = roles.has("copyedit");
+  const hasSections = roles.has("sections");
+
+  const pass = (words: number) => {
+    if (words <= 0) return 0;
+    const tin = words * TOKENS_PER_WORD;
+    const tout = words * TOKENS_PER_WORD; // faithful passes ≈ same length out
+    return (tin * pricing.llm_per_mtok_in + tout * pricing.llm_per_mtok_out) / 1e6;
+  };
+
+  let stt = 0;
+  let llmCost = 0;
+
+  for (const it of items) {
+    if (!selected.has(it.id)) continue;
+
+    if (it.item_type === "podcast") {
+      // Podcasts only cost transcription: they keep their raw diarized dialogue,
+      // with no LLM editing or naming pass by default.
+      const minutes = (it.estimated_duration_s ?? 0) / 60;
+      if (stt_available) stt += minutes * pricing.stt_per_minute;
+    } else if (it.item_type === "youtube") {
+      if (it.has_transcript === false || !available) continue;
+      const words = it.word_count ?? 0;
+      // Auto-punctuation runs on raw captions (or whenever ticked).
+      if (it.is_punctuated === false || hasPunctuate) llmCost += pass(words);
+      if (hasCopyedit) llmCost += pass(words);
+      if (hasSections) llmCost += pass(words);
+    } else if (available) {
+      // Blog: only the manually-selected roles cost anything.
+      const words = (it.estimated_size_chars ?? 0) / 6;
+      if (hasCopyedit) llmCost += pass(words);
+      if (hasSections) llmCost += pass(words);
+    }
+  }
+
+  return { stt, llm: llmCost };
+}
+
+function formatUsd(value: number): string {
+  if (value <= 0) return "$0.00";
+  if (value < 0.01) return "< $0.01";
+  return `$${value.toFixed(2)}`;
+}
+
+function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
+  const total = cost.stt + cost.llm;
+  if (total <= 0) return null;
+
+  const parts: string[] = [];
+  if (cost.stt > 0) parts.push(`transcription ${formatUsd(cost.stt)}`);
+  if (cost.llm > 0) parts.push(`AI cleanup ${formatUsd(cost.llm)}`);
+
+  const totalLabel = total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
+
+  return (
+    <div className="text-muted-foreground flex items-baseline justify-between gap-2 text-xs">
+      <span>Estimated cost</span>
+      <span className="text-right">
+        <span className="text-foreground font-medium">{totalLabel}</span>
+        {parts.length > 1 && <span className="ml-1">({parts.join(" · ")})</span>}
+      </span>
+    </div>
   );
 }

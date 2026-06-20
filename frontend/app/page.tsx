@@ -27,6 +27,7 @@ interface StagedSource {
   type: ResultType;
   source: string;
   thumbnail: string | null;
+  durationS: number | null;
 }
 
 const SEARCH_DEBOUNCE_MS = 350;
@@ -119,6 +120,7 @@ export default function Home() {
         type: r.type,
         source: r.source,
         thumbnail: r.thumbnail,
+        durationS: r.duration_s,
       }));
     stageSources(picked);
     setSelected(new Set());
@@ -141,6 +143,7 @@ export default function Home() {
         type: detectType(url),
         source: detectSource(url),
         thumbnail: null,
+        durationS: null,
       },
     ]);
     setQuery("");
@@ -160,7 +163,12 @@ export default function Home() {
           // A podcast episode's audio URL isn't self-identifying and carries no
           // title, so pass both as hints. Other kinds re-derive their own.
           s.source === "podcast"
-            ? { url: s.url, kind: "podcast", title: s.title }
+            ? {
+                url: s.url,
+                kind: "podcast",
+                title: s.title,
+                duration_s: s.durationS ?? undefined,
+              }
             : { url: s.url },
         ),
       );

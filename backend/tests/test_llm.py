@@ -14,8 +14,11 @@ def test_llm_endpoint_lists_roles_and_unavailable(client: TestClient) -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert data["available"] is False  # no LLM configured in the test env
+    assert data["stt_available"] is False
     ids = {r["id"] for r in data["roles"]}
     assert {"punctuate", "copyedit", "sections", "preface"} <= ids
+    # Pricing is surfaced for the review screen's cost estimate.
+    assert {"stt_per_minute", "llm_per_mtok_in", "llm_per_mtok_out"} <= data["pricing"].keys()
 
 
 def test_selected_item_roles_order_and_scope() -> None:

@@ -12,6 +12,9 @@ export interface Source {
   // isn't self-identifying and carries no title); omitted for pasted links.
   kind?: string;
   title?: string;
+  // Episode length (seconds) from the search result — the only place it's known,
+  // and what the review screen needs for the transcription cost estimate.
+  duration_s?: number;
 }
 
 export interface DiscoveredItem {
@@ -53,9 +56,17 @@ export interface LlmRole {
   scope: "item" | "book";
 }
 
+export interface LlmPricing {
+  stt_per_minute: number;
+  llm_per_mtok_in: number;
+  llm_per_mtok_out: number;
+}
+
 export interface LlmConfig {
   available: boolean;
+  stt_available: boolean;
   roles: LlmRole[];
+  pricing: LlmPricing;
 }
 
 export type ResultType =
