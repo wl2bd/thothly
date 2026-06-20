@@ -15,10 +15,15 @@ class Settings(BaseSettings):
     scrape_timeout_s: int = 30
     max_items_per_source: int = 250
 
-    # Preferred content languages, highest priority first. Drives both the
-    # YouTube metadata localization (so titles come back in the original
-    # language, not the viewer's UI language) and the transcript track choice.
-    preferred_languages: list[str] = ["fr", "en"]
+    # Preferred content language(s), highest priority first. Drives YouTube
+    # metadata localization (title, chapters) and is a hint for transcript track
+    # choice — though the track picker always prefers the video's ORIGINAL track
+    # over a translation, so the body stays faithful to the source language
+    # regardless. English-first keeps metadata in English (the app default)
+    # instead of pulling a French localization for an English video; YouTube
+    # falls back to the original when no English localization exists. Multilingual
+    # is deferred — set this to your content's language if it isn't English.
+    preferred_languages: list[str] = ["en"]
 
     # Optional LLM layer (transcript cleanup / multi-role passes). Left empty by
     # default — Thothly stays zero-LLM. One OpenAI-compatible endpoint covers
