@@ -52,11 +52,13 @@ class Settings(BaseSettings):
     # longer episodes (each chunk then diarized independently). Needs ffmpeg.
     stt_max_chunk_minutes: int = 55
     stt_max_concurrency: int = 4  # chunks transcribed in parallel
-    # Podcasts render as diarized dialogue with speaker labels. Off → simple
-    # "Speaker N" titles (the Voxtral transcript is already clean, so no LLM is
-    # needed just to know who speaks). On → an LLM pass maps the ids to real
-    # names/roles (Host, Guest, …) when they can be inferred from the dialogue.
-    podcast_speaker_naming: bool = False
+    # Podcasts render as diarized dialogue with speaker labels. On (and an LLM
+    # configured) → a cheap LLM pass maps the speaker ids to real names when it
+    # can infer them from the dialogue (introductions, "welcome X…"), falling
+    # back to a role (Host, Guest) or "Speaker N" per speaker. This only renames
+    # the labels — it never re-edits the (already clean) Voxtral text. Off, or no
+    # LLM → plain "Speaker N" titles.
+    podcast_speaker_naming: bool = True
 
     # Approximate provider pricing (USD), used ONLY to show a pre-compile cost
     # estimate in the review screen — we never bill anything. Defaults track
