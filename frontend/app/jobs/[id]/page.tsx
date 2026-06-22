@@ -81,13 +81,18 @@ export default function JobPage() {
   }, [id, pollKey]);
 
   // When discovery completes, pre-select every item — the user unchecks what
-  // they don't want rather than building the list from scratch.
-  useEffect(() => {
-    if (job?.status === "reviewing") {
+  // they don't want rather than building the list from scratch. We adjust this
+  // during render (tracking the previous status) rather than in an effect: it's
+  // a one-shot reset on the transition into "reviewing", so React's recommended
+  // "store info from previous renders" pattern fits and avoids a wasted pass.
+  const [seenStatus, setSeenStatus] = useState<string | null>(null);
+  if (job && job.status !== seenStatus) {
+    setSeenStatus(job.status);
+    if (job.status === "reviewing") {
       setSelected(new Set(job.discovered_items.map((it) => it.id)));
       setTitle(job.book_title ?? "");
     }
-  }, [job?.status, job?.discovered_items, job?.book_title]);
+  }
 
   const toggle = useCallback((itemId: string) => {
     setSelected((prev) => {
