@@ -40,9 +40,11 @@ export default function Home() {
   const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // Which provider's results to show ("all" = no filter). Reset on every new
-  // search so a stale filter never blanks out the next query's results.
+  // Which provider's results to show ("all" = no filter), and how to order them
+  // ("relevance" = the backend's cross-provider ranking). Both reset on every
+  // new search so stale controls never blank out or mis-order the next query.
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("relevance");
 
   const [staged, setStaged] = useState<StagedSource[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +68,7 @@ export default function Home() {
         setResults([]);
         setSearchErrors([]);
         setSourceFilter("all");
+        setSortBy("relevance");
         setSearching(false);
         return;
       }
@@ -76,6 +79,7 @@ export default function Home() {
         setResults(resp.results);
         setSearchErrors(resp.errors);
         setSourceFilter("all");
+        setSortBy("relevance");
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
         setResults([]);
@@ -185,10 +189,11 @@ export default function Home() {
   }
 
   const showResults = !queryIsUrl && trimmed !== "";
-  const visibleResults =
+  const filteredResults =
     sourceFilter === "all"
       ? results
       : results.filter((r) => r.source === sourceFilter);
+  const visibleResults = sortResults(filteredResults, sortBy);
 
   return (
     <main className="flex min-h-screen justify-center p-8 sm:p-12">
@@ -236,11 +241,14 @@ export default function Home() {
             )}
 
             {showResults && results.length > 0 && (
-              <SourceFilter
-                results={results}
-                active={sourceFilter}
-                onChange={setSourceFilter}
-              />
+              <div className="flex items-center justify-between gap-2">
+                <SourceFilter
+                  results={results}
+                  active={sourceFilter}
+                  onChange={setSourceFilter}
+                />
+                <SortSelect value={sortBy} onChange={setSortBy} />
+              </div>
             )}
 
             {showResults && (
@@ -468,6 +476,51 @@ function SourceFilter({
         </Button>
       ))}
     </div>
+  );
+}
+
+// Result ordering. "relevance" keeps the backend's cross-provider ranking
+// untouched; the others are client-side. Date isn't available across providers,
+// so it's not offered. Results without a duration (web) sort last when ordering
+// by length.
+function sortResults(results: SearchResult[], sortBy: string): SearchResult[] {
+  if (sortBy === "relevance") return results;
+  const sorted = [...results];
+  if (sortBy === "title") {
+    sorted.sort((a, b) => a.title.localeCompare(b.title));
+  } else if (sortBy === "duration-asc" || sortBy === "duration-desc") {
+    const dir = sortBy === "duration-asc" ? 1 : -1;
+    sorted.sort((a, b) => {
+      if (a.duration_s == null && b.duration_s == null) return 0;
+      if (a.duration_s == null) return 1;
+      if (b.duration_s == null) return -1;
+      return (a.duration_s - b.duration_s) * dir;
+    });
+  }
+  return sorted;
+}
+
+function SortSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="text-muted-foreground ml-auto flex shrink-0 items-center gap-1.5 text-xs">
+      Sort
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="border-input bg-background rounded-md border px-2 py-1 text-xs"
+      >
+        <option value="relevance">Relevance</option>
+        <option value="duration-asc">Shortest</option>
+        <option value="duration-desc">Longest</option>
+        <option value="title">Title A–Z</option>
+      </select>
+    </label>
   );
 }
 
