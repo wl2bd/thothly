@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import re
+from urllib.parse import urlparse
 
 from app.search.base import Provider
 from app.search.models import ProviderError, SearchResponse, SearchResult
@@ -45,10 +47,81 @@ async def search_all(query: str, limit: int = _DEFAULT_LIMIT) -> SearchResponse:
 
     outcomes = await asyncio.gather(*(run(p) for p in PROVIDERS))
 
-    results: list[SearchResult] = []
+    # Flatten into (provider_index, within-provider rank, result). The two
+    # indices are kept so ranking can fall back to a fair round-robin when no
+    # textual signal separates results (see `_rank`).
+    ranked_inputs: list[tuple[int, int, SearchResult]] = []
     errors: list[ProviderError] = []
-    for name, provider_results, error in outcomes:
-        results.extend(provider_results)
+    for provider_index, (name, provider_results, error) in enumerate(outcomes):
+        for rank, result in enumerate(provider_results):
+            ranked_inputs.append((provider_index, rank, result))
         if error is not None:
             errors.append(ProviderError(provider=name, message=error))
-    return SearchResponse(results=results, errors=errors)
+
+    return SearchResponse(results=_rank(ranked_inputs, query), errors=errors)
+
+
+def _rank(
+    items: list[tuple[int, int, SearchResult]], query: str
+) -> list[SearchResult]:
+    """Order results across providers by a cheap query-relevance score.
+
+    Providers each return their own hits already sorted by relevance, but those
+    scores aren't comparable across providers, so we can't just concatenate (it
+    buries every provider but the first) nor blindly round-robin (it puts the #1
+    YouTube hit ahead of an exact-match blog). Instead we compute one
+    cross-provider score per result from the query text and sort by:
+
+      1. relevance score, descending — a brand/domain or title match wins
+         regardless of which provider produced it;
+      2. within-provider rank, ascending — ties degrade to a round-robin
+         (every provider's #1, then every provider's #2, …);
+      3. provider index — a stable, deterministic final tiebreak.
+
+    The result: a query like "tokenbrice" surfaces the tokenbrice.xyz blog
+    first, while a generic query keeps the fair round-robin behaviour.
+    """
+    q_norm = query.strip().lower()
+    q_tokens = re.findall(r"\w+", q_norm)
+    q_compact = re.sub(r"\W+", "", q_norm)
+
+    ordered = sorted(
+        items,
+        key=lambda it: (-_relevance(it[2], q_compact, q_tokens), it[1], it[0]),
+    )
+    return [result for _, _, result in ordered]
+
+
+def _relevance(result: SearchResult, q_compact: str, q_tokens: list[str]) -> int:
+    """Score one result against the query. Higher = more relevant.
+
+    Deliberately simple and provider-agnostic — it only reads fields every
+    result has (url, title, author) and rewards, in decreasing weight:
+      * an exact brand/domain match (query == the site's domain label, so
+        "tokenbrice" == tokenbrice.xyz) — the strongest "this *is* the source"
+        signal;
+      * query tokens appearing in the title (with a bonus for matching all);
+      * the query appearing in the author/site name.
+    """
+    if not q_tokens:
+        return 0
+
+    score = 0
+
+    host = (urlparse(result.url).netloc or "").lower().removeprefix("www.").split(":")[0]
+    labels = host.split(".")
+    domain_label = labels[-2] if len(labels) >= 2 else (labels[0] if labels else "")
+    if q_compact and domain_label and q_compact == domain_label:
+        score += 100
+
+    title = result.title.lower()
+    title_hits = sum(1 for token in q_tokens if token in title)
+    score += title_hits * 5
+    if title_hits == len(q_tokens):
+        score += 20
+
+    author = (result.author or "").lower()
+    if q_compact and q_compact in re.sub(r"\W+", "", author):
+        score += 10
+
+    return score

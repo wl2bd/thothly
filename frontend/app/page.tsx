@@ -261,7 +261,7 @@ export default function Home() {
                     <span className="truncate text-sm">{s.title}</span>
                     <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs">
                       <SourceBadge source={s.source} />
-                      <TypeBadge type={s.type} />
+                      {s.type !== s.source && <TypeBadge type={s.type} />}
                       {expandsToMany(s.type) && (
                         <span>· expands to multiple sources</span>
                       )}
@@ -351,7 +351,7 @@ function SearchResults({
                 </span>
                 <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
                   <SourceBadge source={r.source} />
-                  <TypeBadge type={r.type} />
+                  {r.type !== r.source && <TypeBadge type={r.type} />}
                   {r.author && <span>· {r.author}</span>}
                   {resultExtent(r) && <span>· {resultExtent(r)}</span>}
                 </span>
@@ -365,18 +365,46 @@ function SearchResults({
 }
 
 function Thumbnail({ result }: { result: SearchResult }) {
-  if (!result.thumbnail) {
-    return <span className="bg-muted h-12 w-20 shrink-0 rounded" />;
+  if (result.thumbnail) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; Next's optimizer isn't worth wiring per provider host
+      <img
+        src={result.thumbnail}
+        alt=""
+        loading="lazy"
+        className="bg-muted h-12 w-20 shrink-0 rounded object-cover"
+      />
+    );
   }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; Next's optimizer isn't worth wiring per provider host
-    <img
-      src={result.thumbnail}
-      alt=""
-      loading="lazy"
-      className="bg-muted h-12 w-20 shrink-0 rounded object-cover"
-    />
-  );
+  // Web hits carry no image; show the site's favicon (keyless, via DuckDuckGo's
+  // icon service) centered in the same slot so the row still reads visually.
+  const favicon = faviconUrl(result.url);
+  if (favicon) {
+    return (
+      <span className="bg-muted flex h-12 w-20 shrink-0 items-center justify-center rounded">
+        {/* eslint-disable-next-line @next/next/no-img-element -- tiny decorative favicon */}
+        <img
+          src={favicon}
+          alt=""
+          loading="lazy"
+          className="size-6 rounded-sm"
+          onError={(e) => {
+            e.currentTarget.style.visibility = "hidden";
+          }}
+        />
+      </span>
+    );
+  }
+  return <span className="bg-muted h-12 w-20 shrink-0 rounded" />;
+}
+
+function faviconUrl(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    return host ? `https://icons.duckduckgo.com/ip3/${host}.ico` : null;
+  } catch {
+    return null;
+  }
 }
 
 function SourceBadge({ source }: { source: string }) {
