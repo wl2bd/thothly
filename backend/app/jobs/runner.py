@@ -80,9 +80,13 @@ def run_compilation(job_id: str) -> None:
         book = compile_book(chapters, book_title)
         if has_role(roles, PREFACE):
             book.preface = generate_preface(book.title, [c.title for c in book.chapters])
-        output_path = _render(book, job_id)
+        output_path, output_md_path = _render(book, job_id)
         update_job_status(
-            job_id, "completed", book_title=book.title, output_path=output_path
+            job_id,
+            "completed",
+            book_title=book.title,
+            output_path=output_path,
+            output_md_path=output_md_path,
         )
         logger.info("Compilation done for job %s: %d chapters", job_id, len(book.chapters))
 
@@ -217,9 +221,16 @@ def _extract_video_id(url: str) -> str:
     return match.group(1) if match else url.rstrip("/").split("/")[-1]
 
 
-def _render(book, job_id: str) -> str:
+def _render(book, job_id: str) -> tuple[str, str]:
     output_dir = settings.data_dir / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{job_id}.epub"
     render_epub(book, output_path)
-    return str(output_path)
+
+    # A standalone Markdown twin of the same compiled content — no Pandoc, no
+    # image localization — so the reading list can be fed straight to an AI (or
+    # any plain-text tool). The non-localized Markdown keeps remote image URLs
+    # referenceable, unlike the EPUB's embedded copies.
+    md_path = output_dir / f"{job_id}.md"
+    md_path.write_text(book.to_markdown(), encoding="utf-8")
+    return str(output_path), str(md_path)

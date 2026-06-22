@@ -97,5 +97,8 @@ class JobResponse(BaseModel):
     updated_at: datetime
     book_title: str | None = None
     output_path: str | None = None
+    # Standalone Markdown twin of the EPUB content (zero-LLM), for feeding the
+    # compilation to an AI or any plain-text tool. Set once the job completes.
+    output_md_path: str | None = None
     error: str | None = None
     discovered_items: list[DiscoveredItemResponse] = []

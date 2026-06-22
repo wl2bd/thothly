@@ -1,12 +1,13 @@
 import { BACKEND_URL } from "@/lib/backend";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const format = new URL(request.url).searchParams.get("format") === "md" ? "md" : "epub";
   try {
-    const res = await fetch(`${BACKEND_URL}/jobs/${id}/download`);
+    const res = await fetch(`${BACKEND_URL}/jobs/${id}/download?format=${format}`);
     if (!res.ok) {
       const data = await res.json().catch(() => ({ detail: "Download failed" }));
       return Response.json(data, { status: res.status });

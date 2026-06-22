@@ -44,6 +44,33 @@ def test_run_compilation_youtube_completes(
     assert mock_update.call_args.args[1] == "completed"
 
 
+@patch("app.jobs.runner.get_job")
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_run_compilation_writes_markdown_companion(
+    mock_selected, mock_fetch, mock_render, mock_update, mock_job, tmp_path, monkeypatch
+):
+    import app.core.config as cfg
+    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+
+    mock_selected.return_value = [_youtube_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
+    mock_fetch.return_value = Transcript(
+        video_id="abc123", language="en",
+        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
+    )
+
+    runner.run_compilation("job1")
+
+    # A standalone .md twin is written next to the EPUB and its path is recorded.
+    md_path = tmp_path / "output" / "job1.md"
+    assert md_path.exists()
+    assert "hello world" in md_path.read_text(encoding="utf-8")
+    assert mock_update.call_args.kwargs["output_md_path"] == str(md_path)
+
+
 def _podcast_item() -> DiscoveredItemResponse:
     return DiscoveredItemResponse(
         id="j-2-0", source_index=2, item_index=0, item_type="podcast",

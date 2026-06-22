@@ -56,6 +56,8 @@ export interface JobResponse {
   updated_at: string;
   book_title: string | null;
   output_path: string | null;
+  // Standalone Markdown twin of the EPUB (zero-LLM), for feeding to an AI.
+  output_md_path: string | null;
   error: string | null;
   discovered_items: DiscoveredItem[];
 }
@@ -167,8 +169,8 @@ export async function fetchItemPreview(
   return res.json();
 }
 
-export function getDownloadUrl(id: string): string {
-  return `/api/jobs/${id}/download`;
+export function getDownloadUrl(id: string, format: "epub" | "md" = "epub"): string {
+  return `/api/jobs/${id}/download?format=${format}`;
 }
 
 export async function search(

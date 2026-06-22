@@ -85,6 +85,7 @@ def init_db() -> None:
 # no-op (SQLite has no "ADD COLUMN IF NOT EXISTS").
 _JOB_ADDED_COLUMNS = (
     ("llm_roles", "TEXT"),  # JSON list of selected LLM role ids for the compile
+    ("output_md_path", "TEXT"),  # native zero-LLM Markdown companion (for AIs)
 )
 
 _DISCOVERED_ITEM_ADDED_COLUMNS = (

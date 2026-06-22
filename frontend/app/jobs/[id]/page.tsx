@@ -193,13 +193,30 @@ export default function JobPage() {
                   <p className="text-muted-foreground text-sm">{job.book_title}</p>
                 )}
               </div>
-              <a
-                href={getDownloadUrl(id)}
-                download
-                className={buttonVariants({ size: "lg" })}
-              >
-                Download the EPUB
-              </a>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href={getDownloadUrl(id)}
+                  download
+                  className={buttonVariants({ size: "lg" })}
+                >
+                  Download the EPUB
+                </a>
+                {job.output_md_path && (
+                  <a
+                    href={getDownloadUrl(id, "md")}
+                    download
+                    className={buttonVariants({ variant: "outline", size: "lg" })}
+                  >
+                    Download Markdown
+                  </a>
+                )}
+              </div>
+              {job.output_md_path && (
+                <p className="text-muted-foreground text-xs">
+                  Markdown is a plain-text copy, handy for feeding the
+                  compilation to an AI.
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-2">

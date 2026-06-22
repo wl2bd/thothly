@@ -60,6 +60,7 @@ def update_job_status(
     *,
     book_title: str | None = None,
     output_path: str | None = None,
+    output_md_path: str | None = None,
     error: str | None = None,
 ) -> None:
     columns = ["status = ?", "updated_at = ?"]
@@ -68,6 +69,7 @@ def update_job_status(
     for column, value in (
         ("book_title", book_title),
         ("output_path", output_path),
+        ("output_md_path", output_md_path),
         ("error", error),
     ):
         if value is not None:
@@ -221,5 +223,6 @@ def _row_to_response(row) -> JobResponse:
         updated_at=row["updated_at"],
         book_title=row["book_title"],
         output_path=row["output_path"],
+        output_md_path=row["output_md_path"],
         error=row["error"],
     )

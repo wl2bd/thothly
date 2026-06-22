@@ -84,29 +84,45 @@ def preview_item(job_id: str, item_id: str) -> ItemPreview:
 
 
 @router.get("/{job_id}/download")
-def download_job(job_id: str) -> FileResponse:
+def download_job(job_id: str, format: str = "epub") -> FileResponse:
+    """Download the finished compilation.
+
+    `format=epub` (default) returns the EPUB; `format=md` returns the standalone
+    Markdown twin (the zero-LLM, AI-friendly text of the same content).
+    """
+    if format not in ("epub", "md"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="format must be 'epub' or 'md'",
+        )
+
     job = repository.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    if job.status != "completed" or not job.output_path:
+
+    stored_path = job.output_md_path if format == "md" else job.output_path
+    if job.status != "completed" or not stored_path:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="EPUB is not ready"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"{format.upper()} is not ready",
         )
 
-    path = Path(job.output_path)
+    path = Path(stored_path)
     if not path.exists():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="EPUB file is missing"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{format.upper()} file is missing",
         )
 
+    media_type = "text/markdown" if format == "md" else "application/epub+zip"
     return FileResponse(
         path,
-        media_type="application/epub+zip",
-        filename=_download_filename(job),
+        media_type=media_type,
+        filename=_download_filename(job, format),
     )
 
 
-def _download_filename(job: JobResponse) -> str:
+def _download_filename(job: JobResponse, ext: str) -> str:
     base = job.book_title or "thothly"
     slug = re.sub(r"[^\w\-]+", "-", base).strip("-").lower()
-    return f"{slug or 'thothly'}.epub"
+    return f"{slug or 'thothly'}.{ext}"
