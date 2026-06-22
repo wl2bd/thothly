@@ -40,6 +40,9 @@ export default function Home() {
   const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Which provider's results to show ("all" = no filter). Reset on every new
+  // search so a stale filter never blanks out the next query's results.
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
 
   const [staged, setStaged] = useState<StagedSource[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -62,6 +65,7 @@ export default function Home() {
       if (isReset) {
         setResults([]);
         setSearchErrors([]);
+        setSourceFilter("all");
         setSearching(false);
         return;
       }
@@ -71,6 +75,7 @@ export default function Home() {
         if (cancelled) return;
         setResults(resp.results);
         setSearchErrors(resp.errors);
+        setSourceFilter("all");
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
         setResults([]);
@@ -180,6 +185,10 @@ export default function Home() {
   }
 
   const showResults = !queryIsUrl && trimmed !== "";
+  const visibleResults =
+    sourceFilter === "all"
+      ? results
+      : results.filter((r) => r.source === sourceFilter);
 
   return (
     <main className="flex min-h-screen justify-center p-8 sm:p-12">
@@ -226,10 +235,18 @@ export default function Home() {
               </p>
             )}
 
+            {showResults && results.length > 0 && (
+              <SourceFilter
+                results={results}
+                active={sourceFilter}
+                onChange={setSourceFilter}
+              />
+            )}
+
             {showResults && (
               <SearchResults
                 searching={searching}
-                results={results}
+                results={visibleResults}
                 selected={selected}
                 onToggle={toggleResult}
               />
@@ -355,6 +372,9 @@ function SearchResults({
                   {r.author && <span>· {r.author}</span>}
                   {resultExtent(r) && <span>· {resultExtent(r)}</span>}
                 </span>
+                <span className="text-muted-foreground/70 truncate text-xs">
+                  {displayUrl(r.url)}
+                </span>
               </span>
             </label>
           </li>
@@ -405,6 +425,50 @@ function faviconUrl(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+// Provider filter chips above the results — the relevant filter dimension for
+// search hits (date/length aren't reliably present across providers). Only
+// shown when more than one provider returned hits; counts are per provider.
+function SourceFilter({
+  results,
+  active,
+  onChange,
+}: {
+  results: SearchResult[];
+  active: string;
+  onChange: (source: string) => void;
+}) {
+  const counts: Record<string, number> = {};
+  for (const r of results) counts[r.source] = (counts[r.source] ?? 0) + 1;
+  const sources = Object.keys(counts);
+  if (sources.length < 2) return null;
+
+  const chips = [
+    { key: "all", label: "All", count: results.length },
+    ...sources.map((s) => ({
+      key: s,
+      label: SOURCE_LABELS[s] ?? s,
+      count: counts[s],
+    })),
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {chips.map(({ key, label, count }) => (
+        <Button
+          key={key}
+          type="button"
+          size="xs"
+          variant={active === key ? "default" : "secondary"}
+          onClick={() => onChange(key)}
+        >
+          {label}
+          <span className="ml-1 opacity-60">{count}</span>
+        </Button>
+      ))}
+    </div>
+  );
 }
 
 function SourceBadge({ source }: { source: string }) {
@@ -485,6 +549,13 @@ function detectType(url: string): ResultType {
 function detectSource(url: string): string {
   const u = url.toLowerCase();
   return u.includes("youtube.com") || u.includes("youtu.be") ? "youtube" : "web";
+}
+
+// The result's URL shown under its title, minus the protocol/www noise but
+// keeping the path and query — so YouTube watch links (which differ only in
+// ?v=…) stay distinguishable. Long URLs are truncated by the row's CSS.
+function displayUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
 }
 
 function prettyUrl(url: string): string {
