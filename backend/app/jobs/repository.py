@@ -164,6 +164,15 @@ def get_selected_items(job_id: str) -> list[DiscoveredItemResponse]:
     return [_item_row_to_response(row) for row in rows]
 
 
+def get_discovered_item(job_id: str, item_id: str) -> DiscoveredItemResponse | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM job_discovered_items WHERE job_id = ? AND id = ?",
+            (job_id, item_id),
+        ).fetchone()
+    return _item_row_to_response(row) if row is not None else None
+
+
 def _get_discovered_items(job_id: str) -> list[DiscoveredItemResponse]:
     with get_connection() as conn:
         rows = conn.execute(

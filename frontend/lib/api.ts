@@ -37,6 +37,17 @@ export interface DiscoveredItem {
   reading_time_min: number | null;
 }
 
+export interface ItemPreview {
+  item_id: string;
+  item_type: "youtube" | "blog" | "podcast";
+  // false when there's nothing free to show (podcast awaiting transcription,
+  // video without subtitles, unscrapable page) — `note` then says why.
+  available: boolean;
+  content_md: string | null;
+  truncated: boolean;
+  note: string | null;
+}
+
 export interface JobResponse {
   id: string;
   status: JobStatus;
@@ -140,6 +151,17 @@ export async function confirmJob(
       book_title: bookTitle,
       llm_roles: llmRoles,
     }),
+  });
+  if (!res.ok) return parseError(res);
+  return res.json();
+}
+
+export async function fetchItemPreview(
+  jobId: string,
+  itemId: string,
+): Promise<ItemPreview> {
+  const res = await fetch(`/api/jobs/${jobId}/items/${itemId}/preview`, {
+    cache: "no-store",
   });
   if (!res.ok) return parseError(res);
   return res.json();

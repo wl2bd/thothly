@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
   confirmJob,
+  fetchItemPreview,
   fetchJob,
   fetchLlmConfig,
   getDownloadUrl,
   type DiscoveredItem,
+  type ItemPreview,
   type JobResponse,
   type LlmConfig,
   type Source,
@@ -165,6 +167,7 @@ export default function JobPage() {
             <StatusMessage label="Discovering sources…" />
           ) : job.status === "reviewing" ? (
             <ReviewList
+              jobId={id}
               items={job.discovered_items}
               sources={job.sources}
               selected={selected}
@@ -225,6 +228,7 @@ function StatusMessage({ label }: { label: string }) {
 }
 
 interface ReviewListProps {
+  jobId: string;
   items: DiscoveredItem[];
   sources: Source[];
   selected: Set<string>;
@@ -242,6 +246,7 @@ interface ReviewListProps {
 }
 
 function ReviewList({
+  jobId,
   items,
   sources,
   selected,
@@ -385,31 +390,13 @@ function ReviewList({
                 </div>
                 {!isCollapsed &&
                   groupItems.map((item) => (
-                    <label
+                    <ReviewItem
                       key={item.id}
-                      className="hover:bg-muted/60 flex cursor-pointer items-center gap-3.5 rounded-lg px-3 py-2.5 transition-colors"
-                    >
-                      <Checkbox
-                        checked={selected.has(item.id)}
-                        onCheckedChange={() => onToggle(item.id)}
-                      />
-                      <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="truncate text-sm">{item.title}</span>
-                        <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-                          <span>
-                            {item.item_type === "youtube"
-                              ? "YouTube"
-                              : item.item_type === "podcast"
-                                ? "Podcast"
-                                : "Article"}
-                          </span>
-                          {formatMeta(item).map((part) => (
-                            <span key={part}>· {part}</span>
-                          ))}
-                          {statusBadge(item)}
-                        </span>
-                      </span>
-                    </label>
+                      jobId={jobId}
+                      item={item}
+                      checked={selected.has(item.id)}
+                      onToggle={() => onToggle(item.id)}
+                    />
                   ))}
               </div>
             );
@@ -440,6 +427,183 @@ function ReviewList({
       </Button>
     </div>
   );
+}
+
+interface ReviewItemProps {
+  jobId: string;
+  item: DiscoveredItem;
+  checked: boolean;
+  onToggle: () => void;
+}
+
+// One review row: the selection checkbox + metadata, plus an on-demand preview
+// of the exact no-LLM content this item would contribute (so you can see what
+// you're keeping before compiling). The preview is fetched lazily on first
+// expand and then cached locally.
+function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
+  const [open, setOpen] = useState(false);
+  const [preview, setPreview] = useState<ItemPreview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggleOpen() {
+    const next = !open;
+    setOpen(next);
+    if (!next || preview || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setPreview(await fetchItemPreview(jobId, item.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg transition-colors hover:bg-muted/60">
+      <div className="flex items-center gap-3.5 px-3 py-2.5">
+        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
+          <Checkbox checked={checked} onCheckedChange={onToggle} />
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="truncate text-sm">{item.title}</span>
+            <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+              <span>
+                {item.item_type === "youtube"
+                  ? "YouTube"
+                  : item.item_type === "podcast"
+                    ? "Podcast"
+                    : "Article"}
+              </span>
+              {formatMeta(item).map((part) => (
+                <span key={part}>· {part}</span>
+              ))}
+              {statusBadge(item)}
+            </span>
+          </span>
+        </label>
+        <button
+          type="button"
+          onClick={toggleOpen}
+          aria-expanded={open}
+          className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs transition-colors"
+        >
+          <Eye className="size-3.5" />
+          {open ? "Hide" : "Preview"}
+        </button>
+      </div>
+
+      {open && (
+        <div className="px-3 pb-3 pl-10">
+          {loading ? (
+            <div className="text-muted-foreground flex items-center gap-2 py-2 text-xs">
+              <Spinner className="size-3.5" />
+              Loading preview…
+            </div>
+          ) : error ? (
+            <p className="text-destructive text-xs">{error}</p>
+          ) : preview ? (
+            <PreviewBody preview={preview} />
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PreviewBody({ preview }: { preview: ItemPreview }) {
+  if (!preview.available) {
+    return (
+      <p className="text-muted-foreground text-xs italic">
+        {preview.note ?? "No preview available."}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {preview.note && (
+        <p className="text-amber-700 dark:text-amber-500 text-xs">{preview.note}</p>
+      )}
+      <div className="bg-muted/40 max-h-72 overflow-y-auto rounded-lg border p-3">
+        <MarkdownPreview md={preview.content_md ?? ""} />
+      </div>
+      {preview.truncated && (
+        <p className="text-muted-foreground text-xs italic">
+          Preview trimmed — the full text is used when compiling.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// A deliberately small Markdown renderer for the narrow subset the compiler
+// emits (## headings, **bold** speaker labels, bullet lists, links). Avoids
+// pulling in a Markdown dependency for what is just a read-only preview.
+function MarkdownPreview({ md }: { md: string }) {
+  const blocks = md.split(/\n{2,}/).filter((b) => b.trim());
+  return (
+    <div className="flex flex-col gap-2 text-sm leading-relaxed">
+      {blocks.map((block, i) => {
+        const heading = /^(#{1,6})\s+(.*)$/.exec(block);
+        if (heading) {
+          return (
+            <p key={i} className="text-foreground mt-1 font-semibold">
+              {renderInline(heading[2])}
+            </p>
+          );
+        }
+        if (/^\s*[-*]\s+/.test(block)) {
+          const lines = block.split("\n").map((l) => l.replace(/^\s*[-*]\s+/, ""));
+          return (
+            <ul key={i} className="list-disc pl-5">
+              {lines.map((line, j) => (
+                <li key={j}>{renderInline(line)}</li>
+              ))}
+            </ul>
+          );
+        }
+        return <p key={i}>{renderInline(block.replace(/\n/g, " "))}</p>;
+      })}
+    </div>
+  );
+}
+
+const INLINE = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`/g;
+
+function renderInline(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+  INLINE.lastIndex = 0;
+  while ((match = INLINE.exec(text)) !== null) {
+    if (match.index > last) nodes.push(text.slice(last, match.index));
+    if (match[1] != null) {
+      nodes.push(<strong key={key++}>{match[1]}</strong>);
+    } else if (match[2] != null) {
+      nodes.push(
+        <a
+          key={key++}
+          href={match[3]}
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          {match[2]}
+        </a>,
+      );
+    } else if (match[4] != null) {
+      nodes.push(
+        <code key={key++} className="bg-muted rounded px-1 text-[0.85em]">
+          {match[4]}
+        </code>,
+      );
+    }
+    last = INLINE.lastIndex;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
 }
 
 interface RoleSelectorProps {

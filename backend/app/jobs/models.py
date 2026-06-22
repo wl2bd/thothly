@@ -69,6 +69,26 @@ class DiscoveredItemResponse(BaseModel):
     reading_time_min: int | None = None
 
 
+class ItemPreview(BaseModel):
+    """The no-LLM content a discovered item would contribute, for the review
+    screen. Mirrors the compiler's zero-LLM path exactly, so `content_md` is what
+    actually lands in the EPUB when no AI cleanup role is chosen — not a guess.
+
+    `available` is False when there's nothing free to show (a podcast awaiting
+    transcription, a video without subtitles, an unscrapable page); `note` then
+    explains why. `note` is also set on an *available* preview to flag a caveat
+    (e.g. raw captions the final compile would punctuate). `truncated` marks a
+    long body clipped for transport — the compile still uses the full text.
+    """
+
+    item_id: str
+    item_type: ItemType
+    available: bool
+    content_md: str | None = None
+    truncated: bool = False
+    note: str | None = None
+
+
 class JobResponse(BaseModel):
     id: str
     status: JobStatus

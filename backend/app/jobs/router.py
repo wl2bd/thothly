@@ -5,8 +5,9 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import FileResponse
 
 from app.jobs import repository
-from app.jobs.models import JobConfirm, JobCreate, JobResponse
+from app.jobs.models import ItemPreview, JobConfirm, JobCreate, JobResponse
 from app.jobs.phases import run_discovery
+from app.jobs.preview import build_item_preview
 from app.jobs.runner import run_compilation
 from app.pipeline.roles import get_role
 
@@ -64,6 +65,22 @@ def confirm_job(
     repository.update_job_status(job_id, "processing", book_title=title or None)
     background_tasks.add_task(run_compilation, job_id)
     return repository.get_job(job_id)
+
+
+@router.get("/{job_id}/items/{item_id}/preview", response_model=ItemPreview)
+def preview_item(job_id: str, item_id: str) -> ItemPreview:
+    """The no-LLM content this item would contribute, for the review screen.
+
+    Lets the user see what they're keeping before compiling — the exact
+    zero-LLM render (free/instant for cached YouTube transcripts, one cheap
+    scrape for blogs; podcasts report that they need transcription first).
+    """
+    if repository.get_job(job_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    item = repository.get_discovered_item(job_id, item_id)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    return build_item_preview(item)
 
 
 @router.get("/{job_id}/download")
