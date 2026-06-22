@@ -1,42 +1,53 @@
 # Thothly
 
-> Compile ce que tu veux lire, peu importe d'où ça vient.
+> Compile whatever you want to read, no matter where it comes from.
 
-Thothly is a self-hostable, open-source tool that compiles content from
-multiple online sources (YouTube videos, playlists and channels, blogs) into a
+Thothly is a self-hostable, open-source tool that compiles content from across
+the web — YouTube videos, playlists and channels, blogs, and podcasts — into a
 single clean, well-formatted EPUB for offline reading on an e-reader.
 
 Thothly is about **reading**, not querying. It is the complement of tools like
 NotebookLM (which do RAG / Q&A over sources): Thothly curates, formats, and
 ships a book — typography, table of contents, chapter breaks, source
 attribution — so the result feels like an Instapaper edition rather than a text
-dump.
+dump. Every compilation also yields a plain-Markdown twin, so the same reading
+list can be handed straight to an AI.
 
 ## Features
 
-- **Paste a link, that's it.** Single videos, playlists, channels, blog
-  homepages or RSS feeds — the source type is auto-detected, no dropdowns.
+- **Search or paste.** Type a query to search YouTube, podcasts, and the web at
+  once (all keyless), or paste a link directly — single videos, playlists,
+  channels, blog homepages, or RSS feeds. The source type is auto-detected; no
+  dropdowns. Filter results by provider and sort them by relevance, duration, or
+  title.
 - **Review before you compile.** Discovery lists every item with its reading
-  time, language, and transcript readiness; you tick what makes the book.
+  time, language, and transcript readiness, and a no-LLM content preview of
+  exactly what each item would contribute. You tick what makes the book.
 - **Clean EPUB output.** Sources index, per-chapter attribution, YouTube
-  chapters as sub-headings, Instapaper-grade typography.
+  chapters as sub-headings, an editorial cover, and Instapaper-grade typography.
+- **Markdown companion.** Every compilation also produces a standalone Markdown
+  file of the same content — perfect for feeding the reading list to an AI or
+  any plain-text tool.
 - **Zero-LLM by default.** Native subtitles and article text, never rewritten.
 - **Optional LLM cleanup.** Re-punctuate raw captions, copyedit, infer section
   headings, or generate a preface — entirely opt-in (see below).
+- **Optional podcast transcription.** Turn audio episodes into chapters via any
+  OpenAI-compatible speech-to-text endpoint, with diarized speaker labels.
 - **Self-hosted, single-user.** No accounts, no telemetry, runs on your machine.
 
 ## How it works
 
 ```
-paste links → discovery → review → compile → download
+search / paste links → discovery → review → compile → download (EPUB + Markdown)
 ```
 
-You submit one or more URLs (`POST /jobs`). Discovery enumerates the items
-(cheap, in the background) and the job moves to `reviewing`. You pick the items
-and an optional title (`POST /jobs/{id}/confirm`); compilation fetches the
-selected content, renders a single EPUB with Pandoc, and the job reaches
-`completed`. Then you download it (`GET /jobs/{id}/download`). Job state lives in
-SQLite — no Redis, no Celery.
+You stage one or more sources, from search results or pasted URLs, and start a
+job (`POST /jobs`). Discovery enumerates the items (cheap, in the background)
+and the job moves to `reviewing`. You pick the items, an optional title, and any
+LLM cleanup roles (`POST /jobs/{id}/confirm`); compilation fetches the selected
+content, renders a single EPUB with Pandoc plus its Markdown twin, and the job
+reaches `completed`. Then you download it (`GET /jobs/{id}/download`, or
+`?format=md` for the Markdown). Job state lives in SQLite — no Redis, no Celery.
 
 ## Prerequisites
 
@@ -53,10 +64,10 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open <http://localhost:3000>, paste a YouTube or blog link, and follow
-discovery → review → compile. The backend API is published on `:8000` (interactive
-docs at <http://localhost:8000/docs>) for direct exploration. Generated EPUBs and
-the SQLite database persist in `./data`.
+Open <http://localhost:3000>, search for something (or paste a YouTube/blog
+link), and follow discovery → review → compile. The backend API is published on
+`:8000` (interactive docs at <http://localhost:8000/docs>) for direct
+exploration. Generated files and the SQLite database persist in `./data`.
 
 ## Optional LLM cleanup
 
@@ -65,10 +76,10 @@ paragraphs for free, and raw (unpunctuated) captions fall back to a simple
 grouping. You can optionally enable an LLM layer that, at compile time and only
 on the items you selected, runs the roles you tick in the review screen:
 
-- **Ponctuation** — restores punctuation and paragraphs to raw transcripts.
-- **Correction** — removes filler words and obvious ASR mistakes.
+- **Punctuation** — restores punctuation and paragraphs to raw transcripts.
+- **Copyedit** — removes filler words and obvious speech-recognition mistakes.
 - **Sections** — infers section headings for content without chapters.
-- **Préface** — generates a short opening preface for the book.
+- **Preface** — generates a short opening preface for the book.
 
 One OpenAI-compatible endpoint covers every provider — point `LLM_BASE_URL`,
 `LLM_MODEL` (and `LLM_API_KEY` when required) at Ollama (local, free), Mistral,
@@ -89,10 +100,13 @@ the only outbound dependency beyond the keyless scrapers. Point `STT_BASE_URL`,
 local vLLM/whisper.cpp server (no key), or OpenAI. See `.env.example`.
 
 Transcription runs lazily — only for the episodes you select — and is cached by
-audio URL, so re-compiling never re-pays for it. Long episodes are split into
-≤25-min chunks, which needs `ffmpeg` installed (short ones transcribe without
-it). Leave the variables empty and episodes are simply skipped; many podcasts
-are also on YouTube, where native subtitles already cover them for free.
+audio URL, so re-compiling never re-pays for it. Episodes keep their diarized
+dialogue with per-speaker labels; when an LLM is configured, real speaker names
+are resolved by default (`PODCAST_SPEAKER_NAMING`) — disable it for plain
+"Speaker N" labels. Long episodes are split into ≤25-min chunks, which needs
+`ffmpeg` installed (short ones transcribe without it). Leave the variables empty
+and episodes are simply skipped; many podcasts are also on YouTube, where native
+subtitles already cover them for free.
 
 ## Configuration
 
@@ -100,10 +114,11 @@ All settings have sensible defaults; see `.env.example` for the full list.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DATA_DIR` | `/data` | SQLite DB + generated EPUBs (mounted from `./data` in Compose) |
+| `DATA_DIR` | `/data` | SQLite DB + generated files (mounted from `./data` in Compose) |
 | `BACKEND_URL` | `http://backend:8000` | Frontend → backend (set by Compose; override only outside it) |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
+| `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
 
 ## Running without Docker
 
@@ -119,8 +134,11 @@ uv run uvicorn app.main:app --reload
 # Frontend (in another terminal)
 cd frontend
 pnpm install
-BACKEND_URL=http://localhost:8000 pnpm dev
+BACKEND_URL=http://127.0.0.1:8000 pnpm dev
 ```
+
+The Markdown companion is free, but the EPUB step shells out to **Pandoc**, so
+install it locally if you compile outside Docker.
 
 ## Architecture
 
@@ -144,8 +162,8 @@ BACKEND_URL=http://localhost:8000 pnpm dev
 ```
 thothly/
 ├── docker-compose.yml          # 2 services: backend, frontend
-├── .env.example                # DATA_DIR / BACKEND_URL / optional LLM_* keys
-├── data/                       # persistent volume (SQLite DB, generated EPUBs)
+├── .env.example                # DATA_DIR / BACKEND_URL / optional LLM_* / STT_* keys
+├── data/                       # persistent volume (SQLite DB, generated files)
 ├── frontend/                   # Next.js 16 + Tailwind v4 + shadcn/base-ui
 │   ├── app/                    # App Router pages + /api proxy routes
 │   ├── components/ui/          # shadcn primitives
@@ -153,9 +171,10 @@ thothly/
 ├── backend/                    # FastAPI + uv
 │   ├── app/
 │   │   ├── api/                # health, llm catalogue
-│   │   ├── sources/            # ingestion: youtube, blog, discovery, caches
+│   │   ├── search/             # multi-provider search (youtube, podcast, web)
+│   │   ├── sources/            # ingestion: youtube, blog, podcast, discovery, caches
 │   │   ├── pipeline/           # compiler, LLM cleanup (llm/roles/cleanup)
-│   │   ├── render/             # Pandoc + EPUB CSS
+│   │   ├── render/             # Pandoc + EPUB CSS + cover
 │   │   ├── jobs/               # routes, BackgroundTasks phases, SQLite state
 │   │   └── core/               # config, database, version
 │   └── tests/                  # pytest suite
