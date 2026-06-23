@@ -1,7 +1,11 @@
 import logging
 
 from app.jobs.models import DiscoveredItemResponse, Source
-from app.jobs.repository import save_discovered_items, update_job_status
+from app.jobs.repository import (
+    save_discovered_items,
+    set_job_sources,
+    update_job_status,
+)
 from app.pipeline.compiler import derive_book_title
 from app.sources.discovery import discover_source
 
@@ -52,6 +56,12 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
         if not items:
             update_job_status(job_id, "failed", error="No items discovered from any source")
             return
+
+        # Persist each source's discovered name so the review screen can label
+        # its groups by the real channel/playlist/blog title, not the raw URL.
+        for source, name in zip(sources, source_names):
+            source.name = name
+        set_job_sources(job_id, sources)
 
         save_discovered_items(job_id, items)
         update_job_status(

@@ -169,7 +169,7 @@ export default function JobPage() {
           {!job ? (
             <StatusMessage label="Loading…" />
           ) : job.status === "pending" || job.status === "discovering" ? (
-            <StatusMessage label="Discovering sources…" />
+            <DiscoveringView sources={job.sources} />
           ) : job.status === "reviewing" ? (
             <ReviewList
               jobId={id}
@@ -189,39 +189,23 @@ export default function JobPage() {
               onConfirm={onConfirm}
             />
           ) : job.status === "processing" ? (
-            <StatusMessage label="Compiling the EPUB…" />
+            <StatusMessage label="Compiling…" />
           ) : job.status === "completed" ? (
             <div className="flex flex-col items-start gap-6">
               <div className="flex flex-col gap-1.5">
-                <p className="text-sm font-medium">Your EPUB is ready 🎉</p>
+                <p className="text-sm font-medium">Your compilation is ready 🎉</p>
                 {job.book_title && (
                   <p className="text-muted-foreground text-sm">{job.book_title}</p>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={getDownloadUrl(id)}
-                  download
-                  className={buttonVariants({ size: "lg" })}
-                >
-                  Download the EPUB
-                </a>
-                {job.output_md_path && (
-                  <a
-                    href={getDownloadUrl(id, "md")}
-                    download
-                    className={buttonVariants({ variant: "outline", size: "lg" })}
-                  >
-                    Download Markdown
-                  </a>
-                )}
-              </div>
-              {job.output_md_path && (
-                <p className="text-muted-foreground text-xs">
-                  Markdown is a plain-text copy, handy for feeding the
-                  compilation to an AI.
-                </p>
-              )}
+              <a
+                href={getDownloadUrl(id)}
+                download
+                className={buttonVariants({ size: "lg" })}
+              >
+                Download EPUB
+              </a>
+              {job.output_md_path && <MarkdownActions jobId={id} />}
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -247,6 +231,121 @@ function StatusMessage({ label }: { label: string }) {
       {label}
     </div>
   );
+}
+
+// The wait between staging sources and reviewing items. Rather than a bare
+// spinner, it lists the sources being looked through (by their host/URL — real
+// names aren't known until discovery finishes) so the auto-advance into review
+// reads as one continuous motion instead of a dead loading screen.
+function DiscoveringView({ sources }: { sources: Source[] }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3 text-sm font-medium">
+        <Spinner />
+        Looking through your {sources.length} source
+        {sources.length !== 1 ? "s" : ""}…
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {sources.map((s, i) => (
+          <li
+            key={`${s.url}-${i}`}
+            className="text-muted-foreground bg-muted/40 truncate rounded-lg px-3 py-2 text-xs"
+          >
+            {s.name?.trim() || sourceLabel(s.url)}
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground text-xs">
+        Listing what each one contains. You pick what goes in next.
+      </p>
+    </div>
+  );
+}
+
+// The completed screen's Markdown actions. The Markdown twin is meant to be fed
+// to an AI, where copy-paste is usually the natural gesture, so we offer Copy
+// (instant, from the text we fetch once) alongside Download, and surface the
+// size so the user can judge whether it fits their model's context. We never
+// gate by size: the right limit depends on the target LLM, so we inform rather
+// than hide the action.
+function MarkdownActions({ jobId }: { jobId: string }) {
+  const [md, setMd] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(getDownloadUrl(jobId, "md"))
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error("fetch failed"))))
+      .then((t) => {
+        if (!cancelled) setMd(t);
+      })
+      .catch(() => {
+        /* leave Copy disabled; Download still works */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId]);
+
+  const words = md ? countWords(md) : null;
+  const tokens = words != null ? Math.round(words * TOKENS_PER_WORD) : null;
+
+  async function copy() {
+    if (!md) return;
+    try {
+      await navigator.clipboard.writeText(md);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked; Download remains the fallback */
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm">
+        <span className="font-medium">Markdown</span>
+        <span className="text-muted-foreground">
+          {" "}
+          for an AI
+          {words != null &&
+            ` · ~${words.toLocaleString("en-US")} words (~${formatTokens(tokens!)} tokens)`}
+        </span>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={copy}
+          disabled={!md}
+        >
+          {copied ? "Copied ✓" : "Copy"}
+        </Button>
+        <a
+          href={getDownloadUrl(jobId, "md")}
+          download
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Download
+        </a>
+      </div>
+      {tokens != null && tokens > 200000 && (
+        <p className="text-muted-foreground text-xs">
+          Large for some AIs; downloading and attaching the file may work better.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function countWords(text: string): number {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+function formatTokens(n: number): string {
+  return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
 }
 
 interface ReviewListProps {
@@ -349,7 +448,7 @@ function ReviewList({
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">
-          {items.length} item{items.length !== 1 ? "s" : ""} — {selected.size}{" "}
+          {items.length} item{items.length !== 1 ? "s" : ""}, {selected.size}{" "}
           selected
         </p>
         <div className="flex gap-1">
@@ -396,7 +495,7 @@ function ReviewList({
                       <ChevronDown className="size-4 shrink-0" />
                     )}
                     <span className="truncate text-xs font-semibold tracking-wide uppercase">
-                      {sourceLabel(sources[sourceIndex]?.url)}
+                      {groupLabel(sources[sourceIndex], groupItems)}
                     </span>
                     <span className="text-muted-foreground/70 shrink-0 text-xs normal-case">
                       {selectedCount}/{groupItems.length}
@@ -426,7 +525,7 @@ function ReviewList({
         )}
       </div>
 
-      {llm && llm.roles.length > 0 && (
+      {llm && llm.available && llm.roles.length > 0 && (
         <RoleSelector
           llm={llm}
           selectedRoles={selectedRoles}
@@ -443,9 +542,7 @@ function ReviewList({
         disabled={confirming || selected.size === 0}
         className="w-full"
       >
-        {confirming
-          ? "Starting…"
-          : `Compile ${selected.size} item${selected.size !== 1 ? "s" : ""}`}
+        {confirming ? "Starting…" : "Generate"}
       </Button>
     </div>
   );
@@ -545,14 +642,14 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
   return (
     <div className="flex flex-col gap-2">
       {preview.note && (
-        <p className="text-amber-700 dark:text-amber-500 text-xs">{preview.note}</p>
+        <p className="text-warning text-xs">{preview.note}</p>
       )}
       <div className="bg-muted/40 max-h-72 overflow-y-auto rounded-lg border p-3">
         <MarkdownPreview md={preview.content_md ?? ""} />
       </div>
       {preview.truncated && (
         <p className="text-muted-foreground text-xs italic">
-          Preview trimmed — the full text is used when compiling.
+          Preview trimmed. The full text is used when compiling.
         </p>
       )}
     </div>
@@ -635,57 +732,96 @@ interface RoleSelectorProps {
   unpunctuatedSelected: number;
 }
 
+// AI cleanup is secondary to the free path, so it lives in a disclosure that's
+// collapsed by default — the summary still surfaces how many videos would
+// benefit so the user knows there's something relevant inside. Only rendered
+// when an LLM is actually configured (the caller gates on llm.available), so
+// there's no disabled state to handle here.
 function RoleSelector({
   llm,
   selectedRoles,
   onToggleRole,
   unpunctuatedSelected,
 }: RoleSelectorProps) {
-  const disabled = !llm.available;
-  return (
-    <div className="border-border flex flex-col gap-3 rounded-xl border border-dashed p-4">
-      <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-medium">AI cleanup</p>
-        <p className="text-muted-foreground text-xs">
-          {disabled
-            ? "Configure an LLM on the server (LLM_BASE_URL / LLM_MODEL) to enable it."
-            : unpunctuatedSelected > 0
-              ? `${unpunctuatedSelected} unpunctuated video${unpunctuatedSelected !== 1 ? "s" : ""} in the selection — punctuation will make them readable.`
-              : "Improves the selected transcripts. No cost on the default path."}
-        </p>
-      </div>
+  const [open, setOpen] = useState(false);
+  const activeCount = selectedRoles.size;
+  const summary =
+    activeCount > 0
+      ? `${activeCount} on`
+      : unpunctuatedSelected > 0
+        ? `${unpunctuatedSelected} could be cleaned up`
+        : "Optional";
 
-      <ul className="flex flex-col gap-2.5">
-        {llm.roles.map((role) => (
-          <li key={role.id}>
-            <label
-              className={`flex items-start gap-3 ${
-                disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-              }`}
-            >
-              <Checkbox
-                checked={selectedRoles.has(role.id)}
-                onCheckedChange={() => onToggleRole(role.id)}
-                disabled={disabled}
-                className="mt-0.5"
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm leading-none font-medium">{role.label}</span>
-                <span className="text-muted-foreground text-xs">
-                  {role.description}
-                </span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
+  return (
+    <div className="rounded-xl border border-dashed">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left"
+      >
+        {open ? (
+          <ChevronDown className="text-muted-foreground size-4 shrink-0" />
+        ) : (
+          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        )}
+        <span className="flex-1 text-sm font-medium">AI cleanup</span>
+        <span className="text-muted-foreground text-xs">{summary}</span>
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-3 px-4 pb-4 pl-10">
+          <p className="text-muted-foreground text-xs">
+            {unpunctuatedSelected > 0
+              ? `${unpunctuatedSelected} unpunctuated video${unpunctuatedSelected !== 1 ? "s" : ""} in the selection. Punctuation will make them readable.`
+              : "Improves the selected transcripts. No cost on the default path."}
+          </p>
+          <ul className="flex flex-col gap-2.5">
+            {llm.roles.map((role) => (
+              <li key={role.id}>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={selectedRoles.has(role.id)}
+                    onCheckedChange={() => onToggleRole(role.id)}
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm leading-none font-medium">
+                      {role.label}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {role.description}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
 
-// A compact, recognizable label for a source group, derived from the URL the
-// user entered (e.g. "youtube.com/@channel", "jakub.kr"). Friendlier source
-// names (channel/blog titles) would need the backend to surface them.
+// The label for a source group. Prefers the real name the backend captured at
+// discovery (channel / playlist / blog title); falls back to a compact
+// URL-derived label. A single-item source names itself after its one item (a
+// lone video's "source name" is the video title), so there we use the URL
+// instead of printing the same text as both the group header and the item.
+function groupLabel(
+  source: Source | undefined,
+  items: DiscoveredItem[],
+): string {
+  const name = source?.name?.trim();
+  if (name && !(items.length === 1 && items[0].title.trim() === name)) {
+    return name;
+  }
+  return sourceLabel(source?.url);
+}
+
+// A compact, recognizable label derived from the URL the user entered
+// (e.g. "youtube.com/@channel", "jakub.kr") — the fallback when no friendlier
+// discovered name is available.
 function sourceLabel(url: string | undefined): string {
   if (!url) return "Source";
   try {
@@ -732,17 +868,9 @@ function statusBadge(item: DiscoveredItem) {
     return <Badge variant="secondary">❓ Subtitles unchecked</Badge>;
   }
   if (item.is_punctuated) {
-    return (
-      <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-        ✅ Punctuated
-      </Badge>
-    );
+    return <Badge variant="success">✅ Punctuated</Badge>;
   }
-  return (
-    <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-500">
-      ⚠️ LLM cleanup
-    </Badge>
-  );
+  return <Badge variant="warning">⚠️ LLM cleanup</Badge>;
 }
 
 // --- Pre-compile cost estimate -------------------------------------------------

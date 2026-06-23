@@ -82,6 +82,22 @@ def update_job_status(
         conn.commit()
 
 
+def set_job_sources(job_id: str, sources: list[Source]) -> None:
+    """Rewrite the stored sources JSON.
+
+    Called after discovery to persist each source's discovered name, so the
+    review screen can label every source group by its real name (channel /
+    playlist / blog title) instead of the raw URL.
+    """
+    sources_json = json.dumps([s.model_dump(mode="json") for s in sources])
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE jobs SET sources = ? WHERE id = ?",
+            (sources_json, job_id),
+        )
+        conn.commit()
+
+
 def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> None:
     now_iso = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
