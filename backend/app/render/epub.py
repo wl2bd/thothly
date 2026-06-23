@@ -137,6 +137,12 @@ def _build_command(
     cmd = [
         settings.pandoc_binary,
         str(input_path),
+        # Disable YAML-metadata-block parsing in the *body*: a thematic break
+        # (`---`, e.g. an article's <hr>) immediately followed by a `key: value`
+        # line makes Pandoc parse the body as YAML and crash on the first markup
+        # it can't read (a `* ` bullet looks like a YAML alias). The book's real
+        # metadata comes from --metadata-file, which is unaffected by this.
+        "--from=markdown-yaml_metadata_block",
         "-o",
         str(output_path),
         "--toc",
