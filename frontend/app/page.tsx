@@ -375,21 +375,8 @@ function HowItWorks() {
   ];
   // Skeleton bar widths for the faux e-reader page; null = a paragraph break.
   const lines = ["100%", "92%", "97%", "85%", null, "100%", "94%", "90%", "96%"];
-  // Faux markdown for the "code" panel: a marker (#, ##, -) plus a text band.
-  const mdLines: { mark: string | null; w: string }[] = [
-    { mark: "#", w: "42%" },
-    { mark: null, w: "100%" },
-    { mark: null, w: "90%" },
-    { mark: "##", w: "58%" },
-    { mark: null, w: "100%" },
-    { mark: null, w: "84%" },
-    { mark: "-", w: "66%" },
-    { mark: "##", w: "50%" },
-    { mark: null, w: "96%" },
-    { mark: null, w: "88%" },
-    { mark: null, w: "92%" },
-    { mark: "-", w: "60%" },
-  ];
+  // Faux-text band widths for the markdown panel's body (after the real header).
+  const mdBands = ["100%", "92%", "96%", "88%"];
   // Mixed input kinds, shown flowing into the two output formats below.
   const sources = [
     { Icon: PlayIcon, kind: "Video" },
@@ -411,8 +398,10 @@ function HowItWorks() {
                   {s.n}
                 </span>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-sm font-semibold">{s.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
+                  <h3 className="text-sm font-semibold text-balance">
+                    {s.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed text-pretty">
                     {s.body}
                   </p>
                 </div>
@@ -498,21 +487,23 @@ function HowItWorks() {
               />
             </div>
             <div className="bg-card relative h-44 overflow-hidden rounded-xl border p-4 shadow-sm">
-              <div className="flex h-full flex-col gap-1.5">
-                {mdLines.map((l, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    {l.mark && (
-                      <span className="text-muted-foreground/70 shrink-0 font-mono text-[0.55rem] leading-none">
-                        {l.mark}
-                      </span>
-                    )}
-                    <span
-                      className={`h-1.5 rounded ${
-                        l.mark ? "bg-muted-foreground/25" : "bg-muted"
-                      }`}
-                      style={{ width: l.w }}
-                    />
-                  </div>
+              <div className="flex h-full flex-col gap-1.5 font-mono text-[0.6rem] leading-relaxed">
+                <p className="text-foreground"># Sources</p>
+                <p className="text-foreground mt-1">
+                  ## The new HTTP QUERY method
+                </p>
+                <p className="text-muted-foreground">
+                  A safe, idempotent way to send a body with your queries.
+                </p>
+                <p className="text-muted-foreground/70">
+                  - [Original article](https://…)
+                </p>
+                {mdBands.map((w, i) => (
+                  <span
+                    key={i}
+                    className="bg-muted mt-0.5 h-1.5 rounded"
+                    style={{ width: w }}
+                  />
                 ))}
               </div>
               <div
@@ -524,7 +515,7 @@ function HowItWorks() {
               />
             </div>
           </div>
-          <figcaption className="text-muted-foreground text-center text-xs">
+          <figcaption className="text-muted-foreground text-center text-xs text-pretty">
             Any mix of sources, one compilation, two formats: EPUB for your
             e-reader, Markdown for your AI.
           </figcaption>
@@ -560,12 +551,12 @@ function DataAndFaq() {
           <h2 className="text-2xl font-semibold tracking-tight text-balance">
             Yours, on your machine
           </h2>
-          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed text-pretty">
             Thothly runs on your own machine. Your jobs and cached transcripts
             live in a single local file, nothing is sent to a server we run, and
             there is no tracking or analytics.
           </p>
-          <ul className="text-muted-foreground marker:text-muted-foreground/40 mt-4 flex list-disc flex-col gap-2 pl-5 text-sm">
+          <ul className="text-muted-foreground marker:text-muted-foreground/40 mt-4 flex list-disc flex-col gap-2 pl-5 text-sm text-pretty">
             <li>Free by default: the standard path uses no AI at all.</li>
             <li>
               AI cleanup is optional, and can run fully local (Ollama) or on a
@@ -589,7 +580,7 @@ function DataAndFaq() {
                   {it.q}
                   <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
                 </summary>
-                <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                <p className="text-muted-foreground mt-2 text-sm leading-relaxed text-pretty">
                   {it.a}
                 </p>
               </details>
