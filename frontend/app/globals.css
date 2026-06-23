@@ -29,6 +29,9 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-gold: var(--gold);
+  --color-gold-dark: var(--gold-dark);
+  --color-gold-deep: var(--gold-deep);
+  --color-gold-bright: var(--gold-bright);
   --color-gold-foreground: var(--gold-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -104,6 +107,12 @@
   /* The desert gold itself — the single brand color. Same value as --primary;
      exposed as its own token for gold marks/fills (bg-gold/text-gold). */
   --gold: oklch(0.76 0.15 78);
+  /* The gold ramp for the Gold Leaf frame — a dark bronze, the deep edge (also
+     the light focus ring), and the luminous glint. The dark↔bright spread is
+     what makes the rotating contour read. */
+  --gold-dark: oklch(0.42 0.11 68);
+  --gold-deep: oklch(0.6 0.15 75);
+  --gold-bright: oklch(0.85 0.14 82);
   --gold-foreground: oklch(0.16 0 0);
   /* Semantic status colors — informational only, kept distinct from the brand
      gold (warning is pushed to orange, hue 45, so it never reads as the gold). */
@@ -150,6 +159,11 @@
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.8 0.145 80);
   --gold: oklch(0.8 0.145 80);
+  /* On the night ground the gold steps forward — the ramp lifts with it (the
+     dark stays light enough to read against the near-black field). */
+  --gold-dark: oklch(0.52 0.13 72);
+  --gold-deep: oklch(0.66 0.15 78);
+  --gold-bright: oklch(0.9 0.12 86);
   --gold-foreground: oklch(0.16 0 0);
   --success: oklch(0.72 0.14 150);
   --success-foreground: oklch(0.16 0 0);
@@ -168,5 +182,111 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* ── Gold Leaf frame ──────────────────────────────────────────────────────────
+   Adapts a rotating conic-gradient border into the Gold Leaf system: one color
+   (desert gold), token-driven. A mostly-dark bronze ring with two narrow glints
+   that spins continuously; engaging the surface (focus-within / hover) lifts the
+   edge to full strength and blooms a soft, diffuse gold glow behind it, strongest
+   on the night ground (the brand showcase). The spin is dropped under reduced
+   motion. Used by components/ui/animated-gold-border.tsx. */
+@property --gold-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes thothly-gold-spin {
+  to {
+    --gold-angle: 360deg;
+  }
+}
+
+.gold-frame {
+  position: relative;
+  /* Own stacking context so the glow (z -1) sits behind the wrapped surface and
+     the edge (z 2) above it, independent of the surrounding section. */
+  isolation: isolate;
+  border-radius: var(--radius-lg);
+}
+
+/* The gold contour — a high-contrast conic ramp clipped to a 2px ring via mask.
+   Two dark-bronze troughs and two luminous glints around the circle, so when it
+   spins you read the metal turning: dark sectors sweeping past bright ones. */
+.gold-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--gold-angle),
+    var(--gold-dark) 0%,
+    var(--gold-dark) 12%,
+    var(--gold) 20%,
+    var(--gold-bright) 25%,
+    var(--gold) 30%,
+    var(--gold-dark) 38%,
+    var(--gold-dark) 62%,
+    var(--gold) 70%,
+    var(--gold-bright) 75%,
+    var(--gold) 80%,
+    var(--gold-dark) 88%,
+    var(--gold-dark) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.55;
+  /* Spins continuously; calmer at rest, quicker once the field is engaged. */
+  animation: thothly-gold-spin 9s linear infinite;
+  transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+/* Glow — only on engage. A soft, uniform gold wash (not the lobed ramp, which
+   reads kitsch when blurred), kept within the card's overflow so it never clips
+   to a hard line. Diffuse and ambient, never a defined ring. */
+.gold-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--gold);
+  filter: blur(16px);
+  opacity: 0;
+  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.gold-frame:hover::before {
+  opacity: 0.8;
+}
+
+.gold-frame:focus-within::before {
+  opacity: 1;
+  animation-duration: 6s;
+}
+
+.gold-frame:focus-within::after {
+  opacity: 0.16;
+}
+
+.dark .gold-frame:focus-within::after {
+  opacity: 0.34;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gold-frame::before {
+    animation: none !important;
   }
 }

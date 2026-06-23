@@ -13,6 +13,7 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -227,17 +228,17 @@ export default function Home() {
         <Card>
           <CardContent className="flex flex-col gap-5">
             <form onSubmit={onSubmit} className="flex flex-col gap-2">
-              <div className="relative">
+              <AnimatedGoldBorder>
                 <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search or paste a link…"
-                  className="pl-9"
+                  className="border-transparent bg-background pl-9 focus-visible:ring-0 dark:bg-background"
                   autoFocus
                 />
-              </div>
+              </AnimatedGoldBorder>
               {queryIsUrl && (
                 <p className="text-muted-foreground px-1 text-xs">
                   Looks like a link. Press{" "}
