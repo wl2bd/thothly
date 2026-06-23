@@ -4,7 +4,7 @@ import app.core.config as cfg
 import app.core.database as db
 from app.pipeline import cleanup
 from app.pipeline.llm import LLMError
-from app.pipeline.roles import COPYEDIT, PUNCTUATE, SECTIONS
+from app.pipeline.roles import COPYEDIT, PUNCTUATE, SECTIONS, language_name
 from app.sources.models import Transcript, TranscriptSegment
 
 
@@ -110,3 +110,45 @@ def test_no_roles_returns_free_path_without_llm(db_env, monkeypatch):
     )
     out = cleanup.clean_transcript(_raw_transcript(), [], "test-model")
     assert out.strip()
+
+
+def test_sections_pins_transcript_language(db_env, monkeypatch):
+    systems: list[str] = []
+
+    def fake(system, user, **kw):
+        systems.append(system)
+        return "## Section\n\n" + user  # valid sections output (body preserved)
+
+    monkeypatch.setattr(cleanup, "complete", fake)
+    # _raw_transcript is language="fr" with no chapters → sections synthesises titles.
+    cleanup.clean_transcript(_raw_transcript(), [SECTIONS], "test-model")
+    assert systems, "sections role should have called the LLM"
+    assert "French" in systems[0]  # language named outright…
+    assert "in the language of the text" not in systems[0]  # …not the generic clause
+
+
+def test_sections_articles_keep_generic_prompt(db_env, monkeypatch):
+    systems: list[str] = []
+
+    def fake(system, user, **kw):
+        systems.append(system)
+        return "## Intro\n\n" + user
+
+    monkeypatch.setattr(cleanup, "complete", fake)
+    # Articles carry no reliable language tag → keep the infer-from-text prompt.
+    cleanup.clean_markdown(
+        "premier paragraphe ici\n\ndeuxieme paragraphe la",
+        [SECTIONS],
+        "test-model",
+        content_key="http://z",
+    )
+    assert systems
+    assert "in the language of the text" in systems[0]
+
+
+def test_language_name_maps_tags_and_falls_back():
+    assert language_name("fr") == "French"
+    assert language_name("fr-FR") == "French"  # region suffix stripped
+    assert language_name("EN") == "English"  # case-insensitive
+    assert language_name(None) is None
+    assert language_name("xx") is None  # unknown → generic clause kept

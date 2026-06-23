@@ -25,6 +25,7 @@ from app.pipeline.roles import (
     SECTIONS,
     get_role,
     has_role,
+    sections_prompt,
     selected_item_roles,
 )
 from app.sources.models import Transcript
@@ -219,7 +220,12 @@ def _build_transcript(transcript: Transcript, role_ids: list[str]) -> tuple[str,
     ok = ok and body_ok
     if do_sections and md.strip():
         chunks = _group_paragraphs(md, settings.llm_chunk_words)
-        structured, sec_ok = _run_role(chunks, SECTIONS, validate_sections)
+        # Pin the generated headings to the transcript's own language rather than
+        # let the model infer it from a chunk and drift to English.
+        structured, sec_ok = _run_role(
+            chunks, SECTIONS, validate_sections,
+            system=sections_prompt(transcript.language),
+        )
         md = structured if structured.strip() else md
         ok = ok and sec_ok
     return md, ok
@@ -275,12 +281,18 @@ def _bucket_by_chapter(transcript: Transcript) -> list[tuple[str, list[str]]]:
 # uncached so a later retry can still succeed; a deterministic fidelity reject
 # does not (re-running the same model would drift the same way).
 # ---------------------------------------------------------------------------
-def _run_role(chunks: list[str], role_id: str, validate) -> tuple[str, bool]:
+def _run_role(
+    chunks: list[str], role_id: str, validate, *, system: str | None = None
+) -> tuple[str, bool]:
     role = get_role(role_id)
     if not chunks:
         return "", True
 
-    outputs, no_transient = _transform_chunks(chunks, role.system_prompt, validate)
+    # `system` lets a caller pin a parameterised variant (e.g. a language-locked
+    # sections prompt); otherwise the role's default prompt is used.
+    outputs, no_transient = _transform_chunks(
+        chunks, system or role.system_prompt, validate
+    )
     pieces = [
         out if out is not None else raw  # None = fell back to the source chunk
         for raw, out in zip(chunks, outputs)

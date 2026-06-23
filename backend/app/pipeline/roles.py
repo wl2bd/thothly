@@ -48,14 +48,53 @@ _COPYEDIT_PROMPT = (
     "Reply only with the corrected text in Markdown, with no commentary."
 )
 
-_SECTIONS_PROMPT = (
-    "You are an editor. You are given a continuous text (a transcript or "
-    "article). Insert level-2 Markdown section headings (## Title) wherever the "
-    "topic changes, to structure the reading. Do not add, remove, or rephrase "
-    "any content other than these headings. The headings must be short and in "
-    "the language of the text (do not translate). Reply only with the structured "
-    "text in Markdown, with no commentary."
-)
+def _sections_prompt(language_clause: str) -> str:
+    return (
+        "You are an editor. You are given a continuous text (a transcript or "
+        "article). Insert level-2 Markdown section headings (## Title) wherever "
+        "the topic changes, to structure the reading. Do not add, remove, or "
+        "rephrase any content other than these headings. The headings must be "
+        f"short and {language_clause}. Reply only with the structured text in "
+        "Markdown, with no commentary."
+    )
+
+
+# Default (generic) sections prompt: used for articles and the role catalogue,
+# where no reliable language tag is on hand, so the model infers it from the text.
+_SECTIONS_PROMPT = _sections_prompt("in the language of the text (do not translate)")
+
+
+# English names for the language tags transcripts carry, so the sections prompt
+# can name the target language outright rather than trust the model to infer it
+# from a chunk (a weak model otherwise drifts to English). Falls back to the raw
+# tag for anything unlisted.
+_LANGUAGE_NAMES = {
+    "en": "English", "fr": "French", "es": "Spanish", "de": "German",
+    "it": "Italian", "pt": "Portuguese", "nl": "Dutch", "ru": "Russian",
+    "ja": "Japanese", "zh": "Chinese", "ar": "Arabic", "ko": "Korean",
+    "pl": "Polish", "tr": "Turkish", "sv": "Swedish", "uk": "Ukrainian",
+    "ro": "Romanian", "el": "Greek", "cs": "Czech", "hu": "Hungarian",
+}
+
+
+def language_name(tag: str | None) -> str | None:
+    """Map a transcript language tag (`fr`, `fr-FR`) to an English language name.
+    None/blank/unknown → None, so callers keep the generic 'language of the
+    text' instruction rather than name a language they aren't sure of."""
+    if not tag:
+        return None
+    base = tag.split("-")[0].strip().lower()
+    return _LANGUAGE_NAMES.get(base)
+
+
+def sections_prompt(language: str | None) -> str:
+    """The `sections` system prompt, pinned to an explicit language when the
+    transcript's language is known so generated headings can't drift to English;
+    otherwise the generic, infer-from-text prompt."""
+    name = language_name(language)
+    if not name:
+        return _SECTIONS_PROMPT
+    return _sections_prompt(f"in {name}, the language of the transcript (do not translate)")
 
 _PREFACE_PROMPT = (
     "You are the editor of a reading collection. You are given the book's title "
