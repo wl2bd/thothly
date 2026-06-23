@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-23T18:00:00Z",
+  "title": "Design System: Thothly",
+  "extensions": {
+    "colorMeta": {
+      "gold": {
+        "role": "primary",
+        "displayName": "Desert Gold",
+        "canonical": "oklch(0.76 0.15 78)",
+        "tonalRamp": ["oklch(0.30 0.07 70)", "oklch(0.42 0.10 73)", "oklch(0.54 0.13 76)", "oklch(0.66 0.15 78)", "oklch(0.76 0.15 78)", "oklch(0.83 0.13 80)", "oklch(0.90 0.09 82)", "oklch(0.96 0.04 85)"]
+      },
+      "neutral": {
+        "role": "neutral",
+        "displayName": "Stark Neutrals (chroma 0)",
+        "canonical": "oklch(0.16 0 0)",
+        "tonalRamp": ["oklch(0.13 0 0)", "oklch(0.16 0 0)", "oklch(0.30 0 0)", "oklch(0.47 0 0)", "oklch(0.70 0 0)", "oklch(0.90 0 0)", "oklch(0.98 0 0)", "oklch(1 0 0)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (CMGeom)", "purpose": "Geometric display — the hero and the landing's display flourishes only. Regular weight; never on body/UI/data." },
+      "body": { "displayName": "Body / UI (Host Grotesk)", "purpose": "The readable grotesk that runs the whole tool — UI copy, headings (heavier weights), labels. Variable 300–800. Prose capped at 65–75ch." },
+      "mono": { "displayName": "Mono (Geist Mono)", "purpose": "The Markdown twin, token counts, durations, technical detail." }
+    },
+    "shadows": [
+      { "name": "resting", "value": "none", "purpose": "Cards, panels and inputs sit flat, lifted only by their surface step (white card over off-white page) and a 1px Hairline border. Flat-By-Default." },
+      { "name": "lift", "value": "0 1px 2px oklch(0 0 0 / 0.06), 0 4px 16px oklch(0 0 0 / 0.06)", "purpose": "Popovers, dropdowns, the result list on hover — a soft neutral shadow." },
+      { "name": "goldlight", "value": "0 0 0 1px oklch(0.8 0.145 80 / 0.25), 0 6px 24px oklch(0.8 0.145 80 / 0.14)", "purpose": "Dark mode only — a faint gold glow under the primary action. The one moment the metal radiates." }
+    ],
+    "motion": [
+      { "name": "ease-quill", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Default ease-out-quart for state transitions — no bounce." },
+      { "name": "dur-quick", "value": "160ms", "purpose": "Hover, focus, small state changes." },
+      { "name": "dur-settle", "value": "220ms", "purpose": "Disclosure open/close, auto-advance reveals." },
+      { "name": "reduced", "value": "crossfade / instant", "purpose": "prefers-reduced-motion alternative for every transition. The grain stays static and aria-hidden." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The committing action — Continue, Generate, Download. Desert gold fill, near-black text, in both modes (brighter gold on dark).",
+      "html": "<button class='ds-btn-primary'>Continue</button>",
+      "css": ".ds-btn-primary{background:oklch(0.76 0.15 78);color:oklch(0.16 0 0);font:500 0.95rem/1 'Host Grotesk',system-ui,sans-serif;padding:0.55rem 1.1rem;border:none;border-radius:0.5rem;cursor:pointer;transition:background .16s cubic-bezier(0.22,1,0.36,1),box-shadow .16s cubic-bezier(0.22,1,0.36,1)}.ds-btn-primary:hover{background:oklch(0.71 0.15 77)}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 2px oklch(0.98 0 0),0 0 0 4px oklch(0.6 0.15 75)}.ds-btn-primary:active{transform:translateY(0.5px)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Lower-emphasis actions — Add to sources, filter toggles. Stark neutral.",
+      "html": "<button class='ds-btn-secondary'>Add to sources</button>",
+      "css": ".ds-btn-secondary{background:oklch(0.96 0 0);color:oklch(0.16 0 0);font:500 0.95rem/1 'Host Grotesk',system-ui,sans-serif;padding:0.55rem 1.1rem;border:none;border-radius:0.5rem;cursor:pointer;transition:background .16s cubic-bezier(0.22,1,0.36,1),box-shadow .16s}.ds-btn-secondary:hover{background:oklch(0.92 0 0)}.ds-btn-secondary:focus-visible{outline:none;box-shadow:0 0 0 2px oklch(0.98 0 0),0 0 0 4px oklch(0.6 0.15 75)}"
+    },
+    {
+      "name": "Gold Badge",
+      "kind": "chip",
+      "refersTo": "badge-gold",
+      "description": "The accent badge — a current/selected or hero status. Near-black text on gold, never white.",
+      "html": "<span class='ds-badge-gold'>Current</span>",
+      "css": ".ds-badge-gold{display:inline-flex;align-items:center;background:oklch(0.76 0.15 78);color:oklch(0.16 0 0);font:600 0.75rem/1 'Host Grotesk',system-ui,sans-serif;letter-spacing:0.01em;padding:0.15rem 0.5rem;border-radius:0.375rem}"
+    },
+    {
+      "name": "Secondary Badge",
+      "kind": "chip",
+      "refersTo": "badge-secondary",
+      "description": "Quiet source/type tag — Surface ground, Muted Ink text, no border.",
+      "html": "<span class='ds-badge-secondary'>YouTube</span>",
+      "css": ".ds-badge-secondary{display:inline-flex;align-items:center;background:oklch(0.96 0 0);color:oklch(0.47 0 0);font:400 0.75rem/1 'Host Grotesk',system-ui,sans-serif;padding:0.15rem 0.5rem;border-radius:0.375rem}"
+    },
+    {
+      "name": "Status Badge — Success",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "Data, not brand — review readiness. Seal Green for a clean punctuated transcript. Status hues are kept distinct from the gold.",
+      "html": "<span class='ds-badge-status'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' width='13' height='13'><path d='M20 6 9 17l-5-5'></path></svg>Punctuated</span>",
+      "css": ".ds-badge-status{display:inline-flex;align-items:center;gap:0.3rem;background:oklch(0.5 0.12 150 / 0.12);color:oklch(0.5 0.12 150);font:500 0.75rem/1 'Host Grotesk',system-ui,sans-serif;padding:0.15rem 0.5rem;border-radius:0.375rem}"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The home search/paste bar. Pure-white ground over the off-white page; Hairline → gold plus a gold ring on focus.",
+      "html": "<div class='ds-input'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' width='16' height='16'><circle cx='11' cy='11' r='7'></circle><path d='M21 21l-4.3-4.3'></path></svg><input placeholder='Search or paste a link…'/></div>",
+      "css": ".ds-input{display:flex;align-items:center;gap:0.5rem;background:oklch(1 0 0);border:1px solid oklch(0.9 0 0);border-radius:0.5rem;padding:0.5rem 0.75rem;color:oklch(0.47 0 0);transition:border-color .16s cubic-bezier(0.22,1,0.36,1),box-shadow .16s}.ds-input:focus-within{border-color:oklch(0.6 0.15 75);box-shadow:0 0 0 2px oklch(0.6 0.15 75 / 0.25)}.ds-input input{border:none;outline:none;background:none;flex:1;font:400 0.95rem/1.4 'Host Grotesk',system-ui,sans-serif;color:oklch(0.16 0 0)}.ds-input input::placeholder{color:oklch(0.47 0 0)}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The primary container — search panel, job panel. Pure white, lifting above the off-white page; flat at rest, 1px Hairline, never nested.",
+      "html": "<div class='ds-card'><span class='ds-card-eyebrow'>Sources · 3</span><p class='ds-card-title'>Bring it together</p><p class='ds-card-body'>Any mix of sources, one compilation, two formats.</p></div>",
+      "css": ".ds-card{background:oklch(1 0 0);border:1px solid oklch(0.9 0 0);border-radius:0.625rem;padding:1.5rem;box-shadow:none}.ds-card-eyebrow{display:block;font:500 0.7rem/1 'Host Grotesk',system-ui,sans-serif;letter-spacing:0.08em;text-transform:uppercase;color:oklch(0.47 0 0)}.ds-card-title{margin:0.6rem 0 0.25rem;font:600 1.25rem/1.2 'Host Grotesk',system-ui,sans-serif;letter-spacing:-0.01em;color:oklch(0.16 0 0)}.ds-card-body{margin:0;font:400 0.95rem/1.6 'Host Grotesk',system-ui,sans-serif;color:oklch(0.47 0 0)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Gold Leaf",
+    "overview": "Thothly is a stark canvas carrying a single precious metal. The page is neutral to the bone — a soft off-white by day, a near-black by night, every grey at chroma zero — so that one warm color, desert gold, does all the talking. The gold is the heir of the name (Thoth, writing, the gilt of an illuminated page) but executed bold and modern, not as a costume: a confident metal on an austere ground, paired with a geometric display and a clean grotesk. It is the brand's action color, not a rare flourish, and it is most alive on the black ground where it glows like leaf on vellum. Both modes are stark and first-class; the neutrals only flip lightness, the gold is the constant.",
+    "keyCharacteristics": [
+      "One color only: desert gold. Every other surface is a pure neutral (chroma 0).",
+      "Stark, high-contrast neutrals: soft off-white / near-black, pure-white cards lift above the page.",
+      "The gold is bold and present — primary actions, focus, active, the mark.",
+      "Modern and a little tech: geometric display + grotesk, never editorial.",
+      "A single re-skinnable OKLCH token layer drives both modes and the EPUB chrome."
+    ],
+    "rules": [
+      { "name": "The One Color Rule", "body": "Desert gold is the only chromatic color on the page; every neutral is pure (chroma 0). The gold does all the talking. The only other hues allowed are the four status colors, and those are data, not decoration.", "section": "colors" },
+      { "name": "The Stark Surface Rule", "body": "Neutrals carry zero hue — no cream, sand, parchment or blue-grey — and never harsh pure #fff for the page (a soft off-white oklch(0.98 0 0), with pure-white cards lifting above it). Warmth is the gold's job, never the surface's.", "section": "colors" },
+      { "name": "The Gold-Holds-Ink Rule", "body": "Gold is a light metal: text on a gold fill is always near-black Ink, never white. The same gold is the primary action in both modes — just brighter on the night ground (no per-mode inversion).", "section": "colors" },
+      { "name": "The Display Restraint Rule", "body": "CMGeom is a display face: it carries the hero and the landing's display flourishes, and nothing in the working UI. Every other heading is Host Grotesk in a heavier weight. Never set CMGeom on body, buttons, labels, form controls or data, and never request a bolder weight (Regular only).", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. A shadow is a verb — hover, open, focus — never a noun. Depth at rest comes from the surface step (card vs page), not a drop shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every neutral at chroma 0 — soft off-white Page oklch(0.98 0 0) light, near-black Night oklch(0.13 0 0) dark — and let pure-white cards lift above the page.",
+      "Do make desert gold the one color: primary CTAs, focus, current/active, the mark. Bold and present, not rare.",
+      "Do use near-black Ink text on every gold fill, and the deeper gold for the light-mode focus ring so it clears 3:1.",
+      "Do reserve CMGeom (display) for the hero and landing flourishes; Host Grotesk runs everything else.",
+      "Do keep body and placeholder text at Ink / Muted Ink for >=4.5:1.",
+      "Do ship a prefers-reduced-motion crossfade for every transition, and keep the grain aria-hidden."
+    ],
+    "donts": [
+      "Don't build a cold enterprise dashboard: no soulless corporate gray with no warmth. The gold and the black give it heat.",
+      "Don't slip into generic AI SaaS: no gradient hero, no glassy cards, no hero-metric grid, no fluorescent accents, no gradient text.",
+      "Don't wear the costume: no papyrus, no hieroglyphs, no sepia, no skeuomorphic parchment. The gold is flat, bold and modern, never a texture.",
+      "Don't tint a neutral (no cream, sand, beige, blue-grey) and never use harsh pure #fff for the page.",
+      "Don't introduce a second brand color next to the gold; the only other hues are the four status colors (data, not brand).",
+      "Don't use white text on a gold fill (it's always Ink), and don't use the brand gold where a status color belongs.",
+      "Don't set CMGeom (display) on body, buttons, labels, form controls or data, and don't request a bolder CMGeom weight (Regular only).",
+      "Don't add side-stripe borders, decorative shadows at rest, or an uppercase tracked eyebrow above every section."
+    ]
+  }
+}

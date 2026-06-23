@@ -1,23 +1,43 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
+// the whole tool (`--font-sans`). Upright + italic variable files cover 300–800.
+const hostGrotesk = localFont({
+  src: [
+    {
+      path: "./fonts/HostGrotesk-VariableFont_wght.ttf",
+      weight: "300 800",
+      style: "normal",
+    },
+    {
+      path: "./fonts/HostGrotesk-Italic-VariableFont_wght.ttf",
+      weight: "300 800",
+      style: "italic",
+    },
+  ],
+  variable: "--font-host-grotesk",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+});
+
+// Display geometric — CMGeom (`--font-display`): the brand's voice, reserved for
+// the biggest moment (the hero). Regular only; never used for body, UI or data.
+// See DESIGN.md, The Display Restraint Rule.
+const cmGeom = localFont({
+  src: "./fonts/CMGeom-Regular.otf",
+  weight: "400",
+  style: "normal",
+  variable: "--font-cmgeom",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
-
-// Serif used only inside the EPUB example mock, to read as an editorial book
-// page. The app chrome itself stays on the neutral sans.
-const lora = Lora({
-  variable: "--font-lora",
-  subsets: ["latin"],
-  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -34,7 +54,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${hostGrotesk.variable} ${cmGeom.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* Set the theme class before paint so there's no light/dark flash. */}

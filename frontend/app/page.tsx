@@ -21,6 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logotype } from "@/components/brand";
+import { Grain } from "@/components/grain";
 import {
   createJob,
   search,
@@ -209,10 +210,11 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex flex-1 flex-col">
-        <section className="flex flex-col items-center px-6 pt-10 pb-14 sm:pt-14">
+        <section className="relative isolate flex flex-col items-center overflow-hidden px-6 pt-10 pb-14 sm:pt-14">
+          <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.06] mix-blend-overlay dark:opacity-[0.12]" />
           <div className="flex w-full max-w-2xl flex-col gap-8">
             <div className="flex flex-col items-center gap-4 text-center">
-              <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+              <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
                 Read anything like a book.
               </h1>
               <p className="text-muted-foreground max-w-xl text-balance text-[0.95rem] leading-relaxed">
@@ -414,7 +416,7 @@ function HowItWorks() {
             {sources.map((s) => (
               <div
                 key={s.kind}
-                className="bg-card flex flex-col items-center gap-1 rounded-lg border px-1 py-2 shadow-sm"
+                className="bg-card flex flex-col items-center gap-1 rounded-lg border px-1 py-2"
               >
                 <s.Icon className="text-muted-foreground size-4" />
                 <span className="text-muted-foreground text-[0.55rem] leading-none">
@@ -450,17 +452,17 @@ function HowItWorks() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-card text-card-foreground relative h-44 overflow-hidden rounded-xl border p-4 shadow-sm">
+            <div className="bg-card text-card-foreground relative h-44 overflow-hidden rounded-xl border p-4">
               <div className="flex h-full flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <span className="text-muted-foreground text-[0.55rem] font-medium tracking-[0.2em] uppercase">
                     Chapter 2
                   </span>
-                  <span className="text-foreground font-serif text-[0.95rem] leading-tight font-semibold">
+                  <span className="text-foreground font-display text-[0.95rem] leading-tight">
                     The new HTTP QUERY method
                   </span>
                 </div>
-                <p className="text-muted-foreground font-serif text-[0.6rem] leading-relaxed">
+                <p className="text-muted-foreground text-[0.6rem] leading-relaxed">
                   A safe, idempotent way to send a body with your queries.
                 </p>
                 <div className="flex flex-1 flex-col gap-1.5">
@@ -485,7 +487,7 @@ function HowItWorks() {
                 }}
               />
             </div>
-            <div className="bg-card relative h-44 overflow-hidden rounded-xl border p-4 shadow-sm">
+            <div className="bg-card relative h-44 overflow-hidden rounded-xl border p-4">
               <div className="flex h-full flex-col gap-1.5 font-mono text-[0.6rem] leading-relaxed">
                 <p className="text-foreground"># Sources</p>
                 <p className="text-foreground mt-1">
