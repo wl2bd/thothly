@@ -214,10 +214,10 @@ export default function Home() {
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
                 Read anything like a book.
               </h1>
-              <p className="text-muted-foreground max-w-xl text-pretty text-[0.95rem] leading-relaxed">
-                Bring together everything you want to read or watch: videos,
-                podcasts, articles, even whole playlists or blogs. Get one
-                polished compilation for your e-reader or your AI.
+              <p className="text-muted-foreground max-w-xl text-balance text-[0.95rem] leading-relaxed">
+                Bring together videos, podcasts, articles, even whole playlists
+                or blogs into one polished compilation for your e-reader or your
+                AI.
               </p>
             </div>
 
@@ -401,7 +401,7 @@ function HowItWorks() {
                   <h3 className="text-sm font-semibold text-balance">
                     {s.title}
                   </h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed text-pretty">
+                  <p className="text-muted-foreground text-sm leading-relaxed text-balance">
                     {s.body}
                   </p>
                 </div>
@@ -515,7 +515,7 @@ function HowItWorks() {
               />
             </div>
           </div>
-          <figcaption className="text-muted-foreground text-center text-xs text-pretty">
+          <figcaption className="text-muted-foreground text-center text-xs text-balance">
             Any mix of sources, one compilation, two formats: EPUB for your
             e-reader, Markdown for your AI.
           </figcaption>
@@ -551,12 +551,12 @@ function DataAndFaq() {
           <h2 className="text-2xl font-semibold tracking-tight text-balance">
             Yours, on your machine
           </h2>
-          <p className="text-muted-foreground mt-3 text-sm leading-relaxed text-pretty">
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed text-balance">
             Thothly runs on your own machine. Your jobs and cached transcripts
             live in a single local file, nothing is sent to a server we run, and
             there is no tracking or analytics.
           </p>
-          <ul className="text-muted-foreground marker:text-muted-foreground/40 mt-4 flex list-disc flex-col gap-2 pl-5 text-sm text-pretty">
+          <ul className="text-muted-foreground marker:text-muted-foreground/40 mt-4 flex list-disc flex-col gap-2 pl-5 text-sm text-balance">
             <li>Free by default: the standard path uses no AI at all.</li>
             <li>
               AI cleanup is optional, and can run fully local (Ollama) or on a
@@ -580,7 +580,7 @@ function DataAndFaq() {
                   {it.q}
                   <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
                 </summary>
-                <p className="text-muted-foreground mt-2 text-sm leading-relaxed text-pretty">
+                <p className="text-muted-foreground mt-2 text-sm leading-relaxed text-balance">
                   {it.a}
                 </p>
               </details>

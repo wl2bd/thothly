@@ -21,7 +21,7 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Thothly",
+  title: "Thothly · Read anything like a book",
   description: "Compile whatever you want to read, no matter where it comes from.",
 };
 
