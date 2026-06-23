@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logotype } from "@/components/brand";
 import {
   createJob,
   search,
@@ -346,9 +347,7 @@ function SiteHeader() {
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 border-b backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
-        <span className="font-heading text-lg font-semibold tracking-tight">
-          Thothly
-        </span>
+        <Logotype className="h-7 w-auto" title="Thothly" />
         <ThemeToggle />
       </div>
     </header>
@@ -596,9 +595,7 @@ function SiteFooter() {
   return (
     <footer className="border-t px-6 py-8">
       <div className="text-muted-foreground mx-auto flex w-full max-w-5xl items-center justify-between text-xs">
-        <span className="font-heading text-foreground font-semibold">
-          Thothly
-        </span>
+        <Logotype className="text-foreground h-5 w-auto" title="Thothly" />
         <span>A personal reading compiler.</span>
       </div>
     </footer>

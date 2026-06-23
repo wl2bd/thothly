@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { Logotype } from "@/components/brand";
 import {
   confirmJob,
   fetchItemPreview,
@@ -147,11 +148,8 @@ export default function JobPage() {
     <main className="flex min-h-screen justify-center p-8 sm:p-12">
       <div className="flex w-full max-w-xl flex-col gap-10 py-12">
         <header className="flex items-baseline justify-between">
-          <Link
-            href="/"
-            className="font-heading text-2xl font-semibold tracking-tight"
-          >
-            Thothly
+          <Link href="/" className="flex items-center">
+            <Logotype className="h-8 w-auto" title="Thothly" />
           </Link>
           <Link href="/" className="text-muted-foreground text-sm hover:underline">
             ← New compilation
