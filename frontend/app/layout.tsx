@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import { StoneFilterDefs } from "@/components/ui/stone-border";
 
 // Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
 // the whole tool (`--font-sans`). Upright + italic variable files cover 300–800.
@@ -64,6 +65,9 @@ export default function RootLayout({
               "(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();",
           }}
         />
+        {/* Shared SVG filter for the stone tablet edge (components using
+            .stone-frame). Defined once here so filter: url(#…) always resolves. */}
+        <StoneFilterDefs />
         {children}
       </body>
     </html>

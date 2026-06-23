@@ -18,7 +18,7 @@
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display (CMGeom)", "purpose": "Geometric display — the hero and the landing's display flourishes only. Regular weight; never on body/UI/data." },
+      "display": { "displayName": "Display (CMGeom)", "purpose": "Geometric display — the two largest title levels only (the hero line and the landing section headings). Regular weight; never on body/UI/data, illustration flourishes, or other headings." },
       "body": { "displayName": "Body / UI (Host Grotesk)", "purpose": "The readable grotesk that runs the whole tool — UI copy, headings (heavier weights), labels. Variable 300–800. Prose capped at 65–75ch." },
       "mono": { "displayName": "Mono (Geist Mono)", "purpose": "The Markdown twin, token counts, durations, technical detail." }
     },
@@ -111,14 +111,14 @@
       { "name": "The One Color Rule", "body": "Desert gold is the only chromatic color on the page; every neutral is pure (chroma 0). The gold does all the talking. The only other hues allowed are the four status colors, and those are data, not decoration.", "section": "colors" },
       { "name": "The Stark Surface Rule", "body": "Neutrals carry zero hue — no cream, sand, parchment or blue-grey — and never harsh pure #fff for the page (a soft off-white oklch(0.98 0 0), with pure-white cards lifting above it). Warmth is the gold's job, never the surface's.", "section": "colors" },
       { "name": "The Gold-Holds-Ink Rule", "body": "Gold is a light metal: text on a gold fill is always near-black Ink, never white. The same gold is the primary action in both modes — just brighter on the night ground (no per-mode inversion).", "section": "colors" },
-      { "name": "The Display Restraint Rule", "body": "CMGeom is a display face: it carries the hero and the landing's display flourishes, and nothing in the working UI. Every other heading is Host Grotesk in a heavier weight. Never set CMGeom on body, buttons, labels, form controls or data, and never request a bolder weight (Regular only).", "section": "typography" },
+      { "name": "The Display Restraint Rule", "body": "CMGeom is a display face: it carries exactly the two largest title levels — the hero line and the landing section headings — and nothing else (not the working UI, not illustration flourishes, not item/card titles). Every other heading is Host Grotesk in a heavier weight. Never set CMGeom on body, buttons, labels, form controls or data, and never request a bolder weight (Regular only).", "section": "typography" },
       { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. A shadow is a verb — hover, open, focus — never a noun. Depth at rest comes from the surface step (card vs page), not a drop shadow.", "section": "elevation" }
     ],
     "dos": [
       "Do keep every neutral at chroma 0 — soft off-white Page oklch(0.98 0 0) light, near-black Night oklch(0.13 0 0) dark — and let pure-white cards lift above the page.",
       "Do make desert gold the one color: primary CTAs, focus, current/active, the mark. Bold and present, not rare.",
       "Do use near-black Ink text on every gold fill, and the deeper gold for the light-mode focus ring so it clears 3:1.",
-      "Do reserve CMGeom (display) for the hero and landing flourishes; Host Grotesk runs everything else.",
+      "Do reserve CMGeom (display) for the two largest title levels (hero + landing section headings) and nothing else; Host Grotesk runs the rest.",
       "Do keep body and placeholder text at Ink / Muted Ink for >=4.5:1.",
       "Do ship a prefers-reduced-motion crossfade for every transition, and keep the grain aria-hidden."
     ],

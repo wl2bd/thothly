@@ -33,6 +33,7 @@
   --color-gold-deep: var(--gold-deep);
   --color-gold-bright: var(--gold-bright);
   --color-gold-foreground: var(--gold-foreground);
+  --color-stone: var(--stone);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -51,6 +52,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-surface-sunken: var(--surface-sunken);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -72,6 +74,9 @@
   --foreground: oklch(0.16 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.16 0 0);
+  /* A darker, recessed surface — sunken below the page/card, for the source
+     chips and the hero search panel. Stark neutral (chroma 0), one step down. */
+  --surface-sunken: oklch(0.95 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.16 0 0);
   /* Primary = desert gold. Text on a gold fill is always near-black (gold is a
@@ -114,6 +119,10 @@
   --gold-deep: oklch(0.6 0.15 75);
   --gold-bright: oklch(0.85 0.14 82);
   --gold-foreground: oklch(0.16 0 0);
+  /* Stone — the carved tablet rim. Aliased to the base border so the eroded
+     edge matches every other border in the app; retune here if it should
+     diverge. */
+  --stone: var(--border);
   /* Semantic status colors — informational only, kept distinct from the brand
      gold (warning is pushed to orange, hue 45, so it never reads as the gold). */
   --success: oklch(0.5 0.12 150);
@@ -131,6 +140,8 @@
   --foreground: oklch(0.97 0 0);
   --card: oklch(0.17 0 0);
   --card-foreground: oklch(0.97 0 0);
+  /* Sunken surface on the night ground — a step toward the near-black. */
+  --surface-sunken: oklch(0.15 0 0);
   --popover: oklch(0.17 0 0);
   --popover-foreground: oklch(0.97 0 0);
   --primary: oklch(0.8 0.145 80);
@@ -165,6 +176,8 @@
   --gold-deep: oklch(0.66 0.15 78);
   --gold-bright: oklch(0.9 0.12 86);
   --gold-foreground: oklch(0.16 0 0);
+  /* Stone matches the base border on the night ground too. */
+  --stone: var(--border);
   --success: oklch(0.72 0.14 150);
   --success-foreground: oklch(0.16 0 0);
   --warning: oklch(0.78 0.15 55);
@@ -288,5 +301,108 @@
 @media (prefers-reduced-motion: reduce) {
   .gold-frame::before {
     animation: none !important;
+  }
+}
+
+/* ── Stone tablet edge ────────────────────────────────────────────────────────
+   A carved, near-static rim that turns the wrapped surface into a stone slab.
+   The brand's own fractal-noise material (feTurbulence, as in the grain) feeds
+   an SVG displacement filter (#thothly-stone-edge) that erodes a stone-toned,
+   card-filled rounded rect into an organic, hand-hewn silhouette. Static — no
+   canvas, no rAF — so it's cheap and reduced-motion-safe. The wrapped Card is
+   set transparent so this slab IS its surface; content sits above it. Used by
+   components/ui/stone-border.tsx. */
+.stone-frame {
+  position: relative;
+  /* Own stacking context so the slab (z -1) and its halo (z -2) sit behind the
+     transparent card while its content stays on top. */
+  isolation: isolate;
+  border-radius: var(--radius-lg);
+}
+
+/* The slab — a card-coloured rounded rect with a stone rim, both eroded into an
+   organic silhouette by the displacement filter. */
+.stone-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--card);
+  border: 2px solid var(--stone);
+  filter: url(#thothly-stone-edge);
+  pointer-events: none;
+}
+
+/* A faint stone halo tracing the carved edge — just enough to read as a raised
+   slab, never a glow. */
+.stone-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  border: 3px solid var(--stone);
+  filter: url(#thothly-stone-edge) blur(5px);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ── Funnel flow ──────────────────────────────────────────────────────────────
+   Gold pulses run down the "how it works" wires, source → convergence node (the
+   compilation forming, just above the outputs). The brand gold is the matter
+   flowing through. Landing-only, decorative; dropped under reduced motion. */
+/* One gold streak per wire, all four at once: every wire runs the SAME timing,
+   so the four bands descend source → node together, then a pause before the next
+   pulse. Wide (45%), bright and glowing. Dropped under reduced motion. */
+/* One soft gold streak per wire, all four in sync. The gap is wide enough that
+   the dash travels source → node, the wire goes dark for a beat, then the next
+   streak slides in from the top. The offset moves exactly one dash+gap period,
+   so the first and last frames are identical → the loop is seamless (no cut),
+   with the pause built into the pattern rather than faked with opacity. */
+@keyframes funnel-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -300;
+  }
+}
+
+.funnel-flow {
+  stroke-dasharray: 50 250;
+  /* Soft, thin glowing glint — fading ends + a gentle halo — to sit in the same
+     refined register as the search border, not a hard bright bar. */
+  filter: blur(0.8px) drop-shadow(0 0 3px var(--gold));
+  animation: funnel-flow 3s linear infinite;
+}
+
+/* The convergence orb brightens when the bands land (same 3s clock, no stagger
+   → aligned), then settles back — a glow now and then, not a constant pulse. */
+@keyframes funnel-node-glow {
+  0%,
+  30% {
+    opacity: 0.4;
+  }
+  44% {
+    opacity: 0.72;
+  }
+  60%,
+  100% {
+    opacity: 0.4;
+  }
+}
+
+.funnel-node {
+  animation: funnel-node-glow 3s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .funnel-flow {
+    animation: none;
+    opacity: 0;
+  }
+  .funnel-node {
+    animation: none;
   }
 }

@@ -16,6 +16,7 @@ import {
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -212,7 +213,18 @@ export default function Home() {
       <SiteHeader />
       <main className="flex flex-1 flex-col">
         <section className="relative isolate flex flex-col items-center overflow-hidden px-6 pt-10 pb-14 sm:pt-14">
-          <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.06] mix-blend-overlay dark:opacity-[0.12]" />
+          {/* A soft gold bloom behind the search — the brand's one color carrying
+              the warmth — with the grain laid over it for a noisy, grainy
+              gradient. Static: no shader, no GPU, reduced-motion-safe. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-20"
+            style={{
+              background:
+                "radial-gradient(75% 60% at 50% 26%, color-mix(in oklab, var(--gold-bright) 22%, transparent), color-mix(in oklab, var(--gold) 12%, transparent) 45%, transparent 72%)",
+            }}
+          />
+          <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.12] mix-blend-overlay dark:opacity-[0.24]" />
           <div className="flex w-full max-w-2xl flex-col gap-8">
             <div className="flex flex-col items-center gap-4 text-center">
               <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
@@ -225,7 +237,7 @@ export default function Home() {
               </p>
             </div>
 
-        <Card>
+        <Card className="bg-surface-sunken">
           <CardContent className="flex flex-col gap-5">
             <form onSubmit={onSubmit} className="flex flex-col gap-2">
               <AnimatedGoldBorder>
@@ -390,7 +402,7 @@ function HowItWorks() {
     <section className="border-t px-6 py-14">
       <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-2 lg:items-start">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+          <h2 className="font-display text-2xl tracking-tight text-balance">
             How it works
           </h2>
           <ol className="mt-6 flex flex-col gap-5">
@@ -412,12 +424,12 @@ function HowItWorks() {
           </ol>
         </div>
 
-        <figure className="flex flex-col gap-3">
+        <figure className="bg-muted flex flex-col gap-3 rounded-2xl border p-6">
           <div className="grid grid-cols-4 gap-2">
             {sources.map((s) => (
               <div
                 key={s.kind}
-                className="bg-card flex flex-col items-center gap-1 rounded-lg border px-1 py-2"
+                className="bg-surface-sunken flex flex-col items-center gap-1 rounded-lg border px-1 py-2"
               >
                 <s.Icon className="text-muted-foreground size-4" />
                 <span className="text-muted-foreground text-[0.55rem] leading-none">
@@ -431,35 +443,55 @@ function HowItWorks() {
               width; the node is a real HTML circle so it never gets squashed. */}
           <div className="relative">
             <svg
-              className="text-muted-foreground/30 h-10 w-full"
+              className="h-10 w-full"
               viewBox="0 0 100 40"
               preserveAspectRatio="none"
               aria-hidden="true"
             >
-              {[12.5, 37.5, 62.5, 87.5].map((x) => (
-                <path
-                  key={x}
-                  d={`M ${x} 0 Q ${x} 22 50 40`}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
+              {[12.5, 37.5, 62.5, 87.5].map((x) => {
+                const d = `M ${x} 0 Q ${x} 22 50 40`;
+                return (
+                  <g key={x}>
+                    {/* The static wire */}
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke="currentColor"
+                      className="text-muted-foreground/30"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {/* A gold pulse travelling source → node along the wire */}
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke="currentColor"
+                      className="funnel-flow text-gold"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      pathLength={100}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </g>
+                );
+              })}
             </svg>
+          </div>
+          <div className="relative isolate grid grid-cols-2 gap-4">
+            {/* Convergence orb — a large gold glow behind the two outputs,
+                straddling the gap, where the sources land. */}
             <span
-              className="bg-muted-foreground absolute bottom-0 left-1/2 size-2 -translate-x-1/2 translate-y-1/2 rounded-full"
+              className="funnel-node absolute top-1/4 left-1/2 -z-10 size-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold opacity-40 blur-2xl"
               aria-hidden="true"
             />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-card text-card-foreground relative h-44 overflow-hidden rounded-xl border p-4">
+            <StoneBorder>
+              <div className="bg-transparent text-card-foreground relative h-44 overflow-hidden rounded-xl p-6">
               <div className="flex h-full flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <span className="text-muted-foreground text-[0.55rem] font-medium tracking-[0.2em] uppercase">
                     Chapter 2
                   </span>
-                  <span className="text-foreground font-display text-[0.95rem] leading-tight">
+                  <span className="text-foreground text-[0.95rem] font-medium leading-tight">
                     The new HTTP QUERY method
                   </span>
                 </div>
@@ -487,8 +519,10 @@ function HowItWorks() {
                     "linear-gradient(to top, var(--card), transparent)",
                 }}
               />
-            </div>
-            <div className="bg-card relative h-44 overflow-hidden rounded-xl border p-4">
+              </div>
+            </StoneBorder>
+            <StoneBorder>
+              <div className="bg-transparent relative h-44 overflow-hidden rounded-xl p-6">
               <div className="flex h-full flex-col gap-1.5 font-mono text-[0.6rem] leading-relaxed">
                 <p className="text-foreground"># Sources</p>
                 <p className="text-foreground mt-1">
@@ -515,7 +549,8 @@ function HowItWorks() {
                     "linear-gradient(to top, var(--card), transparent)",
                 }}
               />
-            </div>
+              </div>
+            </StoneBorder>
           </div>
           <figcaption className="text-muted-foreground text-center text-xs text-balance">
             Any mix of sources, one compilation, two formats: EPUB for your
@@ -550,7 +585,7 @@ function DataAndFaq() {
     <section className="border-t px-6 py-14">
       <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-2">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+          <h2 className="font-display text-2xl tracking-tight text-balance">
             Yours, on your machine
           </h2>
           <p className="text-muted-foreground mt-3 text-sm leading-relaxed text-balance">
@@ -572,7 +607,7 @@ function DataAndFaq() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+          <h2 className="font-display text-2xl tracking-tight text-balance">
             Questions
           </h2>
           <div className="mt-4 flex flex-col">
@@ -641,7 +676,7 @@ function SearchResults({
         const checked = selected.has(r.id);
         return (
           <li key={r.id}>
-            <label className="hover:bg-muted/60 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors">
+            <label className="hover:bg-foreground/5 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors">
               <Checkbox
                 checked={checked}
                 onCheckedChange={() => onToggle(r.id)}

@@ -184,7 +184,8 @@ just brighter on the night ground (no per-mode color inversion).
 ## 3. Typography
 
 **Display Font:** CMGeom (with system-ui, sans-serif) — a geometric display face,
-reserved for the single biggest brand moment.
+reserved for the two largest title levels: the hero line and the landing section
+headings.
 **Body / UI Font:** Host Grotesk (with system-ui, sans-serif) — a warm, highly
 readable grotesk (variable, 300–800) that runs the whole tool.
 **Label / Mono Font:** Geist Mono (with ui-monospace) — for metadata, numbers,
@@ -198,11 +199,15 @@ holds because the axis is real (geometric display vs. humanist grotesk), not two
 near-identical sans. No serif anywhere — that read too editorial for Thothly.
 
 ### Hierarchy
-- **Display** (CMGeom, 400, `clamp(2.75rem, 5vw, 3.75rem)`, lh 1.05, `-0.02em`):
-  the hero line, and only the hero. The brand's geometric voice. Ceiling
-  ≤ 3.75rem — composed, not shouting.
-- **Headline** (Host Grotesk, 600, 1.5rem, lh 1.2): in-app and landing section
-  headings ("How it works", "Sources", "Questions").
+- **Display** (CMGeom, 400): the two largest title levels — the hero line
+  (`clamp(2.75rem, 5vw, 3.75rem)`, lh 1.05, `-0.02em`; ceiling ≤ 3.75rem, composed
+  not shouting) and the landing section headings ("How it works", "Yours, on your
+  machine", "Questions") at 1.5rem with `tracking-tight`. The brand's geometric
+  voice. Regular weight only — never `font-semibold` (the browser would fake-bold
+  it).
+- **Headline** (Host Grotesk, 600, 1.5rem, lh 1.2): headings in the working UI
+  (job page, dialogs, in-app sections) — everything that isn't the hero or a
+  landing section heading.
 - **Title** (Host Grotesk, 500, 1rem): item titles, card headers, dialog titles.
 - **Body** (Host Grotesk, 400, 0.95rem, lh 1.6): UI copy. Prose capped at 65–75ch.
 - **Label** (Host Grotesk, 500, 0.75rem, `0.02em`): metadata rows, badges, small UI.
@@ -210,12 +215,13 @@ near-identical sans. No serif anywhere — that read too editorial for Thothly.
   technical detail — the scribe's measuring marks.
 
 ### Named Rules
-**The Display Restraint Rule.** CMGeom is a display face: it carries the hero and
-the landing's display flourishes (e.g. the faux book title in the illustration),
-and nothing in the working UI. Every other heading is Host Grotesk in a heavier
-weight. Never set CMGeom on body, buttons, labels, form controls or data — and
-never request a bolder CMGeom weight; it ships Regular only, so the browser would
-fake-bold it.
+**The Display Restraint Rule.** CMGeom is a display face: it carries exactly the
+two largest title levels — the hero line and the landing section headings — and
+nothing else. Not the working UI, not illustration flourishes (the faux book
+title is Host Grotesk), not item or card titles. Every other heading is Host
+Grotesk in a heavier weight. Never set CMGeom on body, buttons, labels, form
+controls or data — and never request a bolder CMGeom weight; it ships Regular
+only, so the browser would fake-bold it.
 
 **The Quiet Caps Rule.** Uppercase tracked labels are allowed as a UI device
 (source group headers, "Sources · 3"), but never as a decorative eyebrow above
@@ -298,8 +304,9 @@ read if desired.
   mark. It is bold and present here, not rare.
 - **Do** use near-black Ink text on every gold fill (gold is a light metal), and
   the deeper gold for the light-mode focus ring so it clears 3:1.
-- **Do** reserve CMGeom (display) for the hero and the landing's display
-  flourishes; Host Grotesk runs everything else, in the weight the hierarchy needs.
+- **Do** reserve CMGeom (display) for the two largest title levels — the hero and
+  the landing section headings — and nothing else; Host Grotesk runs the rest, in
+  the weight the hierarchy needs.
 - **Do** keep body and placeholder text at Ink / Muted Ink for ≥4.5:1.
 - **Do** ship a `prefers-reduced-motion` crossfade for every transition, and keep
   the grain `aria-hidden`.
