@@ -48,6 +48,44 @@ _NON_ARTICLE_HOSTS = frozenset(
 )
 
 
+# Language segments a site uses to namespace a localized mirror of the *same*
+# page (`/fr`, `/en-us`). A curated ISO 639-1 set, not a regex, so a real slug
+# that merely looks like a code (rare) isn't mistaken for a locale.
+_LOCALE_CODES = frozenset(
+    {
+        "en", "fr", "de", "es", "it", "pt", "nl", "ru", "ja", "zh", "ar", "ko",
+        "pl", "tr", "sv", "da", "no", "fi", "cs", "el", "he", "hi", "id", "th",
+        "vi", "uk", "ro", "hu", "ca", "fa",
+    }
+)
+
+
+def _is_locale_segment(segment: str) -> bool:
+    """True for a path segment that is a language tag (`fr`, `en-us`, `pt-br`)."""
+    parts = segment.lower().split("-")
+    return len(parts) <= 2 and parts[0] in _LOCALE_CODES
+
+
+def _canonical_key(url: str) -> str:
+    """A dedup key that folds the *same source* reached via different URLs.
+
+    DuckDuckGo routinely returns a site's home and its localized mirror as two
+    separate hits — `tokenbrice.xyz` and `tokenbrice.xyz/fr` — but that's one
+    blog, one feed once discovery expands it, so two cards for it is noise. The
+    key therefore drops the scheme, `www.`, query string and fragment (tracking
+    params and `?lang=` switches don't make a new source) and strips a *leading*
+    language segment from the path, so a localized home folds onto the bare home
+    (`/fr` -> `/`) and `/fr/post` folds onto `/post`. Distinct articles keep
+    distinct paths, so they're never collapsed. First (best-ranked) hit wins.
+    """
+    parsed = urlparse(url)
+    host = (parsed.netloc or "").lower().removeprefix("www.").split(":")[0]
+    segments = [s for s in parsed.path.split("/") if s]
+    if segments and _is_locale_segment(segments[0]):
+        segments = segments[1:]
+    return f"{host}/{'/'.join(segments)}"
+
+
 def _is_article_like(url: str) -> bool:
     """Drop hits from platforms that are never a usable article source.
 
@@ -80,10 +118,12 @@ class WebProvider:
             response = httpx.post(
                 _ENDPOINT,
                 data={"q": query},
-                headers={
-                    "User-Agent": _BROWSER_UA,
-                    "Accept-Language": "en-US,en;q=0.9",
-                },
+                # Deliberately NO Accept-Language: forcing one (e.g. en-US) biases
+                # DuckDuckGo toward that language's mirror of a site, which both
+                # buries non-English sources and produces locale-variant dupes
+                # (tokenbrice.xyz vs /fr). Without it DDG infers language from the
+                # query itself, keeping results faithful to what's being searched.
+                headers={"User-Agent": _BROWSER_UA},
                 timeout=_TIMEOUT_S,
                 follow_redirects=True,
             )
@@ -109,11 +149,14 @@ class WebProvider:
             if not link or not link.get("href"):
                 continue
             url = self._real_url(link["href"])
-            if not url or url in seen:
+            if not url:
+                continue
+            key = _canonical_key(url)
+            if key in seen:
                 continue
             if not _is_article_like(url):
                 continue
-            seen.add(url)
+            seen.add(key)
 
             title = link.get_text(" ", strip=True) or url
             snippet_node = node.select_one(".result__snippet")

@@ -138,6 +138,43 @@ def test_web_provider_parses_results(mock_post):
     assert r.meta["snippet"] == "A snippet about the post."
 
 
+# A brand query returning a site's bare home and its localized mirrors: the same
+# source, which discovery expands into the same feed — one card, not three.
+_DDG_LOCALE_HTML = """
+<div class="result"><a class="result__a"
+  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftokenbrice.xyz%2F">TokenBrice</a></div>
+<div class="result"><a class="result__a"
+  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftokenbrice.xyz%2Ffr">TokenBrice FR</a></div>
+<div class="result"><a class="result__a"
+  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.tokenbrice.xyz%2Fen-us%3Futm%3Dx">TokenBrice EN</a></div>
+"""
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_collapses_locale_home_variants(mock_post):
+    mock_post.return_value = _httpx_response(_DDG_LOCALE_HTML)
+
+    results = WebProvider().search("tokenbrice", limit=5)
+
+    # All three are the same blog home (bare, /fr, /en-us + tracking) → one hit,
+    # the first (best-ranked) bare-home URL kept.
+    assert [r.url for r in results] == ["https://tokenbrice.xyz/"]
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_keeps_distinct_articles(mock_post):
+    html = """
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.com%2Fpost-a">A</a></div>
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.com%2Fpost-b">B</a></div>
+    """
+    mock_post.return_value = _httpx_response(html)
+
+    # Different article paths on the same host are NOT the same source.
+    assert len(WebProvider().search("blog", limit=5)) == 2
+
+
 @patch("app.search.web_provider.httpx.post")
 def test_web_provider_respects_limit(mock_post):
     rows = "".join(
