@@ -31,6 +31,10 @@ class Source(BaseModel):
     # probed at discovery (transcription is deferred), so this is the only place
     # the duration is known — it drives the review screen's reading/cost figures.
     duration_s: int | None = None
+    # The source's human name (playlist/channel/feed/site title), captured during
+    # discovery and written back so the review screen can label each source group
+    # by its real name instead of the raw URL. Absent until discovery has run.
+    name: str | None = None
 
 
 class JobCreate(BaseModel):

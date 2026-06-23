@@ -15,6 +15,9 @@ export interface Source {
   // Episode length (seconds) from the search result — the only place it's known,
   // and what the review screen needs for the transcription cost estimate.
   duration_s?: number;
+  // The source's real name (channel / playlist / blog title), filled in by the
+  // backend during discovery. Used to label the review's source groups.
+  name?: string | null;
 }
 
 export interface DiscoveredItem {

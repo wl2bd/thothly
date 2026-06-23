@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { SearchIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  FileTextIcon,
+  ListIcon,
+  MicIcon,
+  PlayIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   createJob,
   search,
@@ -196,17 +205,21 @@ export default function Home() {
   const visibleResults = sortResults(filteredResults, sortBy);
 
   return (
-    <main className="flex min-h-screen justify-center p-8 sm:p-12">
-      <div className="flex w-full max-w-2xl flex-col gap-10 py-8">
-        <header className="flex flex-col items-center gap-3 text-center">
-          <h1 className="font-heading text-5xl font-semibold tracking-tight text-foreground">
-            Thothly
-          </h1>
-          <p className="text-muted-foreground max-w-md text-pretty text-[0.95rem] leading-relaxed">
-            Search YouTube — or paste a link — and pick what goes into a polished
-            EPUB for your e-reader.
-          </p>
-        </header>
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader />
+      <main className="flex flex-1 flex-col">
+        <section className="flex flex-col items-center px-6 pt-10 pb-14 sm:pt-14">
+          <div className="flex w-full max-w-2xl flex-col gap-8">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+                Read anything like a book.
+              </h1>
+              <p className="text-muted-foreground max-w-xl text-pretty text-[0.95rem] leading-relaxed">
+                Bring together everything you want to read or watch: videos,
+                podcasts, articles, even whole playlists or blogs. Get one
+                polished compilation for your e-reader or your AI.
+              </p>
+            </div>
 
         <Card>
           <CardContent className="flex flex-col gap-5">
@@ -224,7 +237,7 @@ export default function Home() {
               </div>
               {queryIsUrl && (
                 <p className="text-muted-foreground px-1 text-xs">
-                  Looks like a link — press{" "}
+                  Looks like a link. Press{" "}
                   <kbd className="rounded border px-1 font-mono">Enter</kbd> to add
                   it to your sources.
                 </p>
@@ -234,9 +247,9 @@ export default function Home() {
             {error && <p className="text-destructive text-sm">{error}</p>}
 
             {searchErrors.length > 0 && (
-              <p className="text-amber-700 dark:text-amber-500 bg-amber-500/10 rounded-lg px-3 py-2 text-xs">
-                {searchErrors.map((e) => e.provider).join(", ")} unavailable —
-                showing the other results.
+              <p className="text-warning bg-warning/10 rounded-lg px-3 py-2 text-xs">
+                {searchErrors.map((e) => e.provider).join(", ")} unavailable.
+                Showing the other results.
               </p>
             )}
 
@@ -311,20 +324,293 @@ export default function Home() {
               disabled={submitting}
               className="w-full"
             >
-              {submitting
-                ? "Starting…"
-                : `Discover ${staged.length} source${staged.length !== 1 ? "s" : ""}`}
+              {submitting ? "Starting…" : "Continue"}
             </Button>
           </section>
         )}
 
-        {staged.length === 0 && trimmed === "" && (
-          <p className="text-muted-foreground text-center text-sm">
-            Paste a link or type a search to get started.
-          </p>
-        )}
+          </div>
+        </section>
+
+        <HowItWorks />
+        <DataAndFaq />
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+// ── Landing chrome ───────────────────────────────────────────────────────────
+
+function SiteHeader() {
+  return (
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 border-b backdrop-blur">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
+        <span className="font-heading text-lg font-semibold tracking-tight">
+          Thothly
+        </span>
+        <ThemeToggle />
       </div>
-    </main>
+    </header>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    {
+      n: 1,
+      title: "Add your sources",
+      body: "Search, or paste any link: a video, a podcast, an article, even a whole playlist or blog.",
+    },
+    {
+      n: 2,
+      title: "Pick what goes in",
+      body: "Everything's pre-selected. Uncheck what you don't want, and preview any item before you commit.",
+    },
+    {
+      n: 3,
+      title: "Get your compilation",
+      body: "A polished EPUB for your e-reader, plus a Markdown twin to feed an AI.",
+    },
+  ];
+  // Skeleton bar widths for the faux e-reader page; null = a paragraph break.
+  const lines = ["100%", "92%", "97%", "85%", null, "100%", "94%", "90%", "96%"];
+  // Faux markdown for the "code" panel: a marker (#, ##, -) plus a text band.
+  const mdLines: { mark: string | null; w: string }[] = [
+    { mark: "#", w: "42%" },
+    { mark: null, w: "100%" },
+    { mark: null, w: "90%" },
+    { mark: "##", w: "58%" },
+    { mark: null, w: "100%" },
+    { mark: null, w: "84%" },
+    { mark: "-", w: "66%" },
+    { mark: "##", w: "50%" },
+    { mark: null, w: "96%" },
+    { mark: null, w: "88%" },
+    { mark: null, w: "92%" },
+    { mark: "-", w: "60%" },
+  ];
+  // Mixed input kinds, shown flowing into the two output formats below.
+  const sources = [
+    { Icon: PlayIcon, kind: "Video" },
+    { Icon: MicIcon, kind: "Podcast" },
+    { Icon: FileTextIcon, kind: "Article" },
+    { Icon: ListIcon, kind: "Playlist" },
+  ];
+  return (
+    <section className="border-t px-6 py-14">
+      <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-2 lg:items-start">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+            How it works
+          </h2>
+          <ol className="mt-6 flex flex-col gap-5">
+            {steps.map((s) => (
+              <li key={s.n} className="flex gap-4">
+                <span className="text-muted-foreground/50 text-xl font-semibold tabular-nums">
+                  {s.n}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-sm font-semibold">{s.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {s.body}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <figure className="flex flex-col gap-3">
+          <div className="grid grid-cols-4 gap-2">
+            {sources.map((s) => (
+              <div
+                key={s.kind}
+                className="bg-card flex flex-col items-center gap-1 rounded-lg border px-1 py-2 shadow-sm"
+              >
+                <s.Icon className="text-muted-foreground size-4" />
+                <span className="text-muted-foreground text-[0.55rem] leading-none">
+                  {s.kind}
+                </span>
+              </div>
+            ))}
+          </div>
+          {/* Source branches funnelling down into one compilation node.
+              preserveAspectRatio="none" keeps each branch under its chip at any
+              width; the node is a real HTML circle so it never gets squashed. */}
+          <div className="relative">
+            <svg
+              className="text-muted-foreground/30 h-10 w-full"
+              viewBox="0 0 100 40"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              {[12.5, 37.5, 62.5, 87.5].map((x) => (
+                <path
+                  key={x}
+                  d={`M ${x} 0 Q ${x} 22 50 40`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </svg>
+            <span
+              className="bg-muted-foreground absolute bottom-0 left-1/2 size-2 -translate-x-1/2 translate-y-1/2 rounded-full"
+              aria-hidden="true"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-card text-card-foreground relative h-44 overflow-hidden rounded-xl border p-4 shadow-sm">
+              <div className="flex h-full flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-[0.55rem] font-medium tracking-[0.2em] uppercase">
+                    Chapter 2
+                  </span>
+                  <span className="text-foreground font-serif text-[0.95rem] leading-tight font-semibold">
+                    The new HTTP QUERY method
+                  </span>
+                </div>
+                <p className="text-muted-foreground font-serif text-[0.6rem] leading-relaxed">
+                  A safe, idempotent way to send a body with your queries.
+                </p>
+                <div className="flex flex-1 flex-col gap-1.5">
+                  {lines.map((w, i) =>
+                    w === null ? (
+                      <span key={i} className="h-1" />
+                    ) : (
+                      <span
+                        key={i}
+                        className="bg-muted h-1.5 rounded-full"
+                        style={{ width: w }}
+                      />
+                    ),
+                  )}
+                </div>
+              </div>
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-12"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to top, var(--card), transparent)",
+                }}
+              />
+            </div>
+            <div className="bg-card relative h-44 overflow-hidden rounded-xl border p-4 shadow-sm">
+              <div className="flex h-full flex-col gap-1.5">
+                {mdLines.map((l, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    {l.mark && (
+                      <span className="text-muted-foreground/70 shrink-0 font-mono text-[0.55rem] leading-none">
+                        {l.mark}
+                      </span>
+                    )}
+                    <span
+                      className={`h-1.5 rounded ${
+                        l.mark ? "bg-muted-foreground/25" : "bg-muted"
+                      }`}
+                      style={{ width: l.w }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-12"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to top, var(--card), transparent)",
+                }}
+              />
+            </div>
+          </div>
+          <figcaption className="text-muted-foreground text-center text-xs">
+            Any mix of sources, one compilation, two formats: EPUB for your
+            e-reader, Markdown for your AI.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  );
+}
+
+function DataAndFaq() {
+  const items = [
+    {
+      q: "What can I put in?",
+      a: "Videos, podcasts, articles and blog posts. Drop a single link, or a whole playlist, channel or blog, and it expands into its items.",
+    },
+    {
+      q: "Is it free?",
+      a: "Yes. The default path uses no AI and costs nothing. Optional cleanup or podcast transcription only cost if you connect a paid provider, or stay free with a local one.",
+    },
+    {
+      q: "Where do my files go?",
+      a: "Onto the machine running Thothly, in a local file. The only things fetched are the sources themselves.",
+    },
+    {
+      q: "A video has no subtitles?",
+      a: "It's skipped, and you'll see that flagged in review before anything is compiled.",
+    },
+  ];
+  return (
+    <section className="border-t px-6 py-14">
+      <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-2">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+            Yours, on your machine
+          </h2>
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+            Thothly runs on your own machine. Your jobs and cached transcripts
+            live in a single local file, nothing is sent to a server we run, and
+            there is no tracking or analytics.
+          </p>
+          <ul className="text-muted-foreground marker:text-muted-foreground/40 mt-4 flex list-disc flex-col gap-2 pl-5 text-sm">
+            <li>Free by default: the standard path uses no AI at all.</li>
+            <li>
+              AI cleanup is optional, and can run fully local (Ollama) or on a
+              provider you choose.
+            </li>
+            <li>
+              Paid steps like transcription only happen if you opt in, and are
+              cached so a re-compile never pays twice.
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+            Questions
+          </h2>
+          <div className="mt-4 flex flex-col">
+            {items.map((it) => (
+              <details key={it.q} className="group border-b py-3.5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                  {it.q}
+                  <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                  {it.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="border-t px-6 py-8">
+      <div className="text-muted-foreground mx-auto flex w-full max-w-5xl items-center justify-between text-xs">
+        <span className="font-heading text-foreground font-semibold">
+          Thothly
+        </span>
+        <span>A personal reading compiler.</span>
+      </div>
+    </footer>
   );
 }
 
