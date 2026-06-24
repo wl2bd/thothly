@@ -55,7 +55,6 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   // Which provider's results to show ("all" = no filter), and how to order them
   // ("relevance" = the backend's cross-provider ranking). Both reset on every
   // new search so stale controls never blank out or mis-order the next query.
@@ -113,13 +112,26 @@ export default function Home() {
     };
   }, [trimmed, queryIsUrl]);
 
-  function toggleResult(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  // Checking a result stages it straight into the Sources list (unchecking
+  // removes it) — there's no separate "add" step. The checkbox reads its state
+  // from `staged`, so the results list, the Sources recap and the count always
+  // agree, and a selection survives moving from one search to the next.
+  function toggleResultStaged(r: SearchResult) {
+    setStaged((prev) =>
+      prev.some((s) => s.url === r.url)
+        ? prev.filter((s) => s.url !== r.url)
+        : [
+            ...prev,
+            {
+              url: r.url,
+              title: r.title,
+              type: r.type,
+              source: r.source,
+              thumbnail: r.thumbnail,
+              durationS: r.duration_s,
+            },
+          ],
+    );
   }
 
   function stageSources(toAdd: StagedSource[]) {
@@ -134,24 +146,6 @@ export default function Home() {
       }
       return merged;
     });
-  }
-
-  function addSelectedToSources() {
-    const picked = results
-      .filter((r) => selected.has(r.id))
-      .map((r) => ({
-        url: r.url,
-        title: r.title,
-        type: r.type,
-        source: r.source,
-        thumbnail: r.thumbnail,
-        durationS: r.duration_s,
-      }));
-    stageSources(picked);
-    setSelected(new Set());
-    setQuery("");
-    setResults([]);
-    setSearchErrors([]);
   }
 
   // Enter on a pasted link adds it straight to the sources, keeping the bar
@@ -210,13 +204,16 @@ export default function Home() {
       ? results
       : results.filter((r) => r.source === sourceFilter);
   const visibleResults = sortResults(filteredResults, sortBy);
+  // Checkbox state for each result is read from the staged list (by URL), so the
+  // results, the Sources recap and the count never drift apart.
+  const stagedUrls = new Set(staged.map((s) => s.url));
 
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex flex-1 flex-col">
         <section
-          className="relative isolate flex min-h-[66svh] flex-col items-center justify-center overflow-hidden px-6 py-16 sm:py-20"
+          className={`relative isolate flex min-h-[66svh] flex-col items-center justify-center overflow-hidden px-6 ${showResults ? "py-10" : "py-16 sm:py-20"}`}
           style={{
             background:
               "linear-gradient(to bottom, var(--hero-ground) 0%, var(--hero-ground) 35%, transparent 100%)",
@@ -244,7 +241,7 @@ export default function Home() {
             className="pointer-events-none absolute inset-0 -z-10"
             style={{ background: "var(--hero-scrim)" }}
           />
-          <div className="flex w-full max-w-2xl flex-col gap-10">
+          <div className={`flex w-full max-w-2xl flex-col ${showResults ? "gap-6" : "gap-10"}`}>
             <div className="flex flex-col items-center gap-5 text-center">
               <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
                 Make anything readable
@@ -255,8 +252,8 @@ export default function Home() {
               </p>
             </div>
 
-        <Card className="bg-surface-sunken">
-          <CardContent className="flex flex-col gap-5">
+        <Card className="bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)] flex max-h-[72svh] flex-col">
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
             <form onSubmit={onSubmit} className="flex flex-col gap-2">
               <AnimatedGoldBorder>
                 <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -303,24 +300,30 @@ export default function Home() {
               <SearchResults
                 searching={searching}
                 results={visibleResults}
-                selected={selected}
-                onToggle={toggleResult}
+                stagedUrls={stagedUrls}
+                onToggle={toggleResultStaged}
               />
             )}
 
-            {selected.size > 0 && (
+            {staged.length > 0 && (
               <div className="flex items-center justify-between gap-2 border-t pt-4">
-                <p className="text-sm font-medium">{selected.size} selected</p>
-                <Button type="button" size="sm" onClick={addSelectedToSources}>
-                  Add to sources
-                </Button>
+                <p className="text-sm font-medium">
+                  {staged.length} {staged.length === 1 ? "source" : "sources"} in
+                  your compilation
+                </p>
+                <a
+                  href="#sources"
+                  className="text-muted-foreground hover:text-foreground shrink-0 text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  Review ↓
+                </a>
               </div>
             )}
           </CardContent>
         </Card>
 
         {staged.length > 0 && (
-          <section className="flex flex-col gap-3">
+          <section id="sources" className="scroll-mt-20 flex flex-col gap-3">
             <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
               Sources · {staged.length}
             </h2>
@@ -369,7 +372,7 @@ export default function Home() {
           {/* A quiet nudge past the now-taller fold to "how it works" — only in
               the pristine state, before the user starts staging sources. Soft
               drift, not a hard bounce; dropped under reduced motion. */}
-          {staged.length === 0 && (
+          {staged.length === 0 && !showResults && (
             <a
               href="#how-it-works"
               aria-label="See how it works"
@@ -675,14 +678,14 @@ function SiteFooter() {
 interface SearchResultsProps {
   searching: boolean;
   results: SearchResult[];
-  selected: Set<string>;
-  onToggle: (id: string) => void;
+  stagedUrls: Set<string>;
+  onToggle: (result: SearchResult) => void;
 }
 
 function SearchResults({
   searching,
   results,
-  selected,
+  stagedUrls,
   onToggle,
 }: SearchResultsProps) {
   if (searching && results.length === 0) {
@@ -703,15 +706,15 @@ function SearchResults({
   }
 
   return (
-    <ul className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
+    <ul className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto">
       {results.map((r) => {
-        const checked = selected.has(r.id);
+        const checked = stagedUrls.has(r.url);
         return (
           <li key={r.id}>
             <label className="hover:bg-foreground/5 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors">
               <Checkbox
                 checked={checked}
-                onCheckedChange={() => onToggle(r.id)}
+                onCheckedChange={() => onToggle(r)}
               />
               <Thumbnail result={r} />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -891,7 +894,7 @@ function SearchSourcesHint() {
             title={label}
             className="ring-surface-sunken bg-muted flex size-6 items-center justify-center rounded-full ring-2"
             style={{
-              marginLeft: i === 0 ? 0 : "-0.5rem",
+              marginLeft: i === 0 ? 0 : "-0.25rem",
               zIndex: SEARCH_SOURCES.length - i,
             }}
           >
