@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import {
   ChevronDownIcon,
   FileTextIcon,
+  GlobeIcon,
   ListIcon,
   MicIcon,
   PlayIcon,
+  PodcastIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
@@ -268,12 +270,13 @@ export default function Home() {
                 />
               </AnimatedGoldBorder>
               {queryIsUrl && (
-                <p className="text-muted-foreground px-1 text-xs">
+                <p className="text-muted-foreground px-1 text-center text-xs">
                   Looks like a link. Press{" "}
                   <kbd className="rounded border px-1 font-mono">Enter</kbd> to add
                   it to your sources.
                 </p>
               )}
+              <SearchSourcesHint />
             </form>
 
             {error && <p className="text-destructive text-sm">{error}</p>}
@@ -862,6 +865,42 @@ function SortSelect({
         <option value="title">Title A–Z</option>
       </select>
     </label>
+  );
+}
+
+// The sources a query reaches, shown as a small overlapping pile under the bar
+// so it's clear up front what Thothly searches: YouTube, Apple Podcasts and the
+// open web. Monochrome lucide glyphs in the muted (secondary) tone — never the
+// brand gold, never multicolor brand logos that would clash on the night ground.
+// lucide carries no brand marks, so each source reads through its medium, in the
+// same icon language the funnel uses (Play = video, podcast waves, globe = web);
+// each is ringed in the panel's own sunken surface so they read as a stacked pile.
+const SEARCH_SOURCES = [
+  { key: "youtube", label: "YouTube", Icon: PlayIcon },
+  { key: "podcast", label: "Apple Podcasts", Icon: PodcastIcon },
+  { key: "web", label: "the web", Icon: GlobeIcon },
+];
+
+function SearchSourcesHint() {
+  return (
+    <p className="text-muted-foreground flex items-center justify-center gap-2 px-1 text-xs">
+      <span className="flex items-center" aria-hidden="true">
+        {SEARCH_SOURCES.map(({ key, label, Icon }, i) => (
+          <span
+            key={key}
+            title={label}
+            className="ring-surface-sunken bg-muted flex size-6 items-center justify-center rounded-full ring-2"
+            style={{
+              marginLeft: i === 0 ? 0 : "-0.5rem",
+              zIndex: SEARCH_SOURCES.length - i,
+            }}
+          >
+            <Icon className="size-3.5" />
+          </span>
+        ))}
+      </span>
+      Searches YouTube, Apple Podcasts and the web
+    </p>
   );
 }
 

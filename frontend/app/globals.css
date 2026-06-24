@@ -242,6 +242,45 @@
   }
 }
 
+/* ── Themed scrollbars ────────────────────────────────────────────────────────
+   Scrollbars follow the active theme instead of the OS default — the page's own
+   bar and every in-app scroll area (search results, the job item list, the
+   preview panel). Colors are the same tokens the rest of the UI uses (`--border`
+   thumb, `--muted-foreground` on hover) over a transparent track, so they flip
+   automatically with `.dark` on <html> (a light thumb on the light ground, a
+   pale thumb on the night ground) and sit on whatever surface they overlay — no
+   hardcoded colors, no per-context rules. */
+@layer base {
+  /* Firefox */
+  html {
+    scrollbar-color: var(--border) transparent;
+    scrollbar-width: thin;
+  }
+  /* Chromium / WebKit */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    /* Inset the thumb from the track edges (transparent border clipped to the
+       content box) so it reads as a slim pill rather than a full-width slab. */
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+  /* Don't paint the corner where a vertical and horizontal bar meet. */
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
 /* ── Gold Leaf frame ──────────────────────────────────────────────────────────
    Adapts a rotating conic-gradient border into the Gold Leaf system: one color
    (desert gold), token-driven. A mostly-dark bronze ring with two narrow glints
