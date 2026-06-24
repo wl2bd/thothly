@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from yt_dlp.utils import DownloadError
 
 import app.search.service as service
+import app.search.web_provider as web_provider
 from app.search.models import SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.web_provider import WebProvider
@@ -177,14 +178,99 @@ def test_web_provider_keeps_distinct_articles(mock_post):
 
 @patch("app.search.web_provider.httpx.post")
 def test_web_provider_respects_limit(mock_post):
+    # Distinct hosts (one deep article each) so the per-domain cap never bites —
+    # this test isolates the `limit` truncation alone.
     rows = "".join(
         f'<div class="result"><a class="result__a" '
-        f'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fe.com%2F{i}">T{i}</a></div>'
+        f'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fe{i}.com%2Fpost">T{i}</a></div>'
         for i in range(10)
     )
     mock_post.return_value = _httpx_response(rows)
 
     assert len(WebProvider().search("q", limit=3)) == 3
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_drops_non_article_shapes(mock_post):
+    # A product page, a taxonomy listing and a forum thread are non-article URL
+    # shapes; the real article (whose slug merely contains "widget") survives.
+    html = """
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fshop.example%2Fproduct%2Fwidget">Buy</a></div>
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fnews.example%2Ftag%2Ffinance">Tag</a></div>
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fforum.example%2Fviewtopic%3Ft%3D9">Thread</a></div>
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.example%2Fhow-the-widget-works">Article</a></div>
+    """
+    mock_post.return_value = _httpx_response(html)
+
+    assert [r.url for r in WebProvider().search("widget", limit=5)] == [
+        "https://blog.example/how-the-widget-works"
+    ]
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_drops_on_site_search_query(mock_post):
+    # A URL carrying an on-site search/listing query param is not an article.
+    html = """
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fsite.example%2F%3Fs%3Dwidget">Search</a></div>
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fsite.example%2Fthe-widget-guide">Guide</a></div>
+    """
+    mock_post.return_value = _httpx_response(html)
+
+    assert [r.url for r in WebProvider().search("widget", limit=5)] == [
+        "https://site.example/the-widget-guide"
+    ]
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_drops_home_when_deeper_article_present(mock_post):
+    html = """
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.example%2F">Home</a></div>
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.example%2Fdeep-post">Deep</a></div>
+    """
+    mock_post.return_value = _httpx_response(html)
+
+    # The bare home is redundant when a deeper article from the same site is
+    # present → only the article survives.
+    assert [r.url for r in WebProvider().search("blog", limit=5)] == [
+        "https://blog.example/deep-post"
+    ]
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_keeps_lone_home(mock_post):
+    html = """
+    <div class="result"><a class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftokenbrice.xyz%2F">TokenBrice</a></div>
+    """
+    mock_post.return_value = _httpx_response(html)
+
+    # A home with no deeper sibling is a valid source (discovery expands it).
+    assert [r.url for r in WebProvider().search("tokenbrice", limit=5)] == [
+        "https://tokenbrice.xyz/"
+    ]
+
+
+@patch("app.search.web_provider.httpx.post")
+def test_web_provider_caps_results_per_domain(mock_post):
+    rows = "".join(
+        f'<div class="result"><a class="result__a" '
+        f'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fbig.example%2Fpost-{i}">P{i}</a></div>'
+        for i in range(6)
+    )
+    mock_post.return_value = _httpx_response(rows)
+
+    # One domain shouldn't flood the list: capped even with room under the limit.
+    results = WebProvider().search("q", limit=10)
+    assert len(results) == web_provider._MAX_PER_DOMAIN
+    assert all("big.example" in r.url for r in results)
 
 
 @patch("app.search.web_provider.httpx.post")

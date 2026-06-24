@@ -48,6 +48,35 @@ _NON_ARTICLE_HOSTS = frozenset(
 )
 
 
+# Path segments that mark a page as a listing, taxonomy, shop, forum or account
+# page rather than a readable article — the noise DuckDuckGo mixes into results.
+# Matched against WHOLE path segments (never substrings), so an article whose
+# slug merely contains one of these words ("/10-best-products") is never dropped.
+_NON_ARTICLE_SEGMENTS = frozenset(
+    {
+        # shopping
+        "shop", "store", "product", "products", "cart", "checkout", "basket",
+        "collection", "collections", "pricing", "buy", "order", "orders",
+        # listings / taxonomy / navigation
+        "category", "categories", "tag", "tags", "author", "wishlist",
+        # forums / discussion
+        "forum", "forums", "viewtopic", "showthread", "thread", "threads",
+        "comments",
+        # account / utility
+        "login", "signin", "signup", "register", "account", "search",
+        "contact", "privacy", "terms",
+    }
+)
+
+# Query keys that mark a URL as an on-site search or paginated listing, not an
+# article (`?s=` is WordPress search, `?q=`/`?query=` generic search).
+_LISTING_QUERY_KEYS = frozenset({"q", "s", "search", "query"})
+
+# Most results one domain may contribute, so a single strong site can't flood a
+# topic search. Applied after the home/deep collapse (see `_dedupe_domains`).
+_MAX_PER_DOMAIN = 3
+
+
 # Language segments a site uses to namespace a localized mirror of the *same*
 # page (`/fr`, `/en-us`). A curated ISO 639-1 set, not a regex, so a real slug
 # that merely looks like a code (rare) isn't mistaken for a locale.
@@ -64,6 +93,11 @@ def _is_locale_segment(segment: str) -> bool:
     """True for a path segment that is a language tag (`fr`, `en-us`, `pt-br`)."""
     parts = segment.lower().split("-")
     return len(parts) <= 2 and parts[0] in _LOCALE_CODES
+
+
+def _host(url: str) -> str:
+    """The result's host, normalized: lowercased, `www.`-stripped, port-stripped."""
+    return (urlparse(url).netloc or "").lower().removeprefix("www.").split(":")[0]
 
 
 def _canonical_key(url: str) -> str:
@@ -87,20 +121,72 @@ def _canonical_key(url: str) -> str:
 
 
 def _is_article_like(url: str) -> bool:
-    """Drop hits from platforms that are never a usable article source.
+    """Drop hits that are never a usable article source.
 
-    A single conservative rule: the host isn't a known non-article platform
-    (social, short-form video, shopping, audio — see `_NON_ARTICLE_HOSTS`),
-    which is noise for an article compiler or already covered by another
-    provider. Everything else is kept, *including* bare homepages — a blog's
-    homepage (`https://tokenbrice.xyz/`) is a perfectly good source that
-    discovery expands into articles via RSS. Ordering is left to the relevance
-    ranking in the service layer rather than a hard path filter that would drop
-    the single most relevant result for a brand query.
+    Two cheap, no-fetch rules, in order:
+    - Host: not a known non-article platform (social, short-form video,
+      shopping, audio — see `_NON_ARTICLE_HOSTS`), which is noise for an article
+      compiler or already covered by another provider.
+    - URL shape: no path segment marks a listing / taxonomy / shop / forum /
+      account page (`_NON_ARTICLE_SEGMENTS`), and no query param marks an on-site
+      search or listing (`_LISTING_QUERY_KEYS`). Matched on WHOLE path segments,
+      never substrings, so an article slug that merely contains one of these
+      words ("/10-best-products-2026") is kept.
+
+    Bare homepages are deliberately kept here — a blog's home
+    (`https://tokenbrice.xyz/`) is a valid source discovery expands via RSS.
+    Whether a home is redundant is decided later by the home-vs-deep collapse in
+    `_dedupe_domains`, not by this filter, so a brand query never loses its one
+    relevant result.
     """
     parsed = urlparse(url)
-    host = (parsed.netloc or "").lower().removeprefix("www.").split(":")[0]
-    return not any(host == d or host.endswith(f".{d}") for d in _NON_ARTICLE_HOSTS)
+    host = _host(url)
+    if any(host == d or host.endswith(f".{d}") for d in _NON_ARTICLE_HOSTS):
+        return False
+    segments = [s.lower() for s in parsed.path.split("/") if s]
+    if any(seg in _NON_ARTICLE_SEGMENTS for seg in segments):
+        return False
+    if {k.lower() for k in parse_qs(parsed.query)} & _LISTING_QUERY_KEYS:
+        return False
+    return True
+
+
+def _is_home(url: str) -> bool:
+    """True for a site's bare home — an empty path after any leading locale.
+
+    `https://site.com/`, `/fr`, `/en-us/` are all the home; `/post` is not.
+    """
+    segments = [s for s in urlparse(url).path.split("/") if s]
+    if segments and _is_locale_segment(segments[0]):
+        segments = segments[1:]
+    return not segments
+
+
+def _dedupe_domains(results: list[SearchResult]) -> list[SearchResult]:
+    """Collapse same-site noise while keeping genuinely distinct articles.
+
+    DuckDuckGo routinely returns a site's bare home AND a deep article from it as
+    two separate hits. The deep article is the useful one, so when a host has any
+    deeper result its bare home is dropped; a home with no deeper sibling is kept
+    (it's a valid source discovery expands via RSS). A soft per-host cap then
+    stops one strong domain from flooding the list on a topic search. Input order
+    (DuckDuckGo's ranking) is preserved, so the best-ranked survivors stay first.
+
+    Two genuinely distinct articles from the same domain are never collapsed —
+    only the redundant home is, and only the flood beyond the cap is trimmed.
+    """
+    hosts_with_deep = {_host(r.url) for r in results if not _is_home(r.url)}
+    kept: list[SearchResult] = []
+    per_host: dict[str, int] = {}
+    for r in results:
+        host = _host(r.url)
+        if _is_home(r.url) and host in hosts_with_deep:
+            continue  # redundant home: a deeper article from the same site wins
+        if per_host.get(host, 0) >= _MAX_PER_DOMAIN:
+            continue  # soft anti-flood cap
+        per_host[host] = per_host.get(host, 0) + 1
+        kept.append(r)
+    return kept
 
 
 class WebProvider:
@@ -173,10 +259,11 @@ class WebProvider:
                     meta={"snippet": snippet} if snippet else {},
                 )
             )
-            if len(results) >= limit:
-                break
 
-        return results
+        # Collapse same-site home/deep noise and cap per domain AFTER collecting
+        # every candidate, then truncate — so dropping a redundant home never
+        # leaves the list short of `limit` when more good hits sit below it.
+        return _dedupe_domains(results)[:limit]
 
     @staticmethod
     def _real_url(href: str) -> str | None:
