@@ -8,9 +8,11 @@ import { useEffect, useRef, useState } from "react";
 //
 // Adapted down from a Matrix-style "digital rain" to a *background texture*: the
 // falling columns are kept; the water surface, ripples, reflections and pointer
-// interaction of the original scene are dropped. It runs ONLY on the dark ground
-// (where the gold burns brightest and amber-on-near-black stays legible) — the
-// light page keeps its gold bloom. Decorative only: aria-hidden, pointer-events
+// interaction of the original scene are dropped. It runs in BOTH modes, with the
+// tone inverted per ground: on the night ground the lead glyph is a warm
+// white-hot fading to desert gold; on the light page the ramp flips, a deep gold
+// lead fading UP to a light gold that dissolves into the off-white, so the same
+// motif reads on either canvas. Decorative only: aria-hidden, pointer-events
 // none, paused when off-screen or on a hidden tab, and reduced to a single still
 // frame under prefers-reduced-motion.
 //
@@ -30,7 +32,11 @@ const LETTERS =
 // just no longer all-caps.
 const GLYPHS = [...HIEROGLYPHS, ...HIEROGLYPHS, ...LETTERS];
 
-const GLYPH_SIZE = 30; // large, zoomed-in glyphs
+const GLYPH_SIZE = 30; // large, zoomed-in glyphs (the hieroglyphs)
+// The Latin letters are set a touch smaller than the hieroglyphs, so the
+// hieroglyphs read as the dominant motif and the letters sit quietly between
+// them (rather than the heavier Latin shapes competing at the same size).
+const LETTER_SIZE = Math.round(GLYPH_SIZE * 0.8);
 // Horizontal spacing between columns. Twice the glyph size = half as many
 // columns as a packed grid — the main lever on how much the rain costs per
 // frame (fewer columns → fewer glyphs drawn).
@@ -79,13 +85,6 @@ export function HieroglyphRain({ className }: { className?: string }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Light mode: leave the canvas clear and never spin the loop.
-    if (!isDark) {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      return;
-    }
-
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -99,9 +98,9 @@ export function HieroglyphRain({ className }: { className?: string }) {
     // Two faces: Noto for the hieroglyphs, the edition serif (Literata) for the
     // interspersed Latin letters. Resolved from CSS vars in the async setup.
     let hieroFont = `${GLYPH_SIZE}px monospace`;
-    // Light (300) serif so the letters' stroke weight sits closer to the thin
-    // single-weight hieroglyphs, instead of reading much heavier than them.
-    let serifFont = `300 ${GLYPH_SIZE}px serif`;
+    // Extra-light (200) serif so the letters' stroke weight sits as fine as the
+    // thin single-weight hieroglyphs, instead of reading heavier than them.
+    let serifFont = `200 ${LETTER_SIZE}px serif`;
     let visible = true;
 
     const randomGlyph = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
@@ -217,13 +216,33 @@ export function HieroglyphRain({ className }: { className?: string }) {
           b *= col.opacity;
           if (b < 0.03) continue;
           const cell = col.cells[j % col.cells.length];
-          // Lead is a warm white-hot; just behind it a bright gold; the trail is
-          // desert gold (≈ the --gold token) fading up.
-          const tone = j === 0 ? "255,247,230" : j < 3 ? "240,206,140" : "214,167,96";
+          // The head-to-tail tone, flipped per ground. Dark: lead a warm
+          // white-hot, then bright gold, then desert gold (≈ --gold) fading out
+          // into the near-black. Light: the ramp inverts — a deep bronze-gold
+          // lead (the darkest, most present on the page), then gold, then a
+          // lighter gold that the alpha ramp dissolves up into the off-white.
+          // The light ramp is pulled deeper than the gold tokens so the glyphs
+          // read dark (not washed) on the off-white, rather than bright gold.
+          const tone = isDark
+            ? j === 0
+              ? "255,247,230"
+              : j < 3
+                ? "240,206,140"
+                : "214,167,96"
+            : j === 0
+              ? "134,79,0"
+              : j < 3
+                ? "167,108,0"
+                : "207,145,5";
           const cx = col.x + COLUMN_STEP * 0.5;
           if (j === 0) {
-            ctx!.shadowColor = "rgba(245,215,150,0.5)";
-            ctx!.shadowBlur = 6;
+            // Dark: a gold bloom behind the hot lead. Light: a glow would only
+            // wash to white, so the lead gets a faint warm-dark halo instead —
+            // a touch of carved weight rather than a glow.
+            ctx!.shadowColor = isDark
+              ? "rgba(245,215,150,0.5)"
+              : "rgba(120,75,0,0.3)";
+            ctx!.shadowBlur = isDark ? 6 : 4;
           }
           // Crossfade: dissolve the previous glyph out while the new one fades in
           // (a soft morph rather than a hard swap). Hieroglyphs use Noto, letters
@@ -299,7 +318,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
     const hieroRaw = rootStyle.getPropertyValue("--font-hieroglyph").trim();
     const serifRaw = rootStyle.getPropertyValue("--font-literata").trim();
     if (hieroRaw) hieroFont = `${GLYPH_SIZE}px ${hieroRaw}`;
-    if (serifRaw) serifFont = `300 ${GLYPH_SIZE}px ${serifRaw}`;
+    if (serifRaw) serifFont = `200 ${LETTER_SIZE}px ${serifRaw}`;
 
     // Start immediately — sizing the canvas and the loop must not wait on the
     // font download, or a slow (or already-settled) promise leaves it blank.
@@ -325,7 +344,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
             HIEROGLYPHS.slice(0, 6).join(""),
           ),
         serifPrimary &&
-          document.fonts.load(`300 ${GLYPH_SIZE}px ${serifPrimary}`, "ABCabc"),
+          document.fonts.load(`200 ${LETTER_SIZE}px ${serifPrimary}`, "ABCabc"),
       ].filter(Boolean),
     ).then(() => {
       if (!cancelled && reduce) draw();

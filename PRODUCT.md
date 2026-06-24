@@ -52,11 +52,15 @@ soul — never sterile.
   grid, fluo accents.
 - **Mythological costume**: papyrus, sepia, skeuomorphic old-book / parchment. No
   faux-aged paper, no relics. (Deliberate exception, 2026-06-24: hieroglyphs are
-  allowed as ONE earned motif — the desert-gold glyph rain behind the dark-mode
-  hero, rendered flat, token-driven and reduced-motion-safe, never as papyrus /
-  sepia / parchment chrome.) Otherwise the Thoth heritage is evoked through ink,
-  type, grain and voice. Not a return to the previously-retired editorial/paper
-  identity; character is carried by the token system.
+  allowed as ONE earned motif — the desert-gold glyph rain behind the hero,
+  rendered flat, token-driven and reduced-motion-safe, never as papyrus / sepia /
+  parchment chrome. Updated 2026-06-24: the rain runs in BOTH modes, tone
+  inverted per ground — warm white-hot fading to desert gold on the night ground,
+  a deep-gold lead fading up into the off-white on the light page — so light is a
+  true peer of dark, not a costume. The glyphs stay flat gold on a chroma-0
+  ground; deep gold is not sepia.) Otherwise the Thoth heritage is evoked through
+  ink, type, grain and voice. Not a return to the previously-retired
+  editorial/paper identity; character is carried by the token system.
 
 ## Design Principles
 

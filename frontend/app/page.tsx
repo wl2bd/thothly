@@ -213,32 +213,34 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex flex-1 flex-col">
-        <section className="relative isolate flex min-h-[66svh] flex-col items-center justify-center overflow-hidden px-6 py-16 sm:py-20">
-          {/* Hero backdrop. On the night ground a desert-gold glyph rain (Thoth's
-              hieroglyphs + falling letters) runs behind the content; on the light
-              page a soft gold bloom carries the warmth instead. Grain is laid over
-              both, and in dark a soft scrim pools the ground behind the text for
-              legibility. All decorative, behind content, reduced-motion-safe. */}
-          <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-60 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-20 dark:hidden"
-            style={{
-              background:
-                "radial-gradient(80% 65% at 50% 40%, color-mix(in oklab, var(--gold-bright) 22%, transparent), color-mix(in oklab, var(--gold) 12%, transparent) 45%, transparent 72%)",
-            }}
-          />
+        <section
+          className="relative isolate flex min-h-[66svh] flex-col items-center justify-center overflow-hidden px-6 py-16 sm:py-20"
+          style={{
+            background:
+              "linear-gradient(to bottom, var(--hero-ground) 0%, var(--hero-ground) 35%, transparent 100%)",
+          }}
+        >
+          {/* Hero backdrop. A desert-gold glyph rain (Thoth's hieroglyphs +
+              falling letters) runs behind the content in BOTH modes: warm
+              white-hot on the night ground, deep gold on the light page. The
+              fold's own ground (the section's --hero-ground gradient, warm taupe
+              on light / the near-black page on dark) carries the warmth and lets
+              the deep glyphs read; above it a scrim pools that ground behind the
+              headline so the text always clears the rain (warm taupe on light,
+              black on dark). Grain over all. Decorative, behind content,
+              reduced-motion-safe. */}
+          <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-70 dark:opacity-60 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
           {/* Grain stays a whisper on the night ground: mix-blend-overlay lifts
               the near-black toward grey fast, so dark opacity is kept low (~0.08)
               to keep the ground a rich black under the gold rain. */}
           <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.12] mix-blend-overlay dark:opacity-[0.08]" />
+          {/* Legibility scrim, painted over the grain. Its tone is the single
+              theme-flipped --hero-scrim token (warm taupe on light, near-black on
+              dark) so it can never bleed across modes. */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 hidden dark:block"
-            style={{
-              background:
-                "radial-gradient(54% 40% at 50% 44%, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.2) 46%, transparent 70%)",
-            }}
+            className="pointer-events-none absolute inset-0 -z-10"
+            style={{ background: "var(--hero-scrim)" }}
           />
           <div className="flex w-full max-w-2xl flex-col gap-10">
             <div className="flex flex-col items-center gap-4 text-center">

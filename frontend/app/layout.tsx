@@ -46,10 +46,10 @@ const geistMono = Geist_Mono({
 });
 
 // Glyph rain font — Noto Sans Egyptian Hieroglyphs (`--font-hieroglyph`), used
-// ONLY by the dark-mode hero canvas (components/hieroglyph-rain.tsx). Self-hosted
-// at build like the rest; not preloaded, since it's a decorative, dark-only
-// background asset that must never block first paint. Latin subset included so
-// the interspersed letters render in the same family as the hieroglyphs.
+// by the hero canvas in both modes (components/hieroglyph-rain.tsx). Self-hosted
+// at build like the rest; not preloaded, since it's a decorative background asset
+// that must never block first paint. Latin subset included so the interspersed
+// letters render in the same family as the hieroglyphs.
 const notoHieroglyphs = Noto_Sans_Egyptian_Hieroglyphs({
   weight: "400",
   subsets: ["egyptian-hieroglyphs", "latin"],
@@ -63,7 +63,7 @@ const notoHieroglyphs = Noto_Sans_Egyptian_Hieroglyphs({
 // landing illustration and the Latin letters of the hero glyph rain — so the
 // edition has a literary voice while the tool stays grotesk. NOT for UI/body.
 const literata = Literata({
-  weight: ["300", "400", "600"],
+  weight: ["200", "300", "400", "600"],
   subsets: ["latin"],
   variable: "--font-literata",
   display: "swap",

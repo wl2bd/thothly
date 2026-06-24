@@ -5,6 +5,7 @@ colors:
   page: "oklch(0.98 0 0)"
   white: "oklch(1 0 0)"
   surface: "oklch(0.96 0 0)"
+  hero-ground: "oklch(0.945 0.011 80)"
   ink: "oklch(0.16 0 0)"
   muted-ink: "oklch(0.47 0 0)"
   hairline: "oklch(0.9 0 0)"
@@ -175,7 +176,13 @@ the four status colors, and those are data, not decoration.
 **The Stark Surface Rule.** Neutrals carry zero hue. No cream, no sand, no
 parchment, no blue-grey — and never harsh pure `#fff` for the page (a soft
 off-white `oklch(0.98 0 0)`, with pure-white cards lifting above it). Warmth is
-the gold's job, never the surface's.
+the gold's job, never the surface's. ONE scoped exception (2026-06-24): the
+**light-mode hero ground** (`--hero-ground`, a warm taupe `oklch(0.945 0.011 80)`,
+low chroma toward the gold hue) — the fold needs its own ground for the deep-gold
+glyph rain to read, the way the near-black carries the dark hero. It is hero-only
+(the rest of the page stays chroma 0) and fades to the page at the fold's bottom
+so there's no seam; dark keeps the near-black page (`--hero-ground: transparent`).
+Outside this single fold, the rule holds: no tinted surfaces anywhere else.
 
 **The Gold-Holds-Ink Rule.** Gold is a light metal: text on a gold fill is always
 near-black Ink, never white. The same gold is the primary action in both modes —
@@ -262,7 +269,13 @@ state, never a resting decoration.
 ### Named Rules
 **The Flat-By-Default Rule.** Surfaces are flat at rest. A shadow is a verb —
 hover, open, focus — never a noun. Depth at rest comes from the surface step
-(card vs page), not a drop shadow.
+(card vs page), not a drop shadow. One scoped exception: the **stone tablet** (a
+decorative signature standing in for a physical carved slab, not a UI surface)
+carries a soft carved cast-shadow that follows its eroded silhouette — on the
+light page only, where a white slab on the near-white ground would otherwise read
+flat. On the night ground the contrast against the near-black carries the lift,
+so it reverts to a faint stone halo. This is a property of the signature, not a
+licence for resting shadows on real surfaces.
 
 ## 5. Components
 
