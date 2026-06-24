@@ -50,10 +50,13 @@ soul — never sterile.
   no warmth. Thothly has a human, literary soul.
 - **Generic interchangeable AI SaaS**: gradient hero, glassy cards, hero-metric
   grid, fluo accents.
-- **Mythological costume**: papyrus, hieroglyphs, sepia, skeuomorphic old-book /
-  parchment. The Thoth heritage is evoked through ink, type, grain and voice —
-  not literal Egyptiana or paper texture. (Not a return to the previously-retired
-  editorial/paper identity; character is carried by the token system.)
+- **Mythological costume**: papyrus, sepia, skeuomorphic old-book / parchment. No
+  faux-aged paper, no relics. (Deliberate exception, 2026-06-24: hieroglyphs are
+  allowed as ONE earned motif — the desert-gold glyph rain behind the dark-mode
+  hero, rendered flat, token-driven and reduced-motion-safe, never as papyrus /
+  sepia / parchment chrome.) Otherwise the Thoth heritage is evoked through ink,
+  type, grain and voice. Not a return to the previously-retired editorial/paper
+  identity; character is carried by the token system.
 
 ## Design Principles
 

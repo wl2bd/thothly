@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
+import { HieroglyphRain } from "@/components/hieroglyph-rain";
 import {
   createJob,
   search,
@@ -212,20 +213,34 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex flex-1 flex-col">
-        <section className="relative isolate flex flex-col items-center overflow-hidden px-6 pt-10 pb-14 sm:pt-14">
-          {/* A soft gold bloom behind the search — the brand's one color carrying
-              the warmth — with the grain laid over it for a noisy, grainy
-              gradient. Static: no shader, no GPU, reduced-motion-safe. */}
+        <section className="relative isolate flex min-h-[66svh] flex-col items-center justify-center overflow-hidden px-6 py-16 sm:py-20">
+          {/* Hero backdrop. On the night ground a desert-gold glyph rain (Thoth's
+              hieroglyphs + falling letters) runs behind the content; on the light
+              page a soft gold bloom carries the warmth instead. Grain is laid over
+              both, and in dark a soft scrim pools the ground behind the text for
+              legibility. All decorative, behind content, reduced-motion-safe. */}
+          <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-60 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-20"
+            className="pointer-events-none absolute inset-0 -z-20 dark:hidden"
             style={{
               background:
-                "radial-gradient(75% 60% at 50% 26%, color-mix(in oklab, var(--gold-bright) 22%, transparent), color-mix(in oklab, var(--gold) 12%, transparent) 45%, transparent 72%)",
+                "radial-gradient(80% 65% at 50% 40%, color-mix(in oklab, var(--gold-bright) 22%, transparent), color-mix(in oklab, var(--gold) 12%, transparent) 45%, transparent 72%)",
             }}
           />
-          <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.12] mix-blend-overlay dark:opacity-[0.24]" />
-          <div className="flex w-full max-w-2xl flex-col gap-8">
+          {/* Grain stays a whisper on the night ground: mix-blend-overlay lifts
+              the near-black toward grey fast, so dark opacity is kept low (~0.08)
+              to keep the ground a rich black under the gold rain. */}
+          <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.12] mix-blend-overlay dark:opacity-[0.08]" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 hidden dark:block"
+            style={{
+              background:
+                "radial-gradient(54% 40% at 50% 44%, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.2) 46%, transparent 70%)",
+            }}
+          />
+          <div className="flex w-full max-w-2xl flex-col gap-10">
             <div className="flex flex-col items-center gap-4 text-center">
               <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
                 Read anything like a book.
@@ -346,6 +361,19 @@ export default function Home() {
         )}
 
           </div>
+
+          {/* A quiet nudge past the now-taller fold to "how it works" — only in
+              the pristine state, before the user starts staging sources. Soft
+              drift, not a hard bounce; dropped under reduced motion. */}
+          {staged.length === 0 && (
+            <a
+              href="#how-it-works"
+              aria-label="See how it works"
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute bottom-6 left-1/2 hidden -translate-x-1/2 rounded-full p-2 transition-colors focus-visible:ring-2 focus-visible:outline-none sm:block"
+            >
+              <ChevronDownIcon className="hero-scroll-cue size-5" />
+            </a>
+          )}
         </section>
 
         <HowItWorks />
@@ -399,7 +427,7 @@ function HowItWorks() {
     { Icon: ListIcon, kind: "Playlist" },
   ];
   return (
-    <section className="border-t px-6 py-14">
+    <section id="how-it-works" className="scroll-mt-14 border-t px-6 py-14">
       <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-2 lg:items-start">
         <div>
           <h2 className="font-display text-2xl tracking-tight text-balance">
@@ -491,11 +519,11 @@ function HowItWorks() {
                   <span className="text-muted-foreground text-[0.55rem] font-medium tracking-[0.2em] uppercase">
                     Chapter 2
                   </span>
-                  <span className="text-foreground text-[0.95rem] font-medium leading-tight">
+                  <span className="font-edition text-foreground text-[0.95rem] font-semibold leading-tight">
                     The new HTTP QUERY method
                   </span>
                 </div>
-                <p className="text-muted-foreground text-[0.6rem] leading-relaxed">
+                <p className="font-edition text-muted-foreground text-[0.66rem] leading-relaxed">
                   A safe, idempotent way to send a body with your queries.
                 </p>
                 <div className="flex flex-1 flex-col gap-1.5">

@@ -190,13 +190,18 @@ headings.
 readable grotesk (variable, 300–800) that runs the whole tool.
 **Label / Mono Font:** Geist Mono (with ui-monospace) — for metadata, numbers,
 and the Markdown twin.
+**Edition Font:** Literata (with Georgia, serif) — the serif Google designed for
+e-reader reading. The deliverable's literary voice, reserved for the "book"
+surfaces only (see The Edition Serif Rule); never the UI.
 
 **Character:** Geometric display + readable grotesk — modern and a little *tech*,
 deliberately **not editorial**. CMGeom's geometry gives the hero a confident,
 built voice; Host Grotesk does all the actual reading with warmth (warmer than a
 neutral like Inter, which keeps the tool from feeling corporate). The pairing
 holds because the axis is real (geometric display vs. humanist grotesk), not two
-near-identical sans. No serif anywhere — that read too editorial for Thothly.
+near-identical sans. Serif is kept off the tool entirely — it read too editorial
+for the UI — with ONE deliberate, scoped exception: the edition serif (Literata)
+on the "book" surfaces only (see The Edition Serif Rule).
 
 ### Hierarchy
 - **Display** (CMGeom, 400): the two largest title levels — the hero line
@@ -213,6 +218,9 @@ near-identical sans. No serif anywhere — that read too editorial for Thothly.
 - **Label** (Host Grotesk, 500, 0.75rem, `0.02em`): metadata rows, badges, small UI.
 - **Mono** (Geist Mono, 0.8125rem): the Markdown twin, token counts, durations,
   technical detail — the scribe's measuring marks.
+- **Edition** (Literata, 400 / 600): the "book" surfaces only — the EPUB tablet in
+  the landing illustration (chapter title + body) and the Latin letters of the
+  hero glyph rain. The literary voice of the deliverable, never the UI.
 
 ### Named Rules
 **The Display Restraint Rule.** CMGeom is a display face: it carries exactly the
@@ -222,6 +230,13 @@ title is Host Grotesk), not item or card titles. Every other heading is Host
 Grotesk in a heavier weight. Never set CMGeom on body, buttons, labels, form
 controls or data — and never request a bolder CMGeom weight; it ships Regular
 only, so the browser would fake-bold it.
+
+**The Edition Serif Rule.** Literata appears ONLY where Thothly is *showing a
+book*: the EPUB representation (the output tablet in the landing illustration) and
+the Latin letters in the hero glyph rain. It is the voice of the edition, not the
+tool — never on UI, body, buttons, labels or data, where grotesk rules. (Decided
+2026-06-24: a deliberate, scoped lift of the former "no serif anywhere" rule, the
+counterpart to the hieroglyph exception in PRODUCT.md.)
 
 **The Quiet Caps Rule.** Uppercase tracked labels are allowed as a UI device
 (source group headers, "Sources · 3"), but never as a decorative eyebrow above

@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
+import {
+  Geist_Mono,
+  Literata,
+  Noto_Sans_Egyptian_Hieroglyphs,
+} from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { StoneFilterDefs } from "@/components/ui/stone-border";
@@ -41,6 +45,30 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Glyph rain font — Noto Sans Egyptian Hieroglyphs (`--font-hieroglyph`), used
+// ONLY by the dark-mode hero canvas (components/hieroglyph-rain.tsx). Self-hosted
+// at build like the rest; not preloaded, since it's a decorative, dark-only
+// background asset that must never block first paint. Latin subset included so
+// the interspersed letters render in the same family as the hieroglyphs.
+const notoHieroglyphs = Noto_Sans_Egyptian_Hieroglyphs({
+  weight: "400",
+  subsets: ["egyptian-hieroglyphs", "latin"],
+  variable: "--font-hieroglyph",
+  display: "swap",
+  preload: false,
+});
+
+// Edition serif — Literata (`--font-edition`): the serif Google designed for
+// e-reader reading. Reserved for the "book" surfaces — the EPUB tablet in the
+// landing illustration and the Latin letters of the hero glyph rain — so the
+// edition has a literary voice while the tool stays grotesk. NOT for UI/body.
+const literata = Literata({
+  weight: ["300", "400", "600"],
+  subsets: ["latin"],
+  variable: "--font-literata",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Thothly · Read anything like a book",
   description: "Compile whatever you want to read, no matter where it comes from.",
@@ -55,7 +83,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${hostGrotesk.variable} ${cmGeom.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${hostGrotesk.variable} ${cmGeom.variable} ${geistMono.variable} ${notoHieroglyphs.variable} ${literata.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* Set the theme class before paint so there's no light/dark flash. */}
