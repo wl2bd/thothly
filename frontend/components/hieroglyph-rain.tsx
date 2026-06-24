@@ -32,11 +32,24 @@ const LETTERS =
 // just no longer all-caps.
 const GLYPHS = [...HIEROGLYPHS, ...HIEROGLYPHS, ...LETTERS];
 
-const GLYPH_SIZE = 30; // large, zoomed-in glyphs (the hieroglyphs)
-// The Latin letters are set a touch smaller than the hieroglyphs, so the
-// hieroglyphs read as the dominant motif and the letters sit quietly between
-// them (rather than the heavier Latin shapes competing at the same size).
-const LETTER_SIZE = Math.round(GLYPH_SIZE * 0.8);
+const GLYPH_SIZE = 30; // large, zoomed-in glyphs
+// In the ruled-inscription layout every glyph is one size (hieroglyphs and
+// letters alike), the way an Egyptian column reads. Drop the ratio below 1 to
+// shrink the Latin letters again if they should recede.
+const LETTER_SIZE = GLYPH_SIZE;
+// The ruled corridors: each falling column lives between two faint gold rules
+// (the "filets" of a stela). Lines sit on the corridor boundaries; glyphs fall
+// centered between them, so nothing overlaps a rule. The rules are ERODED like
+// the stone-tablet rim, not a clean sine: three sine octaves are summed (a long
+// waver + medium roughness + a fine chiselled grain) to give a hand-hewn,
+// irregular edge — the canvas equivalent of the tablets' feTurbulence rim, which
+// can't be applied as a filter here without distorting the glyphs too. Tune the
+// amplitudes for how chewed-up the line reads.
+const SEP_OCTAVES = [
+  { a: 3.6, w: 115 }, // the overall sinuous waver
+  { a: 1.9, w: 40 }, // medium erosion
+  { a: 0.9, w: 15 }, // fine chiselled grain
+];
 // Horizontal spacing between columns. Twice the glyph size = half as many
 // columns as a packed grid — the main lever on how much the rain costs per
 // frame (fewer columns → fewer glyphs drawn).
@@ -95,6 +108,9 @@ export function HieroglyphRain({ className }: { className?: string }) {
     let width = 0;
     let height = 0;
     let columns: Column[] = [];
+    // One static phase per corridor rule (columns + 1 boundaries), so each
+    // sinuous line wavers on its own and the field doesn't read as a comb.
+    let sepPhases: number[] = [];
     // Two faces: Noto for the hieroglyphs, the edition serif (Literata) for the
     // interspersed Latin letters. Resolved from CSS vars in the async setup.
     let hieroFont = `${GLYPH_SIZE}px monospace`;
@@ -144,6 +160,15 @@ export function HieroglyphRain({ className }: { className?: string }) {
         }
       }
       columns = next;
+      // A rule sits on every corridor boundary (left of col 0 … right of the
+      // last), so n columns need n+1 lines. Phases are kept stable across
+      // resizes that don't change the count.
+      if (sepPhases.length !== n + 1) {
+        sepPhases = Array.from(
+          { length: n + 1 },
+          () => Math.random() * Math.PI * 2,
+        );
+      }
     }
 
     function resize() {
@@ -197,8 +222,37 @@ export function HieroglyphRain({ className }: { className?: string }) {
       }
     }
 
+    // The faint eroded gold rules between the falling corridors — a stela's
+    // hand-hewn ruling, drawn behind the glyphs. Static (the octave phases per
+    // line are fixed); the canvas's own vertical mask fades their ends top and
+    // bottom. The summed sine octaves give the irregular, chiselled edge.
+    function drawSeparators() {
+      ctx!.lineWidth = 1.2;
+      ctx!.strokeStyle = isDark
+        ? "rgba(212,165,95,0.22)"
+        : "rgba(150,100,15,0.26)";
+      const n = columns.length;
+      for (let i = 0; i <= n; i++) {
+        const baseX = i * COLUMN_STEP;
+        const p = sepPhases[i] ?? 0;
+        ctx!.beginPath();
+        for (let y = -10; y <= height + 10; y += 4) {
+          const dx =
+            SEP_OCTAVES[0].a * Math.sin(y / SEP_OCTAVES[0].w + p) +
+            SEP_OCTAVES[1].a * Math.sin(y / SEP_OCTAVES[1].w + p * 1.7 + 1.3) +
+            SEP_OCTAVES[2].a * Math.sin(y / SEP_OCTAVES[2].w + p * 2.3 + 2.6);
+          const x = baseX + dx;
+          if (y <= -10) ctx!.moveTo(x, y);
+          else ctx!.lineTo(x, y);
+        }
+        ctx!.stroke();
+      }
+    }
+
     function draw() {
       ctx!.clearRect(0, 0, width, height);
+      ctx!.shadowBlur = 0;
+      drawSeparators();
       ctx!.textAlign = "center";
       ctx!.textBaseline = "top";
       let curFont = "";
