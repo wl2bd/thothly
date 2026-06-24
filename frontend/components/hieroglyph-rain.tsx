@@ -31,6 +31,10 @@ const LETTERS =
 const GLYPHS = [...HIEROGLYPHS, ...HIEROGLYPHS, ...LETTERS];
 
 const GLYPH_SIZE = 30; // large, zoomed-in glyphs
+// Horizontal spacing between columns. Twice the glyph size = half as many
+// columns as a packed grid — the main lever on how much the rain costs per
+// frame (fewer columns → fewer glyphs drawn).
+const COLUMN_STEP = GLYPH_SIZE * 2;
 // Vertical advance between glyphs in a column — kept looser than the glyph size
 // so tall hieroglyphs don't touch or overlap the one below.
 const LINE_STEP = Math.round(GLYPH_SIZE * 1.3);
@@ -115,7 +119,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
         });
       }
       return {
-        x: index * GLYPH_SIZE,
+        x: index * COLUMN_STEP,
         // On first paint, scatter leads across the height so the field is full
         // immediately rather than raining in from the top.
         y: scatter ? Math.random() * height : -len * LINE_STEP * Math.random() * 0.3,
@@ -129,12 +133,12 @@ export function HieroglyphRain({ className }: { className?: string }) {
     }
 
     function initColumns() {
-      const n = Math.max(1, Math.floor(width / GLYPH_SIZE));
+      const n = Math.max(1, Math.floor(width / COLUMN_STEP));
       const next: Column[] = [];
       for (let i = 0; i < n; i++) {
         const existing = columns[i];
         if (existing) {
-          existing.x = i * GLYPH_SIZE;
+          existing.x = i * COLUMN_STEP;
           next.push(existing);
         } else {
           next.push(createColumn(i, true));
@@ -216,7 +220,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
           // Lead is a warm white-hot; just behind it a bright gold; the trail is
           // desert gold (≈ the --gold token) fading up.
           const tone = j === 0 ? "255,247,230" : j < 3 ? "240,206,140" : "214,167,96";
-          const cx = col.x + GLYPH_SIZE * 0.5;
+          const cx = col.x + COLUMN_STEP * 0.5;
           if (j === 0) {
             ctx!.shadowColor = "rgba(245,215,150,0.5)";
             ctx!.shadowBlur = 6;
