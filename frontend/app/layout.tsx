@@ -3,6 +3,7 @@ import {
   Geist_Mono,
   Literata,
   Noto_Sans_Egyptian_Hieroglyphs,
+  Noto_Serif_Display,
 } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -28,16 +29,17 @@ const hostGrotesk = localFont({
   fallback: ["system-ui", "sans-serif"],
 });
 
-// Display geometric — CMGeom (`--font-display`): the brand's voice, reserved for
-// the biggest moment (the hero). Regular only; never used for body, UI or data.
-// See DESIGN.md, The Display Restraint Rule.
-const cmGeom = localFont({
-  src: "./fonts/CMGeom-Regular.otf",
+// Display — Prociono (`--font-display`): the brand's display voice, reserved for
+// the biggest moments (the hero line + the landing section headings). Regular
+// only; never used for body, UI or data. See DESIGN.md, The Display Restraint
+// Rule. (Replaced the geometric CMGeom 2026-06-24, Wael's call.)
+const prociono = localFont({
+  src: "./fonts/Prociono.otf",
   weight: "400",
   style: "normal",
-  variable: "--font-cmgeom",
+  variable: "--font-prociono",
   display: "swap",
-  fallback: ["system-ui", "sans-serif"],
+  fallback: ["Georgia", "serif"],
 });
 
 const geistMono = Geist_Mono({
@@ -59,18 +61,32 @@ const notoHieroglyphs = Noto_Sans_Egyptian_Hieroglyphs({
 });
 
 // Edition serif — Literata (`--font-edition`): the serif Google designed for
-// e-reader reading. Reserved for the "book" surfaces — the EPUB tablet in the
-// landing illustration and the Latin letters of the hero glyph rain — so the
-// edition has a literary voice while the tool stays grotesk. NOT for UI/body.
+// e-reader reading. Reserved for the EPUB tablet in the landing illustration —
+// the meaningful "book" surface — so the edition has a literary voice while the
+// tool stays grotesk. NOT for UI/body. (The hero rain letters use a thinner
+// serif, below.)
 const literata = Literata({
-  weight: ["200", "300", "400", "600"],
+  weight: ["400", "600"],
   subsets: ["latin"],
   variable: "--font-literata",
   display: "swap",
 });
 
+// Rain serif — Noto Serif Display Thin (`--font-rain-serif`): a true hairline
+// (weight 100, finer than Literata's lightest 200) for the Latin letters in the
+// hero glyph rain only. Pairs with the Noto hieroglyphs (same superfamily) and
+// keeps the falling letters as fine as the single-weight glyphs. Decorative,
+// dark+light background asset → not preloaded.
+const notoSerifThin = Noto_Serif_Display({
+  weight: "100",
+  subsets: ["latin"],
+  variable: "--font-rain-serif",
+  display: "swap",
+  preload: false,
+});
+
 export const metadata: Metadata = {
-  title: "Thothly · Read anything like a book",
+  title: "Thothly · Make anything readable",
   description: "Compile whatever you want to read, no matter where it comes from.",
 };
 
@@ -83,7 +99,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${hostGrotesk.variable} ${cmGeom.variable} ${geistMono.variable} ${notoHieroglyphs.variable} ${literata.variable} h-full antialiased`}
+      className={`${hostGrotesk.variable} ${prociono.variable} ${geistMono.variable} ${notoHieroglyphs.variable} ${literata.variable} ${notoSerifThin.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* Set the theme class before paint so there's no light/dark flash. */}

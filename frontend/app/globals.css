@@ -10,7 +10,7 @@
   --font-sans: var(--font-host-grotesk);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-host-grotesk);
-  --font-display: var(--font-cmgeom);
+  --font-display: var(--font-prociono);
   --font-edition: var(--font-literata);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -130,19 +130,23 @@
   /* The desert gold itself — the single brand color. Same value as --primary;
      exposed as its own token for gold marks/fills (bg-gold/text-gold). */
   --gold: oklch(0.76 0.15 78);
-  /* The gold ramp for the Gold Leaf frame — a dark bronze, the deep edge (also
-     the light focus ring), and the luminous glint. The dark↔bright spread is
-     what makes the rotating contour read. */
-  --gold-dark: oklch(0.42 0.11 68);
+  /* The gold ramp for the Gold Leaf frame — a muted deep gold trough, the deep
+     edge, and the luminous glint. The dark↔bright spread is what makes the
+     rotating contour read. On the light page the trough is kept a deep GOLD
+     (0.6), not a dark bronze: a near-brown trough read too dark on white. */
+  --gold-dark: oklch(0.6 0.13 72);
   --gold-deep: oklch(0.6 0.15 75);
   --gold-bright: oklch(0.85 0.14 82);
   --gold-foreground: oklch(0.16 0 0);
-  /* Stone — the carved tablet rim. On the light page it diverges from the
-     hairline border to a tangible mid-grey: a same-tone rim (0.9) on a white
-     slab over the near-white page vanishes, so the carved silhouette needs a
-     real stone grey to read. (Dark keeps the base border — the 12%-white rim
-     reads fine on the night ground.) */
-  --stone: oklch(0.74 0 0);
+  /* The inscription rule gold — the faint gold of the sinuous lines between the
+     hieroglyph columns (components/hieroglyph-rain.tsx reads this same token for
+     the canvas rules, so the two always match). */
+  --rule-gold: rgba(150, 100, 15, 0.26);
+  /* Stone — the carved tablet rim, tied to the inscription rule gold so the
+     output tablets' edge is the same colour as the lines between the glyphs. The
+     carved cast-shadow (.stone-frame::after) carries the slab's lift; this rim
+     just gives it the gold inscription tone. */
+  --stone: var(--rule-gold);
   /* Semantic status colors — informational only, kept distinct from the brand
      gold (warning is pushed to orange, hue 45, so it never reads as the gold). */
   --success: oklch(0.5 0.12 150);
@@ -207,8 +211,10 @@
   --gold-deep: oklch(0.66 0.15 78);
   --gold-bright: oklch(0.9 0.12 86);
   --gold-foreground: oklch(0.16 0 0);
-  /* Stone matches the base border on the night ground too. */
-  --stone: var(--border);
+  /* The inscription rule gold on the night ground (canvas rules read this too);
+     the tablet rim is tied to it so the two match. */
+  --rule-gold: rgba(212, 165, 95, 0.22);
+  --stone: var(--rule-gold);
   --success: oklch(0.72 0.14 150);
   --success-foreground: oklch(0.16 0 0);
   --warning: oklch(0.78 0.15 55);

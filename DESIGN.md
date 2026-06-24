@@ -22,7 +22,7 @@ colors:
   lapis-info: "oklch(0.52 0.13 255)"
 typography:
   display:
-    fontFamily: "CMGeom, system-ui, sans-serif"
+    fontFamily: "Prociono, Georgia, serif"
     fontSize: "clamp(2.75rem, 5vw, 3.75rem)"
     fontWeight: 400
     lineHeight: 1.05
@@ -189,6 +189,17 @@ near-black Ink, never white. The same gold is the primary action in both modes �
 just brighter on the night ground (no per-mode color inversion).
 
 ## 3. Typography
+
+> **TYPE SHIFT — 2026-06-24 (factual note; fuller reconciliation pending).** The
+> display face changed from the geometric **CMGeom** to **Prociono** (a roman/
+> serif, OFL, self-hosted) — Wael's call — and the hero glyph-rain Latin letters
+> changed from Literata to **Noto Serif Display Thin (100)**, a hairline. So the
+> type voice now leans **editorial/literary**, not the "geometric, deliberately
+> not editorial" stance described below. The body text and the Display/Edition
+> Serif rules below still describe the retired geometric framing and will be
+> rewritten once the type identity settles (it is mid-chantier). Treat the
+> font *names* in this section as: Display = Prociono, Edition (EPUB tablet) =
+> Literata, hero-rain letters = Noto Serif Display Thin.
 
 **Display Font:** CMGeom (with system-ui, sans-serif) — a geometric display face,
 reserved for the two largest title levels: the hero line and the landing section

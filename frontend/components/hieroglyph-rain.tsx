@@ -111,12 +111,15 @@ export function HieroglyphRain({ className }: { className?: string }) {
     // One static phase per corridor rule (columns + 1 boundaries), so each
     // sinuous line wavers on its own and the field doesn't read as a comb.
     let sepPhases: number[] = [];
-    // Two faces: Noto for the hieroglyphs, the edition serif (Literata) for the
-    // interspersed Latin letters. Resolved from CSS vars in the async setup.
+    // Two faces: Noto for the hieroglyphs, a hairline serif (Noto Serif Display
+    // Thin) for the interspersed Latin letters. Resolved from CSS vars in setup.
     let hieroFont = `${GLYPH_SIZE}px monospace`;
-    // Extra-light (200) serif so the letters' stroke weight sits as fine as the
+    // Hairline (100) serif so the letters' stroke weight sits as fine as the
     // thin single-weight hieroglyphs, instead of reading heavier than them.
-    let serifFont = `200 ${LETTER_SIZE}px serif`;
+    let serifFont = `100 ${LETTER_SIZE}px serif`;
+    // The corridor rules' colour — read from the --rule-gold token so it always
+    // matches the output tablets' rim (which is tied to the same token in CSS).
+    let ruleColor = isDark ? "rgba(212,165,95,0.22)" : "rgba(150,100,15,0.26)";
     let visible = true;
 
     const randomGlyph = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
@@ -228,9 +231,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
     // bottom. The summed sine octaves give the irregular, chiselled edge.
     function drawSeparators() {
       ctx!.lineWidth = 1.2;
-      ctx!.strokeStyle = isDark
-        ? "rgba(212,165,95,0.22)"
-        : "rgba(150,100,15,0.26)";
+      ctx!.strokeStyle = ruleColor;
       const n = columns.length;
       for (let i = 0; i <= n; i++) {
         const baseX = i * COLUMN_STEP;
@@ -370,9 +371,11 @@ export function HieroglyphRain({ className }: { className?: string }) {
     // sets on <html>; the actual font files swap in on later frames as they load.
     const rootStyle = getComputedStyle(document.documentElement);
     const hieroRaw = rootStyle.getPropertyValue("--font-hieroglyph").trim();
-    const serifRaw = rootStyle.getPropertyValue("--font-literata").trim();
+    const serifRaw = rootStyle.getPropertyValue("--font-rain-serif").trim();
     if (hieroRaw) hieroFont = `${GLYPH_SIZE}px ${hieroRaw}`;
-    if (serifRaw) serifFont = `200 ${LETTER_SIZE}px ${serifRaw}`;
+    if (serifRaw) serifFont = `100 ${LETTER_SIZE}px ${serifRaw}`;
+    const ruleRaw = rootStyle.getPropertyValue("--rule-gold").trim();
+    if (ruleRaw) ruleColor = ruleRaw;
 
     // Start immediately — sizing the canvas and the loop must not wait on the
     // font download, or a slow (or already-settled) promise leaves it blank.
@@ -398,7 +401,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
             HIEROGLYPHS.slice(0, 6).join(""),
           ),
         serifPrimary &&
-          document.fonts.load(`200 ${LETTER_SIZE}px ${serifPrimary}`, "ABCabc"),
+          document.fonts.load(`100 ${LETTER_SIZE}px ${serifPrimary}`, "ABCabc"),
       ].filter(Boolean),
     ).then(() => {
       if (!cancelled && reduce) draw();

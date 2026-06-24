@@ -229,7 +229,7 @@ export default function Home() {
               headline so the text always clears the rain (warm taupe on light,
               black on dark). Grain over all. Decorative, behind content,
               reduced-motion-safe. */}
-          <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-70 dark:opacity-60 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
+          <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-90 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
           {/* Grain stays a whisper on the night ground: mix-blend-overlay lifts
               the near-black toward grey fast, so dark opacity is kept low (~0.08)
               to keep the ground a rich black under the gold rain. */}
@@ -243,14 +243,13 @@ export default function Home() {
             style={{ background: "var(--hero-scrim)" }}
           />
           <div className="flex w-full max-w-2xl flex-col gap-10">
-            <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex flex-col items-center gap-5 text-center">
               <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
-                Read anything like a book.
+                Make anything readable
               </h1>
-              <p className="text-muted-foreground max-w-xl text-balance text-[0.95rem] leading-relaxed">
-                Bring together videos, podcasts, articles, even whole playlists
-                or blogs into one polished compilation for your e-reader or your
-                AI.
+              <p className="text-muted-foreground max-w-xl text-balance text-lg leading-[1.4] sm:text-xl">
+                Turn videos, podcasts, articles, even whole playlists into one
+                clean read for your e-reader or your AI.
               </p>
             </div>
 
