@@ -447,7 +447,7 @@ function HowItWorks() {
                   {s.n}
                 </span>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-sm font-semibold text-balance">
+                  <h3 className="text-base font-semibold text-balance">
                     {s.title}
                   </h3>
                   <p className="text-muted-foreground text-sm leading-relaxed text-balance">
