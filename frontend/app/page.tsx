@@ -7,6 +7,7 @@ import {
   ChevronDownIcon,
   FileTextIcon,
   GlobeIcon,
+  HardHatIcon,
   ListIcon,
   MicIcon,
   PlayIcon,
@@ -243,6 +244,10 @@ export default function Home() {
           />
           <div className={`flex w-full max-w-2xl flex-col ${showResults ? "gap-6" : "gap-10"}`}>
             <div className="flex flex-col items-center gap-5 text-center">
+              <span className="border-gold/30 bg-gold/10 text-foreground inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
+                <HardHatIcon className="text-gold size-3.5" aria-hidden="true" />
+                Work in progress
+              </span>
               <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
                 Make anything readable
               </h1>
@@ -321,6 +326,12 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
+
+        <p className="text-muted-foreground/80 mx-auto max-w-md text-center text-xs leading-relaxed text-balance">
+          Some features are limited or still in progress. YouTube gets
+          rate-limited from the cloud, so pasting an article or blog link works
+          best for now.
+        </p>
 
         {staged.length > 0 && (
           <section id="sources" className="scroll-mt-20 flex flex-col gap-3">
@@ -667,9 +678,20 @@ function DataAndFaq() {
 function SiteFooter() {
   return (
     <footer className="border-t px-6 py-8">
-      <div className="text-muted-foreground mx-auto flex w-full max-w-5xl items-center justify-between text-xs">
+      <div className="text-muted-foreground mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-3 text-xs sm:flex-row">
         <Logotype className="text-foreground h-5 w-auto" title="Thothly" />
-        <span>A personal reading compiler.</span>
+        <span>
+          A personal reading compiler, built by{" "}
+          <a
+            href="https://wael.work"
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground hover:text-gold focus-visible:ring-ring rounded-sm font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Wael
+          </a>
+          .
+        </span>
       </div>
     </footer>
   );
