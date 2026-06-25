@@ -7,6 +7,7 @@ import {
 } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Grain } from "@/components/grain";
 import { StoneFilterDefs } from "@/components/ui/stone-border";
 
 // Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
@@ -112,6 +113,17 @@ export default function RootLayout({
         {/* Shared SVG filter for the stone tablet edge (components using
             .stone-frame). Defined once here so filter: url(#…) always resolves. */}
         <StoneFilterDefs />
+        {/* App-wide grain — Thothly's signature material promoted to a system
+            ground. One fixed layer behind all content (-z-10), so it textures
+            the page background and lets transparent sections reveal it while
+            opaque cards stay clean. Deliberately NO mix-blend: a mean-preserving
+            blend (overlay/soft-light) vanishes on the near-black ground, so the
+            grain is an additive translucent noise layer instead — its amplitude
+            is the same whatever the backdrop, which is what makes it read
+            identically on the night ground and the light page from a single
+            opacity (no `dark:` variant). The small uniform lift this puts on the
+            black is the intended film-grain texture, kept to a few levels. */}
+        <Grain className="pointer-events-none fixed inset-0 -z-10 size-full opacity-[0.05]" />
         {children}
       </body>
     </html>

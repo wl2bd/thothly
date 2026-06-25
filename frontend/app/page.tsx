@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 
 import {
   ChevronDownIcon,
+  ConstructionIcon,
   FileTextIcon,
   GlobeIcon,
-  HardHatIcon,
   ListIcon,
   MicIcon,
   PlayIcon,
@@ -45,6 +45,10 @@ interface StagedSource {
   source: string;
   thumbnail: string | null;
   durationS: number | null;
+  // For a podcast episode this is the show name; for other kinds it's the
+  // author/channel. Kept so the Sources recap can show it (an episode's title
+  // alone reads like a show name without it).
+  author: string | null;
 }
 
 const SEARCH_DEBOUNCE_MS = 350;
@@ -130,6 +134,7 @@ export default function Home() {
               source: r.source,
               thumbnail: r.thumbnail,
               durationS: r.duration_s,
+              author: r.author,
             },
           ],
     );
@@ -164,6 +169,7 @@ export default function Home() {
         source: detectSource(url),
         thumbnail: null,
         durationS: null,
+        author: null,
       },
     ]);
     setQuery("");
@@ -245,7 +251,7 @@ export default function Home() {
           <div className={`flex w-full max-w-2xl flex-col ${showResults ? "gap-6" : "gap-10"}`}>
             <div className="flex flex-col items-center gap-5 text-center">
               <span className="border-gold/30 bg-gold/10 text-foreground inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
-                <HardHatIcon className="text-gold size-3.5" aria-hidden="true" />
+                <ConstructionIcon className="text-gold size-3.5" aria-hidden="true" />
                 Work in progress
               </span>
               <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
@@ -344,11 +350,17 @@ export default function Home() {
                   key={s.url}
                   className="bg-card flex items-center gap-3 rounded-lg border px-3 py-2.5"
                 >
+                  <Thumbnail
+                    thumbnail={s.thumbnail}
+                    url={s.url}
+                    className="h-10 w-16"
+                  />
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="truncate text-sm">{s.title}</span>
                     <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs">
                       <SourceBadge source={s.source} />
                       {s.type !== s.source && <TypeBadge type={s.type} />}
+                      {s.author && <span className="truncate">· {s.author}</span>}
                       {expandsToMany(s.type) && (
                         <span>· expands to multiple sources</span>
                       )}
@@ -738,7 +750,7 @@ function SearchResults({
                 checked={checked}
                 onCheckedChange={() => onToggle(r)}
               />
-              <Thumbnail result={r} />
+              <Thumbnail thumbnail={r.thumbnail} url={r.url} />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="line-clamp-2 text-sm leading-snug">
                   {r.title}
@@ -761,24 +773,37 @@ function SearchResults({
   );
 }
 
-function Thumbnail({ result }: { result: SearchResult }) {
-  if (result.thumbnail) {
+// A source's image slot, reused by both the search results and the staged
+// Sources recap (`className` sizes the box). Falls back to the site favicon for
+// link-only hits, then to a plain placeholder.
+function Thumbnail({
+  thumbnail,
+  url,
+  className = "h-12 w-20",
+}: {
+  thumbnail: string | null;
+  url: string;
+  className?: string;
+}) {
+  if (thumbnail) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; Next's optimizer isn't worth wiring per provider host
       <img
-        src={result.thumbnail}
+        src={thumbnail}
         alt=""
         loading="lazy"
-        className="bg-muted h-12 w-20 shrink-0 rounded object-cover"
+        className={`bg-muted ${className} shrink-0 rounded object-cover`}
       />
     );
   }
   // Web hits carry no image; show the site's favicon (keyless, via DuckDuckGo's
   // icon service) centered in the same slot so the row still reads visually.
-  const favicon = faviconUrl(result.url);
+  const favicon = faviconUrl(url);
   if (favicon) {
     return (
-      <span className="bg-muted flex h-12 w-20 shrink-0 items-center justify-center rounded">
+      <span
+        className={`bg-muted ${className} flex shrink-0 items-center justify-center rounded`}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element -- tiny decorative favicon */}
         <img
           src={favicon}
@@ -792,7 +817,7 @@ function Thumbnail({ result }: { result: SearchResult }) {
       </span>
     );
   }
-  return <span className="bg-muted h-12 w-20 shrink-0 rounded" />;
+  return <span className={`bg-muted ${className} shrink-0 rounded`} />;
 }
 
 function faviconUrl(url: string): string | null {
