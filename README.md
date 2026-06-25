@@ -1,6 +1,11 @@
-# Thothly
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/thothly_logotype_white.svg">
+    <img alt="Thothly" src="docs/assets/thothly_logotype_black.svg" width="300">
+  </picture>
+</p>
 
-> Compile whatever you want to read, no matter where it comes from.
+<p align="center"><em>Compile whatever you want to read, no matter where it comes from.</em></p>
 
 Thothly is a self-hostable, open-source tool that turns content from across the
 web (YouTube videos, playlists and channels, blogs, and podcasts) into one
