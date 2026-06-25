@@ -7,6 +7,12 @@
 
 <p align="center"><em>Compile whatever you want to read, no matter where it comes from.</em></p>
 
+<p align="center">
+  <img alt="The Thothly home screen: search or paste a link to compile videos, podcasts, and articles into one clean read." src="docs/assets/thothly-hero.png" width="820">
+</p>
+
+<p align="center">══════ ☥ ══════</p>
+
 Thothly is a self-hostable, open-source tool that turns content from across the
 web (YouTube videos, playlists and channels, blogs, and podcasts) into one
 polished **compilation** you can actually read: a clean EPUB for your e-reader,
@@ -18,7 +24,7 @@ a book, with typography, a table of contents, chapter breaks, and source
 attribution, so the result feels like an Instapaper edition rather than a text
 dump.
 
-## Features
+## ◈ Features
 
 - **Search or paste.** Type a query to search YouTube, podcasts, and the web at
   once (all keyless), or paste a link directly: single videos, playlists,
@@ -39,7 +45,7 @@ dump.
   OpenAI-compatible speech-to-text endpoint, with diarized speaker labels.
 - **Self-hosted, single-user.** No accounts, no telemetry, runs on your machine.
 
-## How it works
+## ◈ How it works
 
 ```
 search / paste links → discovery → review → compile → download (EPUB + Markdown)
@@ -54,7 +60,7 @@ reaches `completed`. Then you download it (`GET /jobs/{id}/download`, or
 `?format=md` for the Markdown). Job state lives in SQLite, with no Redis and no
 Celery.
 
-## Prerequisites
+## ◈ Prerequisites
 
 - Docker Engine 24+
 - Docker Compose v2 (bundled with recent Docker Desktop)
@@ -62,7 +68,7 @@ Celery.
 That is all. Everything else (Node, Python, `uv`, `pnpm`, Pandoc) runs inside the
 containers.
 
-## Quickstart
+## ◈ Quickstart
 
 ```bash
 cp .env.example .env
@@ -74,7 +80,7 @@ link), and follow discovery → review → compile. The backend API is published
 `:8000` (interactive docs at <http://localhost:8000/docs>) for direct
 exploration. Generated files and the SQLite database persist in `./data`.
 
-## Optional LLM cleanup
+## ◈ Optional LLM cleanup
 
 By default Thothly is **zero-LLM**: punctuated captions are split into clean
 paragraphs for free, and raw (unpunctuated) captions fall back to a simple
@@ -95,7 +101,7 @@ your book. Results are cached per (content, role-set, model), so re-compiling is
 free, and any failure falls back to the zero-LLM path, so it never breaks a
 compile. Leave the variables empty to keep Thothly fully free.
 
-## Optional podcast transcription
+## ◈ Optional podcast transcription
 
 Search also covers **podcasts** (Apple's keyless iTunes index). A picked episode
 is audio, so turning it into a chapter needs a speech-to-text endpoint, the only
@@ -113,7 +119,7 @@ needs `ffmpeg` installed (short ones transcribe without it). Leave the variables
 empty and episodes are simply skipped; many podcasts are also on YouTube, where
 native subtitles already cover them for free.
 
-## Configuration
+## ◈ Configuration
 
 All settings have sensible defaults; see `.env.example` for the full list.
 
@@ -125,7 +131,7 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
 | `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
 
-## Running without Docker
+## ◈ Running without Docker
 
 The Docker setup is the contract. For day-to-day iteration you can also run each
 service directly:
@@ -145,7 +151,7 @@ BACKEND_URL=http://127.0.0.1:8000 pnpm dev
 The Markdown companion is free, but the EPUB step shells out to **Pandoc**, so
 install it locally if you compile outside Docker.
 
-## Architecture
+## ◈ Architecture
 
 - **Next.js (App Router) for the frontend.** Server Components and small route
   handlers proxy to the backend so its URL never leaks to the browser. The UI is
@@ -164,7 +170,7 @@ install it locally if you compile outside Docker.
   you want HTTPS.
 - **No auth, no accounts.** Single-user self-hosted tool.
 
-## Project structure
+## ◈ Project structure
 
 ```
 thothly/
@@ -188,7 +194,7 @@ thothly/
 └── docs/adr/                   # architecture decision records
 ```
 
-## Limitations
+## ◈ Limitations
 
 - **YouTube rate-limiting.** Transcript fetches go through a real YouTube client
   (`yt-dlp`), but YouTube aggressively rate-limits (HTTP 429) requests from
@@ -196,7 +202,7 @@ thothly/
   a residential proxy to fetch transcripts reliably.
 - **Single-user, no auth.** Don't expose it to the public internet as-is.
 
-## License
+## ◈ License
 
 [GNU AGPL-3.0](LICENSE). If you run a modified version as a network service, you
 must make your source available to its users.
