@@ -23,7 +23,7 @@ import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { GitHubStar } from "@/components/github-star";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
 import { HieroglyphRain } from "@/components/hieroglyph-rain";
@@ -449,7 +449,7 @@ function SiteHeader() {
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 border-b backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
         <Logotype className="h-7 w-auto" title="Thothly" />
-        <ThemeToggle />
+        <GitHubStar />
       </div>
     </header>
   );

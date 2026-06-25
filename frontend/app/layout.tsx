@@ -100,16 +100,18 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${hostGrotesk.variable} ${prociono.variable} ${geistMono.variable} ${notoHieroglyphs.variable} ${literata.variable} ${notoSerifThin.variable} h-full antialiased`}
+      // Light mode is temporarily disabled — the app is locked to dark via this
+      // hardcoded `dark` class (works without JS and matches the SSR markup, so
+      // no flash). To re-enable light: drop `dark` here, restore the no-flash
+      // theme script in <body> below, and re-mount <ThemeToggle /> in app/page.tsx.
+      className={`dark ${hostGrotesk.variable} ${prociono.variable} ${geistMono.variable} ${notoHieroglyphs.variable} ${literata.variable} ${notoSerifThin.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* Set the theme class before paint so there's no light/dark flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();",
-          }}
-        />
+        {/* Theme is locked to dark (see <html> className). The no-flash script
+            that read localStorage / prefers-color-scheme is parked here for when
+            light mode comes back:
+            <script dangerouslySetInnerHTML={{ __html:
+              "(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();" }} /> */}
         {/* Shared SVG filter for the stone tablet edge (components using
             .stone-frame). Defined once here so filter: url(#…) always resolves. */}
         <StoneFilterDefs />
