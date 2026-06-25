@@ -23,7 +23,6 @@ import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
@@ -35,6 +34,19 @@ import {
   type ResultType,
   type SearchResult,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import {
+  MetaSep,
+  SourceFavicon,
+  SourceMedia,
+  SourceMetric,
+  SourceTypePill,
+  hostOf,
+  isContainerKind,
+  kindFromResultType,
+  kindLabel,
+  type SourceKind,
+} from "@/components/source-kind";
 
 // A source the user has staged for compilation. Built either from a picked
 // search result or from a directly-pasted link.
@@ -60,10 +72,12 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
   const [searching, setSearching] = useState(false);
-  // Which provider's results to show ("all" = no filter), and how to order them
-  // ("relevance" = the backend's cross-provider ranking). Both reset on every
-  // new search so stale controls never blank out or mis-order the next query.
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  // Which content type to show ("all" = no filter), and how to order them
+  // ("relevance" = the backend's cross-provider ranking). Filtering is by TYPE
+  // (Video / Episode / Article), not by provider, so it stays generalist as new
+  // platforms are added. Both reset on every new search so stale controls never
+  // blank out or mis-order the next query.
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("relevance");
 
   const [staged, setStaged] = useState<StagedSource[]>([]);
@@ -87,7 +101,7 @@ export default function Home() {
       if (isReset) {
         setResults([]);
         setSearchErrors([]);
-        setSourceFilter("all");
+        setTypeFilter("all");
         setSortBy("relevance");
         setSearching(false);
         return;
@@ -98,7 +112,7 @@ export default function Home() {
         if (cancelled) return;
         setResults(resp.results);
         setSearchErrors(resp.errors);
-        setSourceFilter("all");
+        setTypeFilter("all");
         setSortBy("relevance");
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
@@ -207,9 +221,9 @@ export default function Home() {
 
   const showResults = !queryIsUrl && trimmed !== "";
   const filteredResults =
-    sourceFilter === "all"
+    typeFilter === "all"
       ? results
-      : results.filter((r) => r.source === sourceFilter);
+      : results.filter((r) => kindFromResultType(r.type) === typeFilter);
   const visibleResults = sortResults(filteredResults, sortBy);
   // Checkbox state for each result is read from the staged list (by URL), so the
   // results, the Sources recap and the count never drift apart.
@@ -298,10 +312,10 @@ export default function Home() {
 
             {showResults && results.length > 0 && (
               <div className="flex items-center justify-between gap-2">
-                <SourceFilter
+                <TypeFilter
                   results={results}
-                  active={sourceFilter}
-                  onChange={setSourceFilter}
+                  active={typeFilter}
+                  onChange={setTypeFilter}
                 />
                 <SortSelect value={sortBy} onChange={setSortBy} />
               </div>
@@ -317,17 +331,19 @@ export default function Home() {
             )}
 
             {staged.length > 0 && (
-              <div className="flex items-center justify-between gap-2 border-t pt-4">
-                <p className="text-sm font-medium">
-                  {staged.length} {staged.length === 1 ? "source" : "sources"} in
-                  your compilation
+              <div className="flex items-center justify-between gap-3 border-t pt-4">
+                <p className="text-sm">
+                  <span className="text-foreground font-semibold">
+                    {staged.length}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    {staged.length === 1 ? "source" : "sources"} in your
+                    compilation
+                  </span>
                 </p>
-                <a
-                  href="#sources"
-                  className="text-muted-foreground hover:text-foreground shrink-0 text-sm font-medium underline-offset-4 hover:underline"
-                >
-                  Review ↓
-                </a>
+                <Button type="button" onClick={onCompile} disabled={submitting}>
+                  {submitting ? "Starting…" : "Review"}
+                </Button>
               </div>
             )}
           </CardContent>
@@ -348,21 +364,33 @@ export default function Home() {
               {staged.map((s) => (
                 <li
                   key={s.url}
-                  className="bg-card flex items-center gap-3 rounded-lg border px-3 py-2.5"
+                  className="bg-card flex items-center gap-3.5 rounded-lg border px-3.5 py-3"
                 >
-                  <Thumbnail
+                  <SourceMedia
+                    kind={kindFromResultType(s.type)}
                     thumbnail={s.thumbnail}
-                    url={s.url}
                     className="h-10 w-16"
                   />
-                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <span className="truncate text-sm">{s.title}</span>
                     <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs">
-                      <SourceBadge source={s.source} />
-                      {s.type !== s.source && <TypeBadge type={s.type} />}
-                      {s.author && <span className="truncate">· {s.author}</span>}
-                      {expandsToMany(s.type) && (
-                        <span>· expands to multiple sources</span>
+                      <SourceTypePill kind={kindFromResultType(s.type)} />
+                      <MetaSep />
+                      <span className="inline-flex min-w-0 items-center gap-1">
+                        <SourceFavicon url={s.url} />
+                        <span className="truncate">{hostOf(s.url)}</span>
+                      </span>
+                      {s.author && (
+                        <>
+                          <MetaSep />
+                          <span className="truncate">{s.author}</span>
+                        </>
+                      )}
+                      {isContainerKind(kindFromResultType(s.type)) && (
+                        <>
+                          <MetaSep />
+                          <span>expands when you review</span>
+                        </>
                       )}
                     </span>
                   </span>
@@ -385,7 +413,7 @@ export default function Home() {
               disabled={submitting}
               className="w-full"
             >
-              {submitting ? "Starting…" : "Continue"}
+              {submitting ? "Starting…" : "Review"}
             </Button>
           </section>
         )}
@@ -740,29 +768,45 @@ function SearchResults({
   }
 
   return (
-    <ul className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <ul className="-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
       {results.map((r) => {
         const checked = stagedUrls.has(r.url);
+        const kind = kindFromResultType(r.type);
         return (
           <li key={r.id}>
-            <label className="hover:bg-foreground/5 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors">
-              <Checkbox
-                checked={checked}
-                onCheckedChange={() => onToggle(r)}
-              />
-              <Thumbnail thumbnail={r.thumbnail} url={r.url} />
-              <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-3.5 rounded-lg px-3.5 py-3.5 transition-colors",
+                checked ? "bg-foreground/[0.06]" : "hover:bg-foreground/5",
+              )}
+            >
+              <Checkbox checked={checked} onCheckedChange={() => onToggle(r)} />
+              <SourceMedia kind={kind} thumbnail={r.thumbnail} />
+              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <span className="line-clamp-2 text-sm leading-snug">
                   {r.title}
                 </span>
                 <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-                  <SourceBadge source={r.source} />
-                  {r.type !== r.source && <TypeBadge type={r.type} />}
-                  {r.author && <span>· {r.author}</span>}
-                  {resultExtent(r) && <span>· {resultExtent(r)}</span>}
-                </span>
-                <span className="text-muted-foreground/70 truncate text-xs">
-                  {displayUrl(r.url)}
+                  <SourceTypePill kind={kind} />
+                  <MetaSep />
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <SourceFavicon url={r.url} />
+                    <span className="truncate">{hostOf(r.url)}</span>
+                  </span>
+                  {r.duration_s != null && (
+                    <>
+                      <MetaSep />
+                      <SourceMetric kind="duration">
+                        {formatDuration(r.duration_s)}
+                      </SourceMetric>
+                    </>
+                  )}
+                  {isContainerKind(kind) && (
+                    <>
+                      <MetaSep />
+                      <span>expands when you review</span>
+                    </>
+                  )}
                 </span>
               </span>
             </label>
@@ -773,85 +817,33 @@ function SearchResults({
   );
 }
 
-// A source's image slot, reused by both the search results and the staged
-// Sources recap (`className` sizes the box). Falls back to the site favicon for
-// link-only hits, then to a plain placeholder.
-function Thumbnail({
-  thumbnail,
-  url,
-  className = "h-12 w-20",
-}: {
-  thumbnail: string | null;
-  url: string;
-  className?: string;
-}) {
-  if (thumbnail) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; Next's optimizer isn't worth wiring per provider host
-      <img
-        src={thumbnail}
-        alt=""
-        loading="lazy"
-        className={`bg-muted ${className} shrink-0 rounded object-cover`}
-      />
-    );
-  }
-  // Web hits carry no image; show the site's favicon (keyless, via DuckDuckGo's
-  // icon service) centered in the same slot so the row still reads visually.
-  const favicon = faviconUrl(url);
-  if (favicon) {
-    return (
-      <span
-        className={`bg-muted ${className} flex shrink-0 items-center justify-center rounded`}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- tiny decorative favicon */}
-        <img
-          src={favicon}
-          alt=""
-          loading="lazy"
-          className="size-6 rounded-sm"
-          onError={(e) => {
-            e.currentTarget.style.visibility = "hidden";
-          }}
-        />
-      </span>
-    );
-  }
-  return <span className={`bg-muted ${className} shrink-0 rounded`} />;
-}
-
-function faviconUrl(url: string): string | null {
-  try {
-    const host = new URL(url).hostname;
-    return host ? `https://icons.duckduckgo.com/ip3/${host}.ico` : null;
-  } catch {
-    return null;
-  }
-}
-
-// Provider filter chips above the results — the relevant filter dimension for
-// search hits (date/length aren't reliably present across providers). Only
-// shown when more than one provider returned hits; counts are per provider.
-function SourceFilter({
+// Content-type filter chips above the results. Grouping is by TYPE (Video /
+// Episode / Article), not by provider, so "YouTube" and "Video" can't disagree
+// and a new platform folds into the matching type instead of adding a chip. Only
+// shown when more than one type is present; counts are per type.
+function TypeFilter({
   results,
   active,
   onChange,
 }: {
   results: SearchResult[];
   active: string;
-  onChange: (source: string) => void;
+  onChange: (kind: string) => void;
 }) {
   const counts: Record<string, number> = {};
-  for (const r of results) counts[r.source] = (counts[r.source] ?? 0) + 1;
-  const sources = Object.keys(counts);
-  if (sources.length < 2) return null;
+  for (const r of results) {
+    const k = kindFromResultType(r.type);
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  const kinds = Object.keys(counts);
+  if (kinds.length < 2) return null;
 
   const chips = [
     { key: "all", label: "All", count: results.length },
-    ...sources.map((s) => ({
-      key: s,
-      label: SOURCE_LABELS[s] ?? s,
-      count: counts[s],
+    ...kinds.map((k) => ({
+      key: k,
+      label: kindLabel(k as SourceKind),
+      count: counts[k],
     })),
   ];
 
@@ -954,48 +946,7 @@ function SearchSourcesHint() {
   );
 }
 
-function SourceBadge({ source }: { source: string }) {
-  return (
-    <Badge variant="secondary" className="font-normal">
-      {SOURCE_LABELS[source] ?? source}
-    </Badge>
-  );
-}
-
-function TypeBadge({ type }: { type: ResultType }) {
-  return <Badge className="bg-foreground/5 text-foreground font-normal">{TYPE_LABELS[type]}</Badge>;
-}
-
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-const SOURCE_LABELS: Record<string, string> = {
-  youtube: "YouTube",
-  podcast: "Podcast",
-  web: "Web",
-};
-
-const TYPE_LABELS: Record<ResultType, string> = {
-  video: "Video",
-  playlist: "Playlist",
-  channel: "Channel",
-  podcast: "Podcast",
-  episode: "Episode",
-  web: "Web",
-};
-
-function expandsToMany(type: ResultType): boolean {
-  return type === "playlist" || type === "channel";
-}
-
-// A short, human extent for the card: a playlist's video count, a video's
-// duration. Channels just read "Channel" via the type badge.
-function resultExtent(r: SearchResult): string | null {
-  if (r.type === "playlist") {
-    const count = r.meta?.item_count;
-    return typeof count === "number" ? `${count} videos` : null;
-  }
-  return formatDuration(r.duration_s);
-}
 
 function formatDuration(s: number | null): string | null {
   if (s == null) return null;
@@ -1032,13 +983,6 @@ function detectType(url: string): ResultType {
 function detectSource(url: string): string {
   const u = url.toLowerCase();
   return u.includes("youtube.com") || u.includes("youtu.be") ? "youtube" : "web";
-}
-
-// The result's URL shown under its title, minus the protocol/www noise but
-// keeping the path and query — so YouTube watch links (which differ only in
-// ?v=…) stay distinguishable. Long URLs are truncated by the row's CSS.
-function displayUrl(url: string): string {
-  return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
 }
 
 function prettyUrl(url: string): string {

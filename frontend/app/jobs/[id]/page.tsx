@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronDown, ChevronRight, Eye } from "lucide-react";
@@ -13,6 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Logotype } from "@/components/brand";
+import {
+  MetaSep,
+  SourceMetric,
+  SourceTypePill,
+  kindFromItemType,
+} from "@/components/source-kind";
+import { cn } from "@/lib/utils";
 import {
   confirmJob,
   fetchItemPreview,
@@ -578,25 +585,49 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
     }
   }
 
+  const status = statusBadge(item);
   return (
-    <div className="rounded-lg transition-colors hover:bg-muted/60">
+    <div
+      className={cn(
+        "rounded-lg transition-colors",
+        checked ? "bg-foreground/[0.06]" : "hover:bg-muted/60",
+      )}
+    >
       <div className="flex items-center gap-3.5 px-3 py-2.5">
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="truncate text-sm">{item.title}</span>
             <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-              <span>
-                {item.item_type === "youtube"
-                  ? "YouTube"
-                  : item.item_type === "podcast"
-                    ? "Podcast"
-                    : "Article"}
-              </span>
-              {formatMeta(item).map((part) => (
-                <span key={part}>· {part}</span>
+              <SourceTypePill kind={kindFromItemType(item.item_type)} />
+              {item.reading_time_min != null && (
+                <>
+                  <MetaSep />
+                  <SourceMetric kind="reading">
+                    ~{item.reading_time_min} min read
+                  </SourceMetric>
+                </>
+              )}
+              {durationLabel(item) && (
+                <>
+                  <MetaSep />
+                  <SourceMetric kind="duration">
+                    {durationLabel(item)}
+                  </SourceMetric>
+                </>
+              )}
+              {extraMeta(item).map((part) => (
+                <Fragment key={part}>
+                  <MetaSep />
+                  <span>{part}</span>
+                </Fragment>
               ))}
-              {statusBadge(item)}
+              {status && (
+                <>
+                  <MetaSep />
+                  {status}
+                </>
+              )}
             </span>
           </span>
         </label>
@@ -832,21 +863,22 @@ function sourceLabel(url: string | undefined): string {
   }
 }
 
-function formatMeta(item: DiscoveredItem): string[] {
-  // Reading time (from the transcript word count) is the most relevant figure
-  // for an EPUB, so it leads; the video duration and language follow. The blog
-  // char-count reflected the RSS summary (often truncated), so it stays hidden.
+// Play time (video/podcast) as M:SS. Rendered with a clock by SourceMetric so it
+// never reads as reading time — the same convention the search screen sets.
+function durationLabel(item: DiscoveredItem): string | null {
+  if (item.estimated_duration_s == null) return null;
+  const m = Math.floor(item.estimated_duration_s / 60);
+  const s = item.estimated_duration_s % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// The textual extras shown after the icon-led metrics: the transcript word count
+// and language. The blog char-count reflected the RSS summary (often truncated),
+// so it stays hidden.
+function extraMeta(item: DiscoveredItem): string[] {
   const parts: string[] = [];
-  if (item.reading_time_min != null) {
-    parts.push(`~${item.reading_time_min} min read`);
-  }
   if (item.word_count != null) {
     parts.push(`${item.word_count.toLocaleString("en-US")} words`);
-  }
-  if (item.estimated_duration_s != null) {
-    const m = Math.floor(item.estimated_duration_s / 60);
-    const s = item.estimated_duration_s % 60;
-    parts.push(`${m}:${String(s).padStart(2, "0")}`);
   }
   if (item.transcript_lang) {
     parts.push(item.transcript_lang.toUpperCase());
