@@ -223,6 +223,21 @@
   --info-foreground: oklch(0.16 0 0);
 }
 
+/* Font theme tokens as real custom properties. `@theme inline` (above) inlines
+   these into the utilities in a production build, so this block is redundant on
+   Vercel — but Turbopack's dev CSS pipeline emits `font-sans` etc. as
+   `var(--font-sans)` instead of inlining, and without this block those vars are
+   empty, so `body`/`html`/headings fall back to Times New Roman in `next dev`
+   only. Defining them here makes dev match prod. The referenced
+   `--font-host-grotesk` etc. are injected by next/font on <html>. */
+:root {
+  --font-sans: var(--font-host-grotesk);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-host-grotesk);
+  --font-display: var(--font-prociono);
+  --font-edition: var(--font-literata);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
