@@ -3,9 +3,10 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -590,7 +591,10 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
     <div
       className={cn(
         "rounded-lg transition-colors",
-        checked ? "bg-foreground/[0.06]" : "hover:bg-muted/60",
+        // foreground-alpha (not bg-muted) so it never collides with the
+        // secondary Preview button — in dark, --muted and --secondary share the
+        // same value, which made the button melt into the hovered row.
+        checked ? "bg-foreground/[0.06]" : "hover:bg-foreground/5",
       )}
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
@@ -634,15 +638,19 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
             </span>
           </span>
         </label>
-        <button
-          type="button"
-          onClick={toggleOpen}
-          aria-expanded={open}
-          className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs transition-colors"
-        >
-          <Eye className="size-3.5" />
-          {open ? "Hide" : "Preview"}
-        </button>
+        <Tooltip content={open ? "Hide preview" : "Preview"}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            onClick={toggleOpen}
+            aria-expanded={open}
+            aria-label={open ? "Hide preview" : "Preview"}
+            className="ml-2 shrink-0"
+          >
+            {open ? <EyeOff /> : <Eye />}
+          </Button>
+        </Tooltip>
       </div>
 
       {open && (

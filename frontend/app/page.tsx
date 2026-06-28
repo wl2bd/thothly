@@ -23,6 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { GitHubStar } from "@/components/github-star";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
@@ -180,29 +181,41 @@ export default function Home() {
     });
   }
 
-  // Enter on a pasted link adds it straight to the sources, keeping the bar
-  // backward-compatible with the old paste-a-URL flow. Enter on a search term
-  // does nothing — results are picked via their checkboxes.
+  // Enter reads the bar: a pasted link is added straight to the sources (the
+  // old paste-a-URL flow). Otherwise — an empty bar OR a plain search term — it
+  // proceeds to Review when a compilation is staged, mirroring the Enter badge
+  // on that button. Search runs automatically (debounced), so Enter is free to
+  // mean "proceed" rather than "search".
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (trimmed === "" || !queryIsUrl) return;
-    const url = normalizeUrl(trimmed);
-    stageSources([
-      {
-        url,
-        title: prettyUrl(url),
-        type: detectType(url),
-        source: detectSource(url),
-        thumbnail: null,
-        durationS: null,
-        author: null,
-      },
-    ]);
-    setQuery("");
+    if (queryIsUrl) {
+      const url = normalizeUrl(trimmed);
+      stageSources([
+        {
+          url,
+          title: prettyUrl(url),
+          type: detectType(url),
+          source: detectSource(url),
+          thumbnail: null,
+          durationS: null,
+          author: null,
+        },
+      ]);
+      setQuery("");
+      return;
+    }
+    if (staged.length > 0) onCompile();
   }
 
   function removeStaged(url: string) {
     setStaged((prev) => prev.filter((s) => s.url !== url));
+  }
+
+  // Empty the bar and hand focus back — the shared "start a fresh search"
+  // gesture behind the clear (x), Escape, and the "New search" button.
+  function clearQuery() {
+    setQuery("");
+    inputRef.current?.focus();
   }
 
   async function onCompile() {
@@ -305,7 +318,7 @@ export default function Home() {
                     // cleared without reaching for the × or select-all-delete.
                     if (e.key === "Escape" && query !== "") {
                       e.preventDefault();
-                      setQuery("");
+                      clearQuery();
                     }
                   }}
                   placeholder="Search or paste a link…"
@@ -315,10 +328,7 @@ export default function Home() {
                 {query !== "" && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setQuery("");
-                      inputRef.current?.focus();
-                    }}
+                    onClick={clearQuery}
                     aria-label="Clear search"
                     className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
                   >
@@ -368,7 +378,7 @@ export default function Home() {
             )}
 
             {staged.length > 0 && (
-              <div className="flex items-center justify-between gap-3 border-t pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
                 <p className="text-sm">
                   <span className="text-foreground font-semibold">
                     {staged.length}
@@ -378,9 +388,31 @@ export default function Home() {
                     compilation
                   </span>
                 </p>
-                <Button type="button" onClick={onCompile} disabled={submitting}>
-                  {submitting ? "Starting…" : "Review"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={clearQuery}
+                    disabled={submitting}
+                  >
+                    New search
+                    {query !== "" && <Kbd>Esc</Kbd>}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={onCompile}
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      "Starting…"
+                    ) : (
+                      <>
+                        Review
+                        {!queryIsUrl && <Kbd>Enter</Kbd>}
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -434,15 +466,18 @@ export default function Home() {
                       )}
                     </span>
                   </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeStaged(s.url)}
-                    aria-label="Remove source"
-                  >
-                    <XIcon />
-                  </Button>
+                  <Tooltip content="Remove source">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      onClick={() => removeStaged(s.url)}
+                      aria-label="Remove source"
+                      className="ml-2"
+                    >
+                      <XIcon />
+                    </Button>
+                  </Tooltip>
                 </li>
               ))}
             </ul>
@@ -513,6 +548,18 @@ function HeaderLink({ href, children }: { href: string; children: string }) {
     >
       {children}
     </a>
+  );
+}
+
+// A small keyboard-key badge surfaced inside a button to advertise its
+// shortcut, kept discreet: a hairline outline (no fill) drawn in the button's
+// own text colour. The text stays full-contrast (legible/accessible) while the
+// cap recedes, reading on the gold primary and the neutral secondary alike.
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-current/20 px-1 py-px font-mono text-[10px] leading-none font-normal">
+      {children}
+    </kbd>
   );
 }
 
