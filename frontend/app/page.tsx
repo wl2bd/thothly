@@ -13,6 +13,7 @@ import {
   PlayIcon,
   PodcastIcon,
   SearchIcon,
+  SearchXIcon,
   XIcon,
 } from "lucide-react";
 
@@ -22,7 +23,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import { GitHubStar } from "@/components/github-star";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
@@ -234,7 +234,8 @@ export default function Home() {
       <SiteHeader />
       <main className="flex flex-1 flex-col">
         <section
-          className={`relative isolate flex min-h-[66svh] flex-col items-center justify-center overflow-hidden px-6 ${showResults ? "py-10" : "py-16 sm:py-20"}`}
+          id="top"
+          className={`relative isolate flex min-h-[66svh] scroll-mt-14 flex-col items-center justify-center overflow-hidden px-6 ${showResults ? "py-10" : "py-16 sm:py-20"}`}
           style={{
             background:
               "linear-gradient(to bottom, var(--hero-ground) 0%, var(--hero-ground) 35%, transparent 100%)",
@@ -324,6 +325,7 @@ export default function Home() {
             {showResults && (
               <SearchResults
                 searching={searching}
+                query={trimmed}
                 results={visibleResults}
                 stagedUrls={stagedUrls}
                 onToggle={toggleResultStaged}
@@ -449,9 +451,30 @@ function SiteHeader() {
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 border-b backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
         <Logotype className="h-7 w-auto" title="Thothly" />
-        <GitHubStar />
+        <div className="flex items-center gap-3 sm:gap-5">
+          {/* Light anchor nav: the page is short, so this orients rather than
+              structures. Hidden on narrow screens to keep the header to a
+              logotype + one action. */}
+          <nav className="hidden items-center gap-5 sm:flex">
+            <HeaderLink href="#top">Start</HeaderLink>
+            <HeaderLink href="#how-it-works">How it works</HeaderLink>
+            <HeaderLink href="#faq">FAQ</HeaderLink>
+          </nav>
+          <GitHubStar />
+        </div>
       </div>
     </header>
+  );
+}
+
+function HeaderLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+    >
+      {children}
+    </a>
   );
 }
 
@@ -668,7 +691,7 @@ function DataAndFaq() {
     },
   ];
   return (
-    <section className="border-t px-6 py-14">
+    <section id="faq" className="scroll-mt-14 border-t px-6 py-14">
       <div className="mx-auto grid w-full max-w-5xl gap-10 lg:grid-cols-2">
         <div>
           <h2 className="font-display text-2xl tracking-tight text-balance">
@@ -739,6 +762,7 @@ function SiteFooter() {
 
 interface SearchResultsProps {
   searching: boolean;
+  query: string;
   results: SearchResult[];
   stagedUrls: Set<string>;
   onToggle: (result: SearchResult) => void;
@@ -746,29 +770,76 @@ interface SearchResultsProps {
 
 function SearchResults({
   searching,
+  query,
   results,
   stagedUrls,
   onToggle,
 }: SearchResultsProps) {
+  // First search in flight, with no prior results to keep on screen: stand in
+  // skeleton rows that mirror the real row geometry — media tile, title line,
+  // meta line — so when results land they replace the placeholders in place
+  // rather than the list popping in from a stray spinner. The pulse is staggered
+  // for a soft wave and stilled under reduced motion (the bars still read).
   if (searching && results.length === 0) {
     return (
-      <div className="text-muted-foreground flex items-center gap-3 py-6 text-sm">
-        <Spinner />
-        Searching…
+      <ul
+        aria-busy="true"
+        aria-label="Searching"
+        className="-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+      >
+        {[80, 66, 88, 58, 72].map((w, i) => (
+          <li
+            key={i}
+            className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
+            style={{ animationDelay: `${i * 110}ms` }}
+          >
+            <span className="bg-foreground/10 size-5 shrink-0 rounded-[5px]" />
+            <span className="bg-foreground/10 h-12 w-20 shrink-0 rounded" />
+            <span className="flex min-w-0 flex-1 flex-col gap-2">
+              <span
+                className="bg-foreground/10 h-3.5 rounded-full"
+                style={{ width: `${w}%` }}
+              />
+              <span className="bg-foreground/10 h-3 w-2/5 rounded-full" />
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  // Settled and empty: a centered, deliberate state (not a stray line). The
+  // query is echoed back and the next move is spelled out, including the
+  // paste-a-link path that always works.
+  if (results.length === 0) {
+    return (
+      <div className="text-muted-foreground flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <SearchXIcon
+          className="text-muted-foreground/40 size-7"
+          aria-hidden="true"
+        />
+        <div className="flex flex-col gap-1">
+          <p className="text-foreground text-sm font-medium">
+            No results for “{query}”
+          </p>
+          <p className="text-xs leading-relaxed text-balance">
+            Try different words, or paste a link to add it directly.
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (results.length === 0) {
-    return (
-      <p className="text-muted-foreground py-6 text-center text-sm">
-        No results.
-      </p>
-    );
-  }
-
+  // Settled with results. While a refinement is in flight the old rows stay put
+  // but dim, so the list reads as "updating" instead of flickering empty.
   return (
-    <ul className="-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+    <ul
+      aria-busy={searching || undefined}
+      className={cn(
+        "-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto transition-opacity",
+        searching && "opacity-60",
+      )}
+    >
       {results.map((r) => {
         const checked = stagedUrls.has(r.url);
         const kind = kindFromResultType(r.type);
