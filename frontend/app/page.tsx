@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -67,6 +67,14 @@ const SEARCH_DEBOUNCE_MS = 350;
 
 export default function Home() {
   const router = useRouter();
+  // Held so the clear (×) button and Escape can wipe the bar and hand focus
+  // straight back, keeping the search → pick → clear → re-search loop on the
+  // keyboard without a detour to the mouse.
+  const inputRef = useRef<HTMLInputElement>(null);
+  // True only between a pointer press on a result and its toggle. Lets a click
+  // pick hand focus back to the search bar (keeping search → pick → search
+  // fluid) WITHOUT stealing it from a keyboard user tabbing the checkboxes.
+  const pickedByPointer = useRef(false);
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -152,6 +160,10 @@ export default function Home() {
             },
           ],
     );
+    // Click picks return to the bar so the next query types straight away;
+    // keyboard picks keep their place in the list (see pickedByPointer).
+    if (pickedByPointer.current) inputRef.current?.focus();
+    pickedByPointer.current = false;
   }
 
   function stageSources(toAdd: StagedSource[]) {
@@ -284,13 +296,35 @@ export default function Home() {
               <AnimatedGoldBorder>
                 <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
+                  ref={inputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Escape wipes the bar (and only then) so a held query can be
+                    // cleared without reaching for the × or select-all-delete.
+                    if (e.key === "Escape" && query !== "") {
+                      e.preventDefault();
+                      setQuery("");
+                    }
+                  }}
                   placeholder="Search or paste a link…"
-                  className="border-transparent bg-background pl-9 focus-visible:ring-0 dark:bg-background"
+                  className="border-transparent bg-background pr-9 pl-9 focus-visible:ring-0 dark:bg-background"
                   autoFocus
                 />
+                {query !== "" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      inputRef.current?.focus();
+                    }}
+                    aria-label="Clear search"
+                    className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
+                  >
+                    <XIcon className="size-4" />
+                  </button>
+                )}
               </AnimatedGoldBorder>
               {queryIsUrl && (
                 <p className="text-muted-foreground px-1 text-center text-xs">
@@ -329,6 +363,7 @@ export default function Home() {
                 results={visibleResults}
                 stagedUrls={stagedUrls}
                 onToggle={toggleResultStaged}
+                onPointerPick={() => (pickedByPointer.current = true)}
               />
             )}
 
@@ -766,6 +801,9 @@ interface SearchResultsProps {
   results: SearchResult[];
   stagedUrls: Set<string>;
   onToggle: (result: SearchResult) => void;
+  // Fired on a pointer press of a row, so the parent can tell a click pick from
+  // a keyboard pick and only return focus to the bar for the former.
+  onPointerPick: () => void;
 }
 
 function SearchResults({
@@ -774,6 +812,7 @@ function SearchResults({
   results,
   stagedUrls,
   onToggle,
+  onPointerPick,
 }: SearchResultsProps) {
   // First search in flight, with no prior results to keep on screen: stand in
   // skeleton rows that mirror the real row geometry — media tile, title line,
@@ -846,6 +885,7 @@ function SearchResults({
         return (
           <li key={r.id}>
             <label
+              onPointerDown={onPointerPick}
               className={cn(
                 "flex cursor-pointer items-center gap-3.5 rounded-lg px-3.5 py-3.5 transition-colors",
                 checked ? "bg-foreground/[0.06]" : "hover:bg-foreground/5",
