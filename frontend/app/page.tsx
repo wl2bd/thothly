@@ -211,6 +211,12 @@ export default function Home() {
     setStaged((prev) => prev.filter((s) => s.url !== url));
   }
 
+  // Wipe the whole staged compilation — the "start over with entirely different
+  // sources" escape hatch beside Review.
+  function resetStaged() {
+    setStaged([]);
+  }
+
   // Empty the bar and hand focus back — the shared "start a fresh search"
   // gesture behind the clear (x), Escape, and the "New search" button.
   function clearQuery() {
@@ -482,14 +488,25 @@ export default function Home() {
               ))}
             </ul>
 
-            <Button
-              size="lg"
-              onClick={onCompile}
-              disabled={submitting}
-              className="w-full"
-            >
-              {submitting ? "Starting…" : "Review"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                onClick={resetStaged}
+                disabled={submitting}
+              >
+                Reset
+              </Button>
+              <Button
+                size="lg"
+                onClick={onCompile}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? "Starting…" : "Review"}
+              </Button>
+            </div>
           </section>
         )}
 
