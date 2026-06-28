@@ -593,17 +593,20 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
         checked ? "bg-foreground/[0.06]" : "hover:bg-muted/60",
       )}
     >
-      <div className="flex items-center gap-3.5 px-3 py-2.5">
+      <div className="flex items-center gap-3.5 px-3.5 py-3.5">
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="truncate text-sm">{item.title}</span>
-            <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-              <SourceTypePill kind={kindFromItemType(item.item_type)} />
+            <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+              <SourceTypePill
+                kind={kindFromItemType(item.item_type)}
+                className="shrink-0"
+              />
               {item.reading_time_min != null && (
                 <>
                   <MetaSep />
-                  <SourceMetric kind="reading">
+                  <SourceMetric kind="reading" className="shrink-0">
                     ~{item.reading_time_min} min read
                   </SourceMetric>
                 </>
@@ -611,7 +614,7 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
               {durationLabel(item) && (
                 <>
                   <MetaSep />
-                  <SourceMetric kind="duration">
+                  <SourceMetric kind="duration" className="shrink-0">
                     {durationLabel(item)}
                   </SourceMetric>
                 </>
@@ -619,7 +622,7 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
               {extraMeta(item).map((part) => (
                 <Fragment key={part}>
                   <MetaSep />
-                  <span>{part}</span>
+                  <span className="min-w-0 truncate">{part}</span>
                 </Fragment>
               ))}
               {status && (
@@ -643,7 +646,7 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
       </div>
 
       {open && (
-        <div className="px-3 pb-3 pl-10">
+        <div className="px-3.5 pb-3 pl-10">
           {loading ? (
             <div className="text-muted-foreground flex items-center gap-2 py-2 text-xs">
               <Spinner className="size-3.5" />

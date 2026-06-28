@@ -401,7 +401,7 @@ export default function Home() {
               {staged.map((s) => (
                 <li
                   key={s.url}
-                  className="bg-card flex items-center gap-3.5 rounded-lg border px-3.5 py-3"
+                  className="bg-card flex items-center gap-3.5 rounded-lg border px-3.5 py-3.5"
                 >
                   <SourceMedia
                     kind={kindFromResultType(s.type)}
@@ -410,8 +410,11 @@ export default function Home() {
                   />
                   <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <span className="truncate text-sm">{s.title}</span>
-                    <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs">
-                      <SourceTypePill kind={kindFromResultType(s.type)} />
+                    <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+                      <SourceTypePill
+                        kind={kindFromResultType(s.type)}
+                        className="shrink-0"
+                      />
                       <MetaSep />
                       <span className="inline-flex min-w-0 items-center gap-1">
                         <SourceFavicon url={s.url} />
@@ -420,13 +423,13 @@ export default function Home() {
                       {s.author && (
                         <>
                           <MetaSep />
-                          <span className="truncate">{s.author}</span>
+                          <span className="min-w-0 truncate">{s.author}</span>
                         </>
                       )}
                       {isContainerKind(kindFromResultType(s.type)) && (
                         <>
                           <MetaSep />
-                          <span>expands when you review</span>
+                          <span className="shrink-0">expands when you review</span>
                         </>
                       )}
                     </span>
@@ -897,8 +900,8 @@ function SearchResults({
                 <span className="line-clamp-2 text-sm leading-snug">
                   {r.title}
                 </span>
-                <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-                  <SourceTypePill kind={kind} />
+                <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+                  <SourceTypePill kind={kind} className="shrink-0" />
                   <MetaSep />
                   <span className="inline-flex min-w-0 items-center gap-1">
                     <SourceFavicon url={r.url} />
@@ -907,7 +910,7 @@ function SearchResults({
                   {r.duration_s != null && (
                     <>
                       <MetaSep />
-                      <SourceMetric kind="duration">
+                      <SourceMetric kind="duration" className="shrink-0">
                         {formatDuration(r.duration_s)}
                       </SourceMetric>
                     </>
@@ -915,7 +918,7 @@ function SearchResults({
                   {isContainerKind(kind) && (
                     <>
                       <MetaSep />
-                      <span>expands when you review</span>
+                      <span className="shrink-0">expands when you review</span>
                     </>
                   )}
                 </span>
