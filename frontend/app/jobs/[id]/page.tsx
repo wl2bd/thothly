@@ -36,6 +36,26 @@ import {
 
 const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
 
+// The book title is required to generate and capped so it stays a title (it
+// lands in EPUB metadata, the cover and the filename).
+const BOOK_TITLE_MAX = 100;
+
+// The editable default offered for a new compilation, so the title field is
+// never blank on arrival. A lone source lends its own name (e.g. the podcast or
+// channel title, filled in at discovery); several fall back to the generic
+// "N sources" phrasing used elsewhere. Capped to the field limit.
+function defaultBookTitle(job: JobResponse): string {
+  const { sources } = job;
+  const single =
+    sources.length === 1
+      ? sources[0].name?.trim() || sources[0].title?.trim()
+      : null;
+  const base =
+    single ||
+    `Compilation of ${sources.length} source${sources.length === 1 ? "" : "s"}`;
+  return base.slice(0, BOOK_TITLE_MAX);
+}
+
 export default function JobPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -99,7 +119,10 @@ export default function JobPage() {
     setSeenStatus(job.status);
     if (job.status === "reviewing") {
       setSelected(new Set(job.discovered_items.map((it) => it.id)));
-      setTitle(job.book_title ?? "");
+      // Offer an editable default name so the field is never blank on arrival;
+      // the user can rename it, and it's still required (clearing it blocks
+      // Generate) — just no longer an auto-derived source name.
+      setTitle(defaultBookTitle(job));
     }
   }
 
@@ -440,16 +463,28 @@ function ReviewList({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="book-title" className="text-muted-foreground text-xs">
-          Book title
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="book-title" className="text-muted-foreground text-xs">
+            Book title
+          </Label>
+          <span className="text-muted-foreground/60 text-xs tabular-nums">
+            {title.length}/{BOOK_TITLE_MAX}
+          </span>
+        </div>
         <Input
           id="book-title"
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Compilation title"
+          maxLength={BOOK_TITLE_MAX}
+          aria-required="true"
         />
+        {title.trim() === "" && (
+          <p className="text-muted-foreground/70 text-xs">
+            A title is required to generate.
+          </p>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -545,7 +580,7 @@ function ReviewList({
       <Button
         size="lg"
         onClick={onConfirm}
-        disabled={confirming || selected.size === 0}
+        disabled={confirming || selected.size === 0 || title.trim() === ""}
         className="w-full"
       >
         {confirming ? "Starting…" : "Generate"}
