@@ -1,9 +1,40 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  GripVertical,
+} from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -41,19 +72,32 @@ const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
 const BOOK_TITLE_MAX = 100;
 
 // The editable default offered for a new compilation, so the title field is
-// never blank on arrival. A lone source lends its own name (e.g. the podcast or
-// channel title, filled in at discovery); several fall back to the generic
-// "N sources" phrasing used elsewhere. Capped to the field limit.
-function defaultBookTitle(job: JobResponse): string {
-  const { sources } = job;
-  const single =
-    sources.length === 1
-      ? sources[0].name?.trim() || sources[0].title?.trim()
-      : null;
-  const base =
-    single ||
-    `Compilation of ${sources.length} source${sources.length === 1 ? "" : "s"}`;
-  return base.slice(0, BOOK_TITLE_MAX);
+// never blank on arrival, and tracks the live selection while still auto: a lone
+// SELECTED source lends its own name (podcast / channel / blog, from discovery);
+// several fall back to the generic "N sources" phrasing. Returns null when
+// nothing is selected (nothing to name). Capped to the field limit.
+function autoTitleForSelection(
+  job: JobResponse,
+  selected: Set<string>,
+): string | null {
+  const selectedSourceIndices = [
+    ...new Set(
+      job.discovered_items
+        .filter((it) => selected.has(it.id))
+        .map((it) => it.source_index),
+    ),
+  ];
+  if (selectedSourceIndices.length === 0) return null;
+  if (selectedSourceIndices.length === 1) {
+    const src = job.sources[selectedSourceIndices[0]];
+    const name = src?.name?.trim() || src?.title?.trim();
+    if (name) return name.slice(0, BOOK_TITLE_MAX);
+  }
+  const n = selectedSourceIndices.length;
+  return `Compilation of ${n} source${n === 1 ? "" : "s"}`.slice(
+    0,
+    BOOK_TITLE_MAX,
+  );
 }
 
 export default function JobPage() {
@@ -64,10 +108,19 @@ export default function JobPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
+  // Whether `title` is still the auto value (vs user-typed). While auto it
+  // tracks the selection; the first manual edit freezes it.
+  const [titleIsAuto, setTitleIsAuto] = useState(true);
+  // The selection the auto title was last computed for, so it can resync when
+  // that changes (React's "adjust state during render", no effect).
+  const [titleSyncedFor, setTitleSyncedFor] = useState<Set<string> | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pollKey, setPollKey] = useState(0);
   const [llm, setLlm] = useState<LlmConfig | null>(null);
   const [roles, setRoles] = useState<Set<string>>(new Set());
+  // The compile order of the sources, drag-reorderable in review. Source indices
+  // in display order; selected ids are flattened in this order on confirm.
+  const [sourceOrder, setSourceOrder] = useState<number[]>([]);
 
   useEffect(() => {
     fetchLlmConfig()
@@ -118,13 +171,41 @@ export default function JobPage() {
   if (job && job.status !== seenStatus) {
     setSeenStatus(job.status);
     if (job.status === "reviewing") {
-      setSelected(new Set(job.discovered_items.map((it) => it.id)));
-      // Offer an editable default name so the field is never blank on arrival;
-      // the user can rename it, and it's still required (clearing it blocks
-      // Generate) — just no longer an auto-derived source name.
-      setTitle(defaultBookTitle(job));
+      const allIds = new Set(job.discovered_items.map((it) => it.id));
+      setSelected(allIds);
+      // Editable default name (everything selected to start); it stays in sync
+      // with the selection until the user edits it, and is required to generate.
+      setTitle(autoTitleForSelection(job, allIds) ?? "");
+      setTitleIsAuto(true);
+      // Natural source order to start; review can drag it into another order.
+      setSourceOrder(
+        [...new Set(job.discovered_items.map((it) => it.source_index))].sort(
+          (a, b) => a - b,
+        ),
+      );
     }
   }
+
+  // Keep the auto title in step with the selection (React's "adjust state during
+  // render" — same pattern as the seenStatus reset above, so no effect and no
+  // cascading-render lint): deselecting a whole source drops the count, leaving
+  // a single source swaps to its name. Frozen once the user edits the title.
+  if (
+    job &&
+    job.status === "reviewing" &&
+    titleIsAuto &&
+    selected !== titleSyncedFor
+  ) {
+    setTitleSyncedFor(selected);
+    const next = autoTitleForSelection(job, selected);
+    if (next !== null) setTitle(next);
+  }
+
+  // A manual edit freezes the title (stops the selection from steering it).
+  const onTitleChange = useCallback((value: string) => {
+    setTitle(value);
+    setTitleIsAuto(false);
+  }, []);
 
   const toggle = useCallback((itemId: string) => {
     setSelected((prev) => {
@@ -157,12 +238,21 @@ export default function JobPage() {
   }, []);
 
   async function onConfirm() {
+    if (!job) return;
     setConfirming(true);
     setError(null);
+    // Selected ids in the user's source order (then natural item order within a
+    // source), so the backend persists and compiles them in exactly that order.
+    const orderedIds = sourceOrder.flatMap((sourceIndex) =>
+      job.discovered_items
+        .filter((it) => it.source_index === sourceIndex && selected.has(it.id))
+        .sort((a, b) => a.item_index - b.item_index)
+        .map((it) => it.id),
+    );
     try {
       const updated = await confirmJob(
         id,
-        [...selected],
+        orderedIds,
         title.trim() || undefined,
         [...roles],
       );
@@ -210,12 +300,14 @@ export default function JobPage() {
               llm={llm}
               selectedRoles={roles}
               onToggleRole={toggleRole}
-              onTitleChange={setTitle}
+              onTitleChange={onTitleChange}
               onToggle={toggle}
               onSelectItems={selectItems}
               onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
               onSelectNone={() => setSelected(new Set())}
               onConfirm={onConfirm}
+              sourceOrder={sourceOrder}
+              onReorderSources={setSourceOrder}
             />
           ) : job.status === "processing" ? (
             <StatusMessage label="Compiling…" />
@@ -393,6 +485,8 @@ interface ReviewListProps {
   onSelectAll: () => void;
   onSelectNone: () => void;
   onConfirm: () => void;
+  sourceOrder: number[];
+  onReorderSources: (order: number[]) => void;
 }
 
 function ReviewList({
@@ -411,9 +505,26 @@ function ReviewList({
   onSelectAll,
   onSelectNone,
   onConfirm,
+  sourceOrder,
+  onReorderSources,
 }: ReviewListProps) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleSourceDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = sourceOrder.indexOf(Number(active.id));
+    const to = sourceOrder.indexOf(Number(over.id));
+    if (from !== -1 && to !== -1) {
+      onReorderSources(arrayMove(sourceOrder, from, to));
+    }
+  }
 
   // How many *selected* videos read raw (would benefit from the punctuate role).
   const unpunctuatedSelected = items.filter(
@@ -441,16 +552,34 @@ function ReviewList({
   );
 
   // Group by source so a multi-source compilation stays legible instead of one
-  // giant mixed list. Source order is preserved.
-  const groups = useMemo(() => {
+  // giant mixed list.
+  const groupMap = useMemo(() => {
     const map = new Map<number, DiscoveredItem[]>();
     for (const it of filtered) {
       const bucket = map.get(it.source_index);
       if (bucket) bucket.push(it);
       else map.set(it.source_index, [it]);
     }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]);
+    return map;
   }, [filtered]);
+
+  // Render groups in the user's source order, dropping any with no items left
+  // after the title filter.
+  const visibleGroups = useMemo(
+    () =>
+      sourceOrder
+        .map((sourceIndex) => ({
+          sourceIndex,
+          groupItems: groupMap.get(sourceIndex) ?? [],
+        }))
+        .filter((g) => g.groupItems.length > 0),
+    [sourceOrder, groupMap],
+  );
+
+  // Reordering is offered only with a clean (unfiltered) list of 2+ sources:
+  // the SortableContext items must match what's on screen, and there's nothing
+  // to reorder otherwise.
+  const reorderable = needle === "" && sourceOrder.length > 1;
 
   const toggleCollapse = (index: number) =>
     setCollapsed((prev) => {
@@ -459,6 +588,70 @@ function ReviewList({
       else next.add(index);
       return next;
     });
+
+  // One source group: its sticky header (optional drag handle, collapse, count,
+  // select toggle) and items. Shared by the sortable and plain render paths —
+  // `handleProps` is the drag listeners when reordering is on, else null.
+  const renderGroupBody = (
+    sourceIndex: number,
+    groupItems: DiscoveredItem[],
+    handleProps: Record<string, unknown> | null,
+  ) => {
+    const ids = groupItems.map((it) => it.id);
+    const selectedCount = ids.filter((id) => selected.has(id)).length;
+    const allSelected = selectedCount === ids.length;
+    const isCollapsed = collapsed.has(sourceIndex);
+    return (
+      <>
+        <div className="bg-card/95 sticky top-0 z-10 flex items-center gap-2 px-3 py-2 backdrop-blur-sm">
+          {handleProps && (
+            <button
+              type="button"
+              aria-label="Drag to reorder source"
+              className="text-muted-foreground/50 hover:text-foreground -ml-1 shrink-0 cursor-grab touch-none transition-colors active:cursor-grabbing"
+              {...(handleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
+            >
+              <GripVertical className="size-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => toggleCollapse(sourceIndex)}
+            className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 items-center gap-1.5 transition-colors"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="size-4 shrink-0" />
+            ) : (
+              <ChevronDown className="size-4 shrink-0" />
+            )}
+            <span className="truncate text-xs font-semibold tracking-wide uppercase">
+              {groupLabel(sources[sourceIndex], groupItems)}
+            </span>
+            <span className="text-muted-foreground/70 shrink-0 text-xs normal-case">
+              {selectedCount}/{groupItems.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectItems(ids, !allSelected)}
+            className="text-muted-foreground hover:text-foreground shrink-0 text-xs hover:underline"
+          >
+            {allSelected ? "Deselect" : "Select"}
+          </button>
+        </div>
+        {!isCollapsed &&
+          groupItems.map((item) => (
+            <ReviewItem
+              key={item.id}
+              jobId={jobId}
+              item={item}
+              checked={selected.has(item.id)}
+              onToggle={() => onToggle(item.id)}
+            />
+          ))}
+      </>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -512,57 +705,35 @@ function ReviewList({
       )}
 
       <div className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
-        {groups.length === 0 ? (
+        {visibleGroups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-8 text-center text-sm">
             No results for “{query}”.
           </p>
+        ) : reorderable ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleSourceDragEnd}
+          >
+            <SortableContext
+              items={sourceOrder.map(String)}
+              strategy={verticalListSortingStrategy}
+            >
+              {visibleGroups.map(({ sourceIndex, groupItems }) => (
+                <SortableSourceGroup key={sourceIndex} sourceIndex={sourceIndex}>
+                  {(handleProps) =>
+                    renderGroupBody(sourceIndex, groupItems, handleProps)
+                  }
+                </SortableSourceGroup>
+              ))}
+            </SortableContext>
+          </DndContext>
         ) : (
-          groups.map(([sourceIndex, groupItems]) => {
-            const ids = groupItems.map((it) => it.id);
-            const selectedCount = ids.filter((id) => selected.has(id)).length;
-            const allSelected = selectedCount === ids.length;
-            const isCollapsed = collapsed.has(sourceIndex);
-            return (
-              <div key={sourceIndex} className="flex flex-col">
-                <div className="bg-card/95 sticky top-0 z-10 flex items-center gap-2 px-3 py-2 backdrop-blur-sm">
-                  <button
-                    type="button"
-                    onClick={() => toggleCollapse(sourceIndex)}
-                    className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 items-center gap-1.5 transition-colors"
-                  >
-                    {isCollapsed ? (
-                      <ChevronRight className="size-4 shrink-0" />
-                    ) : (
-                      <ChevronDown className="size-4 shrink-0" />
-                    )}
-                    <span className="truncate text-xs font-semibold tracking-wide uppercase">
-                      {groupLabel(sources[sourceIndex], groupItems)}
-                    </span>
-                    <span className="text-muted-foreground/70 shrink-0 text-xs normal-case">
-                      {selectedCount}/{groupItems.length}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onSelectItems(ids, !allSelected)}
-                    className="text-muted-foreground hover:text-foreground shrink-0 text-xs hover:underline"
-                  >
-                    {allSelected ? "Deselect" : "Select"}
-                  </button>
-                </div>
-                {!isCollapsed &&
-                  groupItems.map((item) => (
-                    <ReviewItem
-                      key={item.id}
-                      jobId={jobId}
-                      item={item}
-                      checked={selected.has(item.id)}
-                      onToggle={() => onToggle(item.id)}
-                    />
-                  ))}
-              </div>
-            );
-          })
+          visibleGroups.map(({ sourceIndex, groupItems }) => (
+            <div key={sourceIndex} className="flex flex-col">
+              {renderGroupBody(sourceIndex, groupItems, null)}
+            </div>
+          ))
         )}
       </div>
 
@@ -585,6 +756,29 @@ function ReviewList({
       >
         {confirming ? "Starting…" : "Generate"}
       </Button>
+    </div>
+  );
+}
+
+// A drag-sortable wrapper for one source group. Keyed by the source index; hands
+// the drag listeners to its child so the grip in the header is the only handle
+// (the rows themselves stay clickable). Lifts above its neighbours while held.
+function SortableSourceGroup({
+  sourceIndex,
+  children,
+}: {
+  sourceIndex: number;
+  children: (handleProps: Record<string, unknown>) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: String(sourceIndex) });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn("flex flex-col", isDragging && "relative z-20 opacity-90")}
+    >
+      {children({ ...attributes, ...listeners })}
     </div>
   );
 }

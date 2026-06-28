@@ -156,16 +156,23 @@ def get_job_llm_roles(job_id: str) -> list[str]:
 
 
 def confirm_items(job_id: str, selected_ids: list[str]) -> list[DiscoveredItemResponse]:
+    # `selected_ids` arrives in the order the user wants compiled (the review
+    # screen lets sources be dragged into a new order). Persist that position so
+    # the compile reads items back in it, not in discovery order.
     with get_connection() as conn:
         conn.execute(
-            "UPDATE job_discovered_items SET selected = 0 WHERE job_id = ?", (job_id,)
+            "UPDATE job_discovered_items SET selected = 0, selected_order = NULL "
+            "WHERE job_id = ?",
+            (job_id,),
         )
         if selected_ids:
-            placeholders = ",".join("?" for _ in selected_ids)
-            conn.execute(
-                "UPDATE job_discovered_items SET selected = 1 "
-                f"WHERE job_id = ? AND id IN ({placeholders})",
-                [job_id, *selected_ids],
+            conn.executemany(
+                "UPDATE job_discovered_items SET selected = 1, selected_order = ? "
+                "WHERE job_id = ? AND id = ?",
+                [
+                    (position, job_id, item_id)
+                    for position, item_id in enumerate(selected_ids)
+                ],
             )
         conn.commit()
 
@@ -176,7 +183,10 @@ def get_selected_items(job_id: str) -> list[DiscoveredItemResponse]:
     with get_connection() as conn:
         rows = conn.execute(
             "SELECT * FROM job_discovered_items "
-            "WHERE job_id = ? AND selected = 1 ORDER BY source_index, item_index",
+            "WHERE job_id = ? AND selected = 1 "
+            # selected_order carries the user's drag order; source/item index is a
+            # stable tiebreak (and the fallback for jobs confirmed before it existed).
+            "ORDER BY selected_order, source_index, item_index",
             (job_id,),
         ).fetchall()
     return [_item_row_to_response(row) for row in rows]
