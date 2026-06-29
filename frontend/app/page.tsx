@@ -1129,15 +1129,18 @@ function SortSelect({
 }
 
 // The sources a query reaches, shown as a small overlapping pile under the bar
-// so it's clear up front what Thothly searches: YouTube, Apple Podcasts and the
-// open web. Monochrome lucide glyphs in the muted (secondary) tone — never the
+// so it's clear up front what Thothly searches: YouTube, podcasts and the
+// open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
+// keyless search engine over the open podcast ecosystem — it returns each show's
+// own RSS feed, so the reach is podcasts at large, not Apple-only content.
+// Monochrome lucide glyphs in the muted (secondary) tone — never the
 // brand gold, never multicolor brand logos that would clash on the night ground.
 // lucide carries no brand marks, so each source reads through its medium, in the
 // same icon language the funnel uses (Play = video, podcast waves, globe = web);
 // each is ringed in the panel's own sunken surface so they read as a stacked pile.
 const SEARCH_SOURCES = [
   { key: "youtube", label: "YouTube", Icon: PlayIcon },
-  { key: "podcast", label: "Apple Podcasts", Icon: PodcastIcon },
+  { key: "podcast", label: "Podcasts", Icon: PodcastIcon },
   { key: "web", label: "the web", Icon: GlobeIcon },
 ];
 
@@ -1159,7 +1162,7 @@ function SearchSourcesHint() {
           </span>
         ))}
       </span>
-      Searches YouTube, Apple Podcasts and the web
+      Searches YouTube, podcasts and the web
     </p>
   );
 }
