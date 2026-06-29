@@ -1451,9 +1451,13 @@ function sourceLabel(url: string | undefined): string {
 function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
   if (item.item_type === "podcast") {
     return sttAvailable ? (
+      // Coin sits AFTER the label so this tag's marker is on the same side as
+      // the "Raw captions" info icon — side-by-side in the list, mismatched
+      // sides read as untidy. The bottom legend (visible, not a hover tip) is
+      // this tag's explanation, so it needs no tooltip of its own.
       <Badge variant="secondary" className="bg-gold/10 text-gold gap-1">
-        <Coins />
         From audio
+        <Coins />
       </Badge>
     ) : (
       <Badge variant="secondary">From audio</Badge>
