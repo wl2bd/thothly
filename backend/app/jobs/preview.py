@@ -8,6 +8,7 @@ from app.pipeline.compiler import (
     strip_leading_title,
     transcript_to_markdown,
 )
+from app.pipeline.llm import llm_available
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import YouTubeUnavailable
@@ -45,13 +46,13 @@ def _youtube_preview(item: DiscoveredItemResponse) -> ItemPreview:
         logger.info("YouTube unavailable for preview of %s: %s", item.url, exc)
         return _unavailable(
             item,
-            "YouTube is rate-limiting transcript requests right now — try the "
+            "YouTube is rate-limiting transcript requests right now. Try the "
             "preview again shortly.",
         )
 
     if transcript is None:
         return _unavailable(
-            item, "No subtitles for this video — it would be skipped at compile."
+            item, "No subtitles for this video, so it would be skipped at compile."
         )
 
     content_md = transcript_to_markdown(transcript)
@@ -59,14 +60,14 @@ def _youtube_preview(item: DiscoveredItemResponse) -> ItemPreview:
         return _unavailable(item, "The transcript came back empty.")
 
     # Raw auto-captions have no sentences, so the zero-LLM render is a rough wall
-    # of text. The real compile auto-punctuates them when an LLM is configured —
-    # flag that so the preview isn't mistaken for the final, cleaned result.
+    # of text. Flag that so the preview isn't mistaken for the final result, and
+    # only point to the fix (AI polish) when a model is actually configured — on a
+    # zero-LLM deploy there's no polish to turn on, so promising it would mislead.
     note = None
     if item.is_punctuated is False:
-        note = (
-            "Raw auto-captions — this is the unprocessed text. Enabling AI "
-            "cleanup will punctuate it into clean paragraphs."
-        )
+        note = "Raw auto-captions: this is the unprocessed text."
+        if llm_available():
+            note += " Turn on AI polish to punctuate it into clean paragraphs."
     return _available(item, content_md, note)
 
 
@@ -77,7 +78,7 @@ def _blog_preview(item: DiscoveredItemResponse) -> ItemPreview:
     except ScrapeUnavailable:
         logger.info("Scrape failed for preview of %s, using RSS preview", item.url)
         content_html = item.preview_html or ""
-        note = "Couldn't fetch the full article — showing the RSS summary only."
+        note = "Couldn't fetch the full article, showing the RSS summary only."
 
     content_md = demote_headings(
         strip_leading_title(html_to_markdown(content_html), item.title)

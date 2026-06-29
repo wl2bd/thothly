@@ -70,7 +70,7 @@ def run_compilation(job_id: str) -> None:
         if not chapters and youtube_unavailable:
             raise CompilationError(
                 "YouTube is rate-limiting transcript requests (HTTP 429) from this "
-                "IP. This usually clears after a while — try again later. For a "
+                "IP. This usually clears after a while, so try again later. For a "
                 "self-hosted server, a residential proxy avoids it."
             )
 
