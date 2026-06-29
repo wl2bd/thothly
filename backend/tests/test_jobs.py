@@ -99,6 +99,43 @@ def test_transcript_metadata_roundtrip(mock_discovery, client: TestClient) -> No
     assert api_item["reading_time_min"] == 6
 
 
+@patch("app.jobs.phases.discover_source")
+def test_run_discovery_records_per_source_progress(mock_discover, client: TestClient) -> None:
+    """The real discovery phase writes each source's name + item tally back as it
+    resolves, so the loading screen can show live per-source progress."""
+    from app.jobs.models import JobCreate, Source
+    from app.jobs.phases import run_discovery
+    from app.sources.discovery import DiscoveredItem
+
+    def fake_discover(url, index, **kwargs):
+        n = 1 if index == 0 else 3
+        items = [
+            DiscoveredItem(
+                title=f"item {index}-{j}", url=f"{url}#{j}",
+                item_type="youtube", source_index=index, item_index=j,
+            )
+            for j in range(n)
+        ]
+        return (f"Source {index}", items)
+
+    mock_discover.side_effect = fake_discover
+
+    sources = [
+        Source(url="https://www.youtube.com/watch?v=abc123"),
+        Source(url="https://youtube.com/playlist?list=PLtest"),
+    ]
+    job = repository.create_job(JobCreate(sources=sources))
+    run_discovery(job.id, sources)
+
+    result = repository.get_job(job.id)
+    assert result is not None
+    assert result.status == "reviewing"
+    assert [s.resolved for s in result.sources] == [True, True]
+    assert [s.item_count for s in result.sources] == [1, 3]
+    assert [s.name for s in result.sources] == ["Source 0", "Source 1"]
+    assert len(result.discovered_items) == 4
+
+
 @patch("app.jobs.router.run_compilation")
 @patch("app.jobs.router.run_discovery")
 def test_confirm_overrides_book_title(

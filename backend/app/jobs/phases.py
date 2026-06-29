@@ -53,15 +53,19 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
                 for d in discovered
             )
 
+            # Record this source's name + tally and write the sources back now, so
+            # a polling client watches each one flip from scanning to done with a
+            # count instead of staring at a single spinner until the whole batch
+            # finishes. Discovery runs source-by-source, so the first unresolved
+            # source is the one currently being looked through.
+            source.name = source_name
+            source.item_count = len(discovered)
+            source.resolved = True
+            set_job_sources(job_id, sources)
+
         if not items:
             update_job_status(job_id, "failed", error="No items discovered from any source")
             return
-
-        # Persist each source's discovered name so the review screen can label
-        # its groups by the real channel/playlist/blog title, not the raw URL.
-        for source, name in zip(sources, source_names):
-            source.name = name
-        set_job_sources(job_id, sources)
 
         save_discovered_items(job_id, items)
         update_job_status(

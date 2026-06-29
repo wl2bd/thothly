@@ -35,6 +35,13 @@ class Source(BaseModel):
     # discovery and written back so the review screen can label each source group
     # by its real name instead of the raw URL. Absent until discovery has run.
     name: str | None = None
+    # Per-source discovery progress, written incrementally as each source
+    # resolves (discovery runs sequentially) so the loading screen can show a
+    # live per-source state instead of one opaque spinner. `resolved` flips true
+    # once this source is done (success or empty); `item_count` is how many items
+    # it yielded.
+    resolved: bool = False
+    item_count: int = 0
 
 
 class JobCreate(BaseModel):

@@ -245,8 +245,11 @@ export default function Home() {
     try {
       const job = await createJob(
         staged.map((s) =>
-          // A podcast episode's audio URL isn't self-identifying and carries no
-          // title, so pass both as hints. Other kinds re-derive their own.
+          // Always carry the title the user just saw in search, so the loading
+          // screen can label each source by name instead of a raw URL. `kind` is
+          // sent ONLY for podcasts (their audio URL isn't self-identifying and
+          // needs the duration hint); sending it for other kinds would override
+          // the backend's URL-based detection and misroute them.
           s.source === "podcast"
             ? {
                 url: s.url,
@@ -254,7 +257,7 @@ export default function Home() {
                 title: s.title,
                 duration_s: s.durationS ?? undefined,
               }
-            : { url: s.url },
+            : { url: s.url, title: s.title },
         ),
       );
       router.push(`/jobs/${job.id}`);

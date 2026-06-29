@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  Check,
   Coins,
   Eye,
   EyeOff,
@@ -387,11 +388,16 @@ function StatusMessage({ label }: { label: string }) {
   );
 }
 
-// The wait between staging sources and reviewing items. Rather than a bare
-// spinner, it lists the sources being looked through (by their host/URL — real
-// names aren't known until discovery finishes) so the auto-advance into review
-// reads as one continuous motion instead of a dead loading screen.
+// The wait between staging sources and reviewing items. It lists the sources by
+// the names the user just picked (the staged title shows immediately; the
+// discovered name replaces it once known), and shows each one's live state as
+// discovery resolves them one by one — done with an item tally, the current one
+// scanning, the rest waiting — so the moment reads as continuous progress
+// toward review, not a dead spinner over raw URLs.
 function DiscoveringView({ sources }: { sources: Source[] }) {
+  // Discovery runs sequentially, so the first not-yet-resolved source is the one
+  // currently being looked through; the rest are still queued.
+  const activeIndex = sources.findIndex((s) => !s.resolved);
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-3 text-sm font-medium">
@@ -400,14 +406,43 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
         {sources.length !== 1 ? "s" : ""}…
       </div>
       <ul className="flex flex-col gap-1.5">
-        {sources.map((s, i) => (
-          <li
-            key={`${s.url}-${i}`}
-            className="text-muted-foreground bg-muted/40 truncate rounded-lg px-3 py-2 text-xs"
-          >
-            {s.name?.trim() || sourceLabel(s.url)}
-          </li>
-        ))}
+        {sources.map((s, i) => {
+          const label = s.name?.trim() || s.title?.trim() || sourceLabel(s.url);
+          const isActive = i === activeIndex;
+          const count = s.item_count ?? 0;
+          return (
+            <li
+              key={`${s.url}-${i}`}
+              className="bg-muted/40 flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs"
+            >
+              <span className="flex size-3.5 shrink-0 items-center justify-center">
+                {s.resolved ? (
+                  <Check className="text-foreground/60 size-3.5" />
+                ) : isActive ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
+                )}
+              </span>
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate",
+                  s.resolved ? "text-foreground" : "text-muted-foreground",
+                  !s.resolved && !isActive && "opacity-50",
+                )}
+              >
+                {label}
+              </span>
+              {s.resolved ? (
+                <span className="text-muted-foreground shrink-0 tabular-nums">
+                  {count} item{count !== 1 ? "s" : ""}
+                </span>
+              ) : isActive ? (
+                <span className="text-muted-foreground shrink-0">scanning…</span>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
       <p className="text-muted-foreground text-xs">
         Listing what each one contains. You pick what goes in next.
@@ -1376,13 +1411,19 @@ function groupLabel(source: Source | undefined): string {
 }
 
 // A compact, recognizable label derived from the URL the user entered
-// (e.g. "youtube.com/@channel", "jakub.kr") — the fallback when no friendlier
-// discovered name is available.
+// (e.g. "youtube.com/@channel", "jakub.kr") — the last-resort fallback when no
+// title or discovered name is available. A YouTube watch URL carries its
+// identity in the dropped `?v=` query, so the bare path "youtube.com/watch"
+// names every video identically; reading it as the kind it is ("YouTube video")
+// is at least honest rather than a misleading repeat.
 function sourceLabel(url: string | undefined): string {
   if (!url) return "Source";
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be" || (host.endsWith("youtube.com") && parsed.pathname === "/watch")) {
+      return "YouTube video";
+    }
     const path = parsed.pathname.replace(/\/+$/, "");
     return path && path !== "" ? `${host}${path}` : host;
   } catch {

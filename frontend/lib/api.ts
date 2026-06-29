@@ -18,6 +18,11 @@ export interface Source {
   // The source's real name (channel / playlist / blog title), filled in by the
   // backend during discovery. Used to label the review's source groups.
   name?: string | null;
+  // Per-source discovery progress, written incrementally so the loading screen
+  // shows a live per-source state. `resolved` flips true once the source is done;
+  // `item_count` is how many items it yielded.
+  resolved?: boolean;
+  item_count?: number;
 }
 
 export interface DiscoveredItem {
