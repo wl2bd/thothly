@@ -60,12 +60,14 @@ def _youtube_preview(item: DiscoveredItemResponse) -> ItemPreview:
         return _unavailable(item, "The transcript came back empty.")
 
     # Raw auto-captions have no sentences, so the zero-LLM render is a rough wall
-    # of text. Flag that so the preview isn't mistaken for the final result, and
-    # only point to the fix (AI polish) when a model is actually configured — on a
+    # of text. Flag that so the preview isn't mistaken for the final result. The
+    # row's "Raw captions" tag sits right above this note, so it doesn't repeat
+    # the label (too-close echo) — it just states what the excerpt is. The fix
+    # (AI polish) is named only when a model is actually configured; on a
     # zero-LLM deploy there's no polish to turn on, so promising it would mislead.
     note = None
     if item.is_punctuated is False:
-        note = "Raw auto-captions: this is the unprocessed text."
+        note = "This is the unprocessed text."
         if llm_available():
             note += " Turn on AI polish to punctuate it into clean paragraphs."
     return _available(item, content_md, note)
