@@ -37,6 +37,7 @@ import {
   type SearchResult,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   MetaSep,
   SourceFavicon,
@@ -907,6 +908,15 @@ function SearchResults({
   onToggle,
   onPointerPick,
 }: SearchResultsProps) {
+  // The list scrolls inside the card between the filter row and the sources
+  // footer, so it fades on both edges that hide content — the same softening as
+  // every other scroll area, so rows dissolve at the seams instead of cutting on
+  // a hard line. Re-measured when the result count changes.
+  const listRef = useRef<HTMLUListElement>(null);
+  const fade = useScrollFade(listRef, { top: true, bottom: true }, [
+    results.length,
+  ]);
+
   // Search pending or in flight, with no prior results to keep on screen: stand
   // in skeleton rows that mirror the real row geometry — media tile, title line,
   // meta line — so when results land they replace the placeholders in place
@@ -968,6 +978,8 @@ function SearchResults({
   // but dim, so the list reads as "updating" instead of flickering empty.
   return (
     <ul
+      ref={listRef}
+      style={fade}
       aria-busy={searching || undefined}
       className={cn(
         "-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto transition-opacity",

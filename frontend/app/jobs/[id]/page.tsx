@@ -62,6 +62,7 @@ import {
   kindFromItemType,
 } from "@/components/source-kind";
 import { cn } from "@/lib/utils";
+import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   confirmJob,
   fetchItemPreview,
@@ -76,17 +77,6 @@ import {
 } from "@/lib/api";
 
 const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
-
-// Softens the bottom edge of the scrollable item list: the last 2rem fade to
-// transparent so content dissolves into the card instead of being sliced on a
-// hard line (it also doubles as a "there's more below" affordance). The top edge
-// is handled by the opaque sticky header + its own fade, so only the bottom is
-// masked here.
-const SCROLL_FADE: React.CSSProperties = {
-  maskImage: "linear-gradient(to bottom, #000 calc(100% - 2rem), transparent)",
-  WebkitMaskImage:
-    "linear-gradient(to bottom, #000 calc(100% - 2rem), transparent)",
-};
 
 // The book title is required to generate and capped so it stays a title (it
 // lands in EPUB metadata, the cover and the filename).
@@ -581,11 +571,7 @@ function ReviewList({
 }: ReviewListProps) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
-  // The bottom scroll-fade is only meaningful while content is hidden below the
-  // fold; it's measured (not always-on) so a list that fits, or one scrolled to
-  // the end, doesn't dim its last row for nothing.
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -673,23 +659,13 @@ function ReviewList({
   // to reorder otherwise.
   const reorderable = needle === "" && sourceOrder.length > 1;
 
-  // Track whether anything is still hidden below the fold so the bottom fade can
-  // be shown only then. Re-measured on scroll, on resize, and whenever the
-  // rendered content changes (filtering, collapsing, reordering).
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const measure = () =>
-      setHasMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1);
-    measure();
-    el.addEventListener("scroll", measure, { passive: true });
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => {
-      el.removeEventListener("scroll", measure);
-      observer.disconnect();
-    };
-  }, [visibleGroups, collapsed]);
+  // Bottom-only fade: the sticky source headers already mask the top (rows
+  // vanish under an opaque header), so only the bottom edge dissolves. Re-measured
+  // when the rendered content changes (filtering, collapsing, reordering).
+  const scrollFade = useScrollFade(scrollerRef, { top: false }, [
+    visibleGroups,
+    collapsed,
+  ]);
 
   const toggleCollapse = (index: number) =>
     setCollapsed((prev) => {
@@ -927,11 +903,11 @@ function ReviewList({
       <div
         ref={scrollerRef}
         className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto"
-        style={hasMoreBelow ? SCROLL_FADE : undefined}
+        style={scrollFade}
       >
         {visibleGroups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-8 text-center text-sm">
-            No results for “{query}”.
+            No results for “{query}”
           </p>
         ) : reorderable ? (
           <DndContext
@@ -1193,6 +1169,14 @@ function ReviewItem({
 }
 
 function PreviewBody({ preview }: { preview: ItemPreview }) {
+  // The excerpt box has no sticky header, so it fades on BOTH edges that hide
+  // content — the same softening the lists get, so a long preview dissolves at
+  // top and bottom instead of being sliced on a hard line.
+  const excerptRef = useRef<HTMLDivElement>(null);
+  const fade = useScrollFade(excerptRef, { top: true, bottom: true }, [
+    preview.content_md,
+  ]);
+
   if (!preview.available) {
     return (
       <p className="text-muted-foreground text-xs italic">
@@ -1208,7 +1192,11 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
       {/* A quoted excerpt, NOT an editor: a full bordered + filled box reads as
           a textarea and implies you can type in it. A left rule (blockquote)
           with a barely-there fill reads as displayed source text. */}
-      <div className="border-border/60 bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l-2 py-2 pr-3 pl-4">
+      <div
+        ref={excerptRef}
+        style={fade}
+        className="border-border/60 bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l-2 py-2 pr-3 pl-4"
+      >
         <MarkdownPreview md={preview.content_md ?? ""} />
       </div>
       {preview.truncated && (
