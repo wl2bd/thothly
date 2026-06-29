@@ -834,11 +834,6 @@ function ReviewList({
           maxLength={BOOK_TITLE_MAX}
           aria-required="true"
         />
-        {title.trim() === "" && (
-          <p className="text-muted-foreground/70 text-xs">
-            A title is required to generate.
-          </p>
-        )}
       </div>
 
       {/* Bulk selection lives on the LEFT, as a tri-state checkbox mirroring the
@@ -936,24 +931,24 @@ function ReviewList({
           />
         )}
 
-      {/* Cost and the action are one decision, so they sit together (tighter
-          than the page's section gap). The hint stands in for the cost line
-          when nothing is selected, explaining why Generate is disabled. */}
+      {/* Cost sits right against the action — one decision. The button itself
+          says what's blocking it (no source / no title) rather than a separate
+          hint, so the message is where the click is. */}
       <div className="flex flex-col gap-2">
-        {selected.size > 0 ? (
-          <CostEstimate cost={cost} />
-        ) : (
-          <p className="text-muted-foreground text-center text-xs">
-            Select at least one source to generate.
-          </p>
-        )}
+        {selected.size > 0 && <CostEstimate cost={cost} />}
         <Button
           size="lg"
           onClick={onConfirm}
           disabled={confirming || selected.size === 0 || title.trim() === ""}
           className="w-full"
         >
-          {confirming ? "Starting…" : "Generate"}
+          {confirming
+            ? "Starting…"
+            : selected.size === 0
+              ? "Select a source"
+              : title.trim() === ""
+                ? "Add a title"
+                : "Generate"}
         </Button>
       </div>
     </div>
