@@ -1074,12 +1074,13 @@ function ReviewItem({
       </SourceMetric>,
     );
   }
+  // The status flag ("Raw captions") sits with the other transcript facts —
+  // ahead of the language and word count — rather than back among the type pill
+  // and domain, so all the "about this transcript" info reads as one group.
+  if (status) metaParts.push(status);
   for (const part of extraMeta(item)) {
     metaParts.push(<span className="min-w-0 truncate">{part}</span>);
   }
-  // The status badge gets its OWN line above the title (rendered in the JSX
-  // below), not this meta row — so a "Raw captions" flag never sits crammed in
-  // among Video · host · duration, and it leads the row as the actionable cue.
 
   // A source-level row (a single-item source) carries the most meta — type,
   // domain, read time, duration — so let it wrap onto a second/third line rather
@@ -1116,7 +1117,6 @@ function ReviewItem({
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
-            {status}
             <span className={cn("truncate text-sm", asSource && "font-medium")}>
               {highlightMatch(item.title, highlight ?? "")}
             </span>
@@ -1413,11 +1413,13 @@ function durationLabel(item: DiscoveredItem): string | null {
 // so it stays hidden.
 function extraMeta(item: DiscoveredItem): string[] {
   const parts: string[] = [];
-  if (item.word_count != null) {
-    parts.push(`${item.word_count.toLocaleString("en-US")} words`);
-  }
+  // Language before word count, so a "Raw captions" flag pushed ahead of these
+  // reads as: Raw captions · EN · 1,200 words.
   if (item.transcript_lang) {
     parts.push(item.transcript_lang.toUpperCase());
+  }
+  if (item.word_count != null) {
+    parts.push(`${item.word_count.toLocaleString("en-US")} words`);
   }
   return parts;
 }
