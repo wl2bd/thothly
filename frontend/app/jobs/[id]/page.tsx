@@ -655,6 +655,7 @@ function ReviewList({
           sourceUrl={showHost ? url : undefined}
           dragHandleProps={handleProps}
           asSource
+          highlight={needle}
         />
       );
     }
@@ -755,6 +756,7 @@ function ReviewList({
               onToggle={() => onToggle(item.id)}
               showType={uniformKind === null}
               reserveGrip={reorderable}
+              highlight={needle}
             />
           ))}
       </>
@@ -928,6 +930,32 @@ interface ReviewItemProps {
   // under its (draggable) source header's checkbox. Only needed while reordering
   // is on — the header then has a real grip in that column.
   reserveGrip?: boolean;
+  // The active search term (lower-cased), highlighted within the title so it's
+  // clear why the row matched. Empty when not filtering.
+  highlight?: string;
+}
+
+// Wrap each case-insensitive occurrence of the search term in the title so the
+// user sees what matched. `needle` is already lower-cased.
+function highlightTitle(title: string, needle: string): ReactNode {
+  if (!needle) return title;
+  const lower = title.toLowerCase();
+  const parts: ReactNode[] = [];
+  let from = 0;
+  let key = 0;
+  let idx = lower.indexOf(needle);
+  while (idx !== -1) {
+    if (idx > from) parts.push(title.slice(from, idx));
+    parts.push(
+      <mark key={key++} className="bg-gold/30 rounded-[2px] text-inherit">
+        {title.slice(idx, idx + needle.length)}
+      </mark>,
+    );
+    from = idx + needle.length;
+    idx = lower.indexOf(needle, from);
+  }
+  if (from < title.length) parts.push(title.slice(from));
+  return parts;
 }
 
 // One review row: the selection checkbox + metadata, plus an on-demand preview
@@ -944,6 +972,7 @@ function ReviewItem({
   dragHandleProps,
   asSource,
   reserveGrip,
+  highlight,
 }: ReviewItemProps) {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<ItemPreview | null>(null);
@@ -1040,7 +1069,7 @@ function ReviewItem({
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className={cn("truncate text-sm", asSource && "font-medium")}>
-              {item.title}
+              {highlightTitle(item.title, highlight ?? "")}
             </span>
             {metaParts.length > 0 && (
               <span className={metaClass}>
