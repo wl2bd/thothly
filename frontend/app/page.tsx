@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GitHubStar } from "@/components/github-star";
+import { highlightMatch } from "@/components/highlight";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
 import { HieroglyphRain } from "@/components/hieroglyph-rain";
@@ -962,7 +963,7 @@ function SearchResults({
               <SourceMedia kind={kind} thumbnail={r.thumbnail} />
               <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <span className="line-clamp-2 text-sm leading-snug">
-                  {r.title}
+                  {highlightMatch(r.title, query)}
                 </span>
                 <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
                   <SourceTypePill kind={kind} className="shrink-0" />

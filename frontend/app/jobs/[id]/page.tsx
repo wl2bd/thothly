@@ -20,6 +20,7 @@ import {
   GripVertical,
   Minus,
   Plus,
+  Search,
   X,
 } from "lucide-react";
 import {
@@ -42,6 +43,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { highlightMatch } from "@/components/highlight";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -831,12 +833,13 @@ function ReviewList({
 
       {items.length > 8 && (
         <div className="relative">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search titles…"
-            className="pr-9 [&::-webkit-search-cancel-button]:hidden"
+            className="pr-9 pl-9 [&::-webkit-search-cancel-button]:hidden"
           />
           {query !== "" && (
             <button
@@ -960,29 +963,6 @@ interface ReviewItemProps {
   highlight?: string;
 }
 
-// Wrap each case-insensitive occurrence of the search term in the title so the
-// user sees what matched. `needle` is already lower-cased.
-function highlightTitle(title: string, needle: string): ReactNode {
-  if (!needle) return title;
-  const lower = title.toLowerCase();
-  const parts: ReactNode[] = [];
-  let from = 0;
-  let key = 0;
-  let idx = lower.indexOf(needle);
-  while (idx !== -1) {
-    if (idx > from) parts.push(title.slice(from, idx));
-    parts.push(
-      <mark key={key++} className="bg-gold/30 rounded-[2px] text-inherit">
-        {title.slice(idx, idx + needle.length)}
-      </mark>,
-    );
-    from = idx + needle.length;
-    idx = lower.indexOf(needle, from);
-  }
-  if (from < title.length) parts.push(title.slice(from));
-  return parts;
-}
-
 // One review row: the selection checkbox + metadata, plus an on-demand preview
 // of the exact no-LLM content this item would contribute (so you can see what
 // you're keeping before compiling). The preview is fetched lazily on first
@@ -1094,7 +1074,7 @@ function ReviewItem({
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className={cn("truncate text-sm", asSource && "font-medium")}>
-              {highlightTitle(item.title, highlight ?? "")}
+              {highlightMatch(item.title, highlight ?? "")}
             </span>
             {metaParts.length > 0 && (
               <span className={metaClass}>
