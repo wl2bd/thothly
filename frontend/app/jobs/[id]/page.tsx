@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  Coins,
   Eye,
   EyeOff,
   GripVertical,
@@ -575,6 +576,13 @@ function ReviewList({
       it.is_punctuated === false,
   ).length;
 
+  // Transcription availability gates the one unavoidable per-item cost: a
+  // podcast's tag only wears the metered accent when STT can actually run, and
+  // the legend under the list only appears when such an item is present.
+  const sttAvailable = !!llm?.stt_available;
+  const hasMeteredPodcast =
+    sttAvailable && items.some((it) => it.item_type === "podcast");
+
   // Sources AI polish can actually act on: youtube captions and articles.
   // Podcasts keep their verbatim diarized dialogue, so on an all-podcast
   // selection the block is irrelevant and gets hidden (below).
@@ -702,7 +710,7 @@ function ReviewList({
           item={only}
           checked={selected.has(only.id)}
           onToggle={() => onToggle(only.id)}
-          showType
+          sttAvailable={sttAvailable}
           sourceUrl={showHost ? url : undefined}
           dragHandleProps={handleProps}
           asSource
@@ -805,7 +813,7 @@ function ReviewList({
               item={item}
               checked={selected.has(item.id)}
               onToggle={() => onToggle(item.id)}
-              showType={uniformKind === null}
+              sttAvailable={sttAvailable}
               reserveGrip={reorderable}
               highlight={needle}
             />
@@ -918,6 +926,20 @@ function ReviewList({
         )}
       </div>
 
+      {/* Legend for the one paid-path accent in the list: it appears only when a
+          metered podcast is actually present, so the gold tag never goes
+          unexplained — and never shows when there's nothing to explain. */}
+      {hasMeteredPodcast && (
+        <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+          <Coins className="text-gold mt-px size-3.5 shrink-0" />
+          <span>
+            <span className="text-foreground font-medium">Metered either way</span>{" "}
+            (transcribing audio). Everything else is free unless you turn on AI
+            polish.
+          </span>
+        </p>
+      )}
+
       {llm &&
         llm.available &&
         llm.roles.length > 0 &&
@@ -983,9 +1005,9 @@ interface ReviewItemProps {
   item: DiscoveredItem;
   checked: boolean;
   onToggle: () => void;
-  // Whether to show the per-row type pill. Off when the whole source is one kind
-  // (the header carries it once) — see renderGroupBody.
-  showType: boolean;
+  // Whether speech-to-text is configured. Only a podcast's tag reads it: with STT
+  // on, transcription is metered, so the tag wears the paid-path accent.
+  sttAvailable: boolean;
   // When this row IS a whole single-item source (no group header above it), its
   // domain is shown inline (favicon + host) so it still reads as a top-level
   // source, and a drag handle is rendered so it can still be reordered.
@@ -1013,7 +1035,7 @@ function ReviewItem({
   item,
   checked,
   onToggle,
-  showType,
+  sttAvailable,
   sourceUrl,
   dragHandleProps,
   asSource,
@@ -1040,18 +1062,12 @@ function ReviewItem({
     }
   }
 
-  const status = statusBadge(item);
   // The meta fields this row actually has, built as a list so the · separators
-  // fall only between present fields — with the type pill now optional, a fixed
-  // "pill first" layout would otherwise leave a leading separator (or, on a bare
-  // item like an unresolved Wikipedia link, an empty second line).
+  // fall only between present fields. The content tag leads every row (what was
+  // retrieved + whether it needs work), then the domain (single-item sources),
+  // then the textual facts (language, word count), then how long it runs.
   const dur = durationLabel(item);
-  const metaParts: ReactNode[] = [];
-  if (showType) {
-    metaParts.push(
-      <SourceTypePill kind={kindFromItemType(item.item_type)} className="shrink-0" />,
-    );
-  }
+  const metaParts: ReactNode[] = [contentTag(item, sttAvailable)];
   if (sourceUrl) {
     metaParts.push(
       <span className="inline-flex shrink-0 items-center gap-1">
@@ -1059,6 +1075,9 @@ function ReviewItem({
         {hostOf(sourceUrl)}
       </span>,
     );
+  }
+  for (const part of extraMeta(item)) {
+    metaParts.push(<span className="min-w-0 truncate">{part}</span>);
   }
   if (item.reading_time_min != null) {
     metaParts.push(
@@ -1074,18 +1093,11 @@ function ReviewItem({
       </SourceMetric>,
     );
   }
-  // The status flag ("Raw captions") sits with the other transcript facts —
-  // ahead of the language and word count — rather than back among the type pill
-  // and domain, so all the "about this transcript" info reads as one group.
-  if (status) metaParts.push(status);
-  for (const part of extraMeta(item)) {
-    metaParts.push(<span className="min-w-0 truncate">{part}</span>);
-  }
 
-  // A source-level row (a single-item source) carries the most meta — type,
-  // domain, read time, duration — so let it wrap onto a second/third line rather
-  // than clip the tail. Plain item rows keep the single-line, clip-on-overflow
-  // treatment.
+  // A source-level row (a single-item source) carries the most meta — content
+  // tag, domain, read time, duration — so let it wrap onto a second/third line
+  // rather than clip the tail. Plain item rows keep the single-line,
+  // clip-on-overflow treatment.
   const metaClass = cn(
     "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs",
     !sourceUrl && "sm:flex-nowrap sm:overflow-hidden",
@@ -1424,23 +1436,48 @@ function extraMeta(item: DiscoveredItem): string[] {
   return parts;
 }
 
-// Per-video readiness — only flags what needs attention before compiling:
-// missing/unchecked subtitles, or raw captions that read rough. The flag is
-// factual, not an alert: it states the transcript's state ("Raw captions"),
-// while the AI polish panel is where the optional fix lives.
-// A transcript that already reads cleanly is the silent default (no badge):
-// confirming the happy path is noise, the signal is the exceptions.
-function statusBadge(item: DiscoveredItem) {
-  if (item.item_type !== "youtube") return null;
-
+// The leading tag on every review row: what was actually retrieved for this
+// item, and — by its wording — whether it will need work. At review the medium
+// (Video / Episode / Article) is the least useful thing to repeat: the source
+// header and favicon already say it. What drives the decision here is the
+// content state, so that takes the lead slot. Factual and neutral, never an
+// alert — the wording carries the meaning (a clean "Transcript" vs. rough "Raw
+// captions"), so only the one genuinely empty case ("No subtitles") gets color.
+// Always returns a tag: at this screen, confirming what each item contributes
+// is the whole point, so the clean cases state themselves too.
+//
+// One item kind carries an unavoidable cost: a podcast has no text until it's
+// transcribed (metered STT), so when transcription is available its tag wears
+// the brand's paid-path accent (gold + coin) — the cue that this one costs to
+// include no matter what, while everything else is free unless AI polish is on.
+// "Web text" (not "Article") names what was pulled from a page so it never reads
+// as a duplicate of the "Article" type pill the source header already shows.
+function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
+  if (item.item_type === "podcast") {
+    return sttAvailable ? (
+      <Badge variant="secondary" className="bg-gold/10 text-gold gap-1">
+        <Coins />
+        From audio
+      </Badge>
+    ) : (
+      <Badge variant="secondary">From audio</Badge>
+    );
+  }
+  if (item.item_type === "blog") {
+    return <Badge variant="secondary">Web text</Badge>;
+  }
+  // YouTube: the content state varies per item, so this is where it earns its
+  // place — clean transcript, rough auto-captions, or nothing usable.
   if (item.has_transcript === false) {
-    return <Badge variant="destructive">⛔ No subtitles</Badge>;
+    return <Badge variant="destructive">No subtitles</Badge>;
   }
   if (item.has_transcript == null) {
-    return <Badge variant="secondary">❓ Subtitles unchecked</Badge>;
+    return <Badge variant="secondary">Subtitles unchecked</Badge>;
   }
-  if (item.is_punctuated) return null;
-  return <Badge variant="secondary">Raw captions</Badge>;
+  if (item.is_punctuated === false) {
+    return <Badge variant="secondary">Raw captions</Badge>;
+  }
+  return <Badge variant="secondary">Transcript</Badge>;
 }
 
 // --- Pre-compile cost estimate -------------------------------------------------
