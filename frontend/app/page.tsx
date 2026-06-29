@@ -782,7 +782,7 @@ function DataAndFaq() {
     },
     {
       q: "Is it free?",
-      a: "Yes. The default path uses no AI and costs nothing. Optional cleanup or podcast transcription only cost if you connect a paid provider, or stay free with a local one.",
+      a: "Yes. The default path uses no AI and costs nothing. Optional AI polish or podcast transcription only cost if you connect a paid provider, or stay free with a local one.",
     },
     {
       q: "Where do my files go?",
@@ -808,7 +808,7 @@ function DataAndFaq() {
           <ul className="text-muted-foreground marker:text-muted-foreground/40 mt-4 flex list-disc flex-col gap-2 pl-5 text-sm text-balance">
             <li>Free by default: the standard path uses no AI at all.</li>
             <li>
-              AI cleanup is optional, and can run fully local (Ollama) or on a
+              AI polish is optional, and can run fully local (Ollama) or on a
               provider you choose.
             </li>
             <li>

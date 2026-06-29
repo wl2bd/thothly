@@ -13,14 +13,13 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ChevronDown,
-  ChevronRight,
   Eye,
   EyeOff,
   GripVertical,
   Minus,
   Plus,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -50,6 +49,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import { Logotype } from "@/components/brand";
 import {
   MetaSep,
@@ -256,6 +256,19 @@ export default function JobPage() {
     });
   }, []);
 
+  // Flip several roles at once — the AI polish master switch turns its whole
+  // safe set on, or clears every opt-in pass off, in one move.
+  const setRolesMany = useCallback((ids: string[], value: boolean) => {
+    setRoles((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (value) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
   async function onConfirm() {
     if (!job) return;
     setConfirming(true);
@@ -319,6 +332,7 @@ export default function JobPage() {
               llm={llm}
               selectedRoles={roles}
               onToggleRole={toggleRole}
+              onSetRolesMany={setRolesMany}
               onTitleChange={onTitleChange}
               onToggle={toggle}
               onSelectItems={selectItems}
@@ -498,6 +512,7 @@ interface ReviewListProps {
   llm: LlmConfig | null;
   selectedRoles: Set<string>;
   onToggleRole: (id: string) => void;
+  onSetRolesMany: (ids: string[], value: boolean) => void;
   onTitleChange: (title: string) => void;
   onToggle: (id: string) => void;
   onSelectItems: (ids: string[], value: boolean) => void;
@@ -518,6 +533,7 @@ function ReviewList({
   llm,
   selectedRoles,
   onToggleRole,
+  onSetRolesMany,
   onTitleChange,
   onToggle,
   onSelectItems,
@@ -816,20 +832,27 @@ function ReviewList({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">
-          {items.length} item{items.length !== 1 ? "s" : ""}, {selected.size}{" "}
-          selected
-        </p>
-        <div className="flex gap-1">
-          <Button type="button" variant="ghost" size="xs" onClick={onSelectAll}>
-            Select all
-          </Button>
-          <Button type="button" variant="ghost" size="xs" onClick={onSelectNone}>
-            Deselect all
-          </Button>
-        </div>
-      </div>
+      {/* Bulk selection lives on the LEFT, as a tri-state checkbox mirroring the
+          per-source group headers — every "select this" affordance on the screen
+          is a checkbox in the left column, so the master belongs there too. The
+          count is status, not a heading, so it rides along muted. */}
+      <label className="flex w-fit cursor-pointer items-center gap-3 text-sm">
+        <Checkbox
+          checked={items.length > 0 && selected.size === items.length}
+          indeterminate={selected.size > 0 && selected.size < items.length}
+          onCheckedChange={() =>
+            selected.size === items.length ? onSelectNone() : onSelectAll()
+          }
+          aria-label={
+            selected.size === items.length && items.length > 0
+              ? "Deselect all items"
+              : "Select all items"
+          }
+        />
+        <span className="text-muted-foreground">
+          {selected.size} of {items.length} selected
+        </span>
+      </label>
 
       {items.length > 8 && (
         <div className="relative">
@@ -896,6 +919,7 @@ function ReviewList({
           llm={llm}
           selectedRoles={selectedRoles}
           onToggleRole={onToggleRole}
+          onSetRolesMany={onSetRolesMany}
           unpunctuatedSelected={unpunctuatedSelected}
         />
       )}
@@ -1219,73 +1243,109 @@ interface RoleSelectorProps {
   llm: LlmConfig;
   selectedRoles: Set<string>;
   onToggleRole: (id: string) => void;
+  onSetRolesMany: (ids: string[], value: boolean) => void;
   unpunctuatedSelected: number;
 }
 
-// AI cleanup is secondary to the free path, so it lives in a disclosure that's
-// collapsed by default — the summary still surfaces how many videos would
-// benefit so the user knows there's something relevant inside. Only rendered
-// when an LLM is actually configured (the caller gates on llm.available), so
-// there's no disabled state to handle here.
+// AI polish, the one paid path, presented as a single master switch: on engages
+// the safe set (a copyedit pass; punctuation already runs on its own), off
+// clears every optional pass. The opinionated extras that invent structure or
+// generate text (sections, preface) hide behind "Customize", opt-in one by one.
+// Roles are grouped by their backend `tier` so the ids stay out of the UI.
+// Only rendered when a model is configured (caller gates on llm.available).
 function RoleSelector({
   llm,
   selectedRoles,
   onToggleRole,
+  onSetRolesMany,
   unpunctuatedSelected,
 }: RoleSelectorProps) {
-  const [open, setOpen] = useState(false);
-  const activeCount = selectedRoles.size;
-  const summary =
-    activeCount > 0
-      ? `${activeCount} on`
-      : unpunctuatedSelected > 0
-        ? `${unpunctuatedSelected} could be cleaned up`
-        : "Optional";
+  const defaultIds = llm.roles
+    .filter((r) => r.tier === "default")
+    .map((r) => r.id);
+  const extraRoles = llm.roles.filter((r) => r.tier === "extra");
+  const extraIds = extraRoles.map((r) => r.id);
+
+  // Engaged once the safe set is on. Falls back to "any opt-in role" if a build
+  // ever ships no default-tier role, so the switch never gets stuck off.
+  const masterOn =
+    defaultIds.length > 0
+      ? defaultIds.every((id) => selectedRoles.has(id))
+      : selectedRoles.size > 0;
+
+  function setMaster(on: boolean) {
+    if (on) onSetRolesMany(defaultIds, true);
+    else onSetRolesMany([...defaultIds, ...extraIds], false);
+  }
+
+  const plural = unpunctuatedSelected !== 1 ? "s" : "";
+  const subtext = masterOn
+    ? "Punctuation where it's missing, plus a light copyedit."
+    : unpunctuatedSelected > 0
+      ? `${unpunctuatedSelected} raw transcript${plural} are punctuated automatically.`
+      : "Tidy wording and fix small transcription slips.";
 
   return (
-    <div className="rounded-xl border border-dashed">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
-      >
-        {open ? (
-          <ChevronDown className="text-muted-foreground size-4 shrink-0" />
-        ) : (
-          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-        )}
-        <span className="flex-1 text-sm font-medium">AI cleanup</span>
-        <span className="text-muted-foreground text-xs">{summary}</span>
-      </button>
+    <div
+      className={cn(
+        "rounded-xl border transition-colors",
+        // Dashed + muted while off (reads as "optional, secondary to the free
+        // path"); once engaged it firms into a gold-edged panel so the one paid
+        // path carries the brand's single accent color.
+        masterOn ? "border-gold/30 bg-foreground/[0.02]" : "border-dashed",
+      )}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span
+          aria-hidden
+          className="bg-gold/10 text-gold flex size-7 shrink-0 items-center justify-center rounded-lg"
+        >
+          <Sparkles className="size-4" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm font-medium">AI polish</span>
+          <span className="text-muted-foreground text-xs">{subtext}</span>
+        </span>
+        <Switch
+          checked={masterOn}
+          onCheckedChange={setMaster}
+          aria-label="AI polish"
+          className="shrink-0"
+        />
+      </div>
 
-      {open && (
-        <div className="flex flex-col gap-3 px-4 pb-4 pl-10">
-          <p className="text-muted-foreground text-xs">
-            {unpunctuatedSelected > 0
-              ? `${unpunctuatedSelected} unpunctuated video${unpunctuatedSelected !== 1 ? "s" : ""} in the selection. Punctuation will make them readable.`
-              : "Improves the selected transcripts. No cost on the default path."}
-          </p>
-          <ul className="flex flex-col gap-2.5">
-            {llm.roles.map((role) => (
-              <li key={role.id}>
-                <label className="flex cursor-pointer items-start gap-3">
-                  <Checkbox
-                    checked={selectedRoles.has(role.id)}
-                    onCheckedChange={() => onToggleRole(role.id)}
-                    className="mt-0.5"
-                  />
-                  <span className="flex flex-col gap-0.5">
-                    <span className="text-sm leading-none font-medium">
-                      {role.label}
+      {masterOn && extraRoles.length > 0 && (
+        <div className="px-4 pb-4">
+          <ul className="border-border/70 flex flex-col gap-1 border-t pt-3">
+            {extraRoles.map((role) => {
+              const checked = selectedRoles.has(role.id);
+              return (
+                <li key={role.id}>
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors",
+                      // A faint gold wash marks an active extra; idle rows only
+                      // light up on hover.
+                      checked ? "bg-gold/[0.07]" : "hover:bg-foreground/5",
+                    )}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => onToggleRole(role.id)}
+                      className="mt-0.5"
+                    />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-sm leading-none font-medium">
+                        {role.label}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {role.description}
+                      </span>
                     </span>
-                    <span className="text-muted-foreground text-xs">
-                      {role.description}
-                    </span>
-                  </span>
-                </label>
-              </li>
-            ))}
+                  </label>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -1339,8 +1399,12 @@ function extraMeta(item: DiscoveredItem): string[] {
   return parts;
 }
 
-// Per-video readiness, shown so the user knows before compiling whether a
-// transcript reads cleanly, will need an LLM cleanup, or is missing entirely.
+// Per-video readiness — only flags what needs attention before compiling:
+// missing/unchecked subtitles, or raw captions that read rough. The flag is
+// factual, not an alert: it states the transcript's state ("Raw captions"),
+// while the AI polish panel is where the optional fix lives.
+// A transcript that already reads cleanly is the silent default (no badge):
+// confirming the happy path is noise, the signal is the exceptions.
 function statusBadge(item: DiscoveredItem) {
   if (item.item_type !== "youtube") return null;
 
@@ -1350,10 +1414,8 @@ function statusBadge(item: DiscoveredItem) {
   if (item.has_transcript == null) {
     return <Badge variant="secondary">❓ Subtitles unchecked</Badge>;
   }
-  if (item.is_punctuated) {
-    return <Badge variant="success">✅ Punctuated</Badge>;
-  }
-  return <Badge variant="warning">⚠️ LLM cleanup</Badge>;
+  if (item.is_punctuated) return null;
+  return <Badge variant="secondary">Raw captions</Badge>;
 }
 
 // --- Pre-compile cost estimate -------------------------------------------------
@@ -1423,7 +1485,7 @@ function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
 
   const parts: string[] = [];
   if (cost.stt > 0) parts.push(`transcription ${formatUsd(cost.stt)}`);
-  if (cost.llm > 0) parts.push(`AI cleanup ${formatUsd(cost.llm)}`);
+  if (cost.llm > 0) parts.push(`AI polish ${formatUsd(cost.llm)}`);
 
   const totalLabel = total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
 

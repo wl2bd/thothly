@@ -14,6 +14,7 @@ class RoleInfo(BaseModel):
     label: str
     description: str
     scope: str
+    tier: str  # "auto" | "default" | "extra" — see app/pipeline/roles.py
 
 
 class Pricing(BaseModel):
@@ -45,7 +46,13 @@ def get_llm_config() -> LLMConfig:
         available=llm_available(),
         stt_available=stt_available(),
         roles=[
-            RoleInfo(id=r.id, label=r.label, description=r.description, scope=r.scope)
+            RoleInfo(
+                id=r.id,
+                label=r.label,
+                description=r.description,
+                scope=r.scope,
+                tier=r.tier,
+            )
             for r in ROLES
         ],
         pricing=Pricing(

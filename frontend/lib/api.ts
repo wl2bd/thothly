@@ -70,6 +70,10 @@ export interface LlmRole {
   label: string;
   description: string;
   scope: "item" | "book";
+  // How the review screen groups the role (see backend app/pipeline/roles.py):
+  // "auto" runs on its own, "default" is the master switch's safe set, "extra"
+  // lives behind Customize.
+  tier: "auto" | "default" | "extra";
 }
 
 export interface LlmPricing {

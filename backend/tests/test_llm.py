@@ -31,6 +31,7 @@ def test_all_roles_have_metadata() -> None:
     for role in ROLES:
         assert role.id and role.label and role.description
         assert role.scope in ("item", "book")
+        assert role.tier in ("auto", "default", "extra")
         assert role.system_prompt
 
 

@@ -25,6 +25,13 @@ class Role:
     label: str
     description: str
     scope: str  # "item" (per chapter) | "book" (once, on the whole book)
+    # How the review screen surfaces the role:
+    #   "auto"    — always applied when needed, never a user choice (punctuation
+    #               on raw captions); shown only for transparency, not toggled.
+    #   "default" — the safe set the master "AI polish" switch turns on.
+    #   "extra"   — opinionated passes (invent structure / generate text) kept
+    #               behind a "Customize" disclosure, opt-in one by one.
+    tier: str
     system_prompt: str
 
 
@@ -112,37 +119,41 @@ ROLES: list[Role] = [
         id=PUNCTUATE,
         label="Punctuation",
         description=(
-            "Restores punctuation and paragraphs to unpunctuated transcripts. "
-            "Only acts on videos flagged “to clean up”."
+            "Restores punctuation and paragraphs to raw, unpunctuated "
+            "transcripts. Runs automatically whenever a source needs it."
         ),
         scope="item",
+        tier="auto",
         system_prompt=_PUNCTUATE_PROMPT,
     ),
     Role(
         id=COPYEDIT,
         label="Copyedit",
         description=(
-            "Removes filler words and fixes speech-recognition errors, without "
+            "Tidies filler words and small transcription slips, without "
             "changing the meaning."
         ),
         scope="item",
+        tier="default",
         system_prompt=_COPYEDIT_PROMPT,
     ),
     Role(
         id=SECTIONS,
         label="Sections",
         description=(
-            "Adds section headings to content with no structure (videos without "
-            "chapters), for a better table of contents."
+            "Adds section headings to long, unstructured sources, for a "
+            "cleaner table of contents."
         ),
         scope="item",
+        tier="extra",
         system_prompt=_SECTIONS_PROMPT,
     ),
     Role(
         id=PREFACE,
         label="Preface",
-        description="Generates a short preface to open the book.",
+        description="Generates a short preface to open the compilation.",
         scope="book",
+        tier="extra",
         system_prompt=_PREFACE_PROMPT,
     ),
 ]
