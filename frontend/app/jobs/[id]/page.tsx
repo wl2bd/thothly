@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Info,
   Minus,
   Plus,
   Search,
@@ -1479,6 +1480,9 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
       <Tooltip content="Auto-generated captions, without punctuation, so they read a bit rough as-is.">
         <Badge variant="secondary" tabIndex={0} className="cursor-help">
           Raw captions
+          {/* A visible marker that there's a note here — a bare hover tip can't
+              be guessed at. Neutral, so it informs without alarming. */}
+          <Info className="opacity-60" />
         </Badge>
       </Tooltip>
     );
