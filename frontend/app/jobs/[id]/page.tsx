@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type ReactNode,
@@ -526,6 +527,11 @@ function ReviewList({
 }: ReviewListProps) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  // The bottom scroll-fade is only meaningful while content is hidden below the
+  // fold; it's measured (not always-on) so a list that fits, or one scrolled to
+  // the end, doesn't dim its last row for nothing.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -596,6 +602,24 @@ function ReviewList({
   // the SortableContext items must match what's on screen, and there's nothing
   // to reorder otherwise.
   const reorderable = needle === "" && sourceOrder.length > 1;
+
+  // Track whether anything is still hidden below the fold so the bottom fade can
+  // be shown only then. Re-measured on scroll, on resize, and whenever the
+  // rendered content changes (filtering, collapsing, reordering).
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const measure = () =>
+      setHasMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1);
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      observer.disconnect();
+    };
+  }, [visibleGroups, collapsed]);
 
   const toggleCollapse = (index: number) =>
     setCollapsed((prev) => {
@@ -828,8 +852,9 @@ function ReviewList({
       )}
 
       <div
+        ref={scrollerRef}
         className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto"
-        style={SCROLL_FADE}
+        style={hasMoreBelow ? SCROLL_FADE : undefined}
       >
         {visibleGroups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-8 text-center text-sm">
