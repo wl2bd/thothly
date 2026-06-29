@@ -67,6 +67,17 @@ import {
 
 const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
 
+// Softens the bottom edge of the scrollable item list: the last 2rem fade to
+// transparent so content dissolves into the card instead of being sliced on a
+// hard line (it also doubles as a "there's more below" affordance). The top edge
+// is handled by the opaque sticky header + its own fade, so only the bottom is
+// masked here.
+const SCROLL_FADE: React.CSSProperties = {
+  maskImage: "linear-gradient(to bottom, #000 calc(100% - 2rem), transparent)",
+  WebkitMaskImage:
+    "linear-gradient(to bottom, #000 calc(100% - 2rem), transparent)",
+};
+
 // The book title is required to generate and capped so it stays a title (it
 // lands in EPUB metadata, the cover and the filename).
 const BOOK_TITLE_MAX = 100;
@@ -601,9 +612,18 @@ function ReviewList({
     const selectedCount = ids.filter((id) => selected.has(id)).length;
     const allSelected = selectedCount === ids.length;
     const isCollapsed = collapsed.has(sourceIndex);
+    // When every item in the source is the same kind (a channel of videos, a
+    // Wikipedia page of articles, a podcast of episodes), the per-row type pill
+    // repeats what the group already is — so we show the kind ONCE in the header
+    // and drop it from each row. A mixed group keeps its per-row pills.
+    const kinds = new Set(groupItems.map((it) => kindFromItemType(it.item_type)));
+    const uniformKind = kinds.size === 1 ? [...kinds][0] : null;
     return (
       <>
-        <div className="bg-card/95 sticky top-0 z-10 flex items-center gap-2 px-3 py-2 backdrop-blur-sm">
+        {/* sticky is itself a positioned containing block, so the absolute soft
+            fade below anchors to this header. Opaque (not /95) so rows vanish
+            cleanly under it instead of ghosting through. */}
+        <div className="bg-card sticky top-0 z-10 flex items-center gap-2 px-3 py-2">
           {handleProps && (
             <button
               type="button"
@@ -631,6 +651,9 @@ function ReviewList({
               {selectedCount}/{groupItems.length}
             </span>
           </button>
+          {uniformKind && (
+            <SourceTypePill kind={uniformKind} className="shrink-0" />
+          )}
           <button
             type="button"
             onClick={() => onSelectItems(ids, !allSelected)}
@@ -638,6 +661,12 @@ function ReviewList({
           >
             {allSelected ? "Deselect" : "Select"}
           </button>
+          {/* Soft edge under the sticky header: rows fade in as they emerge from
+              under it rather than appearing on a hard line. */}
+          <span
+            aria-hidden="true"
+            className="from-card pointer-events-none absolute inset-x-0 top-full h-4 bg-gradient-to-b to-transparent"
+          />
         </div>
         {!isCollapsed &&
           groupItems.map((item) => (
@@ -647,6 +676,7 @@ function ReviewList({
               item={item}
               checked={selected.has(item.id)}
               onToggle={() => onToggle(item.id)}
+              showType={uniformKind === null}
             />
           ))}
       </>
@@ -704,7 +734,10 @@ function ReviewList({
         />
       )}
 
-      <div className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto">
+      <div
+        className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto"
+        style={SCROLL_FADE}
+      >
         {visibleGroups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-8 text-center text-sm">
             No results for “{query}”.
@@ -788,13 +821,16 @@ interface ReviewItemProps {
   item: DiscoveredItem;
   checked: boolean;
   onToggle: () => void;
+  // Whether to show the per-row type pill. Off when the whole source is one kind
+  // (the header carries it once) — see renderGroupBody.
+  showType: boolean;
 }
 
 // One review row: the selection checkbox + metadata, plus an on-demand preview
 // of the exact no-LLM content this item would contribute (so you can see what
 // you're keeping before compiling). The preview is fetched lazily on first
 // expand and then cached locally.
-function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
+function ReviewItem({ jobId, item, checked, onToggle, showType }: ReviewItemProps) {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<ItemPreview | null>(null);
   const [loading, setLoading] = useState(false);
@@ -816,6 +852,36 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
   }
 
   const status = statusBadge(item);
+  // The meta fields this row actually has, built as a list so the · separators
+  // fall only between present fields — with the type pill now optional, a fixed
+  // "pill first" layout would otherwise leave a leading separator (or, on a bare
+  // item like an unresolved Wikipedia link, an empty second line).
+  const dur = durationLabel(item);
+  const metaParts: ReactNode[] = [];
+  if (showType) {
+    metaParts.push(
+      <SourceTypePill kind={kindFromItemType(item.item_type)} className="shrink-0" />,
+    );
+  }
+  if (item.reading_time_min != null) {
+    metaParts.push(
+      <SourceMetric kind="reading" className="shrink-0">
+        ~{item.reading_time_min} min read
+      </SourceMetric>,
+    );
+  }
+  if (dur) {
+    metaParts.push(
+      <SourceMetric kind="duration" className="shrink-0">
+        {dur}
+      </SourceMetric>,
+    );
+  }
+  for (const part of extraMeta(item)) {
+    metaParts.push(<span className="min-w-0 truncate">{part}</span>);
+  }
+  if (status) metaParts.push(status);
+
   return (
     <div
       className={cn(
@@ -831,40 +897,16 @@ function ReviewItem({ jobId, item, checked, onToggle }: ReviewItemProps) {
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="truncate text-sm">{item.title}</span>
-            <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
-              <SourceTypePill
-                kind={kindFromItemType(item.item_type)}
-                className="shrink-0"
-              />
-              {item.reading_time_min != null && (
-                <>
-                  <MetaSep />
-                  <SourceMetric kind="reading" className="shrink-0">
-                    ~{item.reading_time_min} min read
-                  </SourceMetric>
-                </>
-              )}
-              {durationLabel(item) && (
-                <>
-                  <MetaSep />
-                  <SourceMetric kind="duration" className="shrink-0">
-                    {durationLabel(item)}
-                  </SourceMetric>
-                </>
-              )}
-              {extraMeta(item).map((part) => (
-                <Fragment key={part}>
-                  <MetaSep />
-                  <span className="min-w-0 truncate">{part}</span>
-                </Fragment>
-              ))}
-              {status && (
-                <>
-                  <MetaSep />
-                  {status}
-                </>
-              )}
-            </span>
+            {metaParts.length > 0 && (
+              <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+                {metaParts.map((node, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <MetaSep />}
+                    {node}
+                  </Fragment>
+                ))}
+              </span>
+            )}
           </span>
         </label>
         <Tooltip content={open ? "Hide preview" : "Preview"}>
