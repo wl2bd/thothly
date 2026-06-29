@@ -80,6 +80,33 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, wi
     return lines
 
 
+def _strip_unrenderable(text: str, font: ImageFont.FreeTypeFont) -> str:
+    """Drop characters the cover font (Fraunces, a Latin serif) has no glyph for.
+
+    Such a character paints as the .notdef box (tofu □) on the cover even though
+    the EPUB's own metadata keeps the full title. Every missing glyph maps to the
+    SAME .notdef, so a char counts as missing when its advance + bbox match a
+    sentinel noncharacter that no font ever assigns. Whitespace is always kept,
+    and the gaps a dropped glyph leaves are collapsed (so "dive 😀" → "dive").
+    """
+    try:
+        sentinel = chr(0xFDD0)  # a Unicode noncharacter: never carries a glyph
+        notdef = (font.getlength(sentinel), font.getbbox(sentinel))
+    except Exception:  # probing failed — never risk mangling the title
+        return text
+    kept: list[str] = []
+    for ch in text:
+        if ch.isspace():
+            kept.append(ch)
+            continue
+        try:
+            if (font.getlength(ch), font.getbbox(ch)) != notdef:
+                kept.append(ch)
+        except Exception:  # control / unrenderable → drop
+            pass
+    return " ".join("".join(kept).split())
+
+
 def generate_cover(
     title: str,
     authors: list[str],
@@ -90,6 +117,13 @@ def generate_cover(
     image = Image.new("RGB", (_W, _H), _CREAM)
     draw = ImageDraw.Draw(image)
     text_width = _W - 2 * _MARGIN
+
+    # Strip glyphs Fraunces can't render so the cover never shows tofu boxes
+    # (the book's real title in the EPUB metadata is untouched). Glyph coverage
+    # is the same at any size, so one probe font serves both title and authors.
+    probe = _font(100)
+    title = _strip_unrenderable(title, probe)
+    authors = [a for a in (_strip_unrenderable(a, probe) for a in authors) if a]
 
     # Emblem — kept at a modest size, centred near the top.
     emblem_file = emblem_path or _EMBLEM_PATH

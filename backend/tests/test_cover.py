@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 from app.render import epub as epub_module
-from app.render.cover import _oklch_to_rgb, generate_cover
+from app.render.cover import _font, _oklch_to_rgb, _strip_unrenderable, generate_cover
 from app.render.images import _parse_icon_size
 from app.pipeline.models import CompiledBook, CompiledChapter
 
@@ -106,3 +106,15 @@ def test_oklch_to_rgb_matches_known_anchor():
     # The cream background should land on a warm near-white.
     r, g, b = _oklch_to_rgb(0.972, 0.013, 84)
     assert r > 240 and g > 235 and b > 225 and r >= g >= b
+
+
+def test_strip_unrenderable_drops_glyphs_fraunces_lacks():
+    # A glyph Fraunces can't draw (emoji, other scripts) would paint as a tofu
+    # box; it's dropped and the gap collapsed, while Latin + accents + the
+    # punctuation the serif carries stay.
+    probe = _font(100)
+    assert _strip_unrenderable("Deep dive \U0001F600", probe) == "Deep dive"
+    assert _strip_unrenderable("中文 title", probe) == "title"
+    assert _strip_unrenderable("Élégance française", probe) == "Élégance française"
+    assert _strip_unrenderable("A — B • C", probe) == "A — B • C"
+    assert _strip_unrenderable("\U0001F600\U0001F680", probe) == ""
