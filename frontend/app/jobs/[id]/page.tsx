@@ -1470,7 +1470,18 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
     return <Badge variant="secondary">Subtitles unchecked</Badge>;
   }
   if (item.is_punctuated === false) {
-    return <Badge variant="secondary">Raw captions</Badge>;
+    // Neutral, not an alarm: raw captions still work, they just read rougher.
+    // A hover/focus tip explains what the term means (the word alone may not
+    // convey it, and the AI-polish nudge below isn't shown when no model is
+    // set). It only DESCRIBES the state — offering the fix is the polish panel's
+    // job, and that panel exists only when there's a fix to offer.
+    return (
+      <Tooltip content="Auto-generated captions, without punctuation, so they read a bit rough as-is.">
+        <Badge variant="secondary" tabIndex={0} className="cursor-help">
+          Raw captions
+        </Badge>
+      </Tooltip>
+    );
   }
   return <Badge variant="secondary">Transcript</Badge>;
 }
