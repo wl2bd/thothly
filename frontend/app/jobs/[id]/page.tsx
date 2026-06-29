@@ -1305,7 +1305,7 @@ function RoleSelector({
   const subtext = masterOn
     ? "Punctuation where it's missing, plus a light copyedit."
     : unpunctuatedSelected > 0
-      ? `${unpunctuatedSelected} raw transcript${plural} are punctuated automatically.`
+      ? `${unpunctuatedSelected} raw transcript${plural} would read rough. Turn on to punctuate them.`
       : "Tidy wording and fix small transcription slips.";
 
   return (
@@ -1481,8 +1481,9 @@ function estimateCost(
     } else if (it.item_type === "youtube") {
       if (it.has_transcript === false || !available) continue;
       const words = it.word_count ?? 0;
-      // Auto-punctuation runs on raw captions (or whenever ticked).
-      if (it.is_punctuated === false || hasPunctuate) llmCost += pass(words);
+      // Punctuation only runs when AI polish is on, and only on raw captions
+      // (clean_transcript free-splits ones that are already punctuated).
+      if (hasPunctuate && it.is_punctuated === false) llmCost += pass(words);
       if (hasCopyedit) llmCost += pass(words);
       if (hasSections) llmCost += pass(words);
     } else if (available) {

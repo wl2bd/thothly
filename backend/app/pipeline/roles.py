@@ -25,12 +25,13 @@ class Role:
     label: str
     description: str
     scope: str  # "item" (per chapter) | "book" (once, on the whole book)
-    # How the review screen surfaces the role:
-    #   "auto"    — always applied when needed, never a user choice (punctuation
-    #               on raw captions); shown only for transparency, not toggled.
-    #   "default" — the safe set the master "AI polish" switch turns on.
-    #   "extra"   — opinionated passes (invent structure / generate text) kept
-    #               behind a "Customize" disclosure, opt-in one by one.
+    # How the review screen groups the role under the "AI polish" switch:
+    #   "default" — the safe set the master switch turns on (punctuation +
+    #               a light copyedit).
+    #   "extra"   — opinionated passes that invent structure or generate text
+    #               (sections, preface), shown as opt-in checkboxes when on.
+    # ("auto" stays a reserved value for a pass that would always run; with the
+    #  master switch now gating everything, no role uses it today.)
     tier: str
     system_prompt: str
 
@@ -120,10 +121,10 @@ ROLES: list[Role] = [
         label="Punctuation",
         description=(
             "Restores punctuation and paragraphs to raw, unpunctuated "
-            "transcripts. Runs automatically whenever a source needs it."
+            "transcripts so they read cleanly."
         ),
         scope="item",
-        tier="auto",
+        tier="default",
         system_prompt=_PUNCTUATE_PROMPT,
     ),
     Role(

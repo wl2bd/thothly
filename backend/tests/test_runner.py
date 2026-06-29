@@ -191,40 +191,5 @@ def test_extract_video_id():
     assert runner._extract_video_id("https://youtu.be/xyz789") == "xyz789"
 
 
-def _raw_transcript() -> Transcript:
-    # Unpunctuated (no marks), >20 words so is_punctuated is meaningful.
-    return Transcript(
-        video_id="v", language="",
-        segments=[TranscriptSegment(text=" ".join(["mot"] * 40), start_s=0.0, duration_s=1.0)],
-    )
-
-
-def _punctuated_transcript() -> Transcript:
-    return Transcript(
-        video_id="v", language="",
-        segments=[TranscriptSegment(text="This is a sentence. " * 10, start_s=0.0, duration_s=1.0)],
-    )
-
-
-def _enable_llm(monkeypatch):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "llm_base_url", "http://llm")
-    monkeypatch.setattr(cfg.settings, "llm_model", "m")
-
-
-def test_effective_roles_auto_punctuates_raw_youtube_with_llm(monkeypatch):
-    _enable_llm(monkeypatch)
-    assert "punctuate" in runner._effective_youtube_roles([], _raw_transcript())
-    # Existing roles are preserved, no duplicate punctuate.
-    out = runner._effective_youtube_roles(["copyedit"], _raw_transcript())
-    assert out.count("punctuate") == 1 and "copyedit" in out
-
-
-def test_effective_roles_skips_punctuated_transcript(monkeypatch):
-    _enable_llm(monkeypatch)
-    assert runner._effective_youtube_roles([], _punctuated_transcript()) == []
-
-
-def test_effective_roles_no_llm_stays_zero_llm():
-    # Hermetic fixture leaves the LLM unconfigured → no auto-punctuate.
-    assert runner._effective_youtube_roles([], _raw_transcript()) == []
+def test_extract_video_id_trailing_slash():
+    assert runner._extract_video_id("https://youtu.be/xyz789/") == "xyz789"

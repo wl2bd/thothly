@@ -20,13 +20,12 @@ from app.pipeline.compiler import (
     compile_book,
     demote_headings,
     html_to_markdown,
-    is_punctuated,
     strip_leading_title,
     transcript_to_markdown,
 )
 from app.pipeline.llm import llm_available
 from app.pipeline.models import CompiledChapter
-from app.pipeline.roles import PREFACE, PUNCTUATE, has_role
+from app.pipeline.roles import PREFACE, has_role
 from app.render.epub import render_epub
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.podcast import load_episode_transcript
@@ -110,15 +109,13 @@ def _youtube_chapter(
         logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
         return None
 
-    # Raw (unpunctuated) auto-captions have no sentences and overlapping cue
-    # timing, so there's no zero-LLM way to paragraph them — they read as a wall
-    # of mid-sentence breaks. When an LLM is configured, auto-add Punctuation
-    # (it restores punctuation + real paragraphs, fidelity-checked) so the
-    # default output is readable, like the podcast path. Punctuated videos are
-    # left on the free path.
-    effective_roles = _effective_youtube_roles(roles, transcript)
-    if effective_roles:
-        content_md = clean_transcript(transcript, effective_roles, model)
+    # The free path (no roles selected) renders captions with the zero-LLM
+    # grouper. Raw (unpunctuated) captions then read rough — there's no zero-LLM
+    # way to paragraph them — which is the trade-off of leaving "AI polish" off;
+    # turning it on adds the Punctuation pass (and clean_transcript falls back to
+    # a free sentence-split on captions that are already punctuated).
+    if roles:
+        content_md = clean_transcript(transcript, roles, model)
     else:
         content_md = transcript_to_markdown(transcript)
     if not content_md:
@@ -196,24 +193,6 @@ def _blog_chapter(
         published_at=published_at,
         content_md=content_md,
     )
-
-
-def _effective_youtube_roles(roles: list[str], transcript) -> list[str]:
-    """The roles to actually apply to a YouTube transcript.
-
-    User-selected roles, plus an automatic Punctuation pass when the transcript
-    is unpunctuated and an LLM is configured (the free path can't paragraph raw
-    captions sensibly). Returns [] when nothing applies — the caller then uses
-    the zero-LLM renderer.
-    """
-    effective = list(roles)
-    if (
-        llm_available()
-        and PUNCTUATE not in effective
-        and not is_punctuated(transcript.full_text)
-    ):
-        effective.append(PUNCTUATE)
-    return effective
 
 
 def _extract_video_id(url: str) -> str:
