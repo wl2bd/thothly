@@ -575,6 +575,15 @@ function ReviewList({
       it.is_punctuated === false,
   ).length;
 
+  // Sources AI polish can actually act on: youtube captions and articles.
+  // Podcasts keep their verbatim diarized dialogue, so on an all-podcast
+  // selection the block is irrelevant and gets hidden (below).
+  const polishableSelected = items.filter(
+    (it) =>
+      selected.has(it.id) &&
+      (it.item_type === "youtube" || it.item_type === "blog"),
+  ).length;
+
   // Live estimate of what this compile will cost in metered API calls, given
   // the current selection + roles. Recomputed as either changes.
   const cost = useMemo(
@@ -810,7 +819,7 @@ function ReviewList({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-2">
           <Label htmlFor="book-title" className="text-muted-foreground text-xs">
-            Book title
+            Compilation title
           </Label>
           <span className="text-muted-foreground/60 text-xs tabular-nums">
             {title.length}/{BOOK_TITLE_MAX}
@@ -914,26 +923,39 @@ function ReviewList({
         )}
       </div>
 
-      {llm && llm.available && llm.roles.length > 0 && (
-        <RoleSelector
-          llm={llm}
-          selectedRoles={selectedRoles}
-          onToggleRole={onToggleRole}
-          onSetRolesMany={onSetRolesMany}
-          unpunctuatedSelected={unpunctuatedSelected}
-        />
-      )}
+      {llm &&
+        llm.available &&
+        llm.roles.length > 0 &&
+        polishableSelected > 0 && (
+          <RoleSelector
+            llm={llm}
+            selectedRoles={selectedRoles}
+            onToggleRole={onToggleRole}
+            onSetRolesMany={onSetRolesMany}
+            unpunctuatedSelected={unpunctuatedSelected}
+          />
+        )}
 
-      {selected.size > 0 && <CostEstimate cost={cost} />}
-
-      <Button
-        size="lg"
-        onClick={onConfirm}
-        disabled={confirming || selected.size === 0 || title.trim() === ""}
-        className="w-full"
-      >
-        {confirming ? "Starting…" : "Generate"}
-      </Button>
+      {/* Cost and the action are one decision, so they sit together (tighter
+          than the page's section gap). The hint stands in for the cost line
+          when nothing is selected, explaining why Generate is disabled. */}
+      <div className="flex flex-col gap-2">
+        {selected.size > 0 ? (
+          <CostEstimate cost={cost} />
+        ) : (
+          <p className="text-muted-foreground text-center text-xs">
+            Select at least one source to generate.
+          </p>
+        )}
+        <Button
+          size="lg"
+          onClick={onConfirm}
+          disabled={confirming || selected.size === 0 || title.trim() === ""}
+          className="w-full"
+        >
+          {confirming ? "Starting…" : "Generate"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1060,12 +1082,14 @@ function ReviewItem({
   for (const part of extraMeta(item)) {
     metaParts.push(<span className="min-w-0 truncate">{part}</span>);
   }
-  if (status) metaParts.push(status);
+  // The status badge gets its OWN line above the title (rendered in the JSX
+  // below), not this meta row — so a "Raw captions" flag never sits crammed in
+  // among Video · host · duration, and it leads the row as the actionable cue.
 
   // A source-level row (a single-item source) carries the most meta — type,
-  // domain, read time, duration, status — so let it wrap onto a second/third
-  // line rather than clip the tail (which would hide the status badge). Plain
-  // item rows keep the single-line, clip-on-overflow treatment.
+  // domain, read time, duration — so let it wrap onto a second/third line rather
+  // than clip the tail. Plain item rows keep the single-line, clip-on-overflow
+  // treatment.
   const metaClass = cn(
     "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs",
     !sourceUrl && "sm:flex-nowrap sm:overflow-hidden",
@@ -1097,6 +1121,7 @@ function ReviewItem({
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
+            {status}
             <span className={cn("truncate text-sm", asSource && "font-medium")}>
               {highlightMatch(item.title, highlight ?? "")}
             </span>
@@ -1158,7 +1183,10 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
       {preview.note && (
         <p className="text-warning text-xs">{preview.note}</p>
       )}
-      <div className="bg-muted/40 max-h-72 overflow-y-auto rounded-lg border p-3">
+      {/* A quoted excerpt, NOT an editor: a full bordered + filled box reads as
+          a textarea and implies you can type in it. A left rule (blockquote)
+          with a barely-there fill reads as displayed source text. */}
+      <div className="border-border/60 bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l-2 py-2 pr-3 pl-4">
         <MarkdownPreview md={preview.content_md ?? ""} />
       </div>
       {preview.truncated && (
@@ -1176,7 +1204,7 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
 function MarkdownPreview({ md }: { md: string }) {
   const blocks = md.split(/\n{2,}/).filter((b) => b.trim());
   return (
-    <div className="flex flex-col gap-2 text-sm leading-relaxed">
+    <div className="text-muted-foreground flex flex-col gap-2 text-sm leading-relaxed">
       {blocks.map((block, i) => {
         const heading = /^(#{1,6})\s+(.*)$/.exec(block);
         if (heading) {
@@ -1481,13 +1509,15 @@ function formatUsd(value: number): string {
 
 function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
   const total = cost.stt + cost.llm;
-  if (total <= 0) return null;
 
   const parts: string[] = [];
   if (cost.stt > 0) parts.push(`transcription ${formatUsd(cost.stt)}`);
   if (cost.llm > 0) parts.push(`AI polish ${formatUsd(cost.llm)}`);
 
-  const totalLabel = total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
+  // "Free" is the headline, not a blank line: when nothing is metered, say so.
+  // It's the zero-LLM promise paying off, worth affirming at the decision point.
+  const totalLabel =
+    total <= 0 ? "Free" : total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
 
   return (
     <div className="text-muted-foreground flex items-baseline justify-between gap-2 text-xs">
