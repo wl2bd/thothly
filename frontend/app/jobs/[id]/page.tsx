@@ -17,6 +17,8 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Minus,
+  Plus,
 } from "lucide-react";
 import {
   DndContext,
@@ -47,8 +49,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Logotype } from "@/components/brand";
 import {
   MetaSep,
+  SourceFavicon,
   SourceMetric,
   SourceTypePill,
+  hostOf,
   kindFromItemType,
 } from "@/components/source-kind";
 import { cn } from "@/lib/utils";
@@ -618,49 +622,113 @@ function ReviewList({
     // and drop it from each row. A mixed group keeps its per-row pills.
     const kinds = new Set(groupItems.map((it) => kindFromItemType(it.item_type)));
     const uniformKind = kinds.size === 1 ? [...kinds][0] : null;
+    // The header now reads like a source on the home page (a name in normal case,
+    // its favicon + domain, its type) instead of an all-caps section divider, so
+    // the two screens speak the same visual language. The domain is dropped when
+    // it would just echo the name (the name fell back to the host already).
+    const source = sources[sourceIndex];
+    const url = source?.url ?? "";
+    const title = groupLabel(source);
+    const host = hostOf(url);
+    // Show the domain in the meta line unless the title already fell back to it
+    // (no captured name), so it's never printed twice.
+    const showHost = host !== "" && host !== title;
+
+    // A source that resolved to a single item has no group to manage (collapse,
+    // select-all, a 1/1 count are all moot, and a header would just repeat the
+    // lone item's title). Render it as one top-level source row instead — its
+    // own domain + type inline, its drag handle on the row — mirroring how the
+    // home page lists each source as a single line.
+    if (groupItems.length === 1) {
+      const only = groupItems[0];
+      return (
+        <ReviewItem
+          jobId={jobId}
+          item={only}
+          checked={selected.has(only.id)}
+          onToggle={() => onToggle(only.id)}
+          showType
+          sourceUrl={showHost ? url : undefined}
+          dragHandleProps={handleProps}
+          asSource
+        />
+      );
+    }
+
+    const someSelected = selectedCount > 0 && !allSelected;
     return (
       <>
         {/* sticky is itself a positioned containing block, so the absolute soft
             fade below anchors to this header. Opaque (not /95) so rows vanish
-            cleanly under it instead of ghosting through. */}
-        <div className="bg-card sticky top-0 z-10 flex items-center gap-2 px-3 py-2">
+            cleanly under it instead of ghosting through. Same px/gap as the item
+            rows so the checkbox column lines up across header and items. */}
+        <div className="bg-card sticky top-0 z-10 flex items-center gap-3.5 px-3.5 py-2.5">
           {handleProps && (
             <button
               type="button"
               aria-label="Drag to reorder source"
-              className="text-muted-foreground/50 hover:text-foreground -ml-1 shrink-0 cursor-grab touch-none transition-colors active:cursor-grabbing"
+              className="text-muted-foreground/50 hover:text-foreground shrink-0 cursor-grab touch-none transition-colors active:cursor-grabbing"
               {...(handleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
             >
               <GripVertical className="size-4" />
             </button>
           )}
+          {/* Selection lives on the LEFT for every row. On a group it's a
+              tri-state toggle for all the source's items (a dash when only some
+              are picked), mirroring the per-item checkboxes beneath it. */}
+          <Checkbox
+            checked={allSelected}
+            indeterminate={someSelected}
+            onCheckedChange={() => onSelectItems(ids, !allSelected)}
+            aria-label={
+              allSelected
+                ? "Deselect all items in this source"
+                : "Select all items in this source"
+            }
+          />
           <button
             type="button"
             onClick={() => toggleCollapse(sourceIndex)}
-            className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 items-center gap-1.5 transition-colors"
+            aria-expanded={!isCollapsed}
+            className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
           >
-            {isCollapsed ? (
-              <ChevronRight className="size-4 shrink-0" />
-            ) : (
-              <ChevronDown className="size-4 shrink-0" />
-            )}
-            <span className="truncate text-xs font-semibold tracking-wide uppercase">
-              {groupLabel(sources[sourceIndex], groupItems)}
-            </span>
-            <span className="text-muted-foreground/70 shrink-0 text-xs normal-case">
-              {selectedCount}/{groupItems.length}
+            <span className="truncate text-sm font-medium">{title}</span>
+            <span className="text-muted-foreground flex min-w-0 items-center gap-x-1.5 text-xs">
+              {uniformKind && (
+                <SourceTypePill kind={uniformKind} className="shrink-0" />
+              )}
+              {showHost && (
+                <>
+                  {uniformKind && <MetaSep />}
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <SourceFavicon url={url} />
+                    <span className="truncate">{host}</span>
+                  </span>
+                </>
+              )}
+              {(uniformKind || showHost) && <MetaSep />}
+              <span className="shrink-0 tabular-nums">
+                {selectedCount}/{groupItems.length}
+              </span>
             </span>
           </button>
-          {uniformKind && (
-            <SourceTypePill kind={uniformKind} className="shrink-0" />
-          )}
-          <button
-            type="button"
-            onClick={() => onSelectItems(ids, !allSelected)}
-            className="text-muted-foreground hover:text-foreground shrink-0 text-xs hover:underline"
-          >
-            {allSelected ? "Deselect" : "Select"}
-          </button>
+          {/* The disclosure (expand/collapse) lives on the RIGHT, in the same
+              slot the per-item Preview button occupies on the rows below. A +/−
+              reads as "show more / show less" there, where a chevron in a
+              right-side button would read as navigate / open-a-menu. */}
+          <Tooltip content={isCollapsed ? "Expand" : "Collapse"}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              onClick={() => toggleCollapse(sourceIndex)}
+              aria-expanded={!isCollapsed}
+              aria-label={isCollapsed ? "Expand source" : "Collapse source"}
+              className="shrink-0"
+            >
+              {isCollapsed ? <Plus /> : <Minus />}
+            </Button>
+          </Tooltip>
           {/* Soft edge under the sticky header: rows fade in as they emerge from
               under it rather than appearing on a hard line. */}
           <span
@@ -677,6 +745,7 @@ function ReviewList({
               checked={selected.has(item.id)}
               onToggle={() => onToggle(item.id)}
               showType={uniformKind === null}
+              reserveGrip={reorderable}
             />
           ))}
       </>
@@ -824,13 +893,36 @@ interface ReviewItemProps {
   // Whether to show the per-row type pill. Off when the whole source is one kind
   // (the header carries it once) — see renderGroupBody.
   showType: boolean;
+  // When this row IS a whole single-item source (no group header above it), its
+  // domain is shown inline (favicon + host) so it still reads as a top-level
+  // source, and a drag handle is rendered so it can still be reordered.
+  sourceUrl?: string;
+  dragHandleProps?: Record<string, unknown> | null;
+  // Style the title with header weight (font-medium) so a single-item source
+  // reads as a source header — a peer of the multi-item group headers — rather
+  // than as a loose list item.
+  asSource?: boolean;
+  // Reserve an empty grip-width gutter so a grouped item's checkbox lines up
+  // under its (draggable) source header's checkbox. Only needed while reordering
+  // is on — the header then has a real grip in that column.
+  reserveGrip?: boolean;
 }
 
 // One review row: the selection checkbox + metadata, plus an on-demand preview
 // of the exact no-LLM content this item would contribute (so you can see what
 // you're keeping before compiling). The preview is fetched lazily on first
 // expand and then cached locally.
-function ReviewItem({ jobId, item, checked, onToggle, showType }: ReviewItemProps) {
+function ReviewItem({
+  jobId,
+  item,
+  checked,
+  onToggle,
+  showType,
+  sourceUrl,
+  dragHandleProps,
+  asSource,
+  reserveGrip,
+}: ReviewItemProps) {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<ItemPreview | null>(null);
   const [loading, setLoading] = useState(false);
@@ -863,6 +955,14 @@ function ReviewItem({ jobId, item, checked, onToggle, showType }: ReviewItemProp
       <SourceTypePill kind={kindFromItemType(item.item_type)} className="shrink-0" />,
     );
   }
+  if (sourceUrl) {
+    metaParts.push(
+      <span className="inline-flex shrink-0 items-center gap-1">
+        <SourceFavicon url={sourceUrl} />
+        {hostOf(sourceUrl)}
+      </span>,
+    );
+  }
   if (item.reading_time_min != null) {
     metaParts.push(
       <SourceMetric kind="reading" className="shrink-0">
@@ -882,6 +982,15 @@ function ReviewItem({ jobId, item, checked, onToggle, showType }: ReviewItemProp
   }
   if (status) metaParts.push(status);
 
+  // A source-level row (a single-item source) carries the most meta — type,
+  // domain, read time, duration, status — so let it wrap onto a second/third
+  // line rather than clip the tail (which would hide the status badge). Plain
+  // item rows keep the single-line, clip-on-overflow treatment.
+  const metaClass = cn(
+    "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs",
+    !sourceUrl && "sm:flex-nowrap sm:overflow-hidden",
+  );
+
   return (
     <div
       className={cn(
@@ -893,12 +1002,26 @@ function ReviewItem({ jobId, item, checked, onToggle, showType }: ReviewItemProp
       )}
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
+        {dragHandleProps ? (
+          <button
+            type="button"
+            aria-label="Drag to reorder source"
+            className="text-muted-foreground/50 hover:text-foreground shrink-0 cursor-grab touch-none transition-colors active:cursor-grabbing"
+            {...(dragHandleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
+          >
+            <GripVertical className="size-4" />
+          </button>
+        ) : reserveGrip ? (
+          <span className="w-4 shrink-0" aria-hidden="true" />
+        ) : null}
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="truncate text-sm">{item.title}</span>
+            <span className={cn("truncate text-sm", asSource && "font-medium")}>
+              {item.title}
+            </span>
             {metaParts.length > 0 && (
-              <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+              <span className={metaClass}>
                 {metaParts.map((node, i) => (
                   <Fragment key={i}>
                     {i > 0 && <MetaSep />}
@@ -1114,20 +1237,12 @@ function RoleSelector({
   );
 }
 
-// The label for a source group. Prefers the real name the backend captured at
-// discovery (channel / playlist / blog title); falls back to a compact
-// URL-derived label. A single-item source names itself after its one item (a
-// lone video's "source name" is the video title), so there we use the URL
-// instead of printing the same text as both the group header and the item.
-function groupLabel(
-  source: Source | undefined,
-  items: DiscoveredItem[],
-): string {
-  const name = source?.name?.trim();
-  if (name && !(items.length === 1 && items[0].title.trim() === name)) {
-    return name;
-  }
-  return sourceLabel(source?.url);
+// The title for a source group — always the real name the backend captured at
+// discovery (channel / playlist / blog / video title), so every header reads the
+// same way: a title on top, the domain + type in the meta line beneath it. Only
+// when no name was captured does it fall back to the bare host.
+function groupLabel(source: Source | undefined): string {
+  return source?.name?.trim() || hostOf(source?.url ?? "");
 }
 
 // A compact, recognizable label derived from the URL the user entered
