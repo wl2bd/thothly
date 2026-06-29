@@ -55,7 +55,6 @@ import { Logotype } from "@/components/brand";
 import {
   MetaSep,
   SourceFavicon,
-  SourceMetric,
   SourceTypePill,
   hostOf,
   kindFromItemType,
@@ -1062,11 +1061,14 @@ function ReviewItem({
     }
   }
 
-  // The meta fields this row actually has, built as a list so the · separators
-  // fall only between present fields. The content tag leads every row (what was
-  // retrieved + whether it needs work), then the domain (single-item sources),
-  // then the textual facts (language, word count), then how long it runs.
-  const dur = durationLabel(item);
+  // The meta line is deliberately spare: the content tag (what was retrieved +
+  // whether it needs work), and — only for a single-item source — its domain.
+  // Length metrics (word count, language, read/play time) were dropped here on
+  // purpose: at review the decision is "include or not / polish or not", which
+  // they don't drive, and they were available for some kinds and not others
+  // (four on a video, one on a podcast, none on an article), which read as
+  // inconsistent. Length now lives where it's actionable — the per-item preview
+  // and the aggregate cost estimate.
   const metaParts: ReactNode[] = [contentTag(item, sttAvailable)];
   if (sourceUrl) {
     metaParts.push(
@@ -1076,32 +1078,9 @@ function ReviewItem({
       </span>,
     );
   }
-  for (const part of extraMeta(item)) {
-    metaParts.push(<span className="min-w-0 truncate">{part}</span>);
-  }
-  if (item.reading_time_min != null) {
-    metaParts.push(
-      <SourceMetric kind="reading" className="shrink-0">
-        ~{item.reading_time_min} min read
-      </SourceMetric>,
-    );
-  }
-  if (dur) {
-    metaParts.push(
-      <SourceMetric kind="duration" className="shrink-0">
-        {dur}
-      </SourceMetric>,
-    );
-  }
 
-  // A source-level row (a single-item source) carries the most meta — content
-  // tag, domain, read time, duration — so let it wrap onto a second/third line
-  // rather than clip the tail. Plain item rows keep the single-line,
-  // clip-on-overflow treatment.
-  const metaClass = cn(
-    "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs",
-    !sourceUrl && "sm:flex-nowrap sm:overflow-hidden",
-  );
+  const metaClass =
+    "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs";
 
   return (
     <div
@@ -1409,31 +1388,6 @@ function sourceLabel(url: string | undefined): string {
   } catch {
     return url;
   }
-}
-
-// Play time (video/podcast) as M:SS. Rendered with a clock by SourceMetric so it
-// never reads as reading time — the same convention the search screen sets.
-function durationLabel(item: DiscoveredItem): string | null {
-  if (item.estimated_duration_s == null) return null;
-  const m = Math.floor(item.estimated_duration_s / 60);
-  const s = item.estimated_duration_s % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-// The textual extras shown after the icon-led metrics: the transcript word count
-// and language. The blog char-count reflected the RSS summary (often truncated),
-// so it stays hidden.
-function extraMeta(item: DiscoveredItem): string[] {
-  const parts: string[] = [];
-  // Language before word count, so a "Raw captions" flag pushed ahead of these
-  // reads as: Raw captions · EN · 1,200 words.
-  if (item.transcript_lang) {
-    parts.push(item.transcript_lang.toUpperCase());
-  }
-  if (item.word_count != null) {
-    parts.push(`${item.word_count.toLocaleString("en-US")} words`);
-  }
-  return parts;
 }
 
 // The leading tag on every review row: what was actually retrieved for this
