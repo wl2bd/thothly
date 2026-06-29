@@ -82,6 +82,9 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
   const [searching, setSearching] = useState(false);
+  // The query the current `results` belong to — lets the list distinguish a
+  // search that hasn't run yet from one that settled empty (see the effect).
+  const [settledQuery, setSettledQuery] = useState("");
   // Which content type to show ("all" = no filter), and how to order them
   // ("relevance" = the backend's cross-provider ranking). Filtering is by TYPE
   // (Video / Episode / Article), not by provider, so it stays generalist as new
@@ -102,6 +105,12 @@ export default function Home() {
   // the in-flight request so only the latest query's results land. All state
   // updates happen inside the deferred callback (never synchronously in the
   // effect body) so a fast typer doesn't cause cascading re-renders.
+  //
+  // `settledQuery` records which query the current results belong to. Until a
+  // search settles for the live query it stays out of sync, which is how the
+  // list tells "search pending" (show the skeleton) apart from "search returned
+  // nothing" (show the empty state) — otherwise the gap between the keystroke
+  // and the debounced request flashes "No results" before the search even runs.
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
@@ -113,6 +122,7 @@ export default function Home() {
         setSearchErrors([]);
         setTypeFilter("all");
         setSortBy("relevance");
+        setSettledQuery(trimmed);
         setSearching(false);
         return;
       }
@@ -130,7 +140,10 @@ export default function Home() {
         setSearchErrors([]);
         setError(err instanceof Error ? err.message : String(err));
       } finally {
-        if (!cancelled) setSearching(false);
+        if (!cancelled) {
+          setSettledQuery(trimmed);
+          setSearching(false);
+        }
       }
     }, isReset ? 0 : SEARCH_DEBOUNCE_MS);
 
@@ -252,6 +265,10 @@ export default function Home() {
   }
 
   const showResults = !queryIsUrl && trimmed !== "";
+  // True once a search has actually run for the live query. Before that the list
+  // shows a skeleton, not the empty state, so "No results" can never precede the
+  // loading indicator for a query whose search is still pending.
+  const settled = settledQuery === trimmed;
   const filteredResults =
     typeFilter === "all"
       ? results
@@ -376,6 +393,7 @@ export default function Home() {
             {showResults && (
               <SearchResults
                 searching={searching}
+                settled={settled}
                 query={trimmed}
                 results={visibleResults}
                 stagedUrls={stagedUrls}
@@ -865,6 +883,9 @@ function SiteFooter() {
 
 interface SearchResultsProps {
   searching: boolean;
+  // Whether a search has actually settled for the live query. Until it has, the
+  // list shows the skeleton rather than the empty state.
+  settled: boolean;
   query: string;
   results: SearchResult[];
   stagedUrls: Set<string>;
@@ -876,18 +897,21 @@ interface SearchResultsProps {
 
 function SearchResults({
   searching,
+  settled,
   query,
   results,
   stagedUrls,
   onToggle,
   onPointerPick,
 }: SearchResultsProps) {
-  // First search in flight, with no prior results to keep on screen: stand in
-  // skeleton rows that mirror the real row geometry — media tile, title line,
+  // Search pending or in flight, with no prior results to keep on screen: stand
+  // in skeleton rows that mirror the real row geometry — media tile, title line,
   // meta line — so when results land they replace the placeholders in place
-  // rather than the list popping in from a stray spinner. The pulse is staggered
-  // for a soft wave and stilled under reduced motion (the bars still read).
-  if (searching && results.length === 0) {
+  // rather than the list popping in from a stray spinner. Keyed off `settled`
+  // (not `searching`) so the gap between a keystroke and the debounced request
+  // shows the skeleton too, never a flash of the empty state. The pulse is
+  // staggered for a soft wave and stilled under reduced motion (bars still read).
+  if (!settled && results.length === 0) {
     return (
       <ul
         aria-busy="true"
