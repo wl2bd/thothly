@@ -114,12 +114,21 @@ def _source_emblem(book: CompiledBook, media_dir: Path) -> Path | None:
 
 def _metadata_yaml(book: CompiledBook) -> str:
     # dc:creator should name the people who wrote the sources, not the tool.
-    # json.dumps quotes and escapes each value safely for YAML; fall back to
-    # "Thothly" only when no source carries an author.
+    # Fall back to "Thothly" only when no source carries an author.
     authors = _chapter_authors(book) or ["Thothly"]
 
-    lines = [f"title: {json.dumps(book.title)}", "author:"]
-    lines += [f"  - {json.dumps(name)}" for name in authors]
+    # json.dumps gives a double-quoted scalar whose escapes (\", \\, \n, control
+    # chars) YAML also accepts — but ONLY with ensure_ascii=False. The default
+    # ensure_ascii=True escapes every non-ASCII char as \uXXXX, and a character
+    # outside the BMP (an emoji in a title, say) becomes a surrogate PAIR of two
+    # \uXXXX escapes, which Pandoc's YAML parser rejects as an invalid escape.
+    # With ensure_ascii=False the char stays literal UTF-8, which the utf-8 temp
+    # file carries fine, so non-ASCII / emoji titles compile instead of crash.
+    def q(value: str) -> str:
+        return json.dumps(value, ensure_ascii=False)
+
+    lines = [f"title: {q(book.title)}", "author:"]
+    lines += [f"  - {q(name)}" for name in authors]
     lines += [
         'lang: "en"',
         'toc-title: "Table of contents"',
