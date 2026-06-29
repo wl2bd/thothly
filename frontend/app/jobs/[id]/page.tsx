@@ -19,6 +19,7 @@ import {
   GripVertical,
   Minus,
   Plus,
+  X,
 } from "lucide-react";
 import {
   DndContext,
@@ -615,7 +616,10 @@ function ReviewList({
     const ids = groupItems.map((it) => it.id);
     const selectedCount = ids.filter((id) => selected.has(id)).length;
     const allSelected = selectedCount === ids.length;
-    const isCollapsed = collapsed.has(sourceIndex);
+    // A search overrides the manual collapse state: a query the user can't see
+    // the matches of is useless, so any group with hits is force-expanded while
+    // filtering (the collapse state is kept and restored once the query clears).
+    const isCollapsed = needle === "" && collapsed.has(sourceIndex);
     // When every item in the source is the same kind (a channel of videos, a
     // Wikipedia page of articles, a podcast of episodes), the per-row type pill
     // repeats what the group already is — so we show the kind ONCE in the header
@@ -730,11 +734,16 @@ function ReviewList({
             </Button>
           </Tooltip>
           {/* Soft edge under the sticky header: rows fade in as they emerge from
-              under it rather than appearing on a hard line. */}
-          <span
-            aria-hidden="true"
-            className="from-card pointer-events-none absolute inset-x-0 top-full h-4 bg-gradient-to-b to-transparent"
-          />
+              under it rather than appearing on a hard line. Only when expanded —
+              collapsed there are no rows to fade, and the span (absolute,
+              top-full) would otherwise poke 16px past the content and summon a
+              stray scrollbar. */}
+          {!isCollapsed && (
+            <span
+              aria-hidden="true"
+              className="from-card pointer-events-none absolute inset-x-0 top-full h-4 bg-gradient-to-b to-transparent"
+            />
+          )}
         </div>
         {!isCollapsed &&
           groupItems.map((item) => (
@@ -795,12 +804,25 @@ function ReviewList({
       </div>
 
       {items.length > 8 && (
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search titles…"
-        />
+        <div className="relative">
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search titles…"
+            className="pr-9 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {query !== "" && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
       )}
 
       <div
