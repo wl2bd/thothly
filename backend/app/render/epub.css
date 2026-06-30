@@ -1,289 +1,296 @@
-/* Thothly — Instapaper-quality EPUB stylesheet */
+/* =========================================================
+   Thothly — feuille de style de lecture (EPUB)
+   Tout en serif, lisible clair / sombre / sépia, e-ink safe.
+   Unités relatives uniquement. Le lecteur garde le contrôle de
+   ses marges et de son thème : on ne force jamais le fond.
+   ========================================================= */
 
-@page {
-    margin: 2.5em 2em;
+:root {
+  /* Échelle typographique (ratio ~1.25, major third doux) */
+  --fs-base:   1em;
+  --fs-small:  0.85em;
+  --fs-h6:     1em;
+  --fs-h5:     1.1em;
+  --fs-h4:     1.25em;
+  --fs-h3:     1.45em;
+  --fs-h2:     1.75em;
+  --fs-h1:     2.2em;
+
+  --lh-body:   1.58;
+  --lh-tight:  1.25;
+
+  /* Rythme vertical */
+  --space:     1.4em;
+
+  /* Couleurs — mode clair par défaut.
+     Texte ET fond sont posés EN PAIRE : forcer l'un sans l'autre donne du
+     clair-sur-clair (ou sombre-sur-sombre) dès que `prefers-color-scheme`
+     bascule sur une surface qui ne suit pas. La liseuse qui a son propre
+     thème écrase les deux ; partout ailleurs la paire reste lisible. */
+  --paper:     #faf9f5;   /* blanc cassé chaud, jamais de #fff dur */
+  --ink:       #1c1a17;   /* presque noir, légèrement chaud */
+  --ink-soft:  #5a554d;   /* texte secondaire, légendes */
+  --rule:      #d8d2c8;   /* filets, séparateurs */
+  --link:      #7a4a2b;   /* brun encre */
 }
+
+/* Mode sombre : la paire fond/texte s'inverse, l'accent s'éclaircit */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:     #1a1714;
+    --ink:       #e6e1d8;
+    --ink-soft:  #a8a195;
+    --rule:      #3a3631;
+    --link:      #c89b6a;  /* brun désaturé, éclairci */
+  }
+}
+
+/* Le fond couvre tout le canvas (html), pas seulement la colonne de texte,
+   pour que les marges latérales de `body` ne laissent pas voir du blanc. */
+html {
+  color: var(--ink);
+  background-color: var(--paper);
+}
+
+/* =========================================================
+   Corps de texte
+   ========================================================= */
 
 body {
-    font-family: "Literata", Georgia, "Times New Roman", serif;
-    line-height: 1.8;
-    margin: 0;
-    padding: 0;
-    /* No forced text color: setting color without a matching background can
-       produce dark-on-dark in the reader's night mode. Let the reading system
-       drive foreground/background so day and night themes both stay legible. */
-    hyphens: auto;
-    -webkit-hyphens: auto;
-    adobe-hyphenate: auto;
-    orphans: 3;
-    widows: 3;
-}
-
-section {
-    max-width: 36em;
-}
-
-h1 {
-    font-size: 1.75em;
-    font-weight: bold;
-    line-height: 1.25;
-    letter-spacing: 0.02em;
-    margin-top: 0;
-    margin-bottom: 0.75em;
-    page-break-before: always;
-    text-align: left;
-}
-
-h1:first-child {
-    page-break-before: avoid;
-}
-
-h2 {
-    font-size: 1.35em;
-    font-weight: bold;
-    line-height: 1.3;
-    letter-spacing: 0.01em;
-    margin-top: 2.5em;
-    margin-bottom: 0.75em;
-    page-break-before: always;
-    text-align: left;
-}
-
-h3 {
-    font-size: 1.1em;
-    font-weight: bold;
-    line-height: 1.35;
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-    page-break-after: avoid;
-}
-
-h4, h5, h6 {
-    font-weight: bold;
-    margin-top: 1.2em;
-    margin-bottom: 0.4em;
-    page-break-after: avoid;
+  font-family: "Literata", "Source Serif Pro", Georgia, serif;
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  background-color: var(--paper);   /* paire fond/texte, cf. :root */
+  margin: 0 auto;
+  max-width: 38em;
+  padding: 0 1.2em;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  text-align: left;            /* gauche assumé, pas de justif forcée */
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
 }
 
 p {
-    margin-top: 0;
-    margin-bottom: 0.8em;
-    text-align: justify;
-    text-indent: 0;
-    hyphens: auto;
-    -webkit-hyphens: auto;
-    orphans: 3;
-    widows: 3;
+  margin: 0 0 var(--space) 0;
+  orphans: 2;
+  widows: 2;
 }
 
-h2 + p,
-h3 + p,
-h4 + p,
-h5 + p,
-h6 + p {
-    text-indent: 0;
+/* Premier paragraphe après un titre : pas d'alinéa, pas de retrait */
+h1 + p, h2 + p, h3 + p, h4 + p,
+blockquote p:first-child {
+  text-indent: 0;
 }
 
-div.source-attribution {
-    font-size: 0.85em;
-    font-style: italic;
-    color: #555;
-    line-height: 1.5;
-    margin-top: 0.3em;
-    margin-bottom: 1.2em;
-    padding-top: 0.5em;
-    border-top: 1px solid #d0d0d0;
+/* Optionnel : retrait de première ligne, registre livre.
+   Décommente pour l'alinéa traditionnel, sinon espacement entre paras.
+p + p { text-indent: 1.4em; margin-top: calc(var(--space) * -0.6); }
+*/
+
+/* =========================================================
+   Titres — tout en serif, même famille, hiérarchie par taille
+   ========================================================= */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit;        /* reste en serif */
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  color: var(--ink);
+  margin: calc(var(--space) * 1.6) 0 calc(var(--space) * 0.6);
+  text-wrap: balance;          /* évite les titres bancals sur moteurs récents */
+  break-after: avoid;
+  page-break-after: avoid;     /* fallback vieux moteurs */
 }
 
-div.source-attribution p {
-    text-indent: 0;
-    text-align: left;
-    margin-bottom: 0;
+h1 { font-size: var(--fs-h1); margin-top: 0; letter-spacing: -0.01em; }
+h2 { font-size: var(--fs-h2); letter-spacing: -0.005em; }
+h3 { font-size: var(--fs-h3); }
+h4 { font-size: var(--fs-h4); }
+h5 { font-size: var(--fs-h5); }
+h6 { font-size: var(--fs-h6); color: var(--ink-soft); font-style: italic; font-weight: 400; }
+
+/* Chaque chapitre démarre sur une nouvelle page... */
+h1 { break-before: page; page-break-before: always; }
+/* ...sauf le titre qui ouvre déjà un fichier (sinon page blanche en tête).
+   Avec --split-level=1 chaque chapitre EST son propre fichier, donc le saut
+   vient de la frontière de fichier ; on évite juste la page vide superflue. */
+h1:first-child {
+  break-before: avoid;
+  page-break-before: avoid;
 }
 
-.titlepage {
-    text-align: center;
-    page-break-after: always;
-}
-
-.titlepage h1 {
-    font-size: 2em;
-    text-align: center;
-    page-break-before: avoid;
-    margin-top: 2em;
-    margin-bottom: 0.5em;
-}
-
-.titlepage p {
-    text-align: center;
-    text-indent: 0;
-    color: #555;
-    font-size: 0.95em;
-}
-
-blockquote {
-    margin: 1.5em 0;
-    padding: 0.75em 1.25em;
-    border-left: 2px solid #aaa;
-    font-style: italic;
-    color: #333;
-    background-color: rgba(0, 0, 0, 0.02);
-}
-
-blockquote p {
-    text-indent: 0;
-    text-align: left;
-    margin-bottom: 0.5em;
-}
-
-blockquote p:last-child {
-    margin-bottom: 0;
-}
-
-em {
-    font-style: italic;
-}
-
-strong {
-    font-weight: bold;
-}
-
-code {
-    font-family: "Courier New", Courier, monospace;
-    font-size: 0.88em;
-    /* Translucent rather than a hard light grey: adapts to both light and dark
-       reader themes (a fixed #f5f5f5 stays a bright island in night mode). */
-    background-color: rgba(0, 0, 0, 0.05);
-    padding: 0.1em 0.3em;
-    word-break: break-word;
-}
-
-pre {
-    font-family: "Courier New", Courier, monospace;
-    font-size: 0.85em;
-    line-height: 1.45;
-    background-color: rgba(0, 0, 0, 0.05);
-    padding: 0.8em 1em;
-    margin: 1.5em 0;
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-
-pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: inherit;
-}
+/* =========================================================
+   Liens — encrés, soulignement soigné qui saute les jambages
+   ========================================================= */
 
 a {
-    color: #2a5db0;
-    text-decoration: none;
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.15em;
+  text-decoration-skip-ink: auto;
+  /* trait atténué, se densifie au survol (moteurs récents) */
+  text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
 }
 
-ul, ol {
-    margin: 0.5em 0 1em 0;
-    padding-left: 1.5em;
+a:hover {
+  text-decoration-color: var(--link);
 }
 
-li {
-    margin-bottom: 0.3em;
-    orphans: 2;
-    widows: 2;
+/* =========================================================
+   Citations, emphase, code
+   ========================================================= */
+
+blockquote {
+  margin: var(--space) 0;
+  padding-left: 1.2em;
+  border-left: 0.15em solid var(--rule);
+  color: var(--ink-soft);
+  font-style: italic;
 }
 
-hr {
-    border: none;
-    border-top: 1px solid #ccc;
-    margin: 2.5em auto;
-    width: 6em;
+em, i  { font-style: italic; }
+strong, b { font-weight: 600; }
+
+code, pre {
+  font-family: "iA Writer Mono", ui-monospace, "SF Mono", Menlo, "Courier New", monospace;
+  font-size: 0.9em;
 }
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.45;
+  padding: 1em;
+  border: 0.06em solid var(--rule);
+  border-radius: 0.3em;
+  overflow-x: auto;
+}
+code { padding: 0.1em 0.3em; }
+
+/* =========================================================
+   Images, figures, séparateurs
+   ========================================================= */
 
 img {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    /* Breathing room so images don't crowd the surrounding text. */
-    margin: 1.8em auto;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--space) auto;
 }
 
-/* Pandoc wraps a stand-alone image in a <figure> with the alt text as its
-   caption; give the whole block room and centre the caption beneath it. */
 figure {
-    margin: 2em 0;
-    text-align: center;
-    page-break-inside: avoid;
-}
-
-figure img {
-    margin: 0 auto 0.6em auto;
+  margin: var(--space) 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 figcaption {
-    font-size: 0.85em;
-    font-style: italic;
-    color: #555;
-    line-height: 1.5;
-    text-align: center;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  text-align: center;
+  margin-top: 0.5em;
+  font-style: italic;
 }
 
+hr {
+  border: none;
+  border-top: 0.06em solid var(--rule);
+  margin: calc(var(--space) * 2) auto;
+  width: 40%;
+}
+
+/* =========================================================
+   Listes
+   ========================================================= */
+
+ul, ol {
+  margin: 0 0 var(--space) 0;
+  padding-left: 1.4em;
+}
+li { margin-bottom: 0.4em; }
+
+/* =========================================================
+   Spécifique Thothly — page de titre, attribution, sommaire, tables
+   (classes émises par Pandoc et par to_markdown ; absentes de la
+   feuille générique, on les re-greffe ici sur les mêmes tokens)
+   ========================================================= */
+
+/* Page de titre générée par Pandoc : <section class="titlepage"> */
+.titlepage { text-align: center; }
+.titlepage h1 {
+  break-before: avoid;
+  page-break-before: avoid;
+  margin-top: 2em;
+}
+.titlepage .author,
+.titlepage .date {
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  margin: 0.2em 0;
+}
+
+/* Ligne d'attribution sous chaque titre de chapitre :
+   <div class="source-attribution"> Source · Auteur · Date */
+.source-attribution {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: -0.4em 0 var(--space) 0;
+  padding-top: 0.5em;
+  border-top: 0.06em solid var(--rule);
+}
+.source-attribution p { margin: 0; }
+.source-attribution a {
+  color: inherit;                       /* l'URL reste discrète, pas en accent */
+  text-decoration-color: var(--rule);
+}
+
+/* Sommaire (nav.xhtml) : ni puces ni numéros, hiérarchie par retrait.
+   On cible les ancres STABLES de Pandoc — `id="toc"` sur le <nav> et
+   `class="toc"` sur chaque <ol> — plutôt que l'attribut `epub:type`, qui
+   est namespacé et ne se sélectionne pas de façon fiable (le `\:` échappé
+   échoue dès qu'une liseuse parse le document en XML). */
+#toc h1 {
+  break-before: avoid;
+  page-break-before: avoid;
+}
+ol.toc {
+  list-style: none;
+  padding-left: 0;
+}
+ol.toc ol.toc {
+  padding-left: 1.2em;
+}
+ol.toc li {
+  margin: 0.3em 0;
+}
+#toc > ol.toc > li {
+  font-weight: 600;
+  margin-top: 0.7em;
+}
+ol.toc ol.toc li {
+  font-weight: 400;
+  font-size: 0.95em;
+  margin-top: 0.15em;
+}
+#toc a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* Tableaux */
 table {
-    border-collapse: collapse;
-    margin: 1.5em 0;
-    font-size: 0.92em;
+  border-collapse: collapse;
+  margin: var(--space) 0;
+  font-size: 0.92em;
 }
-
 th, td {
-    border: 1px solid #ccc;
-    padding: 0.4em 0.8em;
-    text-align: left;
+  border: 0.06em solid var(--rule);
+  padding: 0.4em 0.8em;
+  text-align: left;
 }
-
 th {
-    font-weight: bold;
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-nav[epub\:type="toc"] {
-    page-break-after: always;
-}
-
-nav[epub\:type="toc"] h1 {
-    font-size: 1.5em;
-    text-align: left;
-    page-break-before: avoid;
-    margin-bottom: 1em;
-}
-
-nav ol,
-nav ul {
-    list-style: none;
-    padding-left: 0;
-}
-
-/* Indent nested TOC levels so the chapter -> section hierarchy is visible. */
-nav ol ol,
-nav ul ul {
-    padding-left: 1.25em;
-}
-
-nav li {
-    margin-bottom: 0.35em;
-}
-
-/* Top-level entries (chapters) stand out; nested ones (sections) read lighter. */
-nav > ol > li {
-    font-weight: 600;
-    margin-top: 0.7em;
-}
-
-nav ol ol li {
-    font-weight: normal;
-    font-size: 0.95em;
-    margin-top: 0.15em;
-}
-
-nav a {
-    color: #1a1a1a;
-    text-decoration: none;
+  font-weight: 600;
 }
