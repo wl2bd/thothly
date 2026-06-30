@@ -11,6 +11,7 @@ import {
   ListIcon,
   MicIcon,
   PlayIcon,
+  PlusIcon,
   PodcastIcon,
   SearchIcon,
   SearchXIcon,
@@ -96,9 +97,15 @@ export default function Home() {
   const [staged, setStaged] = useState<StagedSource[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether the bar is engaged. The leading magnifier is treated as resting-
+  // state chrome (like the placeholder): it shows only on an empty, unfocused
+  // bar and clears the moment the field is focused, leaving the full width to
+  // type into.
+  const [focused, setFocused] = useState(false);
 
   const trimmed = query.trim();
   const queryIsUrl = looksLikeUrl(trimmed);
+  const showSearchIcon = query === "" && !focused;
 
   // Debounced multi-provider search. A pasted link never triggers a search
   // (it's added directly on Enter); only free text does. Each keystroke aborts
@@ -334,12 +341,27 @@ export default function Home() {
           <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
             <form onSubmit={onSubmit} className="flex flex-col gap-2">
               <AnimatedGoldBorder>
-                <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                {/* The magnifier is resting-state chrome, like the placeholder:
+                    this bar both searches and takes a pasted link, so a "search"
+                    glyph isn't always accurate. It clears the instant the field
+                    is focused (or holds content), handing the full width over to
+                    type into. Kept in the DOM (absolute, so no layout cost) and
+                    cross-faded with a slight slide so the placeholder glides in
+                    to replace it instead of the text snapping sideways. */}
+                <SearchIcon
+                  aria-hidden="true"
+                  className={cn(
+                    "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                    showSearchIcon ? "opacity-100" : "-translate-x-1 opacity-0",
+                  )}
+                />
                 <Input
                   ref={inputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
                   onKeyDown={(e) => {
                     // Escape wipes the bar (and only then) so a held query can be
                     // cleared without reaching for the × or select-all-delete.
@@ -349,29 +371,52 @@ export default function Home() {
                     }
                   }}
                   placeholder="Search or paste a link…"
-                  className="border-transparent bg-background pr-9 pl-9 focus-visible:ring-0 dark:bg-background"
+                  className={cn(
+                    // The hero's primary action: a tall, confident bar with type
+                    // a clear step up from the app's default fields (18px) so it
+                    // reads as the unmistakable main entry point of the page. The
+                    // padding is transitioned so the text/placeholder glides when
+                    // the magnifier comes and goes rather than snapping.
+                    "h-14 border-transparent bg-background text-lg md:text-lg transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
+                    // Left: room for the magnifier only while it shows (empty &
+                    // unfocused); otherwise the text runs full width. Right:
+                    // room for the in-field Add (pasted link) or the clear ×
+                    // (search term), nothing when empty.
+                    showSearchIcon ? "pl-11" : "pl-4",
+                    queryIsUrl ? "pr-28" : query !== "" ? "pr-12" : "pr-4",
+                  )}
                   autoComplete="off"
-                  autoFocus
                 />
-                {query !== "" && (
-                  <button
-                    type="button"
-                    onClick={clearQuery}
-                    aria-label="Clear search"
-                    className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
+                {/* Trailing in-field control. A pasted link gets its own Add
+                    action right where it was typed (Enter mirrors it); a search
+                    term gets the clear ×; an empty bar gets neither. */}
+                {queryIsUrl ? (
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    aria-label="Add to sources"
+                    // Equal 8px inset top/bottom/right (h-10 button centered in
+                    // the h-14 bar, right-2) so it sits as a balanced pill with
+                    // real presence inside the field.
+                    className="absolute top-1/2 right-2 -translate-y-1/2"
                   >
-                    <XIcon className="size-4" />
-                  </button>
+                    <PlusIcon />
+                    Add
+                  </Button>
+                ) : (
+                  query !== "" && (
+                    <button
+                      type="button"
+                      onClick={clearQuery}
+                      aria-label="Clear search"
+                      className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
+                    >
+                      <XIcon className="size-4" />
+                    </button>
+                  )
                 )}
               </AnimatedGoldBorder>
-              {queryIsUrl && (
-                <p className="text-muted-foreground px-1 text-center text-xs">
-                  Looks like a link. Press{" "}
-                  <kbd className="rounded border px-1 font-mono">Enter</kbd> to add
-                  it to your sources.
-                </p>
-              )}
-              <SearchSourcesHint />
+              {!queryIsUrl && <SearchSourcesHint />}
             </form>
 
             {error && <p className="text-destructive text-sm">{error}</p>}
@@ -406,7 +451,7 @@ export default function Home() {
               />
             )}
 
-            {staged.length > 0 && (
+            {staged.length > 0 && showResults && (
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
                 <p className="text-sm">
                   <span className="text-foreground font-semibold">
@@ -417,16 +462,8 @@ export default function Home() {
                     compilation
                   </span>
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={clearQuery}
-                    disabled={submitting}
-                  >
-                    New search
-                    {query !== "" && <Kbd>Esc</Kbd>}
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <NewSearchShortcut onClick={clearQuery} />
                   <Button
                     type="button"
                     onClick={onCompile}
@@ -437,7 +474,7 @@ export default function Home() {
                     ) : (
                       <>
                         Review
-                        {!queryIsUrl && <Kbd>Enter</Kbd>}
+                        <Kbd>Enter</Kbd>
                       </>
                     )}
                   </Button>
@@ -512,25 +549,31 @@ export default function Home() {
               ))}
             </ul>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={resetStaged}
-                disabled={submitting}
-              >
-                Reset
-              </Button>
-              <Button
-                size="lg"
-                onClick={onCompile}
-                disabled={submitting}
-                className="flex-1"
-              >
-                {submitting ? "Starting…" : "Review"}
-              </Button>
-            </div>
+            {/* The proceed action lives in exactly one place at a time: while a
+                search is active it's the card footer's Review; otherwise (empty
+                bar, or a pasted link) it's here, anchored to the compilation it
+                acts on. Never both, so there's only ever one Review on screen. */}
+            {!showResults && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={resetStaged}
+                  disabled={submitting}
+                >
+                  Reset
+                </Button>
+                <Button
+                  size="lg"
+                  onClick={onCompile}
+                  disabled={submitting}
+                  className="flex-1"
+                >
+                  {submitting ? "Starting…" : "Review"}
+                </Button>
+              </div>
+            )}
           </section>
         )}
 
@@ -601,6 +644,23 @@ function Kbd({ children }: { children: React.ReactNode }) {
     <kbd className="rounded border border-current/20 px-1 py-px font-mono text-[10px] leading-none font-normal">
       {children}
     </kbd>
+  );
+}
+
+// The "start over" escape beside every card-footer CTA, written as a shortcut
+// rather than a competing button so the single primary action (Add / Review)
+// stays unambiguous. Clicking it does what Escape does: wipe the bar and hand
+// focus back for the next query.
+function NewSearchShortcut({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs transition-colors"
+    >
+      New search
+      <Kbd>Esc</Kbd>
+    </button>
   );
 }
 
