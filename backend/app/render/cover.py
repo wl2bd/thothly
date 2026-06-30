@@ -184,7 +184,6 @@ def generate_cover(
         logger.warning("Cover emblem not found at %s; skipping", emblem_file)
 
     # Title — large, left-aligned, auto-sized to stay within ~4 lines.
-    title_y = 1120
     size = 150
     while size > 80:
         title_font = _font(size, weight=600, font_path=_TITLE_FONT)
@@ -193,18 +192,32 @@ def generate_cover(
             break
         size -= 12
     line_height = round(size * 1.16)
-    for line in lines:
-        draw.text((_MARGIN, title_y), line, font=title_font, fill=_INK)
-        title_y += line_height
 
-    # Authors — lighter, muted, just below the title.
-    if authors:
-        author_font = _font(56, weight=420)
-        author_text = "  ·  ".join(authors)
-        for line in _wrap(draw, author_text, author_font, text_width):
-            title_y += 18
-            draw.text((_MARGIN, title_y), line, font=author_font, fill=_MUTED)
-            title_y += 70
+    # Authors — lighter, muted, sit just below the title.
+    author_font = _font(56, weight=420)
+    author_lines = (
+        _wrap(draw, "  ·  ".join(authors), author_font, text_width) if authors else []
+    )
+    _AUTHOR_GAP = 60       # title → authors
+    _AUTHOR_LINE_H = 84
+
+    # Centre the whole title+authors block vertically (the emblem stays up top,
+    # the colophon at the foot), so a one-line and a four-line title both sit
+    # balanced instead of anchored to a fixed Y that left a short title floating.
+    block_h = len(lines) * line_height + (
+        _AUTHOR_GAP + len(author_lines) * _AUTHOR_LINE_H if author_lines else 0
+    )
+    y = round(_H * 0.5 - block_h / 2)
+
+    for line in lines:
+        draw.text((_MARGIN, y), line, font=title_font, fill=_INK)
+        y += line_height
+
+    if author_lines:
+        y += _AUTHOR_GAP
+        for line in author_lines:
+            draw.text((_MARGIN, y), line, font=author_font, fill=_MUTED)
+            y += _AUTHOR_LINE_H
 
     # Colophon at the foot.
     colophon_font = _font(44, weight=500)
