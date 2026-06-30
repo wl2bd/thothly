@@ -384,28 +384,53 @@ def test_brave_provider_raises_on_http_error(mock_get):
 
 # ── web backend selection (config-driven) ────────────────────────────────────
 
+# The factory wraps the chosen backend in a cache (see `_CachedWebProvider`), so
+# tests reach through `._inner` to assert which backend was selected.
+
 def test_web_backend_defaults_to_marginalia(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "marginalia")
-    assert isinstance(service._build_web_provider(), MarginaliaProvider)
+    assert isinstance(service._build_web_provider()._inner, MarginaliaProvider)
 
 
 def test_web_backend_unknown_falls_back_to_marginalia(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "nonsense")
-    assert isinstance(service._build_web_provider(), MarginaliaProvider)
+    assert isinstance(service._build_web_provider()._inner, MarginaliaProvider)
 
 
 def test_web_backend_ddg_selectable(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "ddg")
-    assert isinstance(service._build_web_provider(), WebProvider)
+    assert isinstance(service._build_web_provider()._inner, WebProvider)
 
 
 def test_web_backend_brave_requires_key(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "brave")
     monkeypatch.setattr(service.settings, "brave_api_key", None)
     # Selected without a key → falls back rather than breaking search.
-    assert isinstance(service._build_web_provider(), MarginaliaProvider)
+    assert isinstance(service._build_web_provider()._inner, MarginaliaProvider)
     monkeypatch.setattr(service.settings, "brave_api_key", "test-key")
-    assert isinstance(service._build_web_provider(), BraveProvider)
+    assert isinstance(service._build_web_provider()._inner, BraveProvider)
+
+
+def test_cached_web_provider_caches_and_skips_short_queries():
+    calls = {"n": 0}
+
+    class _Counting:
+        name = "web"
+
+        def search(self, query, limit):
+            calls["n"] += 1
+            return [_result("web:1")]
+
+    cached = service._CachedWebProvider(_Counting())
+
+    # Too short → skipped entirely, backend never called.
+    assert cached.search("ab", 5) == []
+    assert calls["n"] == 0
+
+    # First real query hits the backend; an identical repeat is served from cache.
+    assert len(cached.search("bitcoin", 5)) == 1
+    assert cached.search("bitcoin", 5)  # repeat
+    assert calls["n"] == 1  # only the first call reached the backend
 
 
 # ── PodcastProvider (iTunes Search API) mapping ──────────────────────────────

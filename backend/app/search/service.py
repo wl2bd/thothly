@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+import time
 from urllib.parse import urlparse
 
 from app.core.config import settings
@@ -15,27 +16,71 @@ from app.search.youtube_provider import YouTubeProvider
 logger = logging.getLogger(__name__)
 
 
-def _build_web_provider() -> Provider:
-    """Pick the web-article backend from config (see Settings.web_search_backend).
+class _CachedWebProvider:
+    """Wraps the web backend with a short TTL cache and a min-length skip.
 
-    All three emit `web` results, so the rest of the app is backend-agnostic.
+    The home bar fires a search per keystroke, so without this every prefix of a
+    query ("o", "op", "ope"…) and every re-search hits the backend. yt-dlp and
+    iTunes shrug it off, but a web engine doesn't: Marginalia's shared key throttles
+    and Brave's calls are metered. The cache collapses exact repeats (re-search,
+    delete-and-retype, back navigation) within the TTL, and the min length skips
+    the noisy first keystrokes that can't make a useful query anyway. Failures are
+    NOT cached — a timed-out call is retried next time and still surfaces as an
+    error, never a fake empty result.
+    """
+
+    name = "web"
+    _MIN_QUERY_LEN = 3
+    _TTL_S = 300.0
+    _MAX_ENTRIES = 256
+
+    def __init__(self, inner: Provider):
+        self._inner = inner
+        self._cache: dict[str, tuple[float, list[SearchResult]]] = {}
+
+    def search(self, query: str, limit: int) -> list[SearchResult]:
+        q = query.strip()
+        if len(q) < self._MIN_QUERY_LEN:
+            return []
+        key = f"{q.lower()}::{limit}"
+        now = time.monotonic()
+        cached = self._cache.get(key)
+        if cached is not None and now - cached[0] < self._TTL_S:
+            return cached[1]
+        results = self._inner.search(query, limit)
+        # Don't cache an empty result: a backend that's momentarily throttled can
+        # answer 200 with no hits, and caching that would wrongly blank the query
+        # for the whole TTL even after it recovers. Only real hits are memoized.
+        if results:
+            self._cache[key] = (now, results)
+            if len(self._cache) > self._MAX_ENTRIES:
+                oldest = min(self._cache, key=lambda k: self._cache[k][0])
+                del self._cache[oldest]
+        return results
+
+
+def _build_web_provider() -> Provider:
+    """Pick the web-article backend from config (see Settings.web_search_backend),
+    wrapped in a per-keystroke cache (see `_CachedWebProvider`).
+
+    All backends emit `web` results, so the rest of the app is backend-agnostic.
     Selecting "brave" without a key falls back to Marginalia rather than silently
     returning nothing, and an unknown value falls back too.
     """
     backend = (settings.web_search_backend or "marginalia").strip().lower()
     if backend == "brave":
         if settings.brave_api_key:
-            return BraveProvider()
+            return _CachedWebProvider(BraveProvider())
         logger.warning(
             "web_search_backend=brave but BRAVE_API_KEY is unset — "
             "falling back to Marginalia."
         )
-        return MarginaliaProvider()
+        return _CachedWebProvider(MarginaliaProvider())
     if backend == "ddg":
-        return WebProvider()
+        return _CachedWebProvider(WebProvider())
     if backend != "marginalia":
         logger.warning("Unknown web_search_backend=%r — using Marginalia.", backend)
-    return MarginaliaProvider()
+    return _CachedWebProvider(MarginaliaProvider())
 
 
 # The provider registry. Adding a source kind = add one class here; the service,

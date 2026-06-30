@@ -8,7 +8,10 @@ from app.search.models import SearchResult
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT_S = 10.0
+# Kept short: search_all awaits every provider, so a hung web call would stall
+# the whole result set (YouTube + podcasts included). Better to fail the web
+# slot fast than make the user wait on Marginalia's intermittent slow responses.
+_TIMEOUT_S = 6.0
 
 # Most results one domain may contribute, so a single prolific site (a Substack
 # with dozens of indexed posts) can't crowd out the rest of a topic search.
