@@ -1,5 +1,7 @@
+import concurrent.futures
 import logging
 
+import httpx
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import YoutubeDLError
 
@@ -7,6 +9,22 @@ from app.core.config import settings
 from app.search.models import SearchResult
 
 logger = logging.getLogger(__name__)
+
+# YouTube's keyless oEmbed endpoint returns a video's TRUE ORIGINAL title — the
+# creator's own, never auto-translated (it takes no language parameter). yt-dlp's
+# flat search, by contrast, localizes titles to `hl`, which misrepresents the
+# content (a French video shown as "Chicken with Onions"). So we overwrite each
+# flat title with the oEmbed one. It's a tiny JSON GET (~0.1s), so resolving a
+# page of results in parallel costs a fraction of a second.
+_OEMBED_URL = "https://www.youtube.com/oembed"
+_OEMBED_TIMEOUT_S = 5.0
+_OEMBED_WORKERS = 8
+
+# Original titles never change, so cache them for the life of the process. This
+# collapses the repeated lookups search-as-you-type would otherwise make as the
+# same videos resurface across query prefixes. Bounded so it can't grow forever.
+_title_cache: dict[str, str] = {}
+_TITLE_CACHE_MAX = 2000
 
 
 class YouTubeProvider:
@@ -19,15 +37,18 @@ class YouTubeProvider:
     normalized schema still models every type, so a future Data-API provider can
     emit playlist/channel cards without touching the frontend; and pasted
     playlist/channel URLs are handled by the existing discovery expansion.
+
+    Result titles are corrected to the video's ORIGINAL via oEmbed (see
+    `_apply_original_titles`), so the list never shows an auto-translated title
+    that misrepresents the content.
     """
 
     name = "youtube"
 
     def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
-        # Localize titles to the caller's browser language (Accept-Language) when
-        # given — the same thing YouTube does for an anonymous visitor, so a French
-        # user sees French titles (their content's original) instead of yt-dlp's
-        # hard default of English. Falls back to the instance's preferred_languages.
+        # `hl` only sets the FALLBACK title language (the caller's browser
+        # language) for the rare result oEmbed can't resolve; the authoritative
+        # title is the oEmbed original applied below.
         lang = [hl] if hl else settings.preferred_languages
         opts = {
             "extract_flat": True,  # metadata only, no per-video network calls
@@ -43,7 +64,41 @@ class YouTubeProvider:
                 raise RuntimeError(f"YouTube search failed: {exc}") from exc
 
         entries = (info or {}).get("entries") or []
-        return [self._to_result(e) for e in entries if e and e.get("id")]
+        results = [self._to_result(e) for e in entries if e and e.get("id")]
+        self._apply_original_titles(results)
+        return results
+
+    def _apply_original_titles(self, results: list[SearchResult]) -> None:
+        """Overwrite each result's flat (auto-translatable) title with the video's
+        TRUE ORIGINAL from oEmbed. Cached by id; a lookup that fails leaves the
+        flat title in place, so search degrades gracefully rather than breaking."""
+        pending = [r for r in results if r.id not in _title_cache]
+        if pending:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=_OEMBED_WORKERS) as ex:
+                titles = ex.map(lambda r: self._oembed_title(r.url), pending)
+                for result, title in zip(pending, titles):
+                    if title:
+                        if len(_title_cache) >= _TITLE_CACHE_MAX:
+                            _title_cache.pop(next(iter(_title_cache)))
+                        _title_cache[result.id] = title
+        for result in results:
+            original = _title_cache.get(result.id)
+            if original:
+                result.title = original
+
+    @staticmethod
+    def _oembed_title(watch_url: str) -> str | None:
+        try:
+            resp = httpx.get(
+                _OEMBED_URL,
+                params={"url": watch_url, "format": "json"},
+                timeout=_OEMBED_TIMEOUT_S,
+            )
+            if resp.status_code != 200:  # private/age-restricted/removed → no oEmbed
+                return None
+            return resp.json().get("title") or None
+        except (httpx.HTTPError, ValueError):
+            return None
 
     def _to_result(self, entry: dict) -> SearchResult:
         vid = entry.get("id", "")

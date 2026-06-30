@@ -24,6 +24,17 @@ def _ydl_mock(entries: list) -> MagicMock:
     return mock
 
 
+@pytest.fixture(autouse=True)
+def _clear_youtube_title_cache():
+    """The YouTube provider caches original titles process-wide; clear it between
+    tests so oEmbed results don't leak across them."""
+    from app.search.youtube_provider import _title_cache
+
+    _title_cache.clear()
+    yield
+    _title_cache.clear()
+
+
 def _result(rid: str) -> SearchResult:
     return SearchResult(id=rid, type="video", title=rid, url=f"http://x/{rid}", source="youtube")
 
@@ -45,8 +56,9 @@ class _FakeProvider:
 
 # ── YouTubeProvider mapping ──────────────────────────────────────────────────
 
+@patch.object(YouTubeProvider, "_oembed_title", return_value=None)
 @patch("app.search.youtube_provider.YoutubeDL")
-def test_youtube_provider_maps_entries(mock_cls):
+def test_youtube_provider_maps_entries(mock_cls, _mock_oembed):
     mock_cls.return_value.__enter__.return_value = _ydl_mock([
         {
             "id": "abc123",
@@ -73,8 +85,9 @@ def test_youtube_provider_maps_entries(mock_cls):
     assert r.meta["channel_url"] == "https://www.youtube.com/channel/UCYO"
 
 
+@patch.object(YouTubeProvider, "_oembed_title", return_value=None)
 @patch("app.search.youtube_provider.YoutubeDL")
-def test_youtube_provider_derives_thumbnail_and_skips_idless(mock_cls):
+def test_youtube_provider_derives_thumbnail_and_skips_idless(mock_cls, _mock_oembed):
     mock_cls.return_value.__enter__.return_value = _ydl_mock([
         {"id": "xyz789", "title": "No thumbs"},
         {"title": "Dropped — no id"},
@@ -117,6 +130,36 @@ def test_youtube_provider_falls_back_to_preferred_lang_without_hl(mock_cls):
 
     opts = mock_cls.call_args.args[0]
     assert opts["extractor_args"]["youtube"]["lang"] == settings.preferred_languages
+
+
+@patch.object(YouTubeProvider, "_oembed_title")
+@patch("app.search.youtube_provider.YoutubeDL")
+def test_youtube_provider_overrides_titles_with_oembed_original(mock_cls, mock_oembed):
+    mock_cls.return_value.__enter__.return_value = _ydl_mock([
+        {"id": "vid1", "title": "Learn Python in 1 hour"},  # flat = auto-translated
+        {"id": "vid2", "title": "Some Video"},  # oEmbed fails → flat title kept
+    ])
+    mock_oembed.side_effect = lambda url: (
+        "Apprendre Python en 1 heure" if "vid1" in url else None
+    )
+
+    results = YouTubeProvider().search("python", limit=5)
+
+    assert results[0].title == "Apprendre Python en 1 heure"  # overridden to original
+    assert results[1].title == "Some Video"  # oEmbed failed → flat title preserved
+
+
+@patch.object(YouTubeProvider, "_oembed_title", return_value="cached title")
+@patch("app.search.youtube_provider.YoutubeDL")
+def test_youtube_provider_caches_oembed_titles(mock_cls, mock_oembed):
+    mock_cls.return_value.__enter__.return_value = _ydl_mock(
+        [{"id": "vid1", "title": "flat"}]
+    )
+
+    YouTubeProvider().search("q", limit=5)
+    YouTubeProvider().search("q", limit=5)  # same video resurfaces
+
+    assert mock_oembed.call_count == 1  # second lookup served from the title cache
 
 
 # ── WebProvider (DuckDuckGo HTML) mapping ────────────────────────────────────
