@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import {
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ConstructionIcon,
   FileTextIcon,
   GlobeIcon,
@@ -19,7 +21,7 @@ import {
 } from "lucide-react";
 
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -102,6 +104,10 @@ export default function Home() {
   // bar and clears the moment the field is focused, leaving the full width to
   // type into.
   const [focused, setFocused] = useState(false);
+  // Which face the card shows once sources are staged: the search results, or
+  // the staged compilation. "View N sources" flips it on; typing or Back flips
+  // it off. The card swaps content in place rather than scrolling to a section.
+  const [viewingSources, setViewingSources] = useState(false);
 
   const trimmed = query.trim();
   const queryIsUrl = looksLikeUrl(trimmed);
@@ -182,6 +188,9 @@ export default function Home() {
             },
           ],
     );
+    // Picking happens on the results face — keep it there (a stale "viewing
+    // sources" flag must not yank the user to the sources face mid-pick).
+    setViewingSources(false);
     // Click picks return to the bar so the next query types straight away;
     // keyboard picks keep their place in the list (see pickedByPointer).
     if (pickedByPointer.current) inputRef.current?.focus();
@@ -233,6 +242,7 @@ export default function Home() {
   // sources" escape hatch beside Review.
   function resetStaged() {
     setStaged([]);
+    setViewingSources(false);
   }
 
   // Empty the bar and hand focus back — the shared "start a fresh search"
@@ -272,6 +282,13 @@ export default function Home() {
   }
 
   const showResults = !queryIsUrl && trimmed !== "";
+  // The card's two faces. Sources view wins when explicitly toggled on (and
+  // there's something staged), or whenever there's no active search to show —
+  // so a pasted link or a cleared bar naturally reveals the compilation. The
+  // results face only shows while searching and not viewing sources.
+  const inSourcesView = viewingSources && staged.length > 0;
+  const showResultsPanel = showResults && !inSourcesView;
+  const showSourcesPanel = staged.length > 0 && (viewingSources || !showResults);
   // True once a search has actually run for the live query. Before that the list
   // shows a skeleton, not the empty state, so "No results" can never precede the
   // loading indicator for a query whose search is still pending.
@@ -337,10 +354,12 @@ export default function Home() {
         <Card
           className={cn(
             "bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)] flex flex-col",
-            // While searching, cap the card against the viewport (reserving room
-            // for the header + headline) so its footer — the Check CTA — stays
-            // visible instead of slipping below the fold.
-            showResults ? "max-h-[calc(100svh-22rem)]" : "max-h-[72svh]",
+            // With a scrollable face (results or the sources list), cap the card
+            // against the viewport (reserving room for the header + headline) so
+            // its footer stays visible instead of slipping below the fold.
+            showResults || staged.length > 0
+              ? "max-h-[calc(100svh-22rem)]"
+              : "max-h-[72svh]",
           )}
         >
           <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
@@ -364,7 +383,12 @@ export default function Home() {
                   ref={inputRef}
                   type="text"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    // Typing always means "search" — flip back to the results
+                    // face if the sources face was open.
+                    setViewingSources(false);
+                  }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
                   onKeyDown={(e) => {
@@ -433,7 +457,7 @@ export default function Home() {
               </p>
             )}
 
-            {showResults && results.length > 0 && (
+            {showResultsPanel && results.length > 0 && (
               <div className="flex items-center justify-between gap-2">
                 <TypeFilter
                   results={results}
@@ -444,7 +468,7 @@ export default function Home() {
               </div>
             )}
 
-            {showResults && (
+            {showResultsPanel && (
               <SearchResults
                 searching={searching}
                 settled={settled}
@@ -456,20 +480,119 @@ export default function Home() {
               />
             )}
 
-            {/* During a search the card forwards to the compilation rather than
-                proceeding outright: Check jumps down to the staged Sources list
-                (where Reset / Review live), so the two actions stay distinct and
-                nothing is pinned over the mobile keyboard. */}
-            {showResults && (
+            {/* Sources face — the staged compilation, swapped into the card in
+                place of the results when "View N sources" is tapped (or whenever
+                there's no active search to show). */}
+            {showSourcesPanel && (
+              <>
+                <div className="flex shrink-0 items-center justify-between gap-3">
+                  <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                    Sources · {staged.length}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={resetStaged}
+                    disabled={submitting}
+                    className="text-muted-foreground hover:text-foreground text-xs transition-colors disabled:opacity-50"
+                  >
+                    Clear all
+                  </button>
+                </div>
+                <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1">
+                  {staged.map((s) => (
+                    <li
+                      key={s.url}
+                      className="bg-card flex items-center gap-3.5 rounded-lg border px-3.5 py-3.5"
+                    >
+                      <SourceMedia
+                        kind={kindFromResultType(s.type)}
+                        thumbnail={s.thumbnail}
+                        duration={formatDuration(s.durationS)}
+                        className="h-10 w-16"
+                      />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <span className="truncate text-sm">{s.title}</span>
+                        <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+                          <SourceTypePill
+                            kind={kindFromResultType(s.type)}
+                            className="shrink-0"
+                          />
+                          <MetaSep />
+                          <span className="inline-flex min-w-0 items-center gap-1">
+                            <SourceFavicon url={s.url} />
+                            <span className="truncate">{hostOf(s.url)}</span>
+                          </span>
+                          {s.author && (
+                            <>
+                              <MetaSep />
+                              <span className="min-w-0 truncate">{s.author}</span>
+                            </>
+                          )}
+                          {isContainerKind(kindFromResultType(s.type)) && (
+                            <>
+                              <MetaSep />
+                              <span className="shrink-0">
+                                expands when you review
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      </span>
+                      <Tooltip content="Remove source">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          onClick={() => removeStaged(s.url)}
+                          aria-label="Remove source"
+                          className="ml-2"
+                        >
+                          <XIcon />
+                        </Button>
+                      </Tooltip>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {/* Footer adapts to the face. Results: start over, or flip to your
+                sources. Sources: step back to the results, and Reset / Review the
+                compilation. Only ever one Review, and it sits with the list. */}
+            {showResultsPanel && (
               <div className="flex items-center justify-between gap-3 border-t pt-4">
                 <NewSearchShortcut onClick={clearQuery} />
                 {staged.length > 0 && (
-                  <a href="#sources" className={buttonVariants()}>
+                  <Button type="button" onClick={() => setViewingSources(true)}>
                     View {staged.length}{" "}
                     {staged.length === 1 ? "source" : "sources"}
-                    <ChevronDownIcon />
-                  </a>
+                    <ChevronRightIcon />
+                  </Button>
                 )}
+              </div>
+            )}
+
+            {showSourcesPanel && (
+              <div className="flex gap-2 border-t pt-4">
+                {showResults && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setViewingSources(false)}
+                    disabled={submitting}
+                    className="flex-1"
+                  >
+                    <ChevronLeftIcon />
+                    Back to results
+                  </Button>
+                )}
+                <Button
+                  onClick={onCompile}
+                  disabled={submitting}
+                  className="flex-1"
+                >
+                  {submitting ? "Starting…" : "Review"}
+                </Button>
               </div>
             )}
           </CardContent>
@@ -483,89 +606,6 @@ export default function Home() {
             rate-limited from the cloud, so pasting an article or blog link works
             best for now.
           </p>
-        )}
-
-        {staged.length > 0 && (
-          <section id="sources" className="scroll-mt-20 flex flex-col gap-3">
-            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              Sources · {staged.length}
-            </h2>
-            <ul className="flex flex-col gap-2">
-              {staged.map((s) => (
-                <li
-                  key={s.url}
-                  className="bg-card flex items-center gap-3.5 rounded-lg border px-3.5 py-3.5"
-                >
-                  <SourceMedia
-                    kind={kindFromResultType(s.type)}
-                    thumbnail={s.thumbnail}
-                    duration={formatDuration(s.durationS)}
-                    className="h-10 w-16"
-                  />
-                  <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                    <span className="truncate text-sm">{s.title}</span>
-                    <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
-                      <SourceTypePill
-                        kind={kindFromResultType(s.type)}
-                        className="shrink-0"
-                      />
-                      <MetaSep />
-                      <span className="inline-flex min-w-0 items-center gap-1">
-                        <SourceFavicon url={s.url} />
-                        <span className="truncate">{hostOf(s.url)}</span>
-                      </span>
-                      {s.author && (
-                        <>
-                          <MetaSep />
-                          <span className="min-w-0 truncate">{s.author}</span>
-                        </>
-                      )}
-                      {isContainerKind(kindFromResultType(s.type)) && (
-                        <>
-                          <MetaSep />
-                          <span className="shrink-0">expands when you review</span>
-                        </>
-                      )}
-                    </span>
-                  </span>
-                  <Tooltip content="Remove source">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="icon"
-                      onClick={() => removeStaged(s.url)}
-                      aria-label="Remove source"
-                      className="ml-2"
-                    >
-                      <XIcon />
-                    </Button>
-                  </Tooltip>
-                </li>
-              ))}
-            </ul>
-
-            {/* The proceed actions, anchored to the compilation: Reset and the
-                primary Review side by side. This is where Check lands you. */}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={resetStaged}
-                disabled={submitting}
-              >
-                Reset
-              </Button>
-              <Button
-                size="lg"
-                onClick={onCompile}
-                disabled={submitting}
-                className="flex-1"
-              >
-                {submitting ? "Starting…" : "Review"}
-              </Button>
-            </div>
-          </section>
         )}
 
           </div>
