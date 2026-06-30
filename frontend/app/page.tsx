@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StoneBorder } from "@/components/ui/stone-border";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -202,11 +202,10 @@ export default function Home() {
     });
   }
 
-  // Enter reads the bar: a pasted link is added straight to the sources (the
-  // old paste-a-URL flow). Otherwise — an empty bar OR a plain search term — it
-  // proceeds to Review when a compilation is staged, mirroring the Enter badge
-  // on that button. Search runs automatically (debounced), so Enter is free to
-  // mean "proceed" rather than "search".
+  // Enter only acts on a pasted link: it's added straight to the sources (the
+  // paste-a-URL flow). For a plain search term Enter does nothing — search runs
+  // automatically (debounced), and proceeding is a deliberate click (Check →
+  // Review), not a keystroke.
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (queryIsUrl) {
@@ -223,9 +222,7 @@ export default function Home() {
         },
       ]);
       setQuery("");
-      return;
     }
-    if (staged.length > 0) onCompile();
   }
 
   function removeStaged(url: string) {
@@ -337,7 +334,15 @@ export default function Home() {
               </p>
             </div>
 
-        <Card className="bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)] flex max-h-[72svh] flex-col">
+        <Card
+          className={cn(
+            "bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)] flex flex-col",
+            // While searching, cap the card against the viewport (reserving room
+            // for the header + headline) so its footer — the Check CTA — stays
+            // visible instead of slipping below the fold.
+            showResults ? "max-h-[calc(100svh-22rem)]" : "max-h-[72svh]",
+          )}
+        >
           <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
             <form onSubmit={onSubmit} className="flex flex-col gap-2">
               <AnimatedGoldBorder>
@@ -451,44 +456,34 @@ export default function Home() {
               />
             )}
 
-            {staged.length > 0 && showResults && (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                <p className="text-sm">
-                  <span className="text-foreground font-semibold">
-                    {staged.length}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    {staged.length === 1 ? "source" : "sources"} in your
-                    compilation
-                  </span>
-                </p>
-                <div className="flex items-center gap-3">
-                  <NewSearchShortcut onClick={clearQuery} />
-                  <Button
-                    type="button"
-                    onClick={onCompile}
-                    disabled={submitting}
-                  >
-                    {submitting ? (
-                      "Starting…"
-                    ) : (
-                      <>
-                        Review
-                        <Kbd>Enter</Kbd>
-                      </>
-                    )}
-                  </Button>
-                </div>
+            {/* During a search the card forwards to the compilation rather than
+                proceeding outright: Check jumps down to the staged Sources list
+                (where Reset / Review live), so the two actions stay distinct and
+                nothing is pinned over the mobile keyboard. */}
+            {showResults && (
+              <div className="flex items-center justify-between gap-3 border-t pt-4">
+                <NewSearchShortcut onClick={clearQuery} />
+                {staged.length > 0 && (
+                  <a href="#sources" className={buttonVariants()}>
+                    Check
+                    <span className="opacity-70">{staged.length}</span>
+                    <ChevronDownIcon />
+                  </a>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <p className="text-muted-foreground/80 mx-auto max-w-md text-center text-xs leading-relaxed text-balance">
-          Some features are limited or still in progress. YouTube gets
-          rate-limited from the cloud, so pasting an article or blog link works
-          best for now.
-        </p>
+        {/* Practical heads-up, kept to the pristine state so it never clutters
+            the path once you're actually searching or staging sources. */}
+        {staged.length === 0 && !showResults && (
+          <p className="text-muted-foreground/80 mx-auto max-w-md text-center text-xs leading-relaxed text-balance">
+            Some features are limited or still in progress. YouTube gets
+            rate-limited from the cloud, so pasting an article or blog link works
+            best for now.
+          </p>
+        )}
 
         {staged.length > 0 && (
           <section id="sources" className="scroll-mt-20 flex flex-col gap-3">
@@ -549,31 +544,27 @@ export default function Home() {
               ))}
             </ul>
 
-            {/* The proceed action lives in exactly one place at a time: while a
-                search is active it's the card footer's Review; otherwise (empty
-                bar, or a pasted link) it's here, anchored to the compilation it
-                acts on. Never both, so there's only ever one Review on screen. */}
-            {!showResults && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  onClick={resetStaged}
-                  disabled={submitting}
-                >
-                  Reset
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={onCompile}
-                  disabled={submitting}
-                  className="flex-1"
-                >
-                  {submitting ? "Starting…" : "Review"}
-                </Button>
-              </div>
-            )}
+            {/* The proceed actions, anchored to the compilation: Reset and the
+                primary Review side by side. This is where Check lands you. */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                onClick={resetStaged}
+                disabled={submitting}
+              >
+                Reset
+              </Button>
+              <Button
+                size="lg"
+                onClick={onCompile}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? "Starting…" : "Review"}
+              </Button>
+            </div>
           </section>
         )}
 
