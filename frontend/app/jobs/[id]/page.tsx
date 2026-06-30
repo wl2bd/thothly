@@ -312,10 +312,21 @@ export default function JobPage() {
     <main className="flex min-h-screen justify-center p-8 sm:p-12">
       <div className="flex w-full max-w-xl flex-col gap-10 py-12">
         <header className="flex items-baseline justify-between">
-          <Link href="/" className="flex items-center">
+          {/* transitionTypes tags the return trip so the home hero (a far richer
+              view than this one) can ease back in gently — see the to-home rules
+              in globals.css — instead of snapping in at the forward speed. */}
+          <Link
+            href="/"
+            transitionTypes={["to-home"]}
+            className="flex items-center"
+          >
             <Logotype className="h-8 w-auto" title="Thothly" />
           </Link>
-          <Link href="/" className="text-muted-foreground text-sm hover:underline">
+          <Link
+            href="/"
+            transitionTypes={["to-home"]}
+            className="text-muted-foreground text-sm hover:underline"
+          >
             ← New compilation
           </Link>
         </header>

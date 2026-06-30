@@ -591,6 +591,23 @@
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Returning to the home page (the "New compilation" / logo links carry the
+   `to-home` transition type): the home view is far richer than the job view (the
+   full hero — headline, glyph rain, subtitle), so snapping it in at the forward
+   speed reads as abrupt. Let the chrome AND the card settle in over a longer,
+   still-decelerating beat so the home page eases back rather than slamming in. */
+:active-view-transition-type(to-home)::view-transition-old(root),
+:active-view-transition-type(to-home)::view-transition-new(root) {
+  animation-duration: 380ms;
+}
+:active-view-transition-type(to-home)::view-transition-group(flow-card) {
+  animation-duration: 400ms;
+}
+:active-view-transition-type(to-home)::view-transition-old(flow-card),
+:active-view-transition-type(to-home)::view-transition-new(flow-card) {
+  animation-duration: 300ms;
+}
+
 /* Positional view-transition motion is the top motion-sensitivity trigger, so
    collapse every transition's duration — content then swaps instantly, the
    browser's default without animation. */
