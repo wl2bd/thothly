@@ -583,6 +583,13 @@
   animation-duration: 220ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* The page chrome (everything outside the card) cross-fades on navigation —
+   align it to the same curve/timing so nothing in the frame eases differently. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
 
 /* Positional view-transition motion is the top motion-sensitivity trigger, so
    collapse every transition's duration — content then swaps instantly, the
