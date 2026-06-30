@@ -563,7 +563,11 @@ export default function Home() {
               <div className="flex items-center justify-between gap-3 border-t pt-4">
                 <NewSearchShortcut onClick={clearQuery} />
                 {staged.length > 0 && (
-                  <Button type="button" onClick={() => setViewingSources(true)}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setViewingSources(true)}
+                  >
                     View {staged.length}{" "}
                     {staged.length === 1 ? "source" : "sources"}
                     <ChevronRightIcon />
