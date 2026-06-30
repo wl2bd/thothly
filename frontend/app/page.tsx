@@ -23,7 +23,7 @@ import {
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { StoneBorder } from "@/components/ui/stone-border";
+import { EpubTablet, MarkdownTablet } from "@/components/output-tablet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -714,10 +714,6 @@ function HowItWorks() {
       body: "A polished EPUB for your e-reader, plus a Markdown twin to feed an AI.",
     },
   ];
-  // Skeleton bar widths for the faux e-reader page; null = a paragraph break.
-  const lines = ["100%", "92%", "97%", "85%", null, "100%", "94%", "90%", "96%"];
-  // Faux-text band widths for the markdown panel's body (after the real header).
-  const mdBands = ["100%", "92%", "96%", "88%"];
   // Mixed input kinds, shown flowing into the two output formats below.
   const sources = [
     { Icon: PlayIcon, kind: "Video" },
@@ -811,73 +807,8 @@ function HowItWorks() {
               className="funnel-node absolute top-1/4 left-1/2 -z-10 size-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold opacity-40 blur-2xl"
               aria-hidden="true"
             />
-            <StoneBorder>
-              <div className="bg-transparent text-card-foreground relative h-44 overflow-hidden rounded-xl p-6">
-              <div className="flex h-full flex-col gap-2">
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted-foreground text-[0.55rem] font-medium tracking-[0.2em] uppercase">
-                    Chapter 2
-                  </span>
-                  <span className="font-edition text-foreground text-[0.95rem] font-semibold leading-tight">
-                    The new HTTP QUERY method
-                  </span>
-                </div>
-                <p className="font-edition text-muted-foreground text-[0.66rem] leading-relaxed">
-                  A safe, idempotent way to send a body with your queries.
-                </p>
-                <div className="flex flex-1 flex-col gap-1.5">
-                  {lines.map((w, i) =>
-                    w === null ? (
-                      <span key={i} className="h-1" />
-                    ) : (
-                      <span
-                        key={i}
-                        className="bg-muted h-1.5 rounded-full"
-                        style={{ width: w }}
-                      />
-                    ),
-                  )}
-                </div>
-              </div>
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-12"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to top, var(--card), transparent)",
-                }}
-              />
-              </div>
-            </StoneBorder>
-            <StoneBorder>
-              <div className="bg-transparent relative h-44 overflow-hidden rounded-xl p-6">
-              <div className="flex h-full flex-col gap-1.5 font-mono text-[0.6rem] leading-relaxed">
-                <p className="text-foreground"># Sources</p>
-                <p className="text-foreground mt-1">
-                  ## The new HTTP QUERY method
-                </p>
-                <p className="text-muted-foreground">
-                  A safe, idempotent way to send a body with your queries.
-                </p>
-                <p className="text-muted-foreground/70">
-                  - [Original article](https://…)
-                </p>
-                {mdBands.map((w, i) => (
-                  <span
-                    key={i}
-                    className="bg-muted mt-0.5 h-1.5 rounded"
-                    style={{ width: w }}
-                  />
-                ))}
-              </div>
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-12"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to top, var(--card), transparent)",
-                }}
-              />
-              </div>
-            </StoneBorder>
+            <EpubTablet />
+            <MarkdownTablet />
           </div>
           <figcaption className="text-muted-foreground text-center text-xs text-balance">
             Any mix of sources, one compilation, two formats: EPUB for your

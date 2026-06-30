@@ -15,6 +15,7 @@ import { useParams } from "next/navigation";
 import {
   Check,
   Coins,
+  Download,
   Eye,
   EyeOff,
   GripVertical,
@@ -54,6 +55,7 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Logotype } from "@/components/brand";
+import { EpubTablet, MarkdownTablet } from "@/components/output-tablet";
 import {
   MetaSep,
   SourceFavicon,
@@ -337,22 +339,7 @@ export default function JobPage() {
           ) : job.status === "processing" ? (
             <StatusMessage label="Compiling…" />
           ) : job.status === "completed" ? (
-            <div className="flex flex-col items-start gap-6">
-              <div className="flex flex-col gap-1.5">
-                <p className="text-sm font-medium">Your compilation is ready 🎉</p>
-                {job.book_title && (
-                  <p className="text-muted-foreground text-sm">{job.book_title}</p>
-                )}
-              </div>
-              <a
-                href={getDownloadUrl(id)}
-                download
-                className={buttonVariants({ size: "lg" })}
-              >
-                Download EPUB
-              </a>
-              {job.output_md_path && <MarkdownActions jobId={id} />}
-            </div>
+            <CompletedView jobId={id} job={job} />
           ) : (
             <div className="flex flex-col gap-2">
               <p className="text-destructive text-sm font-medium">
@@ -442,17 +429,19 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
   );
 }
 
-// The completed screen's Markdown actions. The Markdown twin is meant to be fed
-// to an AI, where copy-paste is usually the natural gesture, so we offer Copy
-// (instant, from the text we fetch once) alongside Download, and surface the
-// size so the user can judge whether it fits their model's context. We never
-// gate by size: the right limit depends on the target LLM, so we inform rather
-// than hide the action.
-function MarkdownActions({ jobId }: { jobId: string }) {
+// The payoff screen, framed as two destinations for the same compilation rather
+// than one download with an afterthought: EPUB to read on an e-reader, Markdown
+// to feed an AI. Each format reads as a deliberate way to take your work. The
+// Markdown twin is fetched once so we can offer instant Copy and show its size
+// (the AI's context budget is the thing the user weighs). We never gate by size:
+// the right limit depends on the target LLM, so we inform rather than hide.
+function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   const [md, setMd] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const hasMarkdown = !!job.output_md_path;
 
   useEffect(() => {
+    if (!hasMarkdown) return;
     let cancelled = false;
     fetch(getDownloadUrl(jobId, "md"))
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error("fetch failed"))))
@@ -465,10 +454,18 @@ function MarkdownActions({ jobId }: { jobId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [jobId]);
+  }, [jobId, hasMarkdown]);
 
   const words = md ? countWords(md) : null;
   const tokens = words != null ? Math.round(words * TOKENS_PER_WORD) : null;
+
+  // Sources actually represented in the compilation (distinct sources among the
+  // selected items), falling back to the staged source list for older jobs whose
+  // items don't carry the selection flag.
+  const selectedItems = job.discovered_items.filter((it) => it.selected);
+  const counted = selectedItems.length ? selectedItems : job.discovered_items;
+  const sourceCount =
+    new Set(counted.map((it) => it.source_index)).size || job.sources.length;
 
   async function copy() {
     if (!md) return;
@@ -482,39 +479,115 @@ function MarkdownActions({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm">
-        <span className="font-medium">Markdown</span>
-        <span className="text-muted-foreground">
-          {" "}
-          for an AI
-          {words != null &&
-            ` · ~${words.toLocaleString("en-US")} words (~${formatTokens(tokens!)} tokens)`}
-        </span>
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={copy}
-          disabled={!md}
-        >
-          {copied ? "Copied ✓" : "Copy"}
-        </Button>
-        <a
-          href={getDownloadUrl(jobId, "md")}
-          download
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          Download
-        </a>
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-2">
+        <p className="font-display text-2xl tracking-tight text-balance">
+          Your compilation is ready
+        </p>
+        {job.book_title && (
+          <p className="text-foreground leading-snug">{job.book_title}</p>
+        )}
+        <p className="text-muted-foreground text-xs">
+          {sourceCount} source{sourceCount !== 1 ? "s" : ""}
+          {words != null && ` · ~${words.toLocaleString("en-US")} words`}
+        </p>
       </div>
+
+      <div className={cn("grid gap-4", hasMarkdown && "sm:grid-cols-2")}>
+        {/* EPUB — to read. The gold primary lives here: reading on an e-reader is
+            the product's headline use, so its download is the one accented act.
+            The stone tablet is the same one the landing's funnel showed, so what
+            was promised is what's handed over. */}
+        <OutputTile
+          tablet={<EpubTablet />}
+          format="EPUB"
+          destination="For your e-reader"
+        >
+          <a
+            href={getDownloadUrl(jobId)}
+            download
+            className={cn(buttonVariants(), "w-full")}
+          >
+            <Download />
+            Download
+          </a>
+        </OutputTile>
+
+        {/* Markdown — to feed an AI. Copy is the natural gesture there, so it
+            leads; the token size rides the destination line (the AI's context
+            budget is what the user weighs). Only shown when the twin exists. */}
+        {hasMarkdown && (
+          <OutputTile
+            tablet={<MarkdownTablet />}
+            format="Markdown"
+            destination={
+              tokens != null
+                ? `For an AI · ~${formatTokens(tokens)} tokens`
+                : "For an AI"
+            }
+          >
+            <div className="flex w-full gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={copy}
+                disabled={!md}
+                className="flex-1"
+              >
+                {copied ? "Copied ✓" : "Copy"}
+              </Button>
+              <Tooltip content="Download Markdown">
+                <a
+                  href={getDownloadUrl(jobId, "md")}
+                  download
+                  aria-label="Download Markdown"
+                  className={buttonVariants({ variant: "outline", size: "icon" })}
+                >
+                  <Download />
+                </a>
+              </Tooltip>
+            </div>
+          </OutputTile>
+        )}
+      </div>
+
       {tokens != null && tokens > 200000 && (
         <p className="text-muted-foreground text-xs">
           Large for some AIs; downloading and attaching the file may work better.
         </p>
       )}
+    </div>
+  );
+}
+
+// One format tile: its stone-tablet illustration on top (the carved preview the
+// landing already showed for this format), then the format name, its
+// destination, and the format's action(s) as children. No surrounding box — the
+// tablet's own carved edge is the frame. The two outputs stay visual peers; the
+// only accent is the gold on EPUB's primary download.
+function OutputTile({
+  tablet,
+  format,
+  destination,
+  children,
+}: {
+  tablet: ReactNode;
+  format: string;
+  destination: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      {/* The tablet is a desktop-only flourish: on a narrow screen the two would
+          stack into a tall scroll, so below sm we keep just the label + action. */}
+      <div className="hidden sm:block">{tablet}</div>
+      <div className="flex flex-col gap-3 px-0.5">
+        <span className="flex min-w-0 flex-col">
+          <span className="text-sm font-medium">{format}</span>
+          <span className="text-muted-foreground text-xs">{destination}</span>
+        </span>
+        {children}
+      </div>
     </div>
   );
 }
