@@ -173,6 +173,56 @@ def test_fetch_transcript_includes_chapters(mock_cls):
 
     assert len(result.chapters) == 1
     assert result.chapters[0].title == "Introduction"
+
+
+@patch("app.sources.youtube.YoutubeDL")
+def test_fetch_transcript_reextracts_chapters_in_original_language(mock_cls):
+    # The first extract (preferred lang = en) carries English AUTO-TRANSLATED
+    # chapters; because the original language differs, fetch re-extracts in the
+    # original language and uses ITS (French) chapters instead.
+    en_info = {
+        "language": "fr-FR",
+        "subtitles": {},
+        "automatic_captions": {"fr": _track("http://x/fr.json3")},
+        "chapters": [
+            {"title": "Introduction", "start_time": 0.0, "end_time": 10.0},
+            {"title": "Download the app", "start_time": 10.0, "end_time": 20.0},
+        ],
+    }
+    fr_info = {
+        "language": "fr-FR",
+        "chapters": [
+            {"title": "Introduction", "start_time": 0.0, "end_time": 10.0},
+            {"title": "Télécharger l’application", "start_time": 10.0, "end_time": 20.0},
+        ],
+    }
+    mock_ydl = MagicMock()
+    mock_ydl.extract_info.side_effect = [en_info, fr_info]
+    mock_ydl.urlopen.return_value.read.return_value = _json3(_event("Bonjour", 0, 1000))
+    mock_cls.return_value.__enter__.return_value = mock_ydl
+
+    result = fetch_transcript("vid")
+
+    assert [c.title for c in result.chapters] == ["Introduction", "Télécharger l’application"]
+    assert mock_ydl.extract_info.call_count == 2  # re-extracted in the original language
+
+
+@patch("app.sources.youtube.YoutubeDL")
+def test_fetch_transcript_no_reextract_when_original_is_preferred(mock_cls):
+    # An English video (original == preferred) needs no second call.
+    info = {
+        "language": "en",
+        "subtitles": {},
+        "automatic_captions": {"en": _track("http://x/en.json3")},
+        "chapters": [{"title": "Intro", "start_time": 0.0, "end_time": 10.0}],
+    }
+    mock_ydl = _transcript_ydl(info, _json3(_event("Hi", 0, 1000)))
+    mock_cls.return_value.__enter__.return_value = mock_ydl
+
+    result = fetch_transcript("vid")
+
+    assert [c.title for c in result.chapters] == ["Intro"]
+    assert mock_ydl.extract_info.call_count == 1  # no extra call
     assert result.chapters[0].start_s == 0.0
     assert result.chapters[0].end_s == 10.0
 

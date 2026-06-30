@@ -16,15 +16,18 @@ class TranscriptNotFound(Exception):
     pass
 
 
-def _lang_extractor_args() -> dict:
-    """Ask YouTube for metadata in our preferred language(s).
+def _lang_extractor_args(langs: list[str] | None = None) -> dict:
+    """Tell YouTube which language to return metadata (title, chapters…) in.
 
-    Without this, titles come back localized to the viewer's UI language
-    (e.g. an English UI turns a French video's title into an English
-    auto-translation), which then clashes with the original-language
-    transcript. Requesting the original language keeps title and body coherent.
+    IMPORTANT: this is a localization REQUEST, not "the original". YouTube
+    auto-translates the title/chapters to the requested language whenever a
+    translation exists — so requesting `en` turns a French video's chapters into
+    English ones, clashing with the original-language body. There's no value that
+    universally means "original": you have to request each video's OWN language,
+    which we only learn after a first extract (info["language"]). See
+    `_info_in_original_language`, which re-requests metadata in that language.
     """
-    return {"youtube": {"lang": settings.preferred_languages}}
+    return {"youtube": {"lang": langs or settings.preferred_languages}}
 
 
 _YDL_OPTS: dict = {
@@ -107,14 +110,40 @@ def fetch_transcript(
     segments = _parse_json3(raw)
     if not segments:
         return None
+    # The first extract ran in our preferred language, so chapter titles may have
+    # come back auto-translated for a non-preferred-language video. Re-request
+    # them in the video's ORIGINAL language so they match the (original) body.
+    meta = _info_in_original_language(url, opts, info)
     return Transcript(
         video_id=video_id,
         language=language,
         segments=segments,
-        chapters=_parse_chapters(info),
+        chapters=_parse_chapters(meta),
         uploader=info.get("channel") or info.get("uploader") or None,
         channel_url=info.get("channel_url") or info.get("uploader_url") or None,
     )
+
+
+def _info_in_original_language(url: str, opts: dict, info: dict) -> dict:
+    """Return info whose metadata is in the video's ORIGINAL language.
+
+    The first extract uses `preferred_languages`, so for a video whose original
+    language differs YouTube may have auto-translated the chapter titles. We learn
+    the true original from `info["language"]` and, when it differs, re-extract
+    requesting that language so the chapters read in the source language. Skipped
+    when there are no chapters to fix (no extra network call), and degrades to the
+    already-fetched info if the re-extract fails — never worse than before.
+    """
+    preferred = settings.preferred_languages or ["en"]
+    requested = preferred[0].split("-")[0]
+    original = (info.get("language") or "").split("-")[0]
+    if not info.get("chapters") or not original or original == requested:
+        return info
+    try:
+        with YoutubeDL({**opts, "extractor_args": _lang_extractor_args([original])}) as ydl:
+            return ydl.extract_info(url, download=False) or info
+    except YoutubeDLError:
+        return info
 
 
 def fetch_channel_avatar_url(channel_url: str) -> str | None:
