@@ -29,16 +29,20 @@ dump.
 - **Search or paste.** Type a query to search YouTube, podcasts, and the web at
   once (all keyless), or paste a link directly: single videos, playlists,
   channels, blog homepages, or RSS feeds. The source type is auto-detected, with
-  no dropdowns. Filter results by provider and sort by relevance, duration, or
-  title.
-- **Review before you compile.** Discovery lists every item with its reading
-  time, language, and transcript readiness, plus a no-LLM preview of exactly what
-  each item would contribute. You tick what makes the book.
+  no dropdowns. Filter results by type (video, episode, article) and sort by
+  relevance, duration, or title. Titles show in the source's own language, never
+  an auto-translation.
+- **Review before you compile.** Discovery tags every item with what was actually
+  retrieved (a clean transcript, raw captions, web text, or nothing usable), plus
+  a no-LLM preview of exactly what each item would contribute. You tick what makes
+  the book.
 - **Two formats, one compilation.** Every job produces a clean EPUB (sources
   index, per-chapter attribution, YouTube chapters as sub-headings, an editorial
   cover, Instapaper-grade typography) and a standalone Markdown twin of the same
   content. Read the EPUB on an e-reader, or copy the Markdown straight into an AI.
-- **Zero-LLM by default.** Native subtitles and article text, never rewritten.
+- **Zero-LLM by default.** Native subtitles and article text, never rewritten,
+  and kept in the source's original language (titles, chapters, and body) —
+  never auto-translated.
 - **Optional LLM cleanup.** Re-punctuate raw captions, copyedit, infer section
   headings, or generate a preface. Entirely opt-in (see below).
 - **Optional podcast transcription.** Turn audio episodes into chapters via any
