@@ -22,11 +22,16 @@ _ASSETS = Path(__file__).parent / "assets"
 _TITLE_FONT = _ASSETS / "Prociono.otf"
 _TEXT_FONT = _ASSETS / "HostGrotesk.ttf"
 _EMBLEM_PATH = _ASSETS / "emblem.png"
+# The brand "thothly" lettering, baked from the logo to an alpha silhouette
+# (scripts bake it via sharp from frontend/components/brand.tsx). Stamped at the
+# foot and recoloured here, so it replaces the plain text colophon.
+_WORDMARK_PATH = _ASSETS / "wordmark.png"
 
 # Standard EPUB cover proportions (~1:1.6 portrait).
 _W, _H = 1600, 2560
 _MARGIN = 190
 _EMBLEM_SIZE = 150
+_WORDMARK_WIDTH = 360
 
 
 def _oklch_to_rgb(lightness: float, chroma: float, hue_deg: float) -> tuple[int, int, int]:
@@ -182,6 +187,31 @@ def _strip_unrenderable(text: str, font: ImageFont.FreeTypeFont) -> str:
     return " ".join("".join(kept).split())
 
 
+def _draw_wordmark(image: Image.Image, draw: ImageDraw.ImageDraw) -> None:
+    """Stamp the brand wordmark at the foot, recoloured to the gold accent.
+
+    `wordmark.png` is an alpha silhouette of the "thothly" lettering; we tint
+    it by laying its own alpha over a solid `_OCHRE` fill, so the colour stays
+    defined here in one place rather than baked into the asset. If the asset is
+    missing we fall back to the wordmark set in text, so the cover always keeps
+    its colophon.
+    """
+    y_bottom = _H - _MARGIN
+    if _WORDMARK_PATH.exists():
+        wm = Image.open(_WORDMARK_PATH).convert("RGBA")
+        w = _WORDMARK_WIDTH
+        h = round(wm.height * w / wm.width)
+        wm = wm.resize((w, h), Image.LANCZOS)
+        tint = Image.new("RGBA", wm.size, (*_OCHRE, 255))
+        tint.putalpha(wm.getchannel("A"))
+        image.paste(tint, ((_W - w) // 2, y_bottom - h), tint)
+        return
+    logger.warning("Wordmark not found at %s; using text colophon", _WORDMARK_PATH)
+    font = _font(44, weight=500)
+    cw = draw.textlength("thothly", font=font)
+    draw.text(((_W - cw) // 2, y_bottom - 60), "thothly", font=font, fill=_OCHRE)
+
+
 def generate_cover(
     title: str,
     authors: list[str],
@@ -240,20 +270,19 @@ def generate_cover(
     y = round(_H * 0.5 - block_h / 2)
 
     for line in lines:
-        draw.text((_MARGIN, y), line, font=title_font, fill=_INK)
+        lw = draw.textlength(line, font=title_font)
+        draw.text(((_W - lw) / 2, y), line, font=title_font, fill=_INK)
         y += line_height
 
     if author_lines:
         y += _AUTHOR_GAP
         for line in author_lines:
-            draw.text((_MARGIN, y), line, font=author_font, fill=_MUTED)
+            lw = draw.textlength(line, font=author_font)
+            draw.text(((_W - lw) / 2, y), line, font=author_font, fill=_MUTED)
             y += _AUTHOR_LINE_H
 
-    # Colophon at the foot.
-    colophon_font = _font(44, weight=500)
-    colophon = "thothly"
-    cw = draw.textlength(colophon, font=colophon_font)
-    draw.text(((_W - cw) // 2, _H - 230), colophon, font=colophon_font, fill=_OCHRE)
+    # Wordmark at the foot, in place of a plain "thothly" in text.
+    _draw_wordmark(image, draw)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, format="PNG")
