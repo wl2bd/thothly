@@ -38,16 +38,17 @@ class _CachedWebProvider:
         self._inner = inner
         self._cache: dict[str, tuple[float, list[SearchResult]]] = {}
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
         q = query.strip()
         if len(q) < self._MIN_QUERY_LEN:
             return []
+        # hl is not part of the key: it localizes YouTube titles, not web results.
         key = f"{q.lower()}::{limit}"
         now = time.monotonic()
         cached = self._cache.get(key)
         if cached is not None and now - cached[0] < self._TTL_S:
             return cached[1]
-        results = self._inner.search(query, limit)
+        results = self._inner.search(query, limit, hl)
         # Don't cache an empty result: a backend that's momentarily throttled can
         # answer 200 with no hits, and caching that would wrongly blank the query
         # for the whole TTL even after it recovers. Only real hits are memoized.
@@ -94,20 +95,25 @@ _PROVIDER_TIMEOUT_S = 12
 _DEFAULT_LIMIT = 12
 
 
-async def search_all(query: str, limit: int = _DEFAULT_LIMIT) -> SearchResponse:
+async def search_all(
+    query: str, limit: int = _DEFAULT_LIMIT, hl: str | None = None
+) -> SearchResponse:
     """Query every provider in parallel and merge into one unified list.
 
     Each provider's `search` is sync and blocking, so it runs in a worker thread
     under its own timeout. A provider that raises or times out is recorded in
     `errors` and contributes no results; the providers that succeeded are
     returned regardless, so one provider being down never blanks the search.
+
+    `hl` is the caller's browser language (Accept-Language); providers that
+    localize results (YouTube) use it, the rest ignore it.
     """
     loop = asyncio.get_running_loop()
 
     async def run(provider: Provider) -> tuple[str, list[SearchResult], str | None]:
         try:
             results = await asyncio.wait_for(
-                loop.run_in_executor(None, provider.search, query, limit),
+                loop.run_in_executor(None, provider.search, query, limit, hl),
                 _PROVIDER_TIMEOUT_S,
             )
             return provider.name, results, None

@@ -36,7 +36,7 @@ class MarginaliaProvider:
 
     name = "web"
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
         key = settings.marginalia_api_key or "public"
         url = f"{settings.marginalia_base_url}/{key}/search/{quote(query)}"
         try:

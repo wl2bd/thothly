@@ -23,14 +23,17 @@ class YouTubeProvider:
 
     name = "youtube"
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
+        # Localize titles to the caller's browser language (Accept-Language) when
+        # given — the same thing YouTube does for an anonymous visitor, so a French
+        # user sees French titles (their content's original) instead of yt-dlp's
+        # hard default of English. Falls back to the instance's preferred_languages.
+        lang = [hl] if hl else settings.preferred_languages
         opts = {
             "extract_flat": True,  # metadata only, no per-video network calls
             "quiet": True,
             "no_warnings": True,
-            # Same original-language request the rest of the app uses, so search
-            # titles match the language of the eventual transcript/book.
-            "extractor_args": {"youtube": {"lang": settings.preferred_languages}},
+            "extractor_args": {"youtube": {"lang": lang}},
         }
         with YoutubeDL(opts) as ydl:
             try:

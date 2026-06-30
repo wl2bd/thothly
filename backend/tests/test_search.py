@@ -36,7 +36,8 @@ class _FakeProvider:
         self._results = results or []
         self._error = error
 
-    def search(self, query: str, limit: int):
+    def search(self, query: str, limit: int, hl: str | None = None):
+        self.hl = hl
         if self._error:
             raise RuntimeError(self._error)
         return self._results
@@ -94,6 +95,28 @@ def test_youtube_provider_raises_on_ydl_error(mock_cls):
 
     with pytest.raises(RuntimeError):
         YouTubeProvider().search("q", limit=5)
+
+
+@patch("app.search.youtube_provider.YoutubeDL")
+def test_youtube_provider_uses_hl_for_title_localization(mock_cls):
+    mock_cls.return_value.__enter__.return_value = _ydl_mock([])
+
+    YouTubeProvider().search("q", limit=3, hl="fr")
+
+    opts = mock_cls.call_args.args[0]
+    assert opts["extractor_args"]["youtube"]["lang"] == ["fr"]
+
+
+@patch("app.search.youtube_provider.YoutubeDL")
+def test_youtube_provider_falls_back_to_preferred_lang_without_hl(mock_cls):
+    from app.core.config import settings
+
+    mock_cls.return_value.__enter__.return_value = _ydl_mock([])
+
+    YouTubeProvider().search("q", limit=3)
+
+    opts = mock_cls.call_args.args[0]
+    assert opts["extractor_args"]["youtube"]["lang"] == settings.preferred_languages
 
 
 # ── WebProvider (DuckDuckGo HTML) mapping ────────────────────────────────────
@@ -417,7 +440,7 @@ def test_cached_web_provider_caches_and_skips_short_queries():
     class _Counting:
         name = "web"
 
-        def search(self, query, limit):
+        def search(self, query, limit, hl=None):
             calls["n"] += 1
             return [_result("web:1")]
 
@@ -431,6 +454,27 @@ def test_cached_web_provider_caches_and_skips_short_queries():
     assert len(cached.search("bitcoin", 5)) == 1
     assert cached.search("bitcoin", 5)  # repeat
     assert calls["n"] == 1  # only the first call reached the backend
+
+
+# ── Accept-Language → hl plumbing ────────────────────────────────────────────
+
+def test_primary_language_parsing():
+    from app.api.search import _primary_language
+
+    assert _primary_language("fr-FR,fr;q=0.9,en;q=0.8") == "fr"
+    assert _primary_language("en-US") == "en"
+    assert _primary_language("  PT-BR ") == "pt"
+    assert _primary_language(None) is None
+    assert _primary_language("") is None
+
+
+def test_search_all_passes_hl_to_providers(monkeypatch):
+    fake = _FakeProvider("youtube", results=[_result("youtube:1")])
+    monkeypatch.setattr(service, "PROVIDERS", [fake])
+
+    asyncio.run(service.search_all("q", hl="fr"))
+
+    assert fake.hl == "fr"
 
 
 # ── PodcastProvider (iTunes Search API) mapping ──────────────────────────────

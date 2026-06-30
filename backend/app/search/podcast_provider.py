@@ -27,7 +27,7 @@ class PodcastProvider:
 
     name = "podcast"
 
-    def search(self, query: str, limit: int) -> list[SearchResult]:
+    def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
         try:
             response = httpx.get(
                 _ENDPOINT,
