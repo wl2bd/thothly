@@ -573,24 +573,21 @@ export default function Home() {
             )}
 
             {showSourcesPanel && (
-              <div className="flex gap-2 border-t pt-4">
-                {showResults && (
+              <div className="flex items-center justify-between gap-3 border-t pt-4">
+                {showResults ? (
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => setViewingSources(false)}
                     disabled={submitting}
-                    className="flex-1"
                   >
                     <ChevronLeftIcon />
                     Back to results
                   </Button>
+                ) : (
+                  <span />
                 )}
-                <Button
-                  onClick={onCompile}
-                  disabled={submitting}
-                  className="flex-1"
-                >
+                <Button onClick={onCompile} disabled={submitting}>
                   {submitting ? "Starting…" : "Review"}
                 </Button>
               </div>
