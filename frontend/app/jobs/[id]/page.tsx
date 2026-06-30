@@ -852,6 +852,7 @@ function ReviewList({
           placeholder="Compilation title"
           maxLength={BOOK_TITLE_MAX}
           aria-required="true"
+          autoComplete="off"
         />
       </div>
 
@@ -886,6 +887,7 @@ function ReviewList({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search titles…"
             className="pr-9 pl-9 [&::-webkit-search-cancel-button]:hidden"
+            autoComplete="off"
           />
           {query !== "" && (
             <button

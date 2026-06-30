@@ -351,6 +351,7 @@ export default function Home() {
                   }}
                   placeholder="Search or paste a link…"
                   className="border-transparent bg-background pr-9 pl-9 focus-visible:ring-0 dark:bg-background"
+                  autoComplete="off"
                   autoFocus
                 />
                 {query !== "" && (
