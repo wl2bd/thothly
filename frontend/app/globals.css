@@ -571,6 +571,9 @@
    job's discovery→review→done. The GROUP (the card box) animates its
    resize/reposition; the old/new content cross-fade is kept gentle and quick so
    in-place phase changes feel like a soft settle, not a hard swap. */
+/* easeOutQuint everywhere — a fast start that decelerates to a soft stop at the
+   end (the same curve as the search bar's placeholder glide), so the card never
+   lands abruptly. Applied to the box morph AND the content cross-fade. */
 ::view-transition-group(flow-card) {
   animation-duration: 300ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
@@ -578,6 +581,7 @@
 ::view-transition-old(flow-card),
 ::view-transition-new(flow-card) {
   animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Positional view-transition motion is the top motion-sensitivity trigger, so
