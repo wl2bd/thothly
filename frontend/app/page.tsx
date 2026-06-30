@@ -2,6 +2,7 @@
 
 import {
   startTransition,
+  useDeferredValue,
   useEffect,
   useRef,
   useState,
@@ -118,6 +119,12 @@ export default function Home() {
   const trimmed = query.trim();
   const queryIsUrl = looksLikeUrl(trimmed);
   const showSearchIcon = query === "" && !focused;
+  // The results panel is gated on a DEFERRED query, so its appearance and
+  // disappearance ride a transition (which activates the flow-card
+  // ViewTransition) — the card animates open as the search launches and shut
+  // when the bar clears — while the input stays on the live `query` so typing
+  // never lags behind a frame.
+  const deferredTrimmed = useDeferredValue(query).trim();
 
   // Debounced multi-provider search. A pasted link never triggers a search
   // (it's added directly on Enter); only free text does. Each keystroke aborts
@@ -299,7 +306,7 @@ export default function Home() {
     }
   }
 
-  const showResults = !queryIsUrl && trimmed !== "";
+  const showResults = !looksLikeUrl(deferredTrimmed) && deferredTrimmed !== "";
   // The card's two faces. Sources view wins when explicitly toggled on (and
   // there's something staged), or whenever there's no active search to show —
   // so a pasted link or a cleared bar naturally reveals the compilation. The
