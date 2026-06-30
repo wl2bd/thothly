@@ -3,7 +3,10 @@ import logging
 import re
 from urllib.parse import urlparse
 
+from app.core.config import settings
 from app.search.base import Provider
+from app.search.brave_provider import BraveProvider
+from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import ProviderError, SearchResponse, SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.web_provider import WebProvider
@@ -11,9 +14,34 @@ from app.search.youtube_provider import YouTubeProvider
 
 logger = logging.getLogger(__name__)
 
+
+def _build_web_provider() -> Provider:
+    """Pick the web-article backend from config (see Settings.web_search_backend).
+
+    All three emit `web` results, so the rest of the app is backend-agnostic.
+    Selecting "brave" without a key falls back to Marginalia rather than silently
+    returning nothing, and an unknown value falls back too.
+    """
+    backend = (settings.web_search_backend or "marginalia").strip().lower()
+    if backend == "brave":
+        if settings.brave_api_key:
+            return BraveProvider()
+        logger.warning(
+            "web_search_backend=brave but BRAVE_API_KEY is unset — "
+            "falling back to Marginalia."
+        )
+        return MarginaliaProvider()
+    if backend == "ddg":
+        return WebProvider()
+    if backend != "marginalia":
+        logger.warning("Unknown web_search_backend=%r — using Marginalia.", backend)
+    return MarginaliaProvider()
+
+
 # The provider registry. Adding a source kind = add one class here; the service,
-# endpoint, and frontend stay untouched.
-PROVIDERS: list[Provider] = [YouTubeProvider(), WebProvider(), PodcastProvider()]
+# endpoint, and frontend stay untouched. The web slot is pluggable (see
+# `_build_web_provider`); YouTube and podcasts have a single backend each.
+PROVIDERS: list[Provider] = [YouTubeProvider(), _build_web_provider(), PodcastProvider()]
 
 # Per-provider wall-clock budget: a slow or hung provider must never hold up the
 # results the others already produced, so each is capped independently.

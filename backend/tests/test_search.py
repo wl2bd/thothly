@@ -8,6 +8,8 @@ from yt_dlp.utils import DownloadError
 
 import app.search.service as service
 import app.search.web_provider as web_provider
+from app.search.brave_provider import BraveProvider
+from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.web_provider import WebProvider
@@ -279,6 +281,131 @@ def test_web_provider_raises_on_http_error(mock_post):
 
     with pytest.raises(RuntimeError):
         WebProvider().search("q", limit=5)
+
+
+# ── MarginaliaProvider (default web backend) mapping ─────────────────────────
+
+_MARGINALIA_PAYLOAD = {
+    "license": "CC-BY-NC-SA 4.0",
+    "results": [
+        {
+            "url": "https://k3tan.com/the-importance-of-bitcoin-self-custody/",
+            "title": "The Importance of Bitcoin Self Custody",
+            "description": "Self custody is a principle we cannot back away from.",
+        },
+        {"url": "", "title": "Dropped — no url", "description": "x"},
+    ],
+}
+
+
+@patch("app.search.marginalia_provider.httpx.get")
+def test_marginalia_provider_maps_results(mock_get):
+    mock_get.return_value = _httpx_response("")
+    mock_get.return_value.json.return_value = _MARGINALIA_PAYLOAD
+
+    results = MarginaliaProvider().search("bitcoin self custody", limit=5)
+
+    assert len(results) == 1  # url-less entry dropped
+    r = results[0]
+    assert r.id == "web:https://k3tan.com/the-importance-of-bitcoin-self-custody/"
+    assert r.type == "web"
+    assert r.source == "web"
+    assert r.title == "The Importance of Bitcoin Self Custody"
+    assert r.url == "https://k3tan.com/the-importance-of-bitcoin-self-custody/"
+    # Web hits carry no author — the site identity is the URL/domain itself.
+    assert r.author is None
+    assert r.meta["snippet"] == "Self custody is a principle we cannot back away from."
+
+
+@patch("app.search.marginalia_provider.httpx.get")
+def test_marginalia_provider_caps_results_per_domain(mock_get):
+    payload = {
+        "results": [
+            {"url": f"https://big.example/post-{i}", "title": f"P{i}"}
+            for i in range(6)
+        ]
+    }
+    mock_get.return_value = _httpx_response("")
+    mock_get.return_value.json.return_value = payload
+
+    # One domain shouldn't flood the list, even with room under the limit.
+    results = MarginaliaProvider().search("q", limit=10)
+    assert len(results) == 3  # _MAX_PER_DOMAIN
+
+
+@patch("app.search.marginalia_provider.httpx.get")
+def test_marginalia_provider_raises_on_http_error(mock_get):
+    mock_get.side_effect = httpx.ConnectError("boom")
+
+    with pytest.raises(RuntimeError):
+        MarginaliaProvider().search("q", limit=5)
+
+
+# ── BraveProvider (commercial web backend) mapping ───────────────────────────
+
+_BRAVE_PAYLOAD = {
+    "web": {
+        "results": [
+            {
+                "url": "https://example.com/post",
+                "title": "An <strong>example</strong> post",
+                "description": "A <strong>snippet</strong> with markup.",
+            },
+            {"title": "Dropped — no url"},
+        ]
+    }
+}
+
+
+@patch("app.search.brave_provider.httpx.get")
+def test_brave_provider_maps_and_strips_markup(mock_get):
+    mock_get.return_value = _httpx_response("")
+    mock_get.return_value.json.return_value = _BRAVE_PAYLOAD
+
+    results = BraveProvider().search("example", limit=5)
+
+    assert len(results) == 1  # url-less entry dropped
+    r = results[0]
+    assert r.id == "web:https://example.com/post"
+    assert r.type == "web"
+    assert r.source == "web"
+    assert r.title == "An example post"  # <strong> stripped
+    assert r.meta["snippet"] == "A snippet with markup."
+    assert r.author is None
+
+
+@patch("app.search.brave_provider.httpx.get")
+def test_brave_provider_raises_on_http_error(mock_get):
+    mock_get.side_effect = httpx.ConnectError("boom")
+
+    with pytest.raises(RuntimeError):
+        BraveProvider().search("q", limit=5)
+
+
+# ── web backend selection (config-driven) ────────────────────────────────────
+
+def test_web_backend_defaults_to_marginalia(monkeypatch):
+    monkeypatch.setattr(service.settings, "web_search_backend", "marginalia")
+    assert isinstance(service._build_web_provider(), MarginaliaProvider)
+
+
+def test_web_backend_unknown_falls_back_to_marginalia(monkeypatch):
+    monkeypatch.setattr(service.settings, "web_search_backend", "nonsense")
+    assert isinstance(service._build_web_provider(), MarginaliaProvider)
+
+
+def test_web_backend_ddg_selectable(monkeypatch):
+    monkeypatch.setattr(service.settings, "web_search_backend", "ddg")
+    assert isinstance(service._build_web_provider(), WebProvider)
+
+
+def test_web_backend_brave_requires_key(monkeypatch):
+    monkeypatch.setattr(service.settings, "web_search_backend", "brave")
+    monkeypatch.setattr(service.settings, "brave_api_key", None)
+    # Selected without a key → falls back rather than breaking search.
+    assert isinstance(service._build_web_provider(), MarginaliaProvider)
+    monkeypatch.setattr(service.settings, "brave_api_key", "test-key")
+    assert isinstance(service._build_web_provider(), BraveProvider)
 
 
 # ── PodcastProvider (iTunes Search API) mapping ──────────────────────────────

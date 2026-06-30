@@ -15,6 +15,34 @@ class Settings(BaseSettings):
     scrape_timeout_s: int = 30
     max_items_per_source: int = 250
 
+    # ── Web article search ───────────────────────────────────────────────────
+    # Which backend finds article URLs for a query. Pluggable so a self-hoster
+    # can bring their own — see the README "Web search backends" table.
+    #   marginalia — DEFAULT. Keyless, no signup. Indexes the independent "small
+    #                web" (blogs, docs, long-form) and downranks SEO/commercial
+    #                pages, which suits a reading compiler — and unlike scraping
+    #                DuckDuckGo it isn't rate-limited to death after a couple of
+    #                queries. Free keys carry a non-commercial data licence
+    #                (CC-BY-NC-SA); a paid commercial key lifts that.
+    #   brave      — General-web index, commercial-friendly, but needs an API key
+    #                (card on file) and is metered. Set BRAVE_API_KEY + this.
+    #   ddg        — Legacy DuckDuckGo HTML scrape. Rate-limited hard (works a
+    #                couple of times, then returns nothing) — kept only as a
+    #                last-resort fallback.
+    web_search_backend: str = "marginalia"
+
+    # Marginalia: the "public" key works with no signup but shares one tight rate
+    # limit across every caller — request a free personal key (email
+    # contact@marginalia-search.com) for headroom, or a commercial key to drop
+    # the non-commercial restriction. https://about.marginalia-search.com/article/api/
+    marginalia_api_key: str = "public"
+    marginalia_base_url: str = "https://api.marginalia.nu"
+
+    # Brave Search API. Unset unless web_search_backend="brave" (the service
+    # falls back to Marginalia when brave is selected without a key).
+    brave_api_key: str | None = None
+    brave_base_url: str = "https://api.search.brave.com/res/v1/web/search"
+
     # Preferred content language(s), highest priority first. Drives YouTube
     # metadata localization (title, chapters) and is a hint for transcript track
     # choice — though the track picker always prefers the video's ORIGINAL track

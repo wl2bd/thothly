@@ -127,9 +127,26 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | --- | --- | --- |
 | `DATA_DIR` | `/data` | SQLite DB + generated files (mounted from `./data` in Compose) |
 | `BACKEND_URL` | `http://backend:8000` | Frontend to backend (set by Compose; override only outside it) |
+| `WEB_SEARCH_BACKEND` | `marginalia` | Which engine finds article URLs (see below) |
+| `MARGINALIA_API_KEY` | `public` | Marginalia key; `public` works keyless, personal/commercial keys lift the rate limit / licence |
+| `BRAVE_API_KEY` | empty | Brave Search API key (required when `WEB_SEARCH_BACKEND=brave`) |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
 | `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
+
+### Web search backends
+
+YouTube and podcasts have one backend each; the **web/article** search is
+pluggable so you can self-host with whatever fits your use and licence:
+
+| Backend | Key? | Commercial use | Notes |
+| --- | --- | --- | --- |
+| **`marginalia`** (default) | keyless | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Independent "small web" — blogs, docs, long-form; downranks SEO/commercial pages. Not rate-limited to death like scraping DuckDuckGo. `public` key shares a tight limit — email `contact@marginalia-search.com` for a free personal key. |
+| **`brave`** | `BRAVE_API_KEY` | yes (metered) | Broad general-web index. Card on file required even on the free credits. The commercial path for a hosted deployment. |
+| **`ddg`** | keyless | — | Legacy DuckDuckGo HTML scrape. Rate-limited hard (a couple of queries, then nothing). Last-resort fallback only. |
+
+Selecting `brave` without a key falls back to Marginalia rather than breaking
+search.
 
 ## ▸ Running without Docker
 

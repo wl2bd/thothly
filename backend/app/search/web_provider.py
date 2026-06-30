@@ -192,6 +192,12 @@ def _dedupe_domains(results: list[SearchResult]) -> list[SearchResult]:
 class WebProvider:
     """General web search via DuckDuckGo's keyless HTML endpoint.
 
+    DEPRECATED fallback (web_search_backend="ddg"): DuckDuckGo rate-limits this
+    HTML endpoint hard — it serves an anti-bot page (HTTP 202) after a couple of
+    queries from one IP, and worse from a server IP — so it isn't viable as the
+    default. The default web backend is Marginalia (see marginalia_provider.py);
+    this is kept only as a last resort.
+
     Emits `web` results: a picked one is just an article URL, which the existing
     discovery flow already handles (detect_kind -> "blog" -> text extraction), so
     web search works end to end without any new pipeline code.
