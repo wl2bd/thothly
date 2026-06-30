@@ -26,6 +26,7 @@ from app.pipeline.compiler import (
 from app.pipeline.llm import llm_available
 from app.pipeline.models import CompiledChapter
 from app.pipeline.roles import PREFACE, has_role
+from app.pipeline.titles import normalize_title
 from app.render.epub import render_epub
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.podcast import load_episode_transcript
@@ -122,7 +123,7 @@ def _youtube_chapter(
         return None
 
     return CompiledChapter(
-        title=item.title,
+        title=normalize_title(item.title),
         source_type="youtube",
         source_url=item.url,
         author=transcript.uploader,
@@ -156,7 +157,7 @@ def _podcast_chapter(
         return None
 
     return CompiledChapter(
-        title=item.title,
+        title=normalize_title(item.title),
         source_type="podcast",
         source_url=item.url,
         content_md=content_md,
@@ -186,7 +187,7 @@ def _blog_chapter(
         content_md = clean_markdown(content_md, roles, model, content_key=item.url)
 
     return CompiledChapter(
-        title=item.title,
+        title=normalize_title(item.title),
         source_type="blog",
         source_url=item.url,
         author=author,
