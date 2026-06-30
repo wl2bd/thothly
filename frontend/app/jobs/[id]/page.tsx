@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -137,6 +138,20 @@ export default function JobPage() {
   // in display order; selected ids are flattened in this order on confirm.
   const [sourceOrder, setSourceOrder] = useState<number[]>([]);
 
+  // Apply a fetched job, animating the card (flow-card ViewTransition) only when
+  // the PHASE changes — discovering → reviewing → processing → completed — so
+  // each phase cross-fades like the home card does, while the frequent in-phase
+  // polls (per-source discovery progress) update instantly without flicker.
+  const lastStatusRef = useRef<string | null>(null);
+  const applyJob = useCallback((data: JobResponse) => {
+    if (data.status !== lastStatusRef.current) {
+      lastStatusRef.current = data.status;
+      startTransition(() => setJob(data));
+    } else {
+      setJob(data);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLlmConfig()
       .then(setLlm)
@@ -157,7 +172,7 @@ export default function JobPage() {
       try {
         const data = await fetchJob(id);
         if (cancelled) return true;
-        setJob(data);
+        applyJob(data);
         return !ACTIVE_STATUSES.includes(data.status);
       } catch (err) {
         if (cancelled) return true;
@@ -175,7 +190,7 @@ export default function JobPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [id, pollKey]);
+  }, [id, pollKey, applyJob]);
 
   // When discovery completes, pre-select every item — the user unchecks what
   // they don't want rather than building the list from scratch. We adjust this
@@ -284,7 +299,7 @@ export default function JobPage() {
         title.trim() || undefined,
         [...roles],
       );
-      setJob(updated);
+      applyJob(updated);
       setPollKey((k) => k + 1); // resume polling for the compilation phase
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

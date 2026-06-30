@@ -137,32 +137,44 @@ export default function Home() {
 
     const timer = setTimeout(async () => {
       if (isReset) {
-        setResults([]);
-        setSearchErrors([]);
-        setTypeFilter("all");
-        setSortBy("relevance");
-        setSettledQuery(trimmed);
-        setSearching(false);
+        // Clearing the bar folds the card back to its pristine state through the
+        // same flow-card transition as every other phase change.
+        startTransition(() => {
+          setResults([]);
+          setSearchErrors([]);
+          setTypeFilter("all");
+          setSortBy("relevance");
+          setSettledQuery(trimmed);
+          setSearching(false);
+        });
         return;
       }
+      // The pending skeleton stays immediate (instant feedback to a keystroke);
+      // only the settle below is a transition.
       setSearching(true);
       try {
         const resp = await search(trimmed, controller.signal);
         if (cancelled) return;
-        setResults(resp.results);
-        setSearchErrors(resp.errors);
-        setTypeFilter("all");
-        setSortBy("relevance");
-      } catch (err) {
-        if (cancelled || (err as Error).name === "AbortError") return;
-        setResults([]);
-        setSearchErrors([]);
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        if (!cancelled) {
+        // Settle inside a transition so the card cross-fades + resizes from the
+        // skeleton to the results (the flow-card ViewTransition) rather than
+        // popping — the same motion as the face swap and the job phases.
+        startTransition(() => {
+          setResults(resp.results);
+          setSearchErrors(resp.errors);
+          setTypeFilter("all");
+          setSortBy("relevance");
           setSettledQuery(trimmed);
           setSearching(false);
-        }
+        });
+      } catch (err) {
+        if (cancelled || (err as Error).name === "AbortError") return;
+        setError(err instanceof Error ? err.message : String(err));
+        startTransition(() => {
+          setResults([]);
+          setSearchErrors([]);
+          setSettledQuery(trimmed);
+          setSearching(false);
+        });
       }
     }, isReset ? 0 : SEARCH_DEBOUNCE_MS);
 
@@ -472,9 +484,12 @@ export default function Home() {
                 <TypeFilter
                   results={results}
                   active={typeFilter}
-                  onChange={setTypeFilter}
+                  onChange={(v) => startTransition(() => setTypeFilter(v))}
                 />
-                <SortSelect value={sortBy} onChange={setSortBy} />
+                <SortSelect
+                  value={sortBy}
+                  onChange={(v) => startTransition(() => setSortBy(v))}
+                />
               </div>
             )}
 
