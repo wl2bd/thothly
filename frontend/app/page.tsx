@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -351,6 +351,10 @@ export default function Home() {
               </p>
             </div>
 
+        {/* Shared identity with the job page's card: on navigating to a job this
+            card morphs into the job card (View Transitions) instead of the page
+            hard-cutting, so the flow reads as one continuous surface. */}
+        <ViewTransition name="flow-card">
         <Card
           className={cn(
             "bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)] flex flex-col",
@@ -598,6 +602,7 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
+        </ViewTransition>
 
         {/* Practical heads-up, kept to the pristine state so it never clutters
             the path once you're actually searching or staging sources. */}

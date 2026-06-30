@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  ViewTransition,
   type ButtonHTMLAttributes,
   type ReactNode,
 } from "react";
@@ -15,6 +16,7 @@ import { useParams } from "next/navigation";
 import {
   Check,
   Coins,
+  Copy,
   Download,
   Eye,
   EyeOff,
@@ -309,6 +311,9 @@ export default function JobPage() {
           </p>
         )}
 
+        {/* Same view-transition identity as the home search card, so arriving
+            here morphs that card into this one instead of a hard page cut. */}
+        <ViewTransition name="flow-card">
         <Card>
           <CardContent>
           {!job ? (
@@ -352,6 +357,7 @@ export default function JobPage() {
           )}
           </CardContent>
         </Card>
+        </ViewTransition>
       </div>
     </main>
   );
@@ -481,11 +487,22 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   return (
     <div className="flex flex-col gap-7">
       <div className="flex flex-col gap-2">
-        <p className="font-display text-2xl tracking-tight text-balance">
-          Your compilation is ready
-        </p>
-        {job.book_title && (
-          <p className="text-foreground leading-snug">{job.book_title}</p>
+        {/* The book title is the artifact's name, so it's the hero here; the
+            "ready" line steps back to an eyebrow above it. Falls back to the
+            generic line as the title when no name was set. */}
+        {job.book_title ? (
+          <>
+            <p className="text-muted-foreground text-sm">
+              Your compilation is ready
+            </p>
+            <h1 className="font-display text-3xl leading-[1.1] tracking-tight text-balance">
+              {job.book_title}
+            </h1>
+          </>
+        ) : (
+          <h1 className="font-display text-3xl leading-[1.1] tracking-tight text-balance">
+            Your compilation is ready
+          </h1>
         )}
         <p className="text-muted-foreground text-xs">
           {sourceCount} source{sourceCount !== 1 ? "s" : ""}
@@ -534,7 +551,17 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
                 disabled={!md}
                 className="flex-1"
               >
-                {copied ? "Copied ✓" : "Copy"}
+                {copied ? (
+                  <>
+                    <Check />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy />
+                    Copy
+                  </>
+                )}
               </Button>
               <Tooltip content="Download Markdown">
                 <a

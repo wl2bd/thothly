@@ -564,3 +564,32 @@
     opacity: 0.7;
   }
 }
+
+/* View Transitions — the home search card and the job card share the
+   `flow-card` name, so navigating between them morphs one card into the other
+   instead of a hard page cut. Soften the morph with a brief mid-flight blur (it
+   hides the pixel interpolation between two differently-sized cards), and run it
+   a touch slower than the default root cross-fade so the card clearly leads. */
+::view-transition-group(flow-card) {
+  animation-duration: 420ms;
+}
+::view-transition-image-pair(flow-card) {
+  animation-name: flow-card-blur;
+}
+@keyframes flow-card-blur {
+  30% {
+    filter: blur(4px);
+  }
+}
+
+/* Positional view-transition motion is the top motion-sensitivity trigger, so
+   collapse every transition's duration — content then swaps instantly, the
+   browser's default without animation. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
