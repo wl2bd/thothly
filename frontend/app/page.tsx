@@ -465,8 +465,8 @@ export default function Home() {
                 <NewSearchShortcut onClick={clearQuery} />
                 {staged.length > 0 && (
                   <a href="#sources" className={buttonVariants()}>
-                    Check
-                    <span className="opacity-70">{staged.length}</span>
+                    View {staged.length}{" "}
+                    {staged.length === 1 ? "source" : "sources"}
                     <ChevronDownIcon />
                   </a>
                 )}
