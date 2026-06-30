@@ -42,7 +42,6 @@ import {
   MetaSep,
   SourceFavicon,
   SourceMedia,
-  SourceMetric,
   SourceTypePill,
   hostOf,
   isContainerKind,
@@ -468,6 +467,7 @@ export default function Home() {
                   <SourceMedia
                     kind={kindFromResultType(s.type)}
                     thumbnail={s.thumbnail}
+                    duration={formatDuration(s.durationS)}
                     className="h-10 w-16"
                   />
                   <span className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -1000,7 +1000,11 @@ function SearchResults({
               )}
             >
               <Checkbox checked={checked} onCheckedChange={() => onToggle(r)} />
-              <SourceMedia kind={kind} thumbnail={r.thumbnail} />
+              <SourceMedia
+                kind={kind}
+                thumbnail={r.thumbnail}
+                duration={formatDuration(r.duration_s)}
+              />
               <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <span className="line-clamp-2 text-sm leading-snug">
                   {highlightMatch(r.title, query)}
@@ -1012,12 +1016,10 @@ function SearchResults({
                     <SourceFavicon url={r.url} />
                     <span className="truncate">{hostOf(r.url)}</span>
                   </span>
-                  {r.duration_s != null && (
+                  {r.author && (
                     <>
                       <MetaSep />
-                      <SourceMetric kind="duration" className="shrink-0">
-                        {formatDuration(r.duration_s)}
-                      </SourceMetric>
+                      <span className="min-w-0 truncate">{r.author}</span>
                     </>
                   )}
                   {isContainerKind(kind) && (

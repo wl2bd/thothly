@@ -149,38 +149,51 @@ export function SourceMetric({
 // article never masquerades as a photo tile. The brand favicon is a separate,
 // inline marker (SourceFavicon), never this slot — that keeps the medium (photo
 // vs document) the thing this slot communicates.
+//
+// `duration` (preformatted, e.g. "10:43") rides as a corner badge over the tile,
+// the way every video/podcast surface shows play time — so it reads as a property
+// of THIS clip, on the artwork, instead of as one more field in the meta line.
 export function SourceMedia({
   kind,
   thumbnail,
+  duration,
   className = "h-12 w-20",
 }: {
   kind: SourceKind;
   thumbnail?: string | null;
+  duration?: string | null;
   className?: string;
 }) {
   const { text, Icon } = KIND_META[kind];
 
-  if (!text && thumbnail) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; per-provider host optimization isn't worth wiring
-      <img
-        src={thumbnail}
-        alt=""
-        loading="lazy"
-        className={cn("bg-muted shrink-0 rounded object-cover", className)}
-      />
-    );
-  }
-
   return (
     <span
       className={cn(
-        "bg-muted text-muted-foreground/60 flex shrink-0 items-center justify-center rounded",
+        "bg-muted relative block shrink-0 overflow-hidden rounded",
         className,
       )}
-      aria-hidden="true"
     >
-      {text ? <DocumentGlyph /> : <Icon className="size-5" />}
+      {!text && thumbnail ? (
+        // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; per-provider host optimization isn't worth wiring
+        <img
+          src={thumbnail}
+          alt=""
+          loading="lazy"
+          className="size-full object-cover"
+        />
+      ) : (
+        <span
+          className="text-muted-foreground/60 flex size-full items-center justify-center"
+          aria-hidden="true"
+        >
+          {text ? <DocumentGlyph /> : <Icon className="size-5" />}
+        </span>
+      )}
+      {duration && (
+        <span className="absolute right-1 bottom-1 rounded-[3px] bg-black/72 px-1 py-px text-[10px] leading-tight font-medium text-white tabular-nums">
+          {duration}
+        </span>
+      )}
     </span>
   );
 }
