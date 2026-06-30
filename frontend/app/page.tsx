@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, ViewTransition } from "react";
+import {
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+  ViewTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -570,7 +576,10 @@ export default function Home() {
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => setViewingSources(true)}
+                    // startTransition makes this a React transition, which is what
+                    // activates the flow-card ViewTransition — the card then
+                    // cross-fades + resizes between faces instead of hard-swapping.
+                    onClick={() => startTransition(() => setViewingSources(true))}
                   >
                     View {staged.length}{" "}
                     {staged.length === 1 ? "source" : "sources"}
@@ -586,7 +595,7 @@ export default function Home() {
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => setViewingSources(false)}
+                    onClick={() => startTransition(() => setViewingSources(false))}
                     disabled={submitting}
                   >
                     <ChevronLeftIcon />
