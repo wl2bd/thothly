@@ -1,9 +1,9 @@
 """Generate a minimalist editorial cover for the EPUB.
 
-Matches the frontend "paper" identity: a warm cream field, ink-coloured serif
-title (Fraunces), an ochre hairline, and a small emblem near the top. The
-emblem defaults to the Thothly favicon but is a parameter, so a per-source
-image (e.g. a YouTube channel avatar) can be slotted in later.
+Matches the frontend identity: a warm cream field, an ink-coloured title in the
+brand typeface, and a small circular emblem near the top. The emblem defaults to
+the Thothly favicon but is a parameter, so a per-source image (e.g. a YouTube
+channel avatar) can be slotted in — circular, the way an avatar reads.
 """
 
 import logging
@@ -14,7 +14,13 @@ from PIL import Image, ImageDraw, ImageFont
 logger = logging.getLogger(__name__)
 
 _ASSETS = Path(__file__).parent / "assets"
-_FONT_PATH = _ASSETS / "Fraunces.ttf"
+# Cover typefaces: the brand fonts (frontend/app/fonts), copied into assets so the
+# cover reads as the same edition as the app. The big title is set in Prociono
+# (the brand's editorial display serif); everything else — authors, colophon — in
+# Host Grotesk (the UI sans), so the title leads and the rest sits quietly under
+# it. (Fraunces.ttf is kept in assets but no longer used.)
+_TITLE_FONT = _ASSETS / "Prociono.otf"
+_TEXT_FONT = _ASSETS / "HostGrotesk.ttf"
 _EMBLEM_PATH = _ASSETS / "emblem.png"
 
 # Standard EPUB cover proportions (~1:1.6 portrait).
@@ -55,14 +61,56 @@ _OCHRE = _oklch_to_rgb(0.555, 0.13, 52)
 _MUTED = _oklch_to_rgb(0.52, 0.022, 62)
 
 
-def _font(size: int, weight: int = 600) -> ImageFont.FreeTypeFont:
-    font = ImageFont.truetype(str(_FONT_PATH), size)
+def _font(
+    size: int, weight: int = 600, font_path: Path = _TEXT_FONT
+) -> ImageFont.FreeTypeFont:
+    """Load a cover font at `size`, setting `weight` when the font is variable.
+
+    Works across font shapes without hardcoding an axis order: a variable font
+    (Host Grotesk: a single `wght` axis; Fraunces: wght + opsz + …) gets each
+    axis set by NAME, and a static font (Prociono) is returned untouched.
+    """
+    font = ImageFont.truetype(str(font_path), size)
     try:
-        # Axis order matches the font: Optical Size, Weight, Softness, Wonky.
-        font.set_variation_by_axes([min(144, max(9, size)), weight, 0, 0])
-    except Exception:  # not a variable build / Pillow without the API
+        axes = font.get_variation_axes()
+    except OSError:
+        return font  # static font — no axes to set
+    values: list[float] = []
+    for ax in axes:
+        name = ax.get("name", b"")
+        name = name.decode() if isinstance(name, (bytes, bytearray)) else str(name)
+        key = name.lower()
+        if "weight" in key or key == "wght":
+            values.append(weight)
+        elif "optical" in key or key == "opsz":
+            values.append(min(ax.get("maximum", 144), max(ax.get("minimum", 9), size)))
+        else:
+            values.append(ax.get("default", 0))
+    try:
+        font.set_variation_by_axes(values)
+    except Exception:  # pragma: no cover — Pillow without the API
         pass
     return font
+
+
+def _circle_crop(img: Image.Image, size: int) -> Image.Image:
+    """Centre-crop to a square, resize to `size`, and mask to a clean circle.
+
+    The mask is rendered at 4× and downsampled so the circle's edge is smooth
+    (antialiased) rather than stair-stepped. An avatar reads as an avatar.
+    """
+    side = min(img.size)
+    left, top = (img.width - side) // 2, (img.height - side) // 2
+    img = img.crop((left, top, left + side, top + side)).resize(
+        (size, size), Image.LANCZOS
+    )
+    scale = 4
+    mask = Image.new("L", (size * scale, size * scale), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, size * scale - 1, size * scale - 1), fill=255)
+    mask = mask.resize((size, size), Image.LANCZOS)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.paste(img, (0, 0), mask)
+    return out
 
 
 def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, width: int) -> list[str]:
@@ -81,7 +129,7 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, wi
 
 
 def _strip_unrenderable(text: str, font: ImageFont.FreeTypeFont) -> str:
-    """Drop characters the cover font (Fraunces, a Latin serif) has no glyph for.
+    """Drop characters the cover font (a Latin typeface) has no glyph for.
 
     Such a character paints as the .notdef box (tofu □) on the cover even though
     the EPUB's own metadata keeps the full title. Every missing glyph maps to the
@@ -118,33 +166,28 @@ def generate_cover(
     draw = ImageDraw.Draw(image)
     text_width = _W - 2 * _MARGIN
 
-    # Strip glyphs Fraunces can't render so the cover never shows tofu boxes
-    # (the book's real title in the EPUB metadata is untouched). Glyph coverage
-    # is the same at any size, so one probe font serves both title and authors.
-    probe = _font(100)
-    title = _strip_unrenderable(title, probe)
-    authors = [a for a in (_strip_unrenderable(a, probe) for a in authors) if a]
+    # Strip glyphs the cover fonts can't render so it never shows tofu boxes (the
+    # book's real title in the EPUB metadata is untouched). Title and authors use
+    # different fonts, so each is probed against the font it will actually be set
+    # in. Glyph coverage is size-independent, so one probe per font is enough.
+    title = _strip_unrenderable(title, _font(100, font_path=_TITLE_FONT))
+    text_probe = _font(100, font_path=_TEXT_FONT)
+    authors = [a for a in (_strip_unrenderable(a, text_probe) for a in authors) if a]
 
-    # Emblem — kept at a modest size, centred near the top.
+    # Emblem — a modest CIRCULAR mark, centred near the top (an avatar reads as
+    # an avatar). No rule beneath it: the title below carries the structure.
     emblem_file = emblem_path or _EMBLEM_PATH
-    y = 430
     if emblem_file.exists():
-        emblem = Image.open(emblem_file).convert("RGBA")
-        emblem.thumbnail((_EMBLEM_SIZE, _EMBLEM_SIZE))
-        image.paste(emblem, ((_W - emblem.width) // 2, y), emblem)
-        y += emblem.height + 70
+        emblem = _circle_crop(Image.open(emblem_file).convert("RGBA"), _EMBLEM_SIZE)
+        image.paste(emblem, ((_W - emblem.width) // 2, 470), emblem)
     else:
         logger.warning("Cover emblem not found at %s; skipping", emblem_file)
 
-    # Ochre hairline, centred.
-    rule_half = 80
-    draw.line([(_W // 2 - rule_half, y), (_W // 2 + rule_half, y)], fill=_OCHRE, width=3)
-
-    # Title — large serif, left-aligned, auto-sized to stay within ~4 lines.
+    # Title — large, left-aligned, auto-sized to stay within ~4 lines.
     title_y = 1120
     size = 150
     while size > 80:
-        title_font = _font(size, weight=600)
+        title_font = _font(size, weight=600, font_path=_TITLE_FONT)
         lines = _wrap(draw, title, title_font, text_width)
         if len(lines) <= 4:
             break
