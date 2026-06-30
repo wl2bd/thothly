@@ -248,6 +248,19 @@
   html {
     @apply font-sans;
   }
+  /* Tidy line breaks everywhere: balance headings into even-length lines, and
+     keep paragraphs from stranding a lone word on the last line (pretty). */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
   /* Anchor jumps (the hero scroll cue → "how it works") glide rather than cut.
      Off under reduced motion. */
   @media (prefers-reduced-motion: no-preference) {

@@ -128,6 +128,33 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, wi
     return lines
 
 
+def _balanced_wrap(
+    draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, width: int
+) -> list[str]:
+    """Like `_wrap`, but evens the lines out — the cover's `text-wrap: balance`.
+
+    Greedy wrapping fills each line to the brim, which strands a lone word on the
+    last line ("…the Way You / Live"). Keeping the SAME line count, we find the
+    narrowest width that still achieves it: that pulls words down and balances the
+    rag, so a short title sits as even, centred lines.
+    """
+    greedy = _wrap(draw, text, font, width)
+    if len(greedy) <= 1:
+        return greedy
+    target = len(greedy)
+    # The narrowest line still has to hold the single widest word.
+    longest = max((draw.textlength(w, font=font) for w in text.split()), default=0)
+    lo, hi, best = int(longest), width, greedy
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        candidate = _wrap(draw, text, font, mid)
+        if len(candidate) <= target:
+            best, hi = candidate, mid - 1
+        else:
+            lo = mid + 1
+    return best
+
+
 def _strip_unrenderable(text: str, font: ImageFont.FreeTypeFont) -> str:
     """Drop characters the cover font (a Latin typeface) has no glyph for.
 
@@ -183,20 +210,23 @@ def generate_cover(
     else:
         logger.warning("Cover emblem not found at %s; skipping", emblem_file)
 
-    # Title — large, left-aligned, auto-sized to stay within ~4 lines.
+    # Title — large, left-aligned, auto-sized to stay within ~4 lines, then
+    # balanced so the lines come out even (no stranded last word).
     size = 150
     while size > 80:
         title_font = _font(size, weight=600, font_path=_TITLE_FONT)
-        lines = _wrap(draw, title, title_font, text_width)
-        if len(lines) <= 4:
+        if len(_wrap(draw, title, title_font, text_width)) <= 4:
             break
         size -= 12
+    lines = _balanced_wrap(draw, title, title_font, text_width)
     line_height = round(size * 1.16)
 
     # Authors — lighter, muted, sit just below the title.
     author_font = _font(56, weight=420)
     author_lines = (
-        _wrap(draw, "  ·  ".join(authors), author_font, text_width) if authors else []
+        _balanced_wrap(draw, "  ·  ".join(authors), author_font, text_width)
+        if authors
+        else []
     )
     _AUTHOR_GAP = 60       # title → authors
     _AUTHOR_LINE_H = 84
