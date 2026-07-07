@@ -478,14 +478,23 @@
   opacity: 0.3;
 }
 
-/* Dissolve the whole slab — rim, fill and content — into the ground at its
-   bottom edge, so a tablet reads as the top of a page fading off rather than a
-   panel that stops on a hard rim. The mask applies to the .stone-frame box, so
-   its ::before slab, ::after halo and content all fade together; it replaces the
-   text-only bottom fade the tablets used to draw. */
-.stone-fade-b {
-  -webkit-mask-image: linear-gradient(to bottom, #000 52%, transparent 96%);
-  mask-image: linear-gradient(to bottom, #000 52%, transparent 96%);
+/* Dissolve the whole slab — rim, fill, cast shadow AND content — into the ground
+   at its bottom edge, so a tablet reads as the top of a page fading off rather
+   than a panel stopping on a hard rim. Each layer is masked directly: the slab
+   and its shadow are the .stone-frame pseudo-elements, the content is its child.
+   A mask on the frame itself leaves the *filtered* ::before rim untouched, and —
+   critically — the gradient must NOT tile (mask-repeat), or a fresh opaque tile
+   just past the box re-reveals the eroded rim the ::before's displacement filter
+   renders slightly beyond its edge (the jagged bottom line). */
+.stone-fade-b > *,
+.stone-fade-b::before,
+.stone-fade-b::after {
+  -webkit-mask-image: linear-gradient(to bottom, #000 50%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 50%, transparent 92%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
 /* ── Funnel wires ─────────────────────────────────────────────────────────────
