@@ -82,6 +82,30 @@ def update_job_status(
         conn.commit()
 
 
+def reap_orphaned_jobs() -> int:
+    """Fail jobs left mid-flight by a previous process (called once at startup).
+
+    Jobs run in-process via BackgroundTasks with no persistence, so a restart
+    (crash, redeploy, OOM) while a job is `discovering` or `processing` strands
+    it in that status forever — nothing remains to advance it. On boot we mark
+    any such job `failed` so the UI shows a real terminal state (and offers a
+    fresh start) instead of an eternal spinner. Returns the number reaped.
+    """
+    message = (
+        "Interrupted: the server restarted while this compilation was still "
+        "running. Start a new compilation to try again."
+    )
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "UPDATE jobs SET status = 'failed', error = ?, updated_at = ? "
+            "WHERE status IN ('discovering', 'processing')",
+            (message, now_iso),
+        )
+        conn.commit()
+        return cursor.rowcount
+
+
 def set_job_sources(job_id: str, sources: list[Source]) -> None:
     """Rewrite the stored sources JSON.
 

@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     pandoc_binary: str = "pandoc"
     scrape_timeout_s: int = 30
     max_items_per_source: int = 250
+    # YouTube discovery probes each listed video's transcript to fill the review
+    # screen (has subtitles? language? reading time?) — one live yt-dlp fetch per
+    # video, run sequentially. A large playlist/channel would mean hundreds of
+    # calls and a real risk of tripping YouTube's rate limit (HTTP 429) mid-run.
+    # We list up to max_items_per_source but probe only the first N here; the
+    # rest are listed with unknown transcript info (compile fetches them anyway).
+    youtube_discovery_probe_limit: int = 50
 
     # ── Web article search ───────────────────────────────────────────────────
     # Which backend finds article URLs for a query. Pluggable so a self-hoster
@@ -73,6 +80,10 @@ class Settings(BaseSettings):
     stt_api_key: str | None = None
     stt_model: str | None = None
     stt_timeout_s: int = 600  # a single request can be a whole ~1 h episode
+    # Hard cap on a downloaded episode (MB). Audio is streamed to disk, so this
+    # stops a runaway or malicious enclosure from filling the disk; a larger
+    # episode is skipped rather than downloaded.
+    stt_max_download_mb: int = 500
     # Speaker diarization: ask the provider to label who is speaking (Mistral
     # Voxtral). Requested via the transcription call; a provider that doesn't
     # support it (whisper.cpp, OpenAI) falls back to a plain transcription, so

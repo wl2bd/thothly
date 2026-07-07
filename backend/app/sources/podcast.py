@@ -27,6 +27,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.database import get_connection
+from app.core.net import BlockedURLError, assert_public_url
 from app.pipeline.transcribe import (
     STTResult,
     TranscribeError,
@@ -38,6 +39,7 @@ from app.sources.models import Transcript, TranscriptSegment
 logger = logging.getLogger(__name__)
 
 _DOWNLOAD_TIMEOUT_S = 120.0
+_MAX_REDIRECTS = 5
 _BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -136,27 +138,51 @@ def _assemble_segments(
 def _download(audio_url: str, workdir: Path) -> Path | None:
     """Stream the episode audio to disk (episodes are large; never buffer in RAM).
 
-    Follows redirects so tracking/wrapper URLs (podtrac, chartable…) resolve to
-    the real file. The extension is preserved so ffmpeg can stream-copy it.
+    Redirects are followed manually (tracking/wrapper URLs — podtrac, chartable…
+    — resolve to the real file) so every hop can be re-validated against the SSRF
+    guard: a redirect must not bounce us onto an internal address. A hard byte
+    cap stops a runaway or malicious enclosure from filling the disk. The
+    extension is preserved so ffmpeg can stream-copy it.
     """
     suffix = _suffix_from_url(audio_url)
     dest = workdir / f"episode{suffix}"
+    max_bytes = settings.stt_max_download_mb * 1024 * 1024
+    url = audio_url
     try:
-        with httpx.stream(
-            "GET",
-            audio_url,
-            follow_redirects=True,
+        with httpx.Client(
+            follow_redirects=False,
             timeout=_DOWNLOAD_TIMEOUT_S,
             headers={"User-Agent": _BROWSER_UA},
-        ) as response:
-            response.raise_for_status()
-            with open(dest, "wb") as out:
-                for chunk in response.iter_bytes():
-                    out.write(chunk)
-    except httpx.HTTPError as exc:
+        ) as client:
+            for _ in range(_MAX_REDIRECTS + 1):
+                assert_public_url(url)  # SSRF guard, re-checked on every hop
+                with client.stream("GET", url) as response:
+                    if response.is_redirect:
+                        location = response.headers.get("location")
+                        if not location:
+                            logger.warning("Redirect with no Location for %s", url)
+                            return None
+                        url = str(httpx.URL(url).join(location))
+                        continue
+                    response.raise_for_status()
+                    written = 0
+                    with open(dest, "wb") as out:
+                        for chunk in response.iter_bytes():
+                            written += len(chunk)
+                            if written > max_bytes:
+                                logger.warning(
+                                    "Episode %s exceeds the %d MB cap; skipping",
+                                    audio_url,
+                                    settings.stt_max_download_mb,
+                                )
+                                return None
+                            out.write(chunk)
+                    return dest
+            logger.warning("Too many redirects downloading %s", audio_url)
+            return None
+    except (httpx.HTTPError, BlockedURLError) as exc:
         logger.warning("Could not download episode %s: %s", audio_url, exc)
         return None
-    return dest
 
 
 def _split(path: Path, max_minutes: int) -> list[Path]:

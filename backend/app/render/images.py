@@ -19,6 +19,8 @@ from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
+from app.core.net import BlockedURLError, assert_public_url
+
 logger = logging.getLogger(__name__)
 
 # Cap embedded images at a sensible reading width and re-encode them, so a
@@ -82,11 +84,12 @@ def localize_images(
 
 def _download(url: str, media_dir: Path, timeout: float) -> Path | None:
     try:
+        assert_public_url(url)  # SSRF guard: images come from scraped third-party HTML
         request = Request(url, headers={"User-Agent": _USER_AGENT})
         with urlopen(request, timeout=timeout) as response:
             content_type = response.headers.get_content_type()
             data = response.read(_MAX_BYTES + 1)
-    except (URLError, ValueError, OSError) as exc:
+    except (URLError, ValueError, OSError, BlockedURLError) as exc:
         logger.warning("Dropping unreachable image %s: %s", url, exc)
         return None
 
@@ -147,11 +150,12 @@ def _extension_from_url(url: str) -> str | None:
 
 def _http_bytes(url: str, timeout: float) -> bytes | None:
     try:
+        assert_public_url(url)  # SSRF guard: favicon/emblem URLs come from scraped pages
         request = Request(url, headers={"User-Agent": _USER_AGENT})
         with urlopen(request, timeout=timeout) as response:
             data = response.read(_MAX_BYTES + 1)
         return data if data and len(data) <= _MAX_BYTES else None
-    except (URLError, ValueError, OSError) as exc:
+    except (URLError, ValueError, OSError, BlockedURLError) as exc:
         logger.info("Fetch failed for %s: %s", url, exc)
         return None
 

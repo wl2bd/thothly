@@ -44,8 +44,17 @@ class Source(BaseModel):
     item_count: int = 0
 
 
+# A single job fans out to one background worker that processes every source
+# sequentially, and each source can enumerate up to `max_items_per_source`
+# items — so an unbounded source count is an easy resource-exhaustion vector.
+# 25 sources is already far more than a readable compilation needs.
+MAX_SOURCES_PER_JOB = 25
+
+
 class JobCreate(BaseModel):
-    sources: Annotated[list[Source], Field(min_length=1)]
+    sources: Annotated[
+        list[Source], Field(min_length=1, max_length=MAX_SOURCES_PER_JOB)
+    ]
 
 
 class JobConfirm(BaseModel):

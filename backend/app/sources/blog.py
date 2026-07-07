@@ -13,6 +13,7 @@ import trafilatura
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
+from app.core.net import BlockedURLError, assert_public_url
 from app.sources.models import Article
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class ScrapeUnavailable(Exception):
 
 def list_feed(feed_url: str) -> tuple[str | None, list[Article]]:
     """Return the (feed title, articles) for an RSS/Atom feed."""
+    assert_public_url(feed_url)  # SSRF guard: never fetch an internal address
     result = feedparser.parse(feed_url)
     status = getattr(result, "status", 200)
     if status is not None and status >= 400:
@@ -207,6 +209,12 @@ def _fetch_url(url: str, timeout: float) -> str | None:
     even though the page is perfectly reachable, so we then retry with a
     browser-like User-Agent before giving up.
     """
+    try:
+        assert_public_url(url)  # SSRF guard: never fetch an internal address
+    except BlockedURLError as exc:
+        logger.warning("Refusing to fetch non-public URL %s: %s", url, exc)
+        return None
+
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(trafilatura.fetch_url, url)
         try:

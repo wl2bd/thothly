@@ -135,3 +135,63 @@ def test_split_without_ffmpeg_returns_whole_file(tmp_path):
     audio.write_bytes(b"audio")
     with patch.object(podcast.shutil, "which", return_value=None):
         assert podcast._split(audio, 25) == [audio]
+
+
+# ── download: SSRF guard + size cap ───────────────────────────────────────────
+
+def _mock_client_factory(handler):
+    """A drop-in for podcast.httpx.Client that routes through a MockTransport.
+
+    The real class is captured now, before monkeypatch swaps httpx.Client for
+    this factory, so the factory doesn't recurse into itself.
+    """
+    import httpx
+
+    real_client = httpx.Client
+
+    def factory(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return real_client(*args, **kwargs)
+
+    return factory
+
+
+def test_download_enforces_size_cap(tmp_path, monkeypatch):
+    import httpx
+
+    monkeypatch.setattr(podcast, "assert_public_url", lambda url: None)
+    monkeypatch.setattr(podcast.settings, "stt_max_download_mb", 1)  # 1 MB cap
+
+    oversized = b"x" * (2 * 1024 * 1024)
+    monkeypatch.setattr(
+        podcast.httpx,
+        "Client",
+        _mock_client_factory(lambda req: httpx.Response(200, content=oversized)),
+    )
+
+    assert podcast._download("https://cdn.example/show/ep.mp3", tmp_path) is None
+
+
+def test_download_revalidates_redirect_target(tmp_path, monkeypatch):
+    import httpx
+
+    checked: list[str] = []
+
+    def guard(url: str) -> None:
+        checked.append(url)
+        if "169.254" in url:  # cloud metadata — must be refused mid-redirect
+            raise podcast.BlockedURLError("blocked internal redirect target")
+
+    monkeypatch.setattr(podcast, "assert_public_url", guard)
+    monkeypatch.setattr(
+        podcast.httpx,
+        "Client",
+        _mock_client_factory(
+            lambda req: httpx.Response(
+                302, headers={"location": "http://169.254.169.254/x"}
+            )
+        ),
+    )
+
+    assert podcast._download("https://cdn.example/show/ep.mp3", tmp_path) is None
+    assert any("169.254" in url for url in checked)  # the hop was re-validated

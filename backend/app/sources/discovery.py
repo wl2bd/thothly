@@ -147,7 +147,11 @@ def _discover_youtube(
         )
         for i, video in enumerate(videos)
     ]
-    for item in items:
+    # Only the first N items get a live transcript probe — each is a sequential
+    # yt-dlp fetch, so probing a whole large playlist would trip YouTube's rate
+    # limit (429). The rest are listed with unknown transcript info; the compile
+    # fetches the transcript for any of them the user actually selects.
+    for item in items[: settings.youtube_discovery_probe_limit]:
         _enrich_youtube_item(item)
     return title, items
 
