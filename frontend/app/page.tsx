@@ -47,6 +47,7 @@ import {
   type SearchResult,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useReveal } from "@/lib/use-reveal";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   MetaSep,
@@ -733,6 +734,14 @@ function NewSearchShortcut({ onClick }: { onClick: () => void }) {
 }
 
 function HowItWorks() {
+  // The figure plays a single scroll-in entrance, then rests — no perpetual
+  // motion. `shown` gates the fade+rise of the chips, node and tablets and the
+  // wipe-in of the funnel wires; it starts true so the server / reduced-motion
+  // render is the final, visible state.
+  const { ref: figureRef, shown } = useReveal<HTMLElement>();
+  const rise =
+    "transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
+  const riseIn = shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2";
   const steps = [
     {
       n: 1,
@@ -783,12 +792,21 @@ function HowItWorks() {
           </ol>
         </div>
 
-        <figure className="bg-muted flex flex-col gap-3 rounded-2xl border p-6">
+        <figure
+          ref={figureRef}
+          data-reveal={shown ? "shown" : "hidden"}
+          className="bg-muted flex flex-col gap-2 rounded-2xl border p-6"
+        >
           <div className="grid grid-cols-4 gap-2">
-            {sources.map((s) => (
+            {sources.map((s, i) => (
               <div
                 key={s.kind}
-                className="bg-surface-sunken flex flex-col items-center gap-1 rounded-lg border px-1 py-2"
+                className={cn(
+                  "bg-surface-sunken flex flex-col items-center gap-1 rounded-lg border px-1 py-2",
+                  rise,
+                  riseIn,
+                )}
+                style={{ transitionDelay: shown ? `${i * 60}ms` : "0ms" }}
               >
                 <s.Icon className="text-muted-foreground size-4" />
                 <span className="text-muted-foreground text-[0.55rem] leading-none">
@@ -797,56 +815,123 @@ function HowItWorks() {
               </div>
             ))}
           </div>
-          {/* Source branches funnelling down into one compilation node.
-              preserveAspectRatio="none" keeps each branch under its chip at any
-              width; the node is a real HTML circle so it never gets squashed. */}
-          <div className="relative">
+
+          {/* The wiring: four sources gather into one compilation node, which
+              then splits into the two output formats below — the product's whole
+              move (many in, one compilation, two formats) drawn in a single
+              figure. Direction reads from a STATIC gold gradient along each wire
+              (muted at the source/output end, gold at the node), not from
+              looping motion. preserveAspectRatio="none" keeps every wire under
+              its chip / over its tablet at any width; the node is real HTML so it
+              never gets squashed. On scroll-in the wires wipe in once, top →
+              bottom (source → node → formats), via a clip-path on the svg (see
+              the .funnel-svg rule), then rest — stroke-dash draw is unreliable on
+              a non-scaling stroke under preserveAspectRatio="none". */}
+          <div className="relative -my-1">
             <svg
-              className="h-10 w-full"
-              viewBox="0 0 100 40"
+              className="funnel-svg h-16 w-full"
+              viewBox="0 0 100 48"
               preserveAspectRatio="none"
               aria-hidden="true"
             >
-              {[12.5, 37.5, 62.5, 87.5].map((x) => {
-                const d = `M ${x} 0 Q ${x} 22 50 40`;
-                return (
-                  <g key={x}>
-                    {/* The static wire */}
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="currentColor"
-                      className="text-muted-foreground/30"
-                      strokeWidth="1"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    {/* A gold pulse travelling source → node along the wire */}
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="currentColor"
-                      className="funnel-flow text-gold"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      pathLength={100}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </g>
-                );
-              })}
+              <defs>
+                <linearGradient
+                  id="funnel-converge"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="24"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop offset="0" stopColor="var(--muted-foreground)" stopOpacity="0.32" />
+                  <stop offset="1" stopColor="var(--gold)" stopOpacity="0.95" />
+                </linearGradient>
+                <linearGradient
+                  id="funnel-diverge"
+                  x1="0"
+                  y1="24"
+                  x2="0"
+                  y2="48"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop offset="0" stopColor="var(--gold)" stopOpacity="0.95" />
+                  <stop offset="1" stopColor="var(--muted-foreground)" stopOpacity="0.26" />
+                </linearGradient>
+              </defs>
+              {/* Sources → node */}
+              {[12.5, 37.5, 62.5, 87.5].map((x) => (
+                <path
+                  key={`c-${x}`}
+                  d={`M ${x} 0 Q ${x} 15 50 24`}
+                  fill="none"
+                  stroke="url(#funnel-converge)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+              {/* Node → two formats */}
+              {[25, 75].map((x) => (
+                <path
+                  key={`d-${x}`}
+                  d={`M 50 24 Q 50 37 ${x} 48`}
+                  fill="none"
+                  stroke="url(#funnel-diverge)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
             </svg>
-          </div>
-          <div className="relative isolate grid grid-cols-2 gap-4">
-            {/* Convergence orb — a large gold glow behind the two outputs,
-                straddling the gap, where the sources land. */}
+            {/* The compilation node — a crisp concentric "nucleus": a gold core
+                inside a thin gold ring, so it reads as a deliberate mark on both
+                grounds without leaning on a glow. The soft halo behind it is
+                STATIC (no pulse) and mode-aware — a whisper on the stark light
+                page, stepped up on the night ground where the metal is meant to
+                sing. Scales in with the wires rather than translating (translate
+                would fight the centering transform). */}
             <span
-              className="funnel-node absolute top-1/4 left-1/2 -z-10 size-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold opacity-40 blur-2xl"
+              className="pointer-events-none absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2"
               aria-hidden="true"
-            />
-            <EpubTablet />
-            <MarkdownTablet />
+            >
+              <span
+                className={cn(
+                  "relative block transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  shown ? "scale-100 opacity-100" : "scale-90 opacity-0",
+                )}
+                style={{ transitionDelay: shown ? "560ms" : "0ms" }}
+              >
+                <span className="bg-gold/15 dark:bg-gold/30 absolute top-1/2 left-1/2 size-11 -translate-x-1/2 -translate-y-1/2 rounded-full blur-lg dark:size-16 dark:blur-xl" />
+                <span className="border-gold/45 relative flex size-4 items-center justify-center rounded-full border">
+                  <span className="bg-gold size-2 rounded-full" />
+                </span>
+              </span>
+            </span>
           </div>
-          <figcaption className="text-muted-foreground text-center text-xs text-balance">
+
+          <div className="grid grid-cols-2 gap-4">
+            <div
+              className={cn(rise, riseIn)}
+              style={{ transitionDelay: shown ? "700ms" : "0ms" }}
+            >
+              <EpubTablet />
+            </div>
+            <div
+              className={cn(rise, riseIn)}
+              style={{ transitionDelay: shown ? "780ms" : "0ms" }}
+            >
+              <MarkdownTablet />
+            </div>
+          </div>
+
+          <figcaption
+            className={cn(
+              "text-muted-foreground mt-1 text-center text-xs text-balance",
+              rise,
+              riseIn,
+            )}
+            style={{ transitionDelay: shown ? "900ms" : "0ms" }}
+          >
             Any mix of sources, one compilation, two formats: EPUB for your
             e-reader, Markdown for your AI.
           </figcaption>

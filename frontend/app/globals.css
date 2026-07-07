@@ -478,62 +478,70 @@
   opacity: 0.3;
 }
 
-/* ── Funnel flow ──────────────────────────────────────────────────────────────
-   Gold pulses run down the "how it works" wires, source → convergence node (the
-   compilation forming, just above the outputs). The brand gold is the matter
-   flowing through. Landing-only, decorative; dropped under reduced motion. */
-/* One gold streak per wire, all four at once: every wire runs the SAME timing,
-   so the four bands descend source → node together, then a pause before the next
-   pulse. Wide (45%), bright and glowing. Dropped under reduced motion. */
-/* One soft gold streak per wire, all four in sync. The gap is wide enough that
-   the dash travels source → node, the wire goes dark for a beat, then the next
-   streak slides in from the top. The offset moves exactly one dash+gap period,
-   so the first and last frames are identical → the loop is seamless (no cut),
-   with the pause built into the pattern rather than faked with opacity. */
-@keyframes funnel-flow {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: -300;
-  }
+/* Dissolve the whole slab — rim, fill and content — into the ground at its
+   bottom edge, so a tablet reads as the top of a page fading off rather than a
+   panel that stops on a hard rim. The mask applies to the .stone-frame box, so
+   its ::before slab, ::after halo and content all fade together; it replaces the
+   text-only bottom fade the tablets used to draw. */
+.stone-fade-b {
+  -webkit-mask-image: linear-gradient(to bottom, #000 52%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 52%, transparent 96%);
 }
 
-.funnel-flow {
-  stroke-dasharray: 50 250;
-  /* Soft, thin glowing glint — fading ends + a gentle halo — to sit in the same
-     refined register as the search border, not a hard bright bar. */
-  filter: blur(0.8px) drop-shadow(0 0 3px var(--gold));
-  animation: funnel-flow 3s linear infinite;
+/* ── Funnel wires ─────────────────────────────────────────────────────────────
+   The "how it works" wires: sources → compilation node → two formats. They read
+   as a static diagram (direction carried by a gold gradient along each wire, not
+   by motion), and WIPE IN ONCE when the figure scrolls into view — top → bottom,
+   tracing source → node → formats — then rest, no perpetual pulse. The reveal is
+   a clip-path wipe on the svg (a stroke-dashoffset "draw" is unreliable on a
+   non-scaling stroke under preserveAspectRatio="none"). Fully shown by default
+   (the server / no-JS / reduced-motion state); the figure's [data-reveal="hidden"]
+   arms it clipped until the entrance. */
+.funnel-svg {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 900ms cubic-bezier(0.22, 1, 0.36, 1) 200ms;
 }
 
-/* The convergence orb brightens when the bands land (same 3s clock, no stagger
-   → aligned), then settles back — a glow now and then, not a constant pulse. */
-@keyframes funnel-node-glow {
-  0%,
-  30% {
-    opacity: 0.4;
-  }
-  44% {
-    opacity: 0.72;
-  }
-  60%,
-  100% {
-    opacity: 0.4;
-  }
-}
-
-.funnel-node {
-  animation: funnel-node-glow 3s ease-out infinite;
+[data-reveal="hidden"] .funnel-svg {
+  clip-path: inset(0 0 100% 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .funnel-flow {
-    animation: none;
-    opacity: 0;
+  .funnel-svg {
+    transition: none;
+    clip-path: none;
   }
-  .funnel-node {
+}
+
+/* ── Completion seal ─────────────────────────────────────────────────────────
+   The payoff on the finished-compilation screen: the thothly seal lands and its
+   gold flares once — a single bloom that swells past then settles, the metal
+   catching the light — then rests. No pulse; it plays once, when the seal's
+   reveal adds .seal-bloom. Reduced motion holds the settled glow, no flare. */
+@keyframes seal-bloom {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  55% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+  100% {
+    opacity: 0.62;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+.seal-bloom {
+  animation: seal-bloom 1600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seal-bloom {
     animation: none;
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1.15);
   }
 }
 

@@ -57,7 +57,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { Logotype } from "@/components/brand";
+import { Logomark, Logotype } from "@/components/brand";
 import { EpubTablet, MarkdownTablet } from "@/components/output-tablet";
 import {
   MetaSep,
@@ -499,6 +499,49 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   const sourceCount =
     new Set(counted.map((it) => it.source_index)).size || job.sources.length;
 
+  // A real mini-preview of the compilation for the two slabs: the EPUB shows the
+  // first chapter as a book page, the Markdown shows the actual top of the twin
+  // (its "# Sources" index). Built from the fetched Markdown once it's in, with a
+  // structure derived from the selected items until then — so no faux stand-in
+  // text ever flashes here; this IS the thing that was just made.
+  const preview = useMemo(() => {
+    const selected = job.discovered_items.filter((it) => it.selected);
+    const chapters = selected.length ? selected : job.discovered_items;
+    const mdLines =
+      md && md.trim()
+        ? md.split("\n")
+        : ["# Sources", "", ...chapters.map((it) => `- [${it.title}](${it.url})`)];
+    // Prefer the first real chapter parsed from the Markdown (it's the EPUB's
+    // actual opening page and is always present); fall back to the first selected
+    // item, then the book title, while the Markdown is still loading.
+    const ch = md ? firstChapter(md) : null;
+    return {
+      mdLines,
+      epubTitle:
+        ch?.title ?? chapters[0]?.title ?? job.book_title ?? "Your compilation",
+      epubBody: ch?.body ?? "",
+    };
+  }, [md, job]);
+
+  // The payoff. Arriving on this screen (the job just finished, or a completed
+  // job opened) plays a one-shot arrival: the gold seal — the thothly mark —
+  // blooms in and flares, then the title and outputs cascade beneath it. It
+  // plays once on mount (this view mounts only when the job is completed, a
+  // terminal state); reduced motion renders the settled state instantly. The
+  // rAF defers the flip one frame so the transition actually runs from the
+  // hidden start rather than being painted already-shown.
+  const [revealed, setRevealed] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setRevealed(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const rise =
+    "transition-[opacity,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none";
+  const riseIn = revealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0";
+  const at = (delay: number) => ({
+    transitionDelay: revealed ? `${delay}ms` : "0ms",
+  });
+
   async function copy() {
     if (!md) return;
     try {
@@ -513,24 +556,66 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   return (
     <div className="flex flex-col gap-7">
       <div className="flex flex-col gap-2">
+        {/* The seal — the thothly mark, in gold — lands first and its gold flares
+            once (see .seal-bloom), the scribe's mark closing a finished work,
+            before the title it heralds rises in beneath it. */}
+        <span className="relative isolate mb-1 flex w-fit items-center">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "bg-gold/50 dark:bg-gold/65 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl",
+              revealed ? "seal-bloom" : "opacity-0",
+            )}
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              "text-gold flex origin-left transition-[opacity,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+              revealed ? "scale-100 opacity-100" : "scale-75 opacity-0",
+            )}
+          >
+            <Logomark className="h-8 w-auto" />
+          </span>
+        </span>
+
         {/* The book title is the artifact's name, so it's the hero here; the
             "ready" line steps back to an eyebrow above it. Falls back to the
             generic line as the title when no name was set. */}
         {job.book_title ? (
           <>
-            <p className="text-muted-foreground text-sm">
+            <p
+              className={cn("text-muted-foreground text-sm", rise, riseIn)}
+              style={at(320)}
+            >
               Your compilation is ready
             </p>
-            <h1 className="font-display text-3xl leading-[1.1] tracking-tight text-balance">
+            <h1
+              className={cn(
+                "font-display text-3xl leading-[1.1] tracking-tight text-balance",
+                rise,
+                riseIn,
+              )}
+              style={at(520)}
+            >
               {job.book_title}
             </h1>
           </>
         ) : (
-          <h1 className="font-display text-3xl leading-[1.1] tracking-tight text-balance">
+          <h1
+            className={cn(
+              "font-display text-3xl leading-[1.1] tracking-tight text-balance",
+              rise,
+              riseIn,
+            )}
+            style={at(520)}
+          >
             Your compilation is ready
           </h1>
         )}
-        <p className="text-muted-foreground text-xs">
+        <p
+          className={cn("text-muted-foreground text-xs", rise, riseIn)}
+          style={at(760)}
+        >
           {sourceCount} source{sourceCount !== 1 ? "s" : ""}
           {words != null && ` · ~${words.toLocaleString("en-US")} words`}
         </p>
@@ -541,71 +626,84 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
             the product's headline use, so its download is the one accented act.
             The stone tablet is the same one the landing's funnel showed, so what
             was promised is what's handed over. */}
-        <OutputTile
-          tablet={<EpubTablet />}
-          format="EPUB"
-          destination="For your e-reader"
-        >
-          <a
-            href={getDownloadUrl(jobId)}
-            download
-            className={cn(buttonVariants(), "w-full")}
+        <div className={cn(rise, riseIn)} style={at(1000)}>
+          <OutputTile
+            tablet={
+              <EpubTablet
+                eyebrow="Chapter 1"
+                title={preview.epubTitle}
+                body={preview.epubBody}
+              />
+            }
+            format="EPUB"
+            destination="For your e-reader"
           >
-            <Download />
-            Download
-          </a>
-        </OutputTile>
+            <a
+              href={getDownloadUrl(jobId)}
+              download
+              className={cn(buttonVariants(), "w-full")}
+            >
+              <Download />
+              Download
+            </a>
+          </OutputTile>
+        </div>
 
         {/* Markdown — to feed an AI. Copy is the natural gesture there, so it
             leads; the token size rides the destination line (the AI's context
             budget is what the user weighs). Only shown when the twin exists. */}
         {hasMarkdown && (
-          <OutputTile
-            tablet={<MarkdownTablet />}
-            format="Markdown"
-            destination={
-              tokens != null
-                ? `For an AI · ~${formatTokens(tokens)} tokens`
-                : "For an AI"
-            }
-          >
-            <div className="flex w-full gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={copy}
-                disabled={!md}
-                className="flex-1"
-              >
-                {copied ? (
-                  <>
-                    <Check />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy />
-                    Copy
-                  </>
-                )}
-              </Button>
-              <Tooltip content="Download Markdown">
-                <a
-                  href={getDownloadUrl(jobId, "md")}
-                  download
-                  aria-label="Download Markdown"
-                  className={buttonVariants({ variant: "outline", size: "icon" })}
+          <div className={cn(rise, riseIn)} style={at(1200)}>
+            <OutputTile
+              tablet={<MarkdownTablet lines={preview.mdLines} />}
+              format="Markdown"
+              destination={
+                tokens != null
+                  ? `For an AI · ~${formatTokens(tokens)} tokens`
+                  : "For an AI"
+              }
+            >
+              <div className="flex w-full gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={copy}
+                  disabled={!md}
+                  className="flex-1"
                 >
-                  <Download />
-                </a>
-              </Tooltip>
-            </div>
-          </OutputTile>
+                  {copied ? (
+                    <>
+                      <Check />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy />
+                      Copy
+                    </>
+                  )}
+                </Button>
+                <Tooltip content="Download Markdown">
+                  <a
+                    href={getDownloadUrl(jobId, "md")}
+                    download
+                    aria-label="Download Markdown"
+                    className={buttonVariants({ variant: "outline", size: "icon" })}
+                  >
+                    <Download />
+                  </a>
+                </Tooltip>
+              </div>
+            </OutputTile>
+          </div>
         )}
       </div>
 
       {tokens != null && tokens > 200000 && (
-        <p className="text-muted-foreground text-xs">
+        <p
+          className={cn("text-muted-foreground text-xs", rise, riseIn)}
+          style={at(1400)}
+        >
           Large for some AIs; downloading and attaching the file may work better.
         </p>
       )}
@@ -652,6 +750,53 @@ function countWords(text: string): number {
 
 function formatTokens(n: number): string {
   return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
+}
+
+// Pull the first real chapter — its title and the opening prose — out of the
+// Markdown twin, for the EPUB slab's mini-preview (the actual first page of the
+// book). Skips the "# Sources" index and any "# Preface" front matter, then the
+// chapter's "::: {.source-attribution}" block, and flattens the first ~320 chars
+// of body into clean prose (leading heading/quote/bullet markers and inline
+// bold/italic/link/code/image syntax stripped) so it reads as a book page at the
+// tiny slab size. Returns null when there's no chapter; `body` is "" when the
+// chapter has no prose (e.g. all images), and the slab then shows its page bars.
+function firstChapter(md: string): { title: string; body: string } | null {
+  const lines = md.split("\n");
+  let i = 0;
+  let title = "";
+  for (; i < lines.length; i++) {
+    const m = /^#\s+(.*)/.exec(lines[i]);
+    if (m && m[1].trim() !== "Sources" && m[1].trim() !== "Preface") {
+      title = m[1].trim();
+      break;
+    }
+  }
+  if (i >= lines.length) return null;
+  let j = i + 1;
+  while (j < lines.length && lines[j].trim() === "") j++;
+  if (lines[j]?.trim().startsWith(":::")) {
+    j++;
+    while (j < lines.length && !lines[j].trim().startsWith(":::")) j++;
+    j++; // past the closing fence
+  }
+  const out: string[] = [];
+  for (; j < lines.length && out.join(" ").length < 320; j++) {
+    const t = lines[j].trim();
+    if (/^#\s+/.test(t)) break; // reached the next chapter (H1)
+    if (/^#{2,6}\s+/.test(t)) continue; // skip sub-headings; open on prose
+    if (!t || t.startsWith(":::")) continue;
+    const clean = t
+      .replace(/^>\s?/, "")
+      .replace(/^[-*]\s+/, "")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .trim();
+    if (clean) out.push(clean);
+  }
+  return { title, body: out.join(" ").slice(0, 320) };
 }
 
 interface ReviewListProps {
