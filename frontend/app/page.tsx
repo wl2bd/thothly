@@ -35,6 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GitHubStar } from "@/components/github-star";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { highlightMatch } from "@/components/highlight";
 import { Logotype } from "@/components/brand";
 import { Grain } from "@/components/grain";
@@ -687,6 +688,7 @@ function SiteHeader() {
             <HeaderLink href="#faq">FAQ</HeaderLink>
           </nav>
           <GitHubStar />
+          <ThemeToggle />
         </div>
       </div>
     </header>
