@@ -3,8 +3,13 @@ services:
     build:
       context: ./backend
     container_name: thothly-backend
+    # Bound to localhost only. Thothly has no auth (single-user, self-hosted)
+    # and fetches arbitrary user-supplied URLs, so the API must not be reachable
+    # from the public internet. To reach it from another machine, put a reverse
+    # proxy (Caddy/Nginx) in front; only drop the "127.0.0.1:" prefix on a
+    # trusted, isolated network.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     # Pass through .env (optional LLM_* keys, etc.); DATA_DIR below overrides any
     # host value so the container always writes to the mounted volume.
     env_file:
@@ -19,8 +24,10 @@ services:
     build:
       context: ./frontend
     container_name: thothly-frontend
+    # Localhost only (see the backend note). Open http://localhost:3000 on this
+    # machine; expose it through a reverse proxy for remote access.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       BACKEND_URL: http://backend:8000
     depends_on:

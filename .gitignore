@@ -24,6 +24,7 @@ __pycache__/
 data/*
 !data/.gitkeep
 backend/data/
+backend/test_output/
 *.db
 *.epub
 
