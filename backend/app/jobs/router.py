@@ -30,7 +30,7 @@ def list_jobs() -> list[JobResponse]:
 def get_job(job_id: str) -> JobResponse:
     job = repository.get_job(job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
     return job
 
 
@@ -40,18 +40,18 @@ def confirm_job(
 ) -> JobResponse:
     job = repository.get_job(job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
     if job.status != "reviewing":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Job is not awaiting review (status: {job.status})",
+            detail="This compilation isn't awaiting review anymore.",
         )
 
     selected = repository.confirm_items(job_id, payload.selected_ids)
     if not selected:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="None of the selected ids match discovered items",
+            detail="Those items are no longer available. Go back and choose again.",
         )
 
     # Keep only known role ids; the compile only acts on them when an LLM is
@@ -76,10 +76,10 @@ def preview_item(job_id: str, item_id: str) -> ItemPreview:
     scrape for blogs; podcasts report that they need transcription first).
     """
     if repository.get_job(job_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
     item = repository.get_discovered_item(job_id, item_id)
     if item is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That item doesn't exist.")
     return build_item_preview(item)
 
 
@@ -93,25 +93,26 @@ def download_job(job_id: str, format: str = "epub") -> FileResponse:
     if format not in ("epub", "md"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="format must be 'epub' or 'md'",
+            detail="That format isn't supported. Choose EPUB or Markdown.",
         )
 
     job = repository.get_job(job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
 
     stored_path = job.output_md_path if format == "md" else job.output_path
+    label = "Markdown" if format == "md" else "EPUB"
     if job.status != "completed" or not stored_path:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"{format.upper()} is not ready",
+            detail=f"The {label} isn't ready yet.",
         )
 
     path = Path(stored_path)
     if not path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"{format.upper()} file is missing",
+            detail=f"The {label} file is missing.",
         )
 
     media_type = "text/markdown" if format == "md" else "application/epub+zip"

@@ -481,12 +481,28 @@ export default function Home() {
 
             {error && <p className="text-destructive text-sm">{error}</p>}
 
-            {searchErrors.length > 0 && (
-              <p className="text-warning bg-warning/10 rounded-lg px-3 py-2 text-xs">
-                {searchErrors.map((e) => e.provider).join(", ")} unavailable.
-                Showing the other results.
-              </p>
-            )}
+            {searchErrors.length > 0 &&
+              (() => {
+                // Name the failed provider(s) as the subject, capitalized, so the
+                // message reads as one sentence regardless of which failed (the raw
+                // provider codes are lowercase: "web", "youtube", "podcast").
+                const labels: Record<string, string> = {
+                  web: "the web",
+                  youtube: "YouTube",
+                  podcast: "podcasts",
+                };
+                const names = searchErrors.map((e) => labels[e.provider] ?? e.provider);
+                const list =
+                  names.length > 1
+                    ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+                    : names[0];
+                const subject = list.charAt(0).toUpperCase() + list.slice(1);
+                return (
+                  <p className="text-warning bg-warning/10 rounded-lg px-3 py-2 text-xs">
+                    {subject} didn&apos;t respond. Showing the other results.
+                  </p>
+                );
+              })()}
 
             {showResultsPanel && results.length > 0 && (
               <div className="flex items-center justify-between gap-2">

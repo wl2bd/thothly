@@ -9,7 +9,7 @@ export async function GET(
   try {
     const res = await fetch(`${BACKEND_URL}/jobs/${id}/download?format=${format}`);
     if (!res.ok) {
-      const data = await res.json().catch(() => ({ detail: "Download failed" }));
+      const data = await res.json().catch(() => ({ detail: "The download failed." }));
       return Response.json(data, { status: res.status });
     }
 
@@ -20,6 +20,9 @@ export async function GET(
 
     return new Response(res.body, { status: 200, headers });
   } catch {
-    return Response.json({ detail: "Backend unreachable" }, { status: 502 });
+    return Response.json(
+      { detail: "The server isn't responding. Check that the backend is running." },
+      { status: 502 },
+    );
   }
 }

@@ -125,8 +125,8 @@ export interface SearchResponse {
 }
 
 async function parseError(res: Response): Promise<never> {
-  const data = await res.json().catch(() => ({ detail: `Request failed: ${res.status}` }));
-  throw new Error(data.detail ?? `Request failed: ${res.status}`);
+  const data = await res.json().catch(() => ({ detail: `The request failed (${res.status}).` }));
+  throw new Error(data.detail ?? `The request failed (${res.status}).`);
 }
 
 export async function createJob(sources: Source[]): Promise<JobResponse> {

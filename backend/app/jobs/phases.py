@@ -8,6 +8,7 @@ from app.jobs.repository import (
 )
 from app.pipeline.compiler import derive_book_title
 from app.sources.discovery import discover_source
+from app.sources.youtube import YouTubeUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,11 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
             set_job_sources(job_id, sources)
 
         if not items:
-            update_job_status(job_id, "failed", error="No items discovered from any source")
+            update_job_status(
+                job_id,
+                "failed",
+                error="Those sources had no content to compile.",
+            )
             return
 
         save_discovered_items(job_id, items)
@@ -73,6 +78,22 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
         )
         logger.info("Discovery done for job %s: %d items", job_id, len(items))
 
-    except Exception as exc:
+    except YouTubeUnavailable:
         logger.exception("Discovery failed for job %s", job_id)
-        update_job_status(job_id, "failed", error=str(exc))
+        update_job_status(
+            job_id,
+            "failed",
+            error=(
+                "YouTube didn't respond. It rate-limits requests from some "
+                "networks, so try again in a little while."
+            ),
+        )
+    except Exception:
+        # The raw exception (yt-dlp text, a blocked-URL guard, a network error)
+        # stays in the log; the user gets one calm, written line instead.
+        logger.exception("Discovery failed for job %s", job_id)
+        update_job_status(
+            job_id,
+            "failed",
+            error="Those sources couldn't be read. Try again.",
+        )

@@ -91,11 +91,19 @@ def run_compilation(job_id: str) -> None:
         logger.info("Compilation done for job %s: %d chapters", job_id, len(book.chapters))
 
     except CompilationError as exc:
+        # CompilationError carries a hand-written, user-facing reason (no content,
+        # YouTube rate-limited); surface it as-is.
         logger.warning("No usable content for job %s: %s", job_id, exc)
         update_job_status(job_id, "failed", error=str(exc))
-    except Exception as exc:
+    except Exception:
+        # Anything else (a Pandoc render error, a network blip) keeps its raw
+        # message in the log; the user gets one calm, written line instead.
         logger.exception("Compilation failed for job %s", job_id)
-        update_job_status(job_id, "failed", error=str(exc))
+        update_job_status(
+            job_id,
+            "failed",
+            error="The compilation failed to build. Try again.",
+        )
 
 
 def _youtube_chapter(

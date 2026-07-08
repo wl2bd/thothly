@@ -52,7 +52,7 @@ def _youtube_preview(item: DiscoveredItemResponse) -> ItemPreview:
 
     if transcript is None:
         return _unavailable(
-            item, "No subtitles for this video, so it would be skipped at compile."
+            item, "This video has no subtitles, so it would be skipped when compiling."
         )
 
     content_md = transcript_to_markdown(transcript)
@@ -80,14 +80,14 @@ def _blog_preview(item: DiscoveredItemResponse) -> ItemPreview:
     except ScrapeUnavailable:
         logger.info("Scrape failed for preview of %s, using RSS preview", item.url)
         content_html = item.preview_html or ""
-        note = "Couldn't fetch the full article, showing the RSS summary only."
+        note = "The full article didn't load, so this is the RSS summary only."
 
     content_md = demote_headings(
         strip_leading_title(html_to_markdown(content_html), item.title)
     )
     if not content_md.strip():
         return _unavailable(
-            item, "Couldn't extract readable content from this page."
+            item, "This page has no readable content."
         )
     return _available(item, content_md, note)
 

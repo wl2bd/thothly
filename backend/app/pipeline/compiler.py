@@ -316,9 +316,8 @@ def compile_book(chapters: list[CompiledChapter], title: str) -> CompiledBook:
     usable = [c for c in chapters if c.content_md and c.content_md.strip()]
     if not usable:
         raise CompilationError(
-            "No content could be compiled from the selected items. Check that the "
-            "YouTube videos have native subtitles and that the articles have "
-            "extractable content."
+            "The selected items had no usable content. Check that the videos have "
+            "subtitles and the articles have readable text."
         )
 
     return CompiledBook(

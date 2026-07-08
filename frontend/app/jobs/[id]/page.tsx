@@ -704,7 +704,7 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
           className={cn("text-muted-foreground text-xs", rise, riseIn)}
           style={at(1400)}
         >
-          Large for some AIs; downloading and attaching the file may work better.
+          This file is large for some AIs. Downloading and attaching it may work better.
         </p>
       )}
     </div>

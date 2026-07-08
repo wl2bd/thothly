@@ -8,10 +8,14 @@ export async function proxyJson(path: string, init?: RequestInit): Promise<Respo
   try {
     const res = await fetch(`${BACKEND_URL}${path}`, init);
     const data = await res.json().catch(() => null);
-    return Response.json(data ?? { detail: `Empty response (${res.status})` }, {
-      status: res.status,
-    });
+    return Response.json(
+      data ?? { detail: `The server returned an empty response (${res.status}).` },
+      { status: res.status },
+    );
   } catch {
-    return Response.json({ detail: "Backend unreachable" }, { status: 502 });
+    return Response.json(
+      { detail: "The server isn't responding. Check that the backend is running." },
+      { status: 502 },
+    );
   }
 }

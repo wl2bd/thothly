@@ -92,8 +92,8 @@ def reap_orphaned_jobs() -> int:
     fresh start) instead of an eternal spinner. Returns the number reaped.
     """
     message = (
-        "Interrupted: the server restarted while this compilation was still "
-        "running. Start a new compilation to try again."
+        "The server restarted while this compilation was still running, so it "
+        "stopped. Start a new one."
     )
     now_iso = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
