@@ -52,6 +52,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -331,11 +332,7 @@ export default function JobPage() {
           </Link>
         </header>
 
-        {error && (
-          <p className="text-destructive bg-destructive/10 rounded-lg px-3 py-2 text-sm">
-            {error}
-          </p>
-        )}
+        {error && <Notice variant="error">{error}</Notice>}
 
         {/* Same view-transition identity as the home search card, so arriving
             here morphs that card into this one instead of a hard page cut. */}
@@ -377,7 +374,7 @@ export default function JobPage() {
                 Compilation failed.
               </p>
               {job.error && (
-                <p className="text-muted-foreground font-mono text-xs">{job.error}</p>
+                <p className="text-muted-foreground text-sm">{job.error}</p>
               )}
             </div>
           )}
@@ -1452,7 +1449,7 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
 
   if (!preview.available) {
     return (
-      <p className="text-muted-foreground text-xs italic">
+      <p className="text-muted-foreground text-xs">
         {preview.note ?? "No preview available."}
       </p>
     );
@@ -1473,7 +1470,7 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
         <MarkdownPreview md={preview.content_md ?? ""} />
       </div>
       {preview.truncated && (
-        <p className="text-muted-foreground text-xs italic">
+        <p className="text-muted-foreground text-xs">
           Preview trimmed. The full text is used when compiling.
         </p>
       )}

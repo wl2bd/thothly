@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
+import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EpubTablet, MarkdownTablet } from "@/components/output-tablet";
@@ -479,15 +480,15 @@ export default function Home() {
               {!queryIsUrl && <SearchSourcesHint />}
             </form>
 
-            {error && <p className="text-destructive text-sm">{error}</p>}
+            {error && <Notice variant="error">{error}</Notice>}
 
             {searchErrors.length > 0 &&
               (() => {
-                // Name the failed provider(s) as the subject, capitalized, so the
-                // message reads as one sentence regardless of which failed (the raw
-                // provider codes are lowercase: "web", "youtube", "podcast").
+                // Concrete, distinct names — "web search", not "the web" (too
+                // broad when YouTube/podcast results are still shown). The raw
+                // provider codes are lowercase: "web", "youtube", "podcast".
                 const labels: Record<string, string> = {
-                  web: "the web",
+                  web: "web search",
                   youtube: "YouTube",
                   podcast: "podcasts",
                 };
@@ -497,10 +498,12 @@ export default function Home() {
                     ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
                     : names[0];
                 const subject = list.charAt(0).toUpperCase() + list.slice(1);
+                // Build the whole sentence as one string so there's never a glued
+                // "web"+"didn't" from JSX collapsing the space between nodes.
                 return (
-                  <p className="text-warning bg-warning/10 rounded-lg px-3 py-2 text-xs">
-                    {subject} didn&apos;t respond. Showing the other results.
-                  </p>
+                  <Notice variant="warning">
+                    {`${subject} didn't respond. Showing the other results.`}
+                  </Notice>
                 );
               })()}
 
