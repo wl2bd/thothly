@@ -555,7 +555,7 @@ export default function Home() {
                   {staged.map((s) => (
                     <li
                       key={s.url}
-                      className="bg-card flex items-center gap-3.5 rounded-lg border px-3.5 py-3.5"
+                      className="bg-background flex items-center gap-3.5 rounded-lg border px-3.5 py-3.5"
                     >
                       <SourceMedia
                         kind={kindFromResultType(s.type)}
@@ -823,7 +823,7 @@ function HowItWorks() {
               <div
                 key={s.kind}
                 className={cn(
-                  "bg-surface-sunken flex flex-col items-center gap-1 rounded-lg border px-1 py-2",
+                  "bg-secondary flex flex-col items-center gap-1 rounded-lg border px-1 py-2",
                   rise,
                   riseIn,
                 )}

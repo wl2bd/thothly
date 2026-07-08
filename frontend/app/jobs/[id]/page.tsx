@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
+  ApiError,
   confirmJob,
   fetchItemPreview,
   fetchJob,
@@ -83,6 +84,15 @@ import {
 } from "@/lib/api";
 
 const ACTIVE_STATUSES = ["pending", "discovering", "processing"];
+
+// Live-polling cadence and resilience. A single failed poll must not kill the
+// live view: the job is still running server-side, so a transient failure (5xx,
+// a network blip) is retried with exponential backoff (2s, 4s, 8s, capped) up
+// to MAX_POLL_FAILURES before an error is shown. A 4xx (e.g. an unknown
+// compilation) is terminal and surfaced at once.
+const BASE_POLL_MS = 2000;
+const MAX_POLL_MS = 15000;
+const MAX_POLL_FAILURES = 5;
 
 // The book title is required to generate and capped so it stays a title (it
 // lands in EPUB metadata, the cover and the filename).
@@ -168,28 +178,46 @@ export default function JobPage() {
 
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
 
-    async function poll(): Promise<boolean> {
+    // A self-scheduling poll (setTimeout, not setInterval) so the delay can grow
+    // after a failure instead of hammering a struggling backend every 2s.
+    async function tick(): Promise<void> {
+      let nextDelay: number | null;
       try {
         const data = await fetchJob(id);
-        if (cancelled) return true;
+        if (cancelled) return;
         applyJob(data);
-        return !ACTIVE_STATUSES.includes(data.status);
+        failures = 0;
+        // Keep polling while the job is still working; stop once it settles.
+        nextDelay = ACTIVE_STATUSES.includes(data.status) ? BASE_POLL_MS : null;
       } catch (err) {
-        if (cancelled) return true;
-        setError(err instanceof Error ? err.message : String(err));
-        return true;
+        if (cancelled) return;
+        // A 4xx (e.g. an unknown compilation) is terminal — show it and stop. A
+        // 5xx or network blip is transient — retry with backoff so one hiccup
+        // doesn't freeze a job that's still running server-side. Stay silent
+        // during retries; only surface an error once we truly give up.
+        const terminal =
+          err instanceof ApiError && err.status >= 400 && err.status < 500;
+        failures += 1;
+        if (terminal || failures >= MAX_POLL_FAILURES) {
+          setError(err instanceof Error ? err.message : String(err));
+          nextDelay = null;
+        } else {
+          nextDelay = Math.min(BASE_POLL_MS * 2 ** (failures - 1), MAX_POLL_MS);
+        }
+      }
+      if (!cancelled && nextDelay != null) {
+        timer = setTimeout(tick, nextDelay);
       }
     }
 
-    const interval = setInterval(async () => {
-      if (await poll()) clearInterval(interval);
-    }, 2000);
-    poll().then((done) => done && clearInterval(interval));
+    tick();
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (timer) clearTimeout(timer);
     };
   }, [id, pollKey, applyJob]);
 
@@ -336,8 +364,9 @@ export default function JobPage() {
 
         {/* Same view-transition identity as the home search card, so arriving
             here morphs that card into this one instead of a hard page cut. */}
+        {(job || !error) && (
         <ViewTransition name="flow-card">
-        <Card>
+        <Card className="bg-surface-sunken">
           <CardContent>
           {!job ? (
             <StatusMessage label="Loading…" />
@@ -381,6 +410,7 @@ export default function JobPage() {
           </CardContent>
         </Card>
         </ViewTransition>
+        )}
       </div>
     </main>
   );
@@ -1005,7 +1035,7 @@ function ReviewList({
             fade below anchors to this header. Opaque (not /95) so rows vanish
             cleanly under it instead of ghosting through. Same px/gap as the item
             rows so the checkbox column lines up across header and items. */}
-        <div className="bg-card sticky top-0 z-10 flex items-center gap-3.5 px-3.5 py-2.5">
+        <div className="bg-background sticky top-0 z-10 flex items-center gap-3.5 px-3.5 py-2.5">
           {handleProps && (
             <button
               type="button"
@@ -1080,7 +1110,7 @@ function ReviewList({
           {!isCollapsed && (
             <span
               aria-hidden="true"
-              className="from-card pointer-events-none absolute inset-x-0 top-full h-4 bg-gradient-to-b to-transparent"
+              className="from-background pointer-events-none absolute inset-x-0 top-full h-4 bg-gradient-to-b to-transparent"
             />
           )}
         </div>
@@ -1172,7 +1202,7 @@ function ReviewList({
 
       <div
         ref={scrollerRef}
-        className="-mx-2 flex max-h-[55vh] flex-col overflow-y-auto"
+        className="-mx-2 flex max-h-[55vh] flex-col gap-2 overflow-y-auto"
         style={scrollFade}
       >
         {visibleGroups.length === 0 ? (
@@ -1212,7 +1242,7 @@ function ReviewList({
           unexplained — and never shows when there's nothing to explain. */}
       {hasMeteredPodcast && (
         <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
-          <Coins className="text-gold mt-px size-3.5 shrink-0" />
+          <Coins className="text-gold-deep dark:text-gold mt-px size-3.5 shrink-0" />
           <span>
             <span className="text-foreground font-medium">Metered either way</span>{" "}
             (transcribing audio). Everything else is free unless you turn on AI
@@ -1606,7 +1636,7 @@ function RoleSelector({
       <div className="flex items-center gap-3 px-4 py-3">
         <span
           aria-hidden
-          className="bg-gold/10 text-gold flex size-7 shrink-0 items-center justify-center rounded-lg"
+          className="bg-gold/10 text-gold-deep dark:text-gold flex size-7 shrink-0 items-center justify-center rounded-lg"
         >
           <Sparkles className="size-4" />
         </span>
@@ -1713,7 +1743,7 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
       // the "Raw captions" info icon — side-by-side in the list, mismatched
       // sides read as untidy. The bottom legend (visible, not a hover tip) is
       // this tag's explanation, so it needs no tooltip of its own.
-      <Badge variant="secondary" className="bg-gold/10 text-gold gap-1">
+      <Badge variant="secondary" className="bg-gold/10 text-gold-deep dark:text-gold gap-1">
         From audio
         <Coins />
       </Badge>

@@ -124,9 +124,22 @@ export interface SearchResponse {
   errors: ProviderError[];
 }
 
+// Carries the HTTP status so callers can tell a terminal client error (e.g. a
+// 404 for an unknown compilation) from a transient one (5xx, backend blip) and
+// react differently — the live poller retries the latter but not the former.
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function parseError(res: Response): Promise<never> {
   const data = await res.json().catch(() => ({ detail: `The request failed (${res.status}).` }));
-  throw new Error(data.detail ?? `The request failed (${res.status}).`);
+  throw new ApiError(data.detail ?? `The request failed (${res.status}).`, res.status);
 }
 
 export async function createJob(sources: Source[]): Promise<JobResponse> {

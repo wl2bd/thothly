@@ -71,13 +71,13 @@
    it sings hardest on the black ground. The whole identity re-skins from these
    token values. See DESIGN.md. */
 :root {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.16 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0 0);
+  --background: oklch(0.977 0.011 80);
+  --foreground: oklch(0.16 0.015 68);
+  --card: oklch(0.995 0.008 80);
+  --card-foreground: oklch(0.16 0.015 68);
   /* A darker, recessed surface — sunken below the page/card, for the source
      chips and the hero search panel. Stark neutral (chroma 0), one step down. */
-  --surface-sunken: oklch(0.95 0 0);
+  --surface-sunken: oklch(0.957 0.014 80);
   /* The hero's light-mode ground — a warm taupe (low chroma toward the gold
      hue). The ONE place the surface is allowed a tint: it lets the deep-gold
      glyph rain read on the fold and gives the light hero its own ground, the way
@@ -85,35 +85,35 @@
      Surface Rule — hero only; the rest of the page stays chroma 0 — and it fades
      to the page at the fold's bottom so there's no seam. Muted text on it clears
      AA (5.81:1). */
-  --hero-ground: oklch(0.945 0.011 80);
+  --hero-ground: oklch(0.94 0.026 78);
   /* The hero legibility scrim — pools the fold's own ground behind the headline
      so the text always clears the glyph rain. ONE token, theme-flipped, so it
      can never bleed across modes (no dark:hidden hack): warm taupe on light. */
   --hero-scrim: radial-gradient(
     54% 42% at 50% 44%,
-    oklch(0.945 0.011 80 / 0.94),
-    oklch(0.945 0.011 80 / 0.55) 46%,
+    oklch(0.94 0.026 78 / 0.94),
+    oklch(0.94 0.026 78 / 0.55) 46%,
     transparent 72%
   );
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0 0);
+  --popover: oklch(0.995 0.008 80);
+  --popover-foreground: oklch(0.16 0.015 68);
   /* Primary = desert gold. Text on a gold fill is always near-black (gold is a
      light, warm metal): 8.9:1. */
-  --primary: oklch(0.76 0.15 78);
-  --primary-foreground: oklch(0.16 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.16 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.47 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.16 0 0);
+  --primary: oklch(0.82 0.145 80);
+  --primary-foreground: oklch(0.16 0.015 68);
+  --secondary: oklch(0.915 0.018 80);
+  --secondary-foreground: oklch(0.16 0.015 68);
+  --muted: oklch(0.955 0.014 80);
+  --muted-foreground: oklch(0.48 0.02 70);
+  --accent: oklch(0.955 0.014 80);
+  --accent-foreground: oklch(0.16 0.015 68);
   --destructive: oklch(0.52 0.21 27);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
+  --border: oklch(0.87 0.018 78);
+  --input: oklch(0.87 0.018 78);
   /* Focus ring: a deeper desert gold so the indicator clears WCAG 3:1 on the
      pure-white page (4.0:1). On the night ground the bright gold is used. */
   --ring: oklch(0.6 0.15 75);
-  --chart-1: oklch(0.76 0.15 78);
+  --chart-1: oklch(0.82 0.145 80);
   --chart-2: oklch(0.16 0 0);
   --chart-3: oklch(0.55 0 0);
   --chart-4: oklch(0.5 0.12 150);
@@ -121,7 +121,7 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.16 0 0);
-  --sidebar-primary: oklch(0.76 0.15 78);
+  --sidebar-primary: oklch(0.82 0.145 80);
   --sidebar-primary-foreground: oklch(0.16 0 0);
   --sidebar-accent: oklch(0.96 0 0);
   --sidebar-accent-foreground: oklch(0.16 0 0);
@@ -129,7 +129,7 @@
   --sidebar-ring: oklch(0.6 0.15 75);
   /* The desert gold itself — the single brand color. Same value as --primary;
      exposed as its own token for gold marks/fills (bg-gold/text-gold). */
-  --gold: oklch(0.76 0.15 78);
+  --gold: oklch(0.82 0.145 80);
   /* The gold ramp for the Gold Leaf frame — a muted deep gold trough, the deep
      edge, and the luminous glint. The dark↔bright spread is what makes the
      rotating contour read. On the light page the trough is kept a deep GOLD
@@ -137,7 +137,7 @@
   --gold-dark: oklch(0.6 0.13 72);
   --gold-deep: oklch(0.6 0.15 75);
   --gold-bright: oklch(0.85 0.14 82);
-  --gold-foreground: oklch(0.16 0 0);
+  --gold-foreground: oklch(0.16 0.015 68);
   /* The inscription rule gold — the faint gold of the sinuous lines between the
      hieroglyph columns (components/hieroglyph-rain.tsx reads this same token for
      the canvas rules, so the two always match). */
@@ -179,7 +179,7 @@
   );
   --popover: oklch(0.17 0 0);
   --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.8 0.145 80);
+  --primary: oklch(0.71 0.135 78);
   --primary-foreground: oklch(0.16 0 0);
   --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.97 0 0);
@@ -190,21 +190,21 @@
   --destructive: oklch(0.68 0.2 25);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.8 0.145 80);
-  --chart-1: oklch(0.8 0.145 80);
+  --ring: oklch(0.71 0.135 78);
+  --chart-1: oklch(0.71 0.135 78);
   --chart-2: oklch(0.97 0 0);
   --chart-3: oklch(0.7 0 0);
   --chart-4: oklch(0.72 0.14 150);
   --chart-5: oklch(0.7 0.14 255);
   --sidebar: oklch(0.17 0 0);
   --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.8 0.145 80);
+  --sidebar-primary: oklch(0.71 0.135 78);
   --sidebar-primary-foreground: oklch(0.16 0 0);
   --sidebar-accent: oklch(0.22 0 0);
   --sidebar-accent-foreground: oklch(0.97 0 0);
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.8 0.145 80);
-  --gold: oklch(0.8 0.145 80);
+  --sidebar-ring: oklch(0.71 0.135 78);
+  --gold: oklch(0.71 0.135 78);
   /* On the night ground the gold steps forward — the ramp lifts with it (the
      dark stays light enough to read against the near-black field). */
   --gold-dark: oklch(0.52 0.13 72);
