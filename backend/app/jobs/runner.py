@@ -7,6 +7,7 @@ from app.jobs.repository import (
     get_job,
     get_job_llm_roles,
     get_selected_items,
+    set_item_compile_state,
     update_job_status,
 )
 from app.pipeline.cleanup import (
@@ -75,6 +76,7 @@ def run_compilation(job_id: str) -> None:
         youtube_unavailable = False
 
         for item in items:
+            set_item_compile_state(job_id, item.id, "compiling")
             try:
                 if item.item_type == "youtube":
                     chapter = _youtube_chapter(item, job_id, roles, model)
@@ -82,12 +84,29 @@ def run_compilation(job_id: str) -> None:
                     chapter = _podcast_chapter(item, job_id, roles, model)
                 else:
                     chapter = _blog_chapter(item, job_id, roles, model)
+            except ItemSkipped as exc:
+                # Nothing usable to build from. Expected, explainable, and never
+                # fatal: the reason is written against the item and shown next to
+                # it, on this screen and on the finished one.
+                logger.info("Skipped %s (job %s): %s", item.url, job_id, exc)
+                set_item_compile_state(job_id, item.id, "skipped", str(exc))
+                continue
             except YouTubeUnavailable as exc:
+                # External and usually transient (a 429 from this IP), so it reads
+                # as failed rather than skipped: retrying later is the actual fix.
                 logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
                 youtube_unavailable = True
+                set_item_compile_state(job_id, item.id, "failed", YOUTUBE_RATE_LIMITED)
                 continue
-            if chapter is not None:
-                chapters.append(chapter)
+            except Exception:
+                # One broken item must not cost the user the other nine. The raw
+                # cause goes to the log; the item gets one calm written line, and
+                # the compile carries on with what's left.
+                logger.exception("Item %s failed (job %s)", item.url, job_id)
+                set_item_compile_state(job_id, item.id, "failed", ITEM_FAILED)
+                continue
+            chapters.append(chapter)
+            set_item_compile_state(job_id, item.id, "done")
 
         if not chapters and youtube_unavailable:
             raise CompilationError(
