@@ -97,6 +97,14 @@ _DISCOVERED_ITEM_ADDED_COLUMNS = (
     # Position in the user-confirmed compile order (the review screen lets sources
     # be reordered by drag). NULL until confirmed; the compile sorts on it.
     ("selected_order", "INTEGER"),
+    # Per-item compile outcome, advanced by the runner as it works through the
+    # confirmed list (pending → compiling → done | skipped | failed) so the
+    # compile screen can show real progress instead of one opaque spinner.
+    # `compile_note` is the user-facing reason an item was skipped or failed, and
+    # outlives the compile: the finished screen reports what was left out and why.
+    # Both are NULL on items that were never confirmed for this compile.
+    ("compile_state", "TEXT"),
+    ("compile_note", "TEXT"),
 )
 
 _TRANSCRIPT_CACHE_ADDED_COLUMNS = (

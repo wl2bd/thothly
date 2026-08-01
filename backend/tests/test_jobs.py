@@ -189,3 +189,43 @@ def test_download_returns_409_when_not_completed(mock_discovery, client: TestCli
     job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
     resp = client.get(f"/jobs/{job_id}/download")
     assert resp.status_code == 409
+
+
+def test_set_item_compile_state_roundtrips(client: TestClient) -> None:
+    """One item's outcome is written and read back on its own, without touching
+    its neighbour: the runner advances items one at a time."""
+    from app.jobs.models import JobCreate, Source
+
+    job = repository.create_job(
+        JobCreate(sources=[Source(url="https://example.com/feed.xml")])
+    )
+    items = [
+        DiscoveredItemResponse(
+            id=f"item-{i}", source_index=0, item_index=i, item_type="youtube",
+            title=f"Video {i}", url=f"https://www.youtube.com/watch?v=vid{i}",
+        )
+        for i in range(2)
+    ]
+    repository.save_discovered_items(job.id, items)
+
+    # A fresh item carries no outcome at all.
+    assert repository.get_discovered_item(job.id, "item-0").compile_state is None
+
+    repository.set_item_compile_state(job.id, "item-0", "compiling")
+    assert repository.get_discovered_item(job.id, "item-0").compile_state == "compiling"
+
+    repository.set_item_compile_state(
+        job.id, "item-0", "skipped", "No subtitles available."
+    )
+    first = repository.get_discovered_item(job.id, "item-0")
+    assert first.compile_state == "skipped"
+    assert first.compile_note == "No subtitles available."
+
+    # A later transition clears the reason (it belonged to the previous state).
+    repository.set_item_compile_state(job.id, "item-0", "done")
+    first = repository.get_discovered_item(job.id, "item-0")
+    assert first.compile_state == "done"
+    assert first.compile_note is None
+
+    # The neighbour was never touched.
+    assert repository.get_discovered_item(job.id, "item-1").compile_state is None

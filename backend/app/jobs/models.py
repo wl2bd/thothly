@@ -14,6 +14,8 @@ JobStatus = Literal[
     "failed",
 ]
 
+CompileState = Literal["pending", "compiling", "done", "skipped", "failed"]
+
 
 class Source(BaseModel):
     """A source is a URL; its kind is auto-detected during discovery.
@@ -87,6 +89,15 @@ class DiscoveredItemResponse(BaseModel):
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None
+
+    # How this item fared in the compile, filled in from the moment the user
+    # confirms and advanced as the runner reaches it. None on items that weren't
+    # part of the compile. `skipped` means there was nothing usable to build from
+    # (no subtitles, no readable text); `failed` means something broke. Both carry
+    # a short, user-facing reason in `compile_note` — the compile no longer drops
+    # a chosen item without saying why.
+    compile_state: CompileState | None = None
+    compile_note: str | None = None
 
 
 class ItemPreview(BaseModel):

@@ -7,10 +7,11 @@ from app.sources.discovery import DiscoveredItem
 SOURCE = Source(url="https://youtube.com/playlist?list=x")
 
 
+@patch("app.jobs.phases.set_job_sources")
 @patch("app.jobs.phases.update_job_status")
 @patch("app.jobs.phases.save_discovered_items")
 @patch("app.jobs.phases.discover_source")
-def test_run_discovery_saves_items_and_moves_to_reviewing(mock_discover, mock_save, mock_update):
+def test_run_discovery_saves_items_and_moves_to_reviewing(mock_discover, mock_save, mock_update, mock_set_sources):
     mock_discover.return_value = (
         "Ma Playlist",
         [DiscoveredItem(title="A", url="https://www.youtube.com/watch?v=a",

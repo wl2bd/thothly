@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_connection
 from app.jobs.models import (
+    CompileState,
     DiscoveredItemResponse,
     JobCreate,
     JobResponse,
@@ -216,6 +217,25 @@ def get_selected_items(job_id: str) -> list[DiscoveredItemResponse]:
     return [_item_row_to_response(row) for row in rows]
 
 
+def set_item_compile_state(
+    job_id: str, item_id: str, state: CompileState, note: str | None = None
+) -> None:
+    """Advance one item's compile outcome: one row, one UPDATE.
+
+    Called by the runner at each transition, so the compile screen's existing
+    poll sees per-item progress land as it happens. `note` is the user-facing
+    reason for a `skipped` or `failed` item; passing none clears it, so a reason
+    can never outlive the state it explained.
+    """
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE job_discovered_items SET compile_state = ?, compile_note = ? "
+            "WHERE job_id = ? AND id = ?",
+            (state, note, job_id, item_id),
+        )
+        conn.commit()
+
+
 def get_discovered_item(job_id: str, item_id: str) -> DiscoveredItemResponse | None:
     with get_connection() as conn:
         row = conn.execute(
@@ -252,6 +272,8 @@ def _item_row_to_response(row) -> DiscoveredItemResponse:
         is_punctuated=_int_to_bool(row["is_punctuated"]),
         word_count=row["word_count"],
         reading_time_min=row["reading_time_min"],
+        compile_state=row["compile_state"],
+        compile_note=row["compile_note"],
     )
 
 
