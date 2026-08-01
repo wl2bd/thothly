@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from app.jobs import runner
 from app.jobs.models import DiscoveredItemResponse
 from app.sources.models import Article, Transcript, TranscriptSegment
@@ -193,3 +195,32 @@ def test_extract_video_id():
 
 def test_extract_video_id_trailing_slash():
     assert runner._extract_video_id("https://youtu.be/xyz789/") == "xyz789"
+
+
+@patch("app.jobs.runner.load_transcript")
+def test_youtube_chapter_skips_with_a_reason_when_there_are_no_subtitles(mock_load):
+    """The reason a video didn't make it has to leave the log: it's what the
+    compile screen shows next to the item."""
+    mock_load.return_value = None
+    with pytest.raises(runner.ItemSkipped) as excinfo:
+        runner._youtube_chapter(_youtube_item(), "job1", [], "")
+    assert str(excinfo.value) == "No subtitles available."
+
+
+@patch("app.jobs.runner.load_episode_transcript")
+def test_podcast_chapter_skips_with_a_reason_when_transcription_is_unavailable(mock_load):
+    mock_load.return_value = None
+    with pytest.raises(runner.ItemSkipped) as excinfo:
+        runner._podcast_chapter(_podcast_item(), "job1", [], "")
+    assert str(excinfo.value) == "Transcription unavailable."
+
+
+@patch("app.jobs.runner.scrape_article")
+def test_blog_chapter_skips_with_a_reason_when_the_page_has_no_text(mock_scrape):
+    mock_scrape.return_value = Article(
+        url="https://blog.example.com/posts/hello", title="An article",
+        content_html="", author=None, published_at=None,
+    )
+    with pytest.raises(runner.ItemSkipped) as excinfo:
+        runner._blog_chapter(_blog_item(), "job1", [], "")
+    assert str(excinfo.value) == "No readable content."

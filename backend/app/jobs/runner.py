@@ -36,6 +36,27 @@ from app.sources.youtube import YouTubeUnavailable
 logger = logging.getLogger(__name__)
 
 
+class ItemSkipped(Exception):
+    """One item has nothing usable to build a chapter from.
+
+    Carries the user-facing reason, exactly like YouTubeUnavailable and
+    ScrapeUnavailable next door. Raised by the chapter builders and caught per
+    item by the loop, which records the reason against the item and carries on:
+    an item the user picked never disappears without an explanation, and never
+    costs them the rest of the compilation.
+    """
+
+
+# The reasons an item didn't make it into the book. They travel with the item to
+# the compile screen and survive to the finished one, so they're written for a
+# reader rather than a log: what happened, no blame, no jargon.
+NO_SUBTITLES = "No subtitles available."
+NO_TRANSCRIPTION = "Transcription unavailable."
+NO_CONTENT = "No readable content."
+YOUTUBE_RATE_LIMITED = "YouTube rate-limited this request."
+ITEM_FAILED = "This item could not be built."
+
+
 def run_compilation(job_id: str) -> None:
     """Background phase: turn the selected items into a single EPUB.
 
@@ -108,15 +129,14 @@ def run_compilation(job_id: str) -> None:
 
 def _youtube_chapter(
     item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
-) -> CompiledChapter | None:
+) -> CompiledChapter:
     video_id = _extract_video_id(item.url)
     # Cache hit from discovery (full segments + chapters); falls back to a live
     # fetch only if the cache was never populated. A YouTubeUnavailable here
     # (e.g. a 429) propagates so run_compilation can report it clearly.
     transcript = load_transcript(video_id)
     if transcript is None:
-        logger.info("No native subtitles for %s, skipping (job %s)", video_id, job_id)
-        return None
+        raise ItemSkipped(NO_SUBTITLES)
 
     # The free path (no roles selected) renders captions with the zero-LLM
     # grouper. Raw (unpunctuated) captions then read rough — there's no zero-LLM
@@ -128,7 +148,7 @@ def _youtube_chapter(
     else:
         content_md = transcript_to_markdown(transcript)
     if not content_md:
-        return None
+        raise ItemSkipped(NO_CONTENT)
 
     return CompiledChapter(
         title=normalize_title(item.title),
@@ -142,15 +162,14 @@ def _youtube_chapter(
 
 def _podcast_chapter(
     item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
-) -> CompiledChapter | None:
+) -> CompiledChapter:
     # Transcribe lazily (and cached by audio URL): a metered API call runs once,
     # only for selected episodes. No STT endpoint, or a download/transcription
     # failure, leaves transcript None → the episode is skipped, like a video
     # without subtitles.
     transcript = load_episode_transcript(item.url)
     if transcript is None:
-        logger.info("No transcript for podcast %s, skipping (job %s)", item.url, job_id)
-        return None
+        raise ItemSkipped(NO_TRANSCRIPTION)
 
     # Podcasts keep their diarized dialogue with speaker labels. The Voxtral
     # transcript is already punctuated and clean, so we deliberately do NOT run
@@ -162,7 +181,7 @@ def _podcast_chapter(
     )
     content_md = transcript_to_markdown(transcript, speaker_names)
     if not content_md:
-        return None
+        raise ItemSkipped(NO_CONTENT)
 
     return CompiledChapter(
         title=normalize_title(item.title),
@@ -174,7 +193,7 @@ def _podcast_chapter(
 
 def _blog_chapter(
     item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
-) -> CompiledChapter | None:
+) -> CompiledChapter:
     author = None
     published_at = None
     try:
@@ -189,7 +208,7 @@ def _blog_chapter(
     content_md = html_to_markdown(content_html)
     content_md = demote_headings(strip_leading_title(content_md, item.title))
     if not content_md:
-        return None
+        raise ItemSkipped(NO_CONTENT)
 
     if roles:
         content_md = clean_markdown(content_md, roles, model, content_key=item.url)
