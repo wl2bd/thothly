@@ -621,11 +621,18 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   const words = md ? countWords(md) : null;
   const tokens = words != null ? Math.round(words * TOKENS_PER_WORD) : null;
 
-  // Sources actually represented in the compilation (distinct sources among the
-  // selected items), falling back to the staged source list for older jobs whose
-  // items don't carry the selection flag.
+  // Sources actually represented in the compilation. Preference goes to the items
+  // that became chapters: a source whose every item was left out isn't in the
+  // book, and counting it would overstate what the user is holding. Falls back to
+  // the selection (jobs from before per-item outcomes carry none) and then to the
+  // staged source list.
   const selectedItems = job.discovered_items.filter((it) => it.selected);
-  const counted = selectedItems.length ? selectedItems : job.discovered_items;
+  const builtItems = selectedItems.filter((it) => it.compile_state === "done");
+  const counted = builtItems.length
+    ? builtItems
+    : selectedItems.length
+      ? selectedItems
+      : job.discovered_items;
   const sourceCount =
     new Set(counted.map((it) => it.source_index)).size || job.sources.length;
 
@@ -749,6 +756,9 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
           {sourceCount} source{sourceCount !== 1 ? "s" : ""}
           {words != null && ` · ~${words.toLocaleString("en-US")} words`}
         </p>
+        <div className={cn(rise, riseIn)} style={at(880)}>
+          <LeftOutNotice items={job.discovered_items} />
+        </div>
       </div>
 
       <div className={cn("grid gap-4", hasMarkdown && "sm:grid-cols-2")}>
@@ -838,6 +848,37 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
         </p>
       )}
     </div>
+  );
+}
+
+// What the user picked and didn't get. It sits above the downloads, not below:
+// this is context for what they're about to take away, not a footnote after
+// they've taken it. Absent entirely when everything made it, so it never turns
+// a clean run into a screen with a warning on it.
+function LeftOutNotice({ items }: { items: DiscoveredItem[] }) {
+  const leftOut = items.filter(
+    (it) => it.compile_state === "skipped" || it.compile_state === "failed",
+  );
+  if (leftOut.length === 0) return null;
+  return (
+    <Notice variant="warning">
+      <span className="font-medium">
+        {leftOut.length} item{leftOut.length !== 1 ? "s" : ""} didn’t make it in
+      </span>
+      {/* Bounded rather than truncated: a long list scrolls, so a compilation
+          that lost twenty items says so twenty times instead of hiding the tail
+          behind a count. */}
+      <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
+        {leftOut.map((it) => (
+          <li key={it.id} className="flex min-w-0 flex-col">
+            <span className="truncate">{it.title}</span>
+            {it.compile_note && (
+              <span className="opacity-75">{it.compile_note}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Notice>
   );
 }
 
