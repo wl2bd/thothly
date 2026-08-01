@@ -25,6 +25,13 @@ export interface Source {
   item_count?: number;
 }
 
+export type CompileState =
+  | "pending"
+  | "compiling"
+  | "done"
+  | "skipped"
+  | "failed";
+
 export interface DiscoveredItem {
   id: string;
   source_index: number;
@@ -43,6 +50,12 @@ export interface DiscoveredItem {
   is_punctuated: boolean | null;
   word_count: number | null;
   reading_time_min: number | null;
+  // How this item fared in the compile, present from the moment it's confirmed;
+  // null on items that weren't part of one. "skipped" is nothing usable to build
+  // from, "failed" is something that broke, and both carry the user-facing reason
+  // in compile_note.
+  compile_state: CompileState | null;
+  compile_note: string | null;
 }
 
 export interface ItemPreview {

@@ -76,6 +76,7 @@ import {
   fetchJob,
   fetchLlmConfig,
   getDownloadUrl,
+  type CompileState,
   type DiscoveredItem,
   type ItemPreview,
   type JobResponse,
@@ -394,7 +395,7 @@ export default function JobPage() {
               onReorderSources={setSourceOrder}
             />
           ) : job.status === "processing" ? (
-            <StatusMessage label="Compiling…" />
+            <CompilingView items={job.discovered_items} />
           ) : job.status === "completed" ? (
             <CompletedView jobId={id} job={job} />
           ) : (
@@ -485,6 +486,108 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
         Listing what each one contains. You pick what goes in next.
       </p>
     </div>
+  );
+}
+
+// The wait between "Generate" and the finished compilation. It walks the items
+// the user confirmed, in the order they compile, and shows each one's outcome as
+// the runner reaches it — built, or left out with the reason why — then one last
+// step for assembling the file. Same shape as DiscoveringView above, so the two
+// waits read as one continuous progression toward the payoff rather than two
+// unrelated screens with a spinner in common.
+function CompilingView({ items }: { items: DiscoveredItem[] }) {
+  // The runner works the list in order and writes each transition as it goes, so
+  // "every item is terminal" is exactly "the last chapter is built" — which is
+  // when the only remaining work (assembling the book and rendering the file)
+  // starts. Deduced rather than stored: it's true by construction, costs no extra
+  // write, and a DB field would only flip a poll later, leaving a fully ticked
+  // list sitting there doing nothing in between.
+  const building =
+    items.length > 0 &&
+    items.every((it) =>
+      ["done", "skipped", "failed"].includes(it.compile_state ?? "pending"),
+    );
+  const built = items.filter((it) => it.compile_state === "done").length;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3 text-sm font-medium">
+        <Spinner />
+        {building
+          ? "Building your compilation…"
+          : `Working through your ${items.length} item${items.length !== 1 ? "s" : ""}…`}
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {items.map((it) => (
+          <CompileStep
+            key={it.id}
+            state={it.compile_state ?? "pending"}
+            label={it.title}
+            note={it.compile_note}
+          />
+        ))}
+        {/* The one step that isn't an item: turning the finished chapters into
+            the file you take away. It happens last, so it sits last. */}
+        <CompileStep
+          state={building ? "compiling" : "pending"}
+          label="Building the file"
+        />
+      </ul>
+      <p className="text-muted-foreground text-xs">
+        {built} of {items.length} ready. This can take a few minutes.
+      </p>
+    </div>
+  );
+}
+
+// One row of the compile list: a state glyph, the item's name, and — when it
+// didn't make it — the reason, on its own line under the name. The glyphs extend
+// the discovery list's vocabulary (check, spinner, waiting dot) with the two
+// outcomes only a compile has: left out, and failed. Neither is dramatised; the
+// glyph and the reason state what happened and nothing more.
+function CompileStep({
+  state,
+  label,
+  note,
+}: {
+  state: CompileState;
+  label: string;
+  note?: string | null;
+}) {
+  const done = state === "done";
+  const active = state === "compiling";
+  const out = state === "skipped" || state === "failed";
+  return (
+    <li className="bg-muted/40 flex items-start gap-2.5 rounded-lg px-3 py-2 text-xs">
+      <span className="flex size-3.5 shrink-0 items-center justify-center pt-0.5">
+        {done ? (
+          <Check className="text-foreground/60 size-3.5" />
+        ) : active ? (
+          <Spinner className="size-3.5" />
+        ) : state === "failed" ? (
+          <X className="text-destructive size-3.5" />
+        ) : state === "skipped" ? (
+          <Minus className="text-muted-foreground size-3.5" />
+        ) : (
+          <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
+        )}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span
+          className={cn(
+            "truncate",
+            done ? "text-foreground" : "text-muted-foreground",
+            state === "pending" && "opacity-50",
+          )}
+        >
+          {label}
+        </span>
+        {out && note && (
+          <span className="text-muted-foreground/80">{note}</span>
+        )}
+      </span>
+      {active && <span className="text-muted-foreground shrink-0">building…</span>}
+    </li>
   );
 }
 
