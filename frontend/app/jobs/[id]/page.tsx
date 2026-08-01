@@ -10,6 +10,7 @@ import {
   useState,
   ViewTransition,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import Link from "next/link";
@@ -756,9 +757,11 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
           {sourceCount} source{sourceCount !== 1 ? "s" : ""}
           {words != null && ` · ~${words.toLocaleString("en-US")} words`}
         </p>
-        <div className={cn(rise, riseIn)} style={at(880)}>
-          <LeftOutNotice items={job.discovered_items} />
-        </div>
+        <LeftOutNotice
+          items={job.discovered_items}
+          className={cn(rise, riseIn)}
+          style={at(880)}
+        />
       </div>
 
       <div className={cn("grid gap-4", hasMarkdown && "sm:grid-cols-2")}>
@@ -854,31 +857,46 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
 // What the user picked and didn't get. It sits above the downloads, not below:
 // this is context for what they're about to take away, not a footnote after
 // they've taken it. Absent entirely when everything made it, so it never turns
-// a clean run into a screen with a warning on it.
-function LeftOutNotice({ items }: { items: DiscoveredItem[] }) {
+// a clean run into a screen with a warning on it. The arrival-cascade props
+// (`className`/`style`, from CompletedView's `rise`/`riseIn`/`at`) are applied
+// to a wrapper INSIDE this component, on the same branch as the early return,
+// rather than by the caller wrapping a div around it: the header it lives in is
+// a flex column with a `gap`, so an outer wrapper would still occupy a flex slot
+// and leave a gap-sized blank space on a clean run even with nothing inside it.
+function LeftOutNotice({
+  items,
+  className,
+  style,
+}: {
+  items: DiscoveredItem[];
+  className?: string;
+  style?: CSSProperties;
+}) {
   const leftOut = items.filter(
     (it) => it.compile_state === "skipped" || it.compile_state === "failed",
   );
   if (leftOut.length === 0) return null;
   return (
-    <Notice variant="warning">
-      <span className="font-medium">
-        {leftOut.length} item{leftOut.length !== 1 ? "s" : ""} didn’t make it in
-      </span>
-      {/* Bounded rather than truncated: a long list scrolls, so a compilation
-          that lost twenty items says so twenty times instead of hiding the tail
-          behind a count. */}
-      <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
-        {leftOut.map((it) => (
-          <li key={it.id} className="flex min-w-0 flex-col">
-            <span className="truncate">{it.title}</span>
-            {it.compile_note && (
-              <span className="opacity-75">{it.compile_note}</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Notice>
+    <div className={className} style={style}>
+      <Notice variant="warning">
+        <span className="font-medium">
+          {leftOut.length} item{leftOut.length !== 1 ? "s" : ""} didn’t make it in
+        </span>
+        {/* Bounded rather than truncated: a long list scrolls, so a compilation
+            that lost twenty items says so twenty times instead of hiding the tail
+            behind a count. */}
+        <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
+          {leftOut.map((it) => (
+            <li key={it.id} className="flex min-w-0 flex-col">
+              <span className="truncate">{it.title}</span>
+              {it.compile_note && (
+                <span className="opacity-75">{it.compile_note}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Notice>
+    </div>
   );
 }
 
