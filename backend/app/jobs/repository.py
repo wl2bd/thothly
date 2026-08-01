@@ -46,6 +46,13 @@ def get_job(job_id: str) -> JobResponse | None:
     response = _row_to_response(row)
     if response.status == "reviewing":
         response.discovered_items = _get_discovered_items(job_id)
+    elif response.status in ("processing", "completed"):
+        # Past review only the confirmed items matter, in the order they compile:
+        # the compile screen tracks their per-item progress, and the finished
+        # screen reports which ones didn't make it. Deliberately NOT the full
+        # staged list — one Wikipedia page can stage 70 items for five picks, and
+        # this response goes out on every 2s poll.
+        response.discovered_items = get_selected_items(job_id)
     return response
 
 
@@ -183,16 +190,22 @@ def get_job_llm_roles(job_id: str) -> list[str]:
 def confirm_items(job_id: str, selected_ids: list[str]) -> list[DiscoveredItemResponse]:
     # `selected_ids` arrives in the order the user wants compiled (the review
     # screen lets sources be dragged into a new order). Persist that position so
-    # the compile reads items back in it, not in discovery order.
+    # the compile reads items back in it, not in discovery order. Confirming is
+    # the one place that defines a compile's scope, so it is also the one place
+    # that clears the last one: the wipe covers every item, then the newly
+    # selected batch starts at `pending`.
     with get_connection() as conn:
         conn.execute(
-            "UPDATE job_discovered_items SET selected = 0, selected_order = NULL "
+            "UPDATE job_discovered_items "
+            "SET selected = 0, selected_order = NULL, "
+            "    compile_state = NULL, compile_note = NULL "
             "WHERE job_id = ?",
             (job_id,),
         )
         if selected_ids:
             conn.executemany(
-                "UPDATE job_discovered_items SET selected = 1, selected_order = ? "
+                "UPDATE job_discovered_items "
+                "SET selected = 1, selected_order = ?, compile_state = 'pending' "
                 "WHERE job_id = ? AND id = ?",
                 [
                     (position, job_id, item_id)

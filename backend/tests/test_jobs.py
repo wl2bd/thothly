@@ -229,3 +229,76 @@ def test_set_item_compile_state_roundtrips(client: TestClient) -> None:
 
     # The neighbour was never touched.
     assert repository.get_discovered_item(job.id, "item-1").compile_state is None
+
+
+@patch("app.jobs.router.run_compilation")
+@patch("app.jobs.router.run_discovery")
+def test_processing_job_exposes_only_the_confirmed_items(
+    mock_discovery, mock_compilation, client: TestClient
+) -> None:
+    """The compile screen needs the items to draw progress against, in the order
+    they will be compiled — and only the ones the user actually picked."""
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    items = [
+        DiscoveredItemResponse(
+            id=f"item-{i}", source_index=0, item_index=i, item_type="youtube",
+            title=f"Video {i}", url=f"https://www.youtube.com/watch?v=vid{i}",
+        )
+        for i in range(3)
+    ]
+    repository.save_discovered_items(job_id, items)
+    repository.update_job_status(job_id, "reviewing")
+
+    # Two of the three, in reverse order (the review screen can reorder).
+    client.post(f"/jobs/{job_id}/confirm", json={"selected_ids": ["item-2", "item-0"]})
+
+    body = client.get(f"/jobs/{job_id}").json()
+    assert body["status"] == "processing"
+    assert [it["id"] for it in body["discovered_items"]] == ["item-2", "item-0"]
+    assert [it["compile_state"] for it in body["discovered_items"]] == [
+        "pending",
+        "pending",
+    ]
+
+    # And they stay visible once it's over, so the finished screen can report
+    # what was left out.
+    repository.set_item_compile_state(job_id, "item-0", "skipped", "No subtitles available.")
+    repository.set_item_compile_state(job_id, "item-2", "done")
+    repository.update_job_status(job_id, "completed")
+
+    done = client.get(f"/jobs/{job_id}").json()
+    assert [it["compile_state"] for it in done["discovered_items"]] == ["done", "skipped"]
+    assert done["discovered_items"][1]["compile_note"] == "No subtitles available."
+
+
+def test_confirm_items_clears_the_previous_compile_outcome(client: TestClient) -> None:
+    """Confirming starts a compile from a clean slate: an earlier run's per-item
+    outcome must never show up as this run's progress."""
+    from app.jobs.models import JobCreate, Source
+
+    job = repository.create_job(
+        JobCreate(sources=[Source(url="https://example.com/feed.xml")])
+    )
+    items = [
+        DiscoveredItemResponse(
+            id=f"item-{i}", source_index=0, item_index=i, item_type="youtube",
+            title=f"Video {i}", url=f"https://www.youtube.com/watch?v=vid{i}",
+        )
+        for i in range(2)
+    ]
+    repository.save_discovered_items(job.id, items)
+
+    repository.confirm_items(job.id, ["item-0", "item-1"])
+    repository.set_item_compile_state(job.id, "item-0", "done")
+    repository.set_item_compile_state(
+        job.id, "item-1", "skipped", "No subtitles available."
+    )
+
+    again = repository.confirm_items(job.id, ["item-1"])
+    assert [it.compile_state for it in again] == ["pending"]
+    assert again[0].compile_note is None
+
+    # The item dropped from the selection keeps no trace of the previous run.
+    dropped = repository.get_discovered_item(job.id, "item-0")
+    assert dropped.compile_state is None
+    assert dropped.compile_note is None
