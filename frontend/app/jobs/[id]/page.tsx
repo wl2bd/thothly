@@ -1239,10 +1239,16 @@ function ReviewList({
             rows so the checkbox column lines up across header and items. */}
         <div className="bg-background sticky top-0 z-10 flex items-center gap-3.5 px-3.5 py-2.5">
           {handleProps && (
+            /* The grip stays a 16px mark but sits in a 24x40 box: a bare button
+               shrink-wraps its icon, which left a 16x16 target on the one control
+               you have to catch AND drag. The box is real rather than a pseudo
+               element because the checkbox next door already extends its own hit
+               area 12px this way, and only a real box keeps the gap (and so the
+               clearance between the two targets) as it grows. */
             <button
               type="button"
               aria-label="Drag to reorder source"
-              className="text-muted-foreground/50 hover:text-foreground shrink-0 cursor-grab touch-none transition-colors active:cursor-grabbing"
+              className="text-muted-foreground/50 hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
               {...(handleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
             >
               <GripVertical className="size-4" />
@@ -1608,16 +1614,19 @@ function ReviewItem({
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
         {dragHandleProps ? (
+          /* Same 24x40 box as the group header's grip (see the note there), so a
+             single-item source is as catchable as a group and the two rows keep
+             one grip column. */
           <button
             type="button"
             aria-label="Drag to reorder source"
-            className="text-muted-foreground/50 hover:text-foreground shrink-0 cursor-grab touch-none transition-colors active:cursor-grabbing"
+            className="text-muted-foreground/50 hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
             {...(dragHandleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
           >
             <GripVertical className="size-4" />
           </button>
         ) : reserveGrip ? (
-          <span className="w-4 shrink-0" aria-hidden="true" />
+          <span className="w-6 shrink-0" aria-hidden="true" />
         ) : null}
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
