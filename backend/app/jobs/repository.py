@@ -46,12 +46,17 @@ def get_job(job_id: str) -> JobResponse | None:
     response = _row_to_response(row)
     if response.status == "reviewing":
         response.discovered_items = _get_discovered_items(job_id)
-    elif response.status in ("processing", "completed"):
+    elif response.status in ("processing", "completed", "failed"):
         # Past review only the confirmed items matter, in the order they compile:
         # the compile screen tracks their per-item progress, and the finished
         # screen reports which ones didn't make it. Deliberately NOT the full
         # staged list — one Wikipedia page can stage 70 items for five picks, and
-        # this response goes out on every 2s poll.
+        # this response goes out on every 2s poll. `failed` belongs here too, and
+        # arguably matters most here: it's the state where every item was written
+        # off, so the per-item reasons the runner just wrote are the only account
+        # of what happened. A job that failed during discovery (before anything
+        # was confirmed) simply has no selected items, so this comes back empty
+        # for it — no special case needed.
         response.discovered_items = get_selected_items(job_id)
     return response
 
@@ -103,8 +108,24 @@ def reap_orphaned_jobs() -> int:
         "The server restarted while this compilation was still running, so it "
         "stopped. Start a new one."
     )
+    item_message = "The server restarted before this item was built."
     now_iso = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
+        # Settle any item the runner left mid-flight (compiling) or never reached
+        # (pending) BEFORE touching the job row. get_job now renders this item
+        # list on a failed job (so the reasons don't vanish behind the terminal
+        # screen), and an item stuck at `compiling` would show a spinner that
+        # never resolves there. This UPDATE has to run first because it selects
+        # on the job's status: once the job below is flipped to `failed`, the
+        # `WHERE job_id IN (...)` subselect below would find nothing to settle.
+        conn.execute(
+            "UPDATE job_discovered_items SET compile_state = 'failed', "
+            "compile_note = ? "
+            "WHERE compile_state IN ('compiling', 'pending') "
+            "AND job_id IN (SELECT id FROM jobs WHERE status IN "
+            "('discovering', 'processing'))",
+            (item_message,),
+        )
         cursor = conn.execute(
             "UPDATE jobs SET status = 'failed', error = ?, updated_at = ? "
             "WHERE status IN ('discovering', 'processing')",

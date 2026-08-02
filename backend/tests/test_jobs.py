@@ -271,6 +271,60 @@ def test_processing_job_exposes_only_the_confirmed_items(
     assert done["discovered_items"][1]["compile_note"] == "No subtitles available."
 
 
+@patch("app.jobs.router.run_discovery")
+def test_get_job_exposes_confirmed_items_when_failed(
+    mock_discovery, client: TestClient
+) -> None:
+    """`failed` is exactly the state where every item was written off, so it's
+    the state where the per-item reasons matter most — hiding the item list here
+    would bury every compile_note the runner just wrote."""
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    items = [
+        DiscoveredItemResponse(
+            id=f"item-{i}", source_index=0, item_index=i, item_type="youtube",
+            title=f"Video {i}", url=f"https://www.youtube.com/watch?v=vid{i}",
+        )
+        for i in range(2)
+    ]
+    repository.save_discovered_items(job_id, items)
+    repository.confirm_items(job_id, ["item-0", "item-1"])
+    repository.set_item_compile_state(
+        job_id, "item-0", "skipped", "No subtitles available."
+    )
+    repository.set_item_compile_state(
+        job_id, "item-1", "failed", "This item could not be built."
+    )
+    repository.update_job_status(
+        job_id,
+        "failed",
+        error="None of the selected items could be built. Try again, or pick different sources.",
+    )
+
+    body = client.get(f"/jobs/{job_id}").json()
+    assert body["status"] == "failed"
+    assert [it["id"] for it in body["discovered_items"]] == ["item-0", "item-1"]
+    assert [it["compile_state"] for it in body["discovered_items"]] == [
+        "skipped",
+        "failed",
+    ]
+    assert body["discovered_items"][0]["compile_note"] == "No subtitles available."
+    assert body["discovered_items"][1]["compile_note"] == "This item could not be built."
+
+
+@patch("app.jobs.router.run_discovery")
+def test_get_job_failed_during_discovery_has_no_items(
+    mock_discovery, client: TestClient
+) -> None:
+    """A job that never reached review has nothing selected — exposing items for
+    `failed` must not invent a special case for that: it just comes back empty."""
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    repository.update_job_status(job_id, "failed", error="Discovery failed.")
+
+    body = client.get(f"/jobs/{job_id}").json()
+    assert body["status"] == "failed"
+    assert body["discovered_items"] == []
+
+
 def test_confirm_items_clears_the_previous_compile_outcome(client: TestClient) -> None:
     """Confirming starts a compile from a clean slate: an earlier run's per-item
     outcome must never show up as this run's progress."""

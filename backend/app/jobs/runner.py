@@ -57,6 +57,13 @@ NO_CONTENT = "No readable content."
 YOUTUBE_RATE_LIMITED = "YouTube rate-limited this request."
 ITEM_FAILED = "This item could not be built."
 
+# Zero survivors, but not for lack of content: at least one item crashed rather
+# than being genuinely skipped. compile_book's "no usable content" message would
+# be actively misleading here (it tells the user to check subtitles and readable
+# text, when the real cause was an error the log already has), so this case gets
+# its own, honest message instead of falling through to that one.
+NOTHING_BUILT = "None of the selected items could be built. Try again, or pick different sources."
+
 
 def run_compilation(job_id: str) -> None:
     """Background phase: turn the selected items into a single EPUB.
@@ -74,6 +81,12 @@ def run_compilation(job_id: str) -> None:
         model = settings.llm_model or ""
         chapters: list[CompiledChapter] = []
         youtube_unavailable = False
+        # Items that ended `failed` (crashed or hit a YouTube rate limit), as
+        # opposed to `skipped` (nothing usable to build from). The distinction
+        # drives which zero-survivor message is honest: `skipped` means the
+        # content genuinely wasn't there; `failed` means something broke, and the
+        # "check that the videos have subtitles" message below would be wrong.
+        failed_items = 0
 
         for item in items:
             set_item_compile_state(job_id, item.id, "compiling")
@@ -96,6 +109,7 @@ def run_compilation(job_id: str) -> None:
                 # as failed rather than skipped: retrying later is the actual fix.
                 logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
                 youtube_unavailable = True
+                failed_items += 1
                 set_item_compile_state(job_id, item.id, "failed", YOUTUBE_RATE_LIMITED)
                 continue
             except Exception:
@@ -103,17 +117,28 @@ def run_compilation(job_id: str) -> None:
                 # cause goes to the log; the item gets one calm written line, and
                 # the compile carries on with what's left.
                 logger.exception("Item %s failed (job %s)", item.url, job_id)
+                failed_items += 1
                 set_item_compile_state(job_id, item.id, "failed", ITEM_FAILED)
                 continue
             chapters.append(chapter)
             set_item_compile_state(job_id, item.id, "done")
 
+        # Ordered on purpose: a wholly rate-limited run is both the most specific
+        # diagnosis (an external, transient cause) and the most actionable one
+        # (wait, or use a residential proxy), so it's checked first even though
+        # it's also a case where failed_items > 0. Next, any other crash: honest
+        # over blaming the content, so it doesn't get funnelled into "check that
+        # the videos have subtitles" below. Falling through both leaves only the
+        # case where every item was genuinely `skipped` for lack of content, which
+        # is exactly what compile_book's own "no usable content" message says.
         if not chapters and youtube_unavailable:
             raise CompilationError(
                 "YouTube is rate-limiting transcript requests (HTTP 429) from this "
                 "IP. This usually clears after a while, so try again later. For a "
                 "self-hosted server, a residential proxy avoids it."
             )
+        if not chapters and failed_items > 0:
+            raise CompilationError(NOTHING_BUILT)
 
         job = get_job(job_id)
         book_title = (job.book_title if job else None) or "Compilation Thothly"
