@@ -206,17 +206,16 @@ thothly/
 │   ├── app/                    # App Router pages + /api proxy routes
 │   ├── components/             # ui/ primitives + theme toggle
 │   └── lib/                    # api client + backend proxy helpers
-├── backend/                    # FastAPI + uv
-│   ├── app/
-│   │   ├── api/                # health, llm catalogue
-│   │   ├── search/             # multi-provider search (youtube, podcast, web)
-│   │   ├── sources/            # ingestion: youtube, blog, podcast, discovery, caches
-│   │   ├── pipeline/           # compiler, LLM cleanup (llm/roles/cleanup)
-│   │   ├── render/             # Pandoc + EPUB CSS + cover
-│   │   ├── jobs/               # routes, BackgroundTasks phases, SQLite state
-│   │   └── core/               # config, database, version
-│   └── tests/                  # pytest suite
-└── docs/adr/                   # architecture decision records
+└── backend/                    # FastAPI + uv
+    ├── app/
+    │   ├── api/                # health, llm catalogue
+    │   ├── search/             # multi-provider search (youtube, podcast, web)
+    │   ├── sources/            # ingestion: youtube, blog, podcast, discovery, caches
+    │   ├── pipeline/           # compiler, LLM cleanup (llm/roles/cleanup)
+    │   ├── render/             # Pandoc + EPUB CSS + cover
+    │   ├── jobs/               # routes, BackgroundTasks phases, SQLite state
+    │   └── core/               # config, database, version
+    └── tests/                  # pytest suite
 ```
 
 ## ▸ Limitations
