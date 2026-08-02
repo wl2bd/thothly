@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run's answer irrelevant, so
+# stop it rather than pay for it. `main` is exempt: its runs are the record of
+# what each merged commit actually did, and cancelling one would leave a gap.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      # --locked fails if uv.lock has drifted from pyproject.toml instead of
+      # quietly resolving something new, so CI tests the dependency set the repo
+      # actually pins. --no-sync then keeps pytest from re-resolving.
+      - run: uv sync --locked
+      - run: uv run --no-sync pytest -q
+
+  frontend:
+    name: Frontend (lint, types, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm before setup-node: setup-node's pnpm cache needs the binary to
+      # exist to locate the store. The version comes from package.json's
+      # packageManager field, so the pin lives in one place.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # Lint and types before build: both fail in under a minute and catch most
+      # of what breaks, while the Next build is the slow step. All three run even
+      # if an earlier one fails, so one push reports every problem at once
+      # instead of revealing them one round trip at a time.
+      - run: pnpm lint
+      - if: '!cancelled()'
+        run: pnpm typecheck
+      - if: '!cancelled()'
+        run: pnpm build

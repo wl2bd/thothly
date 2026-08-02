@@ -8,6 +8,10 @@
 <p align="center"><em>Compile whatever you want to read, no matter where it comes from.</em></p>
 
 <p align="center">
+  <a href="https://github.com/wl2bd/thothly/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/wl2bd/thothly/actions/workflows/ci.yml/badge.svg"></a>
+</p>
+
+<p align="center">
   <img alt="The Thothly home screen: search or paste a link to compile videos, podcasts, and articles into one clean read." src="docs/assets/thothly-hero.png" width="820">
 </p>
 
