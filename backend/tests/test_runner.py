@@ -108,23 +108,33 @@ def test_run_compilation_podcast_completes(
 
 
 @patch("app.jobs.runner.set_item_compile_state")
+@patch("app.jobs.runner.get_job")
 @patch("app.jobs.runner.update_job_status")
 @patch("app.jobs.runner.render_epub")
 @patch("app.jobs.runner.load_episode_transcript")
 @patch("app.jobs.runner.get_selected_items")
 def test_run_compilation_skips_podcast_without_transcript(
-    mock_selected, mock_tx, mock_render, mock_update, mock_state, tmp_path, monkeypatch
+    mock_selected, mock_tx, mock_render, mock_update, mock_job, mock_state,
+    tmp_path, monkeypatch
 ):
     import app.core.config as cfg
     monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
 
     mock_selected.return_value = [_podcast_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
     mock_tx.return_value = None  # no STT configured / transcription failed
 
     runner.run_compilation("job1")
 
     mock_render.assert_not_called()
-    assert mock_update.call_args.args[1] == "failed"  # no usable content
+    assert mock_update.call_args.args[1] == "failed"
+    # Assert the REASON, not just the status: without get_job mocked this test
+    # passed on a masked "no such table" error, which fails the job too and hid
+    # the fact that the skip path was never exercised.
+    assert mock_update.call_args.kwargs["error"] == (
+        "The selected items had no usable content. Check that the videos have "
+        "subtitles and the articles have readable text."
+    )
 
 
 @patch("app.jobs.runner.set_item_compile_state")

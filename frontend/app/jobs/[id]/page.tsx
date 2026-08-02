@@ -690,7 +690,7 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
         ? md.split("\n")
         : ["# Sources", "", ...chapters.map((it) => `- [${it.title}](${it.url})`)];
     // Prefer the first real chapter parsed from the Markdown (it's the EPUB's
-    // actual opening page and is always present); fall back to the first selected
+    // actual opening page and is always present); fall back to the first built
     // item, then the book title, while the Markdown is still loading.
     const ch = md ? firstChapter(md) : null;
     return {
