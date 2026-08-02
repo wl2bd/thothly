@@ -48,8 +48,12 @@ jobs:
 
       # pnpm before setup-node: setup-node's pnpm cache needs the binary to
       # exist to locate the store. The version comes from package.json's
-      # packageManager field, so the pin lives in one place.
+      # packageManager field, so the pin lives in one place — but the path has
+      # to be spelled out: `defaults.run.working-directory` governs `run:` steps
+      # only, so an action still resolves paths from the repository root.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -57,14 +61,17 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        run: pnpm install --frozen-lockfile
 
       # Lint and types before build: both fail in under a minute and catch most
-      # of what breaks, while the Next build is the slow step. All three run even
-      # if an earlier one fails, so one push reports every problem at once
-      # instead of revealing them one round trip at a time.
+      # of what breaks, while the Next build is the slow step. The last two are
+      # gated on the install rather than on each other, so a lint failure still
+      # reports the type and build results in the same push, while a failed
+      # install skips them instead of adding three "command not found" errors on
+      # top of the real one.
       - run: pnpm lint
-      - if: '!cancelled()'
+      - if: steps.install.outcome == 'success'
         run: pnpm typecheck
-      - if: '!cancelled()'
+      - if: steps.install.outcome == 'success'
         run: pnpm build
