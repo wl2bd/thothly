@@ -685,7 +685,7 @@ Expected: PASS
 
 Run: `cd backend && uv run pytest -q`
 
-Expected: all pass — but only after patching the five older `test_runner.py` tests that don't yet know about the new write. They patch `app.jobs.runner.update_job_status` but not `set_item_compile_state`, so the loop's first call reaches the real repository against a `tmp_path` DB that `init_db()` was never run on, and the missing-table error fails the job. Add `@patch("app.jobs.runner.set_item_compile_state")` as the **outermost** decorator, with its mock as the **first** parameter, to each of:
+Expected: all pass — but only after patching the five older `test_runner.py` tests that don't yet know about the new write. They patch `app.jobs.runner.update_job_status` but not `set_item_compile_state`, so the loop's first call reaches the real repository against a `tmp_path` DB that `init_db()` was never run on, and the missing-table error fails the job. Add `@patch("app.jobs.runner.set_item_compile_state")` as the **outermost** (topmost) decorator. `unittest.mock` pairs decorators with parameters bottom-up, so the topmost decorator's mock is the **last** mock parameter, immediately before `tmp_path`. Apply it to each of:
 
 - `test_run_compilation_youtube_completes`
 - `test_run_compilation_writes_markdown_companion`
