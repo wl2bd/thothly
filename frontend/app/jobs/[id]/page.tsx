@@ -400,14 +400,7 @@ export default function JobPage() {
           ) : job.status === "completed" ? (
             <CompletedView jobId={id} job={job} />
           ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-destructive text-sm font-medium">
-                Compilation failed.
-              </p>
-              {job.error && (
-                <p className="text-muted-foreground text-sm">{job.error}</p>
-              )}
-            </div>
+            <FailedView job={job} />
           )}
           </CardContent>
         </Card>
@@ -502,9 +495,14 @@ function CompilingView({ items }: { items: DiscoveredItem[] }) {
   // when the only remaining work (assembling the book and rendering the file)
   // starts. Deduced rather than stored: it's true by construction, costs no extra
   // write, and a DB field would only flip a poll later, leaving a fully ticked
-  // list sitting there doing nothing in between.
+  // list sitting there doing nothing in between. The `some(... "done")` guard
+  // keeps an all-skipped or all-failed run from lighting up "Building the file"
+  // for one poll cycle before the failure screen replaces it: run_compilation
+  // never calls compile_book when nothing survived, so there would be nothing
+  // to actually build.
   const building =
     items.length > 0 &&
+    items.some((it) => it.compile_state === "done") &&
     items.every((it) =>
       ["done", "skipped", "failed"].includes(it.compile_state ?? "pending"),
     );
@@ -592,6 +590,53 @@ function CompileStep({
   );
 }
 
+// The terminal counterpart to CompilingView: a compile can now fail with every
+// item's outcome already written (one crashed, the rest were skipped for lack
+// of content, whatever the mix), and those reasons are exactly what the user
+// was watching land seconds ago. Reusing CompileStep here — rather than a
+// second, differently-worded list — makes the failure read as that same list
+// coming to rest, not a different screen. No "Building the file" row: nothing
+// was built. The list is only worth showing when there's something on it (a
+// job that failed during discovery, before anything was confirmed, has no
+// items to report); job.error alone still covers that case, as it always did.
+function FailedView({ job }: { job: JobResponse }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-destructive text-sm font-medium">
+        Compilation failed.
+      </p>
+      {job.error && (
+        <p className="text-muted-foreground text-sm">{job.error}</p>
+      )}
+      {job.discovered_items.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {job.discovered_items.map((it) => (
+            <CompileStep
+              key={it.id}
+              state={it.compile_state ?? "pending"}
+              label={it.title}
+              note={it.compile_note}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Which items count as "in the compilation": items that actually became
+// chapters take precedence, so a source (or a preview built from it) whose
+// every item was left out is never counted or named as if it made the book.
+// Falls back to the raw selection (jobs from before per-item outcomes carry
+// none) and then to the full item list. Shared by CompletedView's source count
+// and its preview memo below, so the two never disagree about what "the
+// compilation" contains.
+function builtChapterItems(items: DiscoveredItem[]): DiscoveredItem[] {
+  const selected = items.filter((it) => it.selected);
+  const built = selected.filter((it) => it.compile_state === "done");
+  return built.length ? built : selected.length ? selected : items;
+}
+
 // The payoff screen, framed as two destinations for the same compilation rather
 // than one download with an afterthought: EPUB to read on an e-reader, Markdown
 // to feed an AI. Each format reads as a deliberate way to take your work. The
@@ -627,24 +672,19 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   // book, and counting it would overstate what the user is holding. Falls back to
   // the selection (jobs from before per-item outcomes carry none) and then to the
   // staged source list.
-  const selectedItems = job.discovered_items.filter((it) => it.selected);
-  const builtItems = selectedItems.filter((it) => it.compile_state === "done");
-  const counted = builtItems.length
-    ? builtItems
-    : selectedItems.length
-      ? selectedItems
-      : job.discovered_items;
+  const counted = builtChapterItems(job.discovered_items);
   const sourceCount =
     new Set(counted.map((it) => it.source_index)).size || job.sources.length;
 
   // A real mini-preview of the compilation for the two slabs: the EPUB shows the
   // first chapter as a book page, the Markdown shows the actual top of the twin
   // (its "# Sources" index). Built from the fetched Markdown once it's in, with a
-  // structure derived from the selected items until then — so no faux stand-in
-  // text ever flashes here; this IS the thing that was just made.
+  // structure derived from the built items (the same preference `counted` above
+  // uses) until then — so the placeholder title and the EPUB slab's fallback
+  // never name a chapter that didn't make it into the book, and no faux stand-in
+  // text ever flashes here either; this IS the thing that was just made.
   const preview = useMemo(() => {
-    const selected = job.discovered_items.filter((it) => it.selected);
-    const chapters = selected.length ? selected : job.discovered_items;
+    const chapters = builtChapterItems(job.discovered_items);
     const mdLines =
       md && md.trim()
         ? md.split("\n")
