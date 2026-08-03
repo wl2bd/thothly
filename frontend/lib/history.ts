@@ -20,6 +20,29 @@ const KEY = "thothly.compilations.v1";
 // on both storage and the refresh burst the app fires on mount.
 export const HISTORY_CAP = 25;
 
+// Every JobStatus the backend can send. Kept as a runtime list because the
+// type alone cannot guard storage: this is the boundary where data the user
+// (or a stale build) could have written meets code that trusts it.
+const STATUSES: readonly JobStatus[] = [
+  "pending",
+  "discovering",
+  "reviewing",
+  "processing",
+  "completed",
+  "failed",
+];
+
+function isSnapshot(value: unknown): value is CompilationSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const e = value as Record<string, unknown>;
+  return (
+    typeof e.id === "string" &&
+    (typeof e.title === "string" || e.title === null) &&
+    typeof e.createdAt === "string" &&
+    STATUSES.includes(e.status as JobStatus)
+  );
+}
+
 export function readHistory(): CompilationSnapshot[] {
   // Server-rendered passes have no storage; callers render a skeleton until
   // mount rather than branching on this.
@@ -29,12 +52,16 @@ export function readHistory(): CompilationSnapshot[] {
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Filter rather than trust: a half-written or hand-edited entry should cost
-    // that entry, not the whole list.
-    return parsed.filter(
-      (e): e is CompilationSnapshot =>
-        !!e && typeof e === "object" && typeof (e as CompilationSnapshot).id === "string",
-    );
+    // This is the boundary where storage the user could have hand-edited, or an
+    // older build could have written, meets code that treats the result as typed.
+    // Every field must be validated: id string, title string or null, createdAt
+    // string, status one of the known literals. A predicate that asserts the whole
+    // shape while checking one field is worse than no predicate, because consumers
+    // stop defending themselves. If the backend ever adds a new status literal,
+    // entries carrying it would be dropped by a build that predates it — that is
+    // accepted, and it is what the versioned key exists to handle: a schema change
+    // bumps KEY to .v2.
+    return parsed.filter(isSnapshot);
   } catch {
     // Storage can throw outright (Safari private mode, a disabled setting).
     // History is a convenience; losing it must never break the page.
