@@ -385,7 +385,7 @@ export default function JobPage() {
             here morphs that card into this one instead of a hard page cut. */}
         {(job || !error) && (
         <ViewTransition name="flow-card">
-        <Card className="bg-surface-sunken">
+        <Card className="bg-surface-sunken shadow-flow-card">
           <CardContent>
           {!job ? (
             <StatusMessage label="Loading…" />

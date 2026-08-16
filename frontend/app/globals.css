@@ -476,7 +476,7 @@
   inset: 0;
   z-index: -2;
   border-radius: inherit;
-  border: 3px solid oklch(0 0 0 / 0.16);
+  border: 3px solid oklch(0 0 0 / 0.1);
   filter: url(#thothly-stone-edge) blur(6px);
   transform: translateY(3px);
   pointer-events: none;
@@ -486,7 +486,7 @@
   border-color: var(--stone);
   filter: url(#thothly-stone-edge) blur(5px);
   transform: none;
-  opacity: 0.3;
+  opacity: 0.2;
 }
 
 /* Dissolve the whole slab — rim, fill, cast shadow AND content — into the ground
