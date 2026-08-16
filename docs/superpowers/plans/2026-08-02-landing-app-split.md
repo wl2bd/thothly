@@ -360,19 +360,19 @@ git commit -m "feat(ui): show the compilations you already made"
 
 **Interfaces:** consumes `recordCompilation` (Task 1).
 
-- [ ] **Step 1: Record on creation**
+- [x] **Step 1: Record on creation**
 
 In `Compose`'s `onCompile`, after `createJob` resolves and before `router.push`, call `recordCompilation(job)`. The job comes back with `id`, `book_title`, `created_at` and `status` already.
 
-- [ ] **Step 2: Record on load**
+- [x] **Step 2: Record on load**
 
 In `frontend/app/jobs/[id]/page.tsx`'s `applyJob` callback, call `recordCompilation(data)`. Every poll passes through `applyJob`, so the stored title and status track the live job for free, and a link someone shared with you joins your history the moment you open it.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Compile something end to end. Then open `/app`: the compilation is in the list with its real title. Open a job URL in a fresh profile with empty storage: it appears in that profile's list too.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/components/compose.tsx "frontend/app/jobs/[id]/page.tsx"

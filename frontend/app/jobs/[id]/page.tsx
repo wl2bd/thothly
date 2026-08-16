@@ -68,6 +68,7 @@ import {
   hostOf,
   kindFromItemType,
 } from "@/components/source-kind";
+import { recordCompilation } from "@/lib/history";
 import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -156,7 +157,20 @@ export default function JobPage() {
   // each phase cross-fades like the home card does, while the frequent in-phase
   // polls (per-source discovery progress) update instantly without flicker.
   const lastStatusRef = useRef<string | null>(null);
+  // What the browser last stored about this job, so the write below can be
+  // skipped when nothing the snapshot holds has moved.
+  const lastSnapshotRef = useRef<string | null>(null);
   const applyJob = useCallback((data: JobResponse) => {
+    // Opening a job page is what puts it in this browser's history, so a link
+    // someone shared with you joins your list the way a page you visited joins
+    // browser history, and the title and status track the live job for free.
+    // Guarded because every poll passes through here: rewriting storage every
+    // two seconds during a compile would buy nothing.
+    const snapshot = JSON.stringify([data.book_title, data.status]);
+    if (snapshot !== lastSnapshotRef.current) {
+      lastSnapshotRef.current = snapshot;
+      recordCompilation(data);
+    }
     if (data.status !== lastStatusRef.current) {
       lastStatusRef.current = data.status;
       startTransition(() => setJob(data));

@@ -37,6 +37,7 @@ import {
   type ResultType,
   type SearchResult,
 } from "@/lib/api";
+import { recordCompilation } from "@/lib/history";
 import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -306,6 +307,10 @@ export function Compose({
             : { url: s.url, title: s.title },
         ),
       );
+      // Remembered before the navigation, so a compile that is still running
+      // when the tab is closed is already in this browser's list to come back
+      // to. The response carries everything the snapshot needs.
+      recordCompilation(job);
       router.push(`/jobs/${job.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
