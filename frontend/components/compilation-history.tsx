@@ -92,10 +92,17 @@ export function CompilationHistory({ hidden }: { hidden: boolean }) {
   // refresh from firing again every time the field is cleared.
   if (hidden) return null;
 
-  // Storage has not been read yet. Nothing is drawn on purpose: the read is
-  // synchronous and lands on the first client commit, so a skeleton here would
-  // either flash for a single frame or, sized from a count the server cannot
-  // know, break hydration.
+  // Storage has not been read yet, which is the whole server pass and every
+  // frame until hydration. Measured on the deployed demo, that is about two
+  // seconds on a phone, not the single frame it takes locally.
+  //
+  // Nothing is drawn there anyway, and the reason is not cost. The server
+  // cannot know how many snapshots this browser holds, so any skeleton it
+  // renders is a guess shown to everyone — and most people arriving at a demo
+  // have no history at all, so the guess would be a fake list that collapses
+  // into "Nothing compiled yet" a second later. A quiet gap beats inventing
+  // rows. It costs no layout shift either: this list appends below the card, so
+  // arriving late moves nothing the reader is already using.
   if (entries === null) return null;
 
   if (entries.length === 0) {
