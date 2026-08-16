@@ -76,6 +76,51 @@ function write(entries: CompilationSnapshot[]): void {
   } catch {
     /* quota or disabled storage; the app works without the list */
   }
+  // Storage events only reach OTHER tabs, so this tab has to announce its own
+  // writes or the list it just changed would not move.
+  invalidate();
+}
+
+// ── the store ────────────────────────────────────────────────────────────────
+//
+// Storage is external state, and React reads it through useSyncExternalStore
+// rather than an effect: that is what keeps the server markup (no storage, so
+// no list) and the first client markup identical without a mount-time setState.
+// The snapshot has to be cached, because getSnapshot is called on every render
+// and a fresh array each time would never compare equal and would re-render
+// forever.
+
+let snapshot: CompilationSnapshot[] | null = null;
+const listeners = new Set<() => void>();
+
+function invalidate(): void {
+  snapshot = null;
+  for (const listener of listeners) listener();
+}
+
+export function subscribeHistory(onChange: () => void): () => void {
+  listeners.add(onChange);
+  // Another tab compiling something, or forgetting it, must not leave this one
+  // showing a list that no longer exists.
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function onStorage(event: StorageEvent): void {
+  if (event.key === null || event.key === KEY) invalidate();
+}
+
+export function getHistorySnapshot(): CompilationSnapshot[] | null {
+  if (snapshot === null) snapshot = readHistory();
+  return snapshot;
+}
+
+// `null` is the "not read yet" phase, and the server is permanently in it.
+export function getHistoryServerSnapshot(): CompilationSnapshot[] | null {
+  return null;
 }
 
 // Upsert, newest first. Called when a compilation is created AND whenever a job
@@ -95,4 +140,12 @@ export function recordCompilation(
 
 export function forgetCompilation(id: string): void {
   write(readHistory().filter((e) => e.id !== id));
+}
+
+// Overwrite the whole list in one go, order included. The background refresh
+// needs this: it corrects every title and status at once and drops the ids the
+// server no longer has, and doing that through `recordCompilation` would move
+// each refreshed entry to the front and invert the list on every load.
+export function replaceHistory(entries: CompilationSnapshot[]): void {
+  write(entries);
 }

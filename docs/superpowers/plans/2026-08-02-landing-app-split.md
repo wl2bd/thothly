@@ -298,7 +298,7 @@ git commit -m "feat(ui): move the staging machine to its own route"
 - Consumes: `readHistory`, `forgetCompilation`, `CompilationSnapshot` (Task 1); `fetchJob`, `ApiError` from `@/lib/api`.
 - Produces: `CompilationHistory({ hidden }: { hidden: boolean })`.
 
-- [ ] **Step 1: Build the component**
+- [x] **Step 1: Build the component**
 
 A `"use client"` component that:
 
@@ -318,7 +318,7 @@ A row is a `<Link href={/jobs/${id}}>` carrying the title (truncated; titles run
 
 When `stale`, a single quiet line under the list: `This list may be out of date.`
 
-- [ ] **Step 2: Write the empty state**
+- [x] **Step 2: Write the empty state**
 
 The product register asks for an empty state that teaches the interface, not one that says "nothing here". Copy:
 
@@ -326,11 +326,11 @@ The product register asks for an empty state that teaches the interface, not one
 > Search above, or paste a link: a video, a podcast, an article, even a whole playlist or blog.
 > [See how it works](/#how-it-works)
 
-- [ ] **Step 3: Wire it into `/app`**
+- [x] **Step 3: Wire it into `/app`**
 
 `Compose` gains an `onQueryActiveChange?: (active: boolean) => void` callback, or `/app` lifts the "is a query active" flag. Prefer lifting nothing: give `Compose` the callback, and let `app/app/page.tsx` — which is a Server Component and cannot hold state — delegate to a small client wrapper that renders `Compose` and `CompilationHistory` together. Name it `components/app-surface.tsx`. The history is hidden whenever a query is active, so results and history never compete for the same column.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `cd frontend && pnpm lint && pnpm typecheck && pnpm build`
 
@@ -344,7 +344,7 @@ localStorage.setItem('thothly.compilations.v1', JSON.stringify([
 
 Reload `/app`. The row must appear immediately, and the stale line must follow. **The row must not disappear.** Then start the backend and reload: the row is now removed, because the id genuinely 404s.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/components/compilation-history.tsx frontend/components/app-surface.tsx "frontend/app/app/page.tsx" frontend/components/compose.tsx

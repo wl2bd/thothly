@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AppSurface } from "@/components/app-surface";
 import { Logotype } from "@/components/brand";
-import { Compose } from "@/components/compose";
 import { GitHubStar } from "@/components/github-star";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -39,7 +39,7 @@ export default async function AppPage({
             <ThemeToggle />
           </div>
         </header>
-        <Compose initialQuery={q} />
+        <AppSurface initialQuery={q} />
       </div>
     </main>
   );

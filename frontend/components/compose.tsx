@@ -72,7 +72,16 @@ const SEARCH_DEBOUNCE_MS = 350;
 // landing's hero, which made one component answer two different questions — how
 // Thothly persuades a stranger, and how it serves someone at work. This is the
 // second one, and it owns the whole of /app's card.
-export function Compose({ initialQuery }: { initialQuery?: string }) {
+export function Compose({
+  initialQuery,
+  onQueryActiveChange,
+}: {
+  initialQuery?: string;
+  // Reported upward so the surface around the card can step aside while the
+  // card is busy. Compose itself owns no layout beyond its own card, and must
+  // stay usable on its own, so this is optional.
+  onQueryActiveChange?: (active: boolean) => void;
+}) {
   const router = useRouter();
   // Held so the clear (×) button and Escape can wipe the bar and hand focus
   // straight back, keeping the search → pick → clear → re-search loop on the
@@ -324,6 +333,15 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
   // Checkbox state for each result is read from the staged list (by URL), so the
   // results, the Sources recap and the count never drift apart.
   const stagedUrls = new Set(staged.map((s) => s.url));
+
+  // Whether the card holds anything below the field. A running search counts,
+  // and so does a staged source with an empty bar — a pasted link fills the card
+  // without a query behind it. /app reads this to hide the compilations list, so
+  // results and history never contend for the same column.
+  const cardIsBusy = showResults || staged.length > 0;
+  useEffect(() => {
+    onQueryActiveChange?.(cardIsBusy);
+  }, [cardIsBusy, onQueryActiveChange]);
 
   return (
     /* Shared identity with the landing's field and the job page's card: both
