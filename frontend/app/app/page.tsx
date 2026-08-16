@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { AppSurface } from "@/components/app-surface";
 import { Logotype } from "@/components/brand";
-import { GitHubStar } from "@/components/github-star";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata: Metadata = {
@@ -27,17 +26,14 @@ export default async function AppPage({
   return (
     <main className="flex min-h-screen justify-center p-8 sm:p-12">
       <div className="flex w-full max-w-xl flex-col gap-10 py-12">
-        {/* A workspace header, not the landing's: the identity and the two
-            global controls, without the section navigation. The logotype goes
+        {/* A workspace header, not the landing's: the identity and the one
+            global control, without the section navigation. The logotype goes
             home, which is where the story lives. */}
         <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Logotype className="h-8 w-auto" title="Thothly" />
           </Link>
-          <div className="flex items-center gap-2">
-            <GitHubStar />
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </header>
         <AppSurface initialQuery={q} />
       </div>

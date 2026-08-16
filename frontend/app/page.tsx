@@ -1,6 +1,5 @@
 import { ChevronDownIcon } from "lucide-react";
 
-import { GitHubStar } from "@/components/github-star";
 import { HeroSearch } from "@/components/hero-search";
 import { HowItWorks } from "@/components/how-it-works";
 import { Logotype } from "@/components/brand";
@@ -41,7 +40,6 @@ function SiteHeader() {
             <HeaderLink href="#how-it-works">How it works</HeaderLink>
             <HeaderLink href="#faq">FAQ</HeaderLink>
           </nav>
-          <GitHubStar />
           <ThemeToggle />
         </div>
       </div>
