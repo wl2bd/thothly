@@ -360,7 +360,11 @@ export function Compose({
           // the staged list) keeps its footer on screen. The space reserved
           // above is this surface's own chrome — the slim header and the column
           // padding — not the landing's hero, which no longer sits over it.
-          "max-h-[calc(100svh-16rem)]",
+          // A phone gets a tighter reserve: everything inside the card costs
+          // more lines there (the field's hint wraps, a provider notice wraps,
+          // the filters stack), and a 16rem reserve left room for exactly one
+          // result.
+          "max-h-[calc(100svh-12rem)] sm:max-h-[calc(100svh-16rem)]",
         )}
       >
         <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
@@ -476,8 +480,12 @@ export function Compose({
               );
             })()}
 
+          {/* Chips and Sort share a row where there is room for one. On a phone
+              the chips wrap to two or three lines and Sort, pinned right and
+              vertically centred against them, floats in the middle of the
+              block; stacking is the only honest reading there. */}
           {showResultsPanel && results.length > 0 && (
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <TypeFilter
                 results={results}
                 active={typeFilter}
@@ -877,6 +885,9 @@ function sortResults(results: SearchResult[], sortBy: string): SearchResult[] {
   return sorted;
 }
 
+// Pushed to the far end of the chip row where the two share one, but only
+// there: on its own stacked line the auto margin would strand it against the
+// right edge, away from the chips it belongs with.
 function SortSelect({
   value,
   onChange,
@@ -885,7 +896,7 @@ function SortSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="text-muted-foreground ml-auto flex shrink-0 items-center gap-1.5 text-xs">
+    <label className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs sm:ml-auto">
       Sort
       <select
         value={value}

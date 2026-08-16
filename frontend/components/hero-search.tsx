@@ -93,7 +93,15 @@ export function HeroSearch() {
         <ViewTransition name="flow-card">
         <Card className="bg-surface-sunken shadow-flow-card">
           <CardContent>
-            <form onSubmit={onSubmit}>
+            {/* The button sits inside the field from sm up, and stacks under it
+                below that. On a phone there is not enough room for both: an
+                in-field pill leaves about 145px to type in, which clips the
+                placeholder mid-word. The form is the positioning context, so
+                this is one button moving, not two buttons taking turns. */}
+            <form
+              onSubmit={onSubmit}
+              className="relative flex flex-col gap-2 sm:block"
+            >
               <AnimatedGoldBorder>
                 {/* The magnifier is resting-state chrome, like the placeholder:
                     this bar both searches and takes a pasted link, so a "search"
@@ -125,24 +133,25 @@ export function HeroSearch() {
                     "h-14 border-transparent bg-background text-lg md:text-lg transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                     // Left: room for the magnifier only while it shows (empty &
                     // unfocused); otherwise the text runs full width. Right:
-                    // always room for Start, which never leaves the field.
+                    // room for Start only where Start is in the field.
                     showSearchIcon ? "pl-11" : "pl-4",
-                    "pr-24",
+                    "pr-4 sm:pr-24",
                   )}
                   autoComplete="off"
                 />
-                {/* The field alone gives a pointer user nothing to press, and
-                    this one submits on any state (empty included), so the
-                    affordance is permanent rather than appearing with content.
-                    Equal 8px inset top/bottom/right (h-10 button centered in the
-                    h-14 bar) so it sits as a balanced pill inside the field. */}
-                <Button
-                  type="submit"
-                  className="absolute top-1/2 right-2 -translate-y-1/2"
-                >
-                  Start
-                </Button>
               </AnimatedGoldBorder>
+              {/* The field alone gives a pointer user nothing to press, and this
+                  one submits on any state (empty included), so the affordance is
+                  permanent rather than appearing with content. Full width and a
+                  taller tap target on a phone; from sm up it tucks into the
+                  field on an equal 8px inset top/bottom/right, a h-10 pill
+                  centered in the h-14 bar. */}
+              <Button
+                type="submit"
+                className="h-12 w-full sm:absolute sm:top-1/2 sm:right-2 sm:h-10 sm:w-auto sm:-translate-y-1/2"
+              >
+                Start
+              </Button>
             </form>
           </CardContent>
         </Card>
