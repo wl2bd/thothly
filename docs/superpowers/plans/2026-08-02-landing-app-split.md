@@ -386,7 +386,7 @@ git commit -m "feat(ui): record each compilation as it is made"
 **Files:**
 - Modify: `frontend/components/hieroglyph-rain.tsx`
 
-- [ ] **Step 1: Cache the separators to an offscreen canvas**
+- [x] **Step 1: Cache the separators to an offscreen canvas**
 
 `drawSeparators` (`hieroglyph-rain.tsx:232-251`) recomputes three summed sine octaves at every 4px of height for every corridor rule, then strokes them, **on every frame** — while the component's own comment states the phases are fixed. Measured at 1636×608 on 2026-08-02: 4,424 `lineTo` per frame, **6.19 ms of a 7.38 ms frame, 84% of the animation's cost**, producing an identical image each time.
 
@@ -394,7 +394,7 @@ Render them once into an offscreen canvas sized like the main one, rebuilt only 
 
 Use a plain `document.createElement("canvas")` rather than `OffscreenCanvas`, matching the file's existing 2D-context approach and avoiding a support branch.
 
-- [ ] **Step 2: Verify the image is unchanged and the cost dropped**
+- [x] **Step 2: Verify the image is unchanged and the cost dropped**
 
 Load `/` in a **foreground** tab (the loop pauses on a hidden tab, which is why a background tab measures zero). Compare against a screenshot taken before the change: the rules must be identical, including their eroded edges.
 
@@ -406,7 +406,7 @@ const raf = requestAnimationFrame(function f() { n++; if (performance.now() - t 
 setTimeout(() => console.log('fps', Math.round(n / 2)), 2100);
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/components/hieroglyph-rain.tsx

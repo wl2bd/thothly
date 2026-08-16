@@ -107,6 +107,9 @@ export function HieroglyphRain({ className }: { className?: string }) {
     let last = 0;
     let width = 0;
     let height = 0;
+    // Held from resize so the rules' offscreen canvas can be backed at the same
+    // device resolution as the visible one.
+    let dpr = 1;
     let columns: Column[] = [];
     // One static phase per corridor rule (columns + 1 boundaries), so each
     // sinuous line wavers on its own and the field doesn't read as a comb.
@@ -176,13 +179,16 @@ export function HieroglyphRain({ className }: { className?: string }) {
 
     function resize() {
       const rect = canvas!.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = rect.width;
       height = rect.height;
       canvas!.width = Math.round(width * dpr);
       canvas!.height = Math.round(height * dpr);
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       initColumns();
+      // The only place the rules can change: the size they span, and the phase
+      // per line, both settle here.
+      renderSeparators();
     }
 
     function update(dt: number) {
@@ -229,31 +235,58 @@ export function HieroglyphRain({ className }: { className?: string }) {
     // hand-hewn ruling, drawn behind the glyphs. Static (the octave phases per
     // line are fixed); the canvas's own vertical mask fades their ends top and
     // bottom. The summed sine octaves give the irregular, chiselled edge.
-    function drawSeparators() {
-      ctx!.lineWidth = 1.2;
-      ctx!.strokeStyle = ruleColor;
+    //
+    // Rendered ONCE into an offscreen canvas rather than per frame. Re-summing
+    // three octaves every 4px of every line and stroking the result was 4,424
+    // lineTo per frame for an image that never changed: 6.19ms of a 7.38ms
+    // frame, 84% of the animation's cost (measured at 1636×608, 2026-08-02). A
+    // plain <canvas> element and not OffscreenCanvas, matching the 2D-context
+    // approach used throughout this file and avoiding a support branch.
+    let sepCanvas: HTMLCanvasElement | null = null;
+
+    function renderSeparators() {
+      if (width <= 0 || height <= 0) {
+        sepCanvas = null;
+        return;
+      }
+      const surface = sepCanvas ?? document.createElement("canvas");
+      // Backed at device resolution and drawn in CSS pixels, exactly like the
+      // visible canvas, so the blit is a 1:1 copy and the lines stay as crisp as
+      // when they were stroked live.
+      surface.width = Math.round(width * dpr);
+      surface.height = Math.round(height * dpr);
+      const sctx = surface.getContext("2d");
+      if (!sctx) {
+        sepCanvas = null;
+        return;
+      }
+      // Sizing a canvas resets its context, so the transform goes on after.
+      sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      sctx.lineWidth = 1.2;
+      sctx.strokeStyle = ruleColor;
       const n = columns.length;
       for (let i = 0; i <= n; i++) {
         const baseX = i * COLUMN_STEP;
         const p = sepPhases[i] ?? 0;
-        ctx!.beginPath();
+        sctx.beginPath();
         for (let y = -10; y <= height + 10; y += 4) {
           const dx =
             SEP_OCTAVES[0].a * Math.sin(y / SEP_OCTAVES[0].w + p) +
             SEP_OCTAVES[1].a * Math.sin(y / SEP_OCTAVES[1].w + p * 1.7 + 1.3) +
             SEP_OCTAVES[2].a * Math.sin(y / SEP_OCTAVES[2].w + p * 2.3 + 2.6);
           const x = baseX + dx;
-          if (y <= -10) ctx!.moveTo(x, y);
-          else ctx!.lineTo(x, y);
+          if (y <= -10) sctx.moveTo(x, y);
+          else sctx.lineTo(x, y);
         }
-        ctx!.stroke();
+        sctx.stroke();
       }
+      sepCanvas = surface;
     }
 
     function draw() {
       ctx!.clearRect(0, 0, width, height);
       ctx!.shadowBlur = 0;
-      drawSeparators();
+      if (sepCanvas) ctx!.drawImage(sepCanvas, 0, 0, width, height);
       ctx!.textAlign = "center";
       ctx!.textBaseline = "top";
       let curFont = "";
