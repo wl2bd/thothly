@@ -419,21 +419,21 @@ git commit -m "perf(ui): draw the rain's static rules once, not every frame"
 
 Verification only. The brief lists nine states; ship-ready means each has been seen.
 
-- [ ] **Step 1: Run the three checks**
+- [x] **Step 1: Run the three checks**
 
 ```bash
 cd frontend && pnpm lint && pnpm typecheck && pnpm build
 ```
 
-- [ ] **Step 2: Walk every state**
+- [x] **Step 2: Walk every state**
 
 With both servers running, confirm each: default (history, no query); empty (no history); searching; staging; loading history (throttle the network to see the skeleton); backend cold or unreachable (stop the backend); job gone (404); job still running (start a compile, close the tab, return to `/app`); and a query active (the history is hidden, not merely pushed down).
 
-- [ ] **Step 3: Keyboard**
+- [x] **Step 3: Keyboard**
 
 Complete this without a mouse: land on `/`, tab to the field, type, submit, arrive on `/app`, tab through the results, stage one, reach Review. Then on `/app` with history: tab to a row, open it, come back, tab to its remove control and use it. Every stop must show a visible focus ring.
 
-- [ ] **Step 4: Commit anything the walk turned up**
+- [x] **Step 4: Commit anything the walk turned up**
 
 If the walk was clean, there is nothing to commit. Say so rather than inventing a commit.
 
