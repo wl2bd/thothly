@@ -170,7 +170,7 @@ The biggest task, and **predominantly a move**. Almost nothing is rewritten: sta
 - Consumes: nothing from Task 1 yet.
 - Produces: `Compose({ initialQuery }: { initialQuery?: string })` from `@/components/compose`.
 
-- [ ] **Step 1: Create `compose.tsx` by moving, not rewriting**
+- [x] **Step 1: Create `compose.tsx` by moving, not rewriting**
 
 Move from `hero-search.tsx` into a new `"use client"` component `Compose`, **verbatim**:
 
@@ -189,7 +189,7 @@ Two seams change:
 
 Delete every moved symbol from `hero-search.tsx`.
 
-- [ ] **Step 2: Reduce the landing's hero to a field that navigates**
+- [x] **Step 2: Reduce the landing's hero to a field that navigates**
 
 In `hero-search.tsx`, `HeroSearch` keeps: the `<section id="top">` shell and its gradient, `HieroglyphRain`, `Grain`, the scrim, the heading block (`:361-373`), the heads-up paragraph, and the scroll cue. The card collapses to the input alone.
 
@@ -218,7 +218,7 @@ Keep the `<Input>`'s existing ref, focus/blur handlers and the cross-fading `Sea
 
 Add a visible submit affordance: the field alone with no button gives a pointer user nothing to click. A `Button type="submit"` with the label `Start` sits inside the form after the input.
 
-- [ ] **Step 3: Create the `/app` route**
+- [x] **Step 3: Create the `/app` route**
 
 `frontend/app/app/page.tsx` — a Server Component shell, mirroring how `app/page.tsx` composes a server shell around client islands:
 
@@ -268,7 +268,7 @@ export default async function AppPage({
 
 `searchParams` is a Promise in Next 16 and must be awaited. Confirm the current signature against `frontend/node_modules/next/dist/docs/` before writing it, and against `app/jobs/[id]/page.tsx` which already handles async route inputs.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `cd frontend && pnpm lint && pnpm typecheck && pnpm build`
 Expected: all three clean.
@@ -279,7 +279,7 @@ Then, with both dev servers running, check by hand:
 - `/app` alone shows the field and searches in place
 - staging a source and pressing Review still creates a job and lands on `/jobs/:id`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/components/compose.tsx frontend/components/hero-search.tsx "frontend/app/app/page.tsx"
