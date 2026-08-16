@@ -355,7 +355,7 @@ export function Compose({
     <ViewTransition name="flow-card">
       <Card
         className={cn(
-          "bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)] flex flex-col",
+          "bg-surface-sunken shadow-flow-card flex flex-col",
           // Cap the card against the viewport so a scrollable face (results or
           // the staged list) keeps its footer on screen. The space reserved
           // above is this surface's own chrome — the slim header and the column

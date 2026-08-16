@@ -91,7 +91,7 @@ export function HeroSearch() {
             /app instead of the page hard-cutting, and the flow reads as one
             continuous surface from the landing to the finished compilation. */}
         <ViewTransition name="flow-card">
-        <Card className="bg-surface-sunken shadow-[0_0_48px_rgb(0_0_0/0.12)] dark:shadow-[0_0_60px_rgb(0_0_0/0.5)]">
+        <Card className="bg-surface-sunken shadow-flow-card">
           <CardContent>
             <form onSubmit={onSubmit}>
               <AnimatedGoldBorder>

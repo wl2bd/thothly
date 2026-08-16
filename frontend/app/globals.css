@@ -54,6 +54,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-surface-sunken: var(--surface-sunken);
+  --shadow-flow-card: var(--flow-card-lift);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -78,6 +79,13 @@
   /* A darker, recessed surface — sunken below the page/card, for the source
      chips and the hero search panel. Stark neutral (chroma 0), one step down. */
   --surface-sunken: oklch(0.957 0.014 80);
+  /* The flow card's lift — one token for the surface that carries the whole
+     journey (the landing's field, the tool's card, the job's card), so the
+     three can never drift apart the way two hard-coded values did. An ambient
+     glow with no offset: the card is meant to sit ON the ground and separate
+     from it, not to hover above it casting a shadow. Kept light. It is the
+     ground's job to hold the card, not the shadow's. */
+  --flow-card-lift: 0 0 32px rgb(0 0 0 / 0.07);
   /* The hero's light-mode ground — a warm taupe (low chroma toward the gold
      hue). The ONE place the surface is allowed a tint: it lets the deep-gold
      glyph rain read on the fold and gives the light hero its own ground, the way
@@ -166,6 +174,9 @@
   --card-foreground: oklch(0.97 0 0);
   /* Sunken surface on the night ground — a step toward the near-black. */
   --surface-sunken: oklch(0.15 0 0);
+  /* Black on near-black reads as a pool rather than a shadow, so the night
+     ground needs more of it than the page does to separate the card at all. */
+  --flow-card-lift: 0 0 40px rgb(0 0 0 / 0.3);
   /* Dark keeps the near-black page as the hero ground (the rain glows on it);
      transparent so the hero gradient just reveals the page. */
   --hero-ground: transparent;
