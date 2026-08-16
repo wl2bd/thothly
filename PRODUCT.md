@@ -1,16 +1,15 @@
 # Product
 
-## Register
+## Surfaces
 
-product
+Thothly is balanced, and its two halves are not designed the same way. The app
+surfaces (search/stage, review → compile → download) are **Operate**: design serves
+the task and stays calm, and brand lives in precise details. The landing sections
+(hero, "How it works", "Yours, on your machine", FAQ) are **Persuade**: more
+expressive, earning attention and action. Both must still read as one Thothly.
 
-## Surface registers
-
-Thothly is balanced. The app surfaces (search/stage, review → compile → download)
-are **product** — design serves the task and stays calm. The landing sections
-(hero, "How it works", "Yours, on your machine", FAQ) are treated as **brand** —
-more expressive. Default register is `product`; override to `brand` when working
-the landing. Both must still read as one Thothly.
+The mode itself is chosen per surface at work time and persisted in that surface's
+brief, not here. This section only records which surface is which.
 
 ## Users
 
