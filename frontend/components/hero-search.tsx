@@ -145,10 +145,15 @@ export function HeroSearch() {
                   permanent rather than appearing with content. Full width and a
                   taller tap target on a phone; from sm up it tucks into the
                   field on an equal 8px inset top/bottom/right, a h-10 pill
-                  centered in the h-14 bar. */}
+                  centered in the h-14 bar. That centering is an inset (top-2),
+                  deliberately NOT top-1/2 + -translate-y-1/2: Button's press
+                  affordance is active:translate-y-px, and both write the same
+                  --tw-translate-y, so the pressed state would REPLACE the
+                  centering rather than add to it and the pill would drop half
+                  its height on every click. */}
               <Button
                 type="submit"
-                className="h-12 w-full sm:absolute sm:top-1/2 sm:right-2 sm:h-10 sm:w-auto sm:-translate-y-1/2"
+                className="h-12 w-full sm:absolute sm:top-2 sm:right-2 sm:h-10 sm:w-auto"
               >
                 Start
               </Button>
