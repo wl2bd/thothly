@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { MoonIcon, SunIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 
 // Light/dark toggle. The actual class on <html> is set before paint by the
 // inline script in app/layout.tsx (no flash); this just flips it and persists
@@ -34,26 +33,25 @@ export function ThemeToggle() {
 
   const label = dark ? "Switch to light theme" : "Switch to dark theme";
 
-  // Dressed like every other icon-only control in the app (secondary surface,
-  // icon size, a tooltip carrying the description): a header is no reason for
-  // a control to be its own species.
+  // This lives in the header, so it takes the header's register rather than
+  // the app's: the nav variant, which is the same muted-to-foreground colour
+  // shift the anchors beside it use. A surfaced button here would read as the
+  // bar's primary action, which the theme is not.
   return (
-    <Tooltip content={label}>
-      <Button
-        type="button"
-        variant="secondary"
-        size="icon"
-        onClick={toggle}
-        aria-label={label}
-      >
-        {dark === null ? (
-          <MoonIcon className="opacity-0" />
-        ) : dark ? (
-          <SunIcon />
-        ) : (
-          <MoonIcon />
-        )}
-      </Button>
-    </Tooltip>
+    <Button
+      type="button"
+      variant="nav"
+      size="icon-sm"
+      onClick={toggle}
+      aria-label={label}
+    >
+      {dark === null ? (
+        <MoonIcon className="opacity-0" />
+      ) : dark ? (
+        <SunIcon />
+      ) : (
+        <MoonIcon />
+      )}
+    </Button>
   );
 }

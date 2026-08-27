@@ -18,6 +18,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // The header's own register: a quiet item that carries no surface at
+        // all, only a colour that firms up on hover, so a control sits at the
+        // same weight as the anchors it shares the bar with.
+        nav: "text-muted-foreground hover:text-foreground",
       },
       size: {
         default:
