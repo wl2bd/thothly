@@ -1,7 +1,7 @@
-# Bring your own LLM — design (WORK IN PROGRESS)
+# Bring your own LLM: design
 
-> Status: brainstorming paused 2026-08-27 with one open question. Everything
-> under "Settled" is decided and needs no re-litigating. Resume at "Open".
+> Status: design closed 2026-09-14. Everything under "Settled" is decided and
+> needs no re-litigating. Next step is the implementation plan.
 
 **Goal:** let someone using Thothly in a browser connect their own LLM (and
 speech-to-text) subscription, so the AI path works without editing the backend
@@ -79,24 +79,17 @@ at boot. Nobody arriving on the public demo will ever do that.
     catalogue and rates; the frontend ORs `available` with what the browser
     holds.
 
-## Open
-
-**Where the entry point lives when no key is configured.** Three candidates,
-to be judged from mockups in the running app rather than from prose:
-
-- The AI polish panel always renders, with "Connect a model" replacing the
-  switch. Discoverable exactly where the need appears, but it advertises a
-  paid path to everyone on the public demo, which can read as a nag.
-- Nothing on the review screen; a Settings link in the header is the only
-  way in. The free path stays free of solicitation, but nobody discovers the
-  AI path by using the app.
-- A discreet line beneath the roles area. Present without weight, and easy
-  to miss.
-
-The earlier answer was "a dialog from the review screen, nothing else", later
-revised to "both the dialog and a `/settings` page" once the criterion became
-best possible UX: the dialog alone leaves no way to change a model, replace
-an expired key, or erase a key from the browser.
+11. **The AI polish panel always renders on the review screen.** With no key
+    configured, a "Connect a model" action takes the place of the switch and
+    opens the dialog; once a key verifies, the switch returns. The need is met
+    exactly where it appears. Chosen 2026-09-14 over a header-only Settings
+    link (nobody discovers the AI path) and a discreet line under the roles
+    (easy to miss). The risk it carries is reading as a nag on the public
+    demo, so the panel stays visually quiet: the free path remains the
+    default, and nothing about it is gated or dimmed.
+12. **A dialog and a `/settings` page, both.** The dialog is the in-flow
+    entry; the page is where a model is changed, an expired key replaced, or
+    a key erased from the browser, which the dialog alone cannot cover.
 
 ## Out of scope
 
