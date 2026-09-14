@@ -48,7 +48,9 @@ function Notice({
       {...props}
     >
       <Icon aria-hidden="true" />
-      <span>{children}</span>
+      {/* min-w-0: a flex item won't shrink below its content by default, so a
+          truncated line inside would push the box wider instead of clipping. */}
+      <span className="min-w-0 flex-1">{children}</span>
     </div>
   )
 }

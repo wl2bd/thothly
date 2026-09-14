@@ -945,7 +945,7 @@ function LeftOutNotice({
         <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
           {leftOut.map((it) => (
             <li key={it.id} className="flex min-w-0 flex-col">
-              <span className="truncate">{it.title}</span>
+              <span className="truncate" title={it.title}>{it.title}</span>
               {it.compile_note && (
                 <span className="opacity-75">{it.compile_note}</span>
               )}
