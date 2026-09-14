@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SettingsIcon } from "lucide-react";
 
 import { AppSurface } from "@/components/app-surface";
 import { Logotype } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { buttonVariants } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
   title: "Compose - Thothly",
@@ -33,7 +36,18 @@ export default async function AppPage({
           <Link href="/" className="flex items-center">
             <Logotype className="h-8 w-auto" title="Thothly" />
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <Tooltip content="Your models" side="bottom">
+              <Link
+                href="/settings"
+                aria-label="Settings"
+                className={buttonVariants({ variant: "nav", size: "icon-sm" })}
+              >
+                <SettingsIcon />
+              </Link>
+            </Tooltip>
+            <ThemeToggle />
+          </div>
         </header>
         <AppSurface initialQuery={q} />
       </div>
