@@ -380,7 +380,7 @@ export function Compose({
               <SearchIcon
                 aria-hidden="true"
                 className={cn(
-                  "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
                   showSearchIcon ? "opacity-100" : "-translate-x-1 opacity-0",
                 )}
               />
@@ -406,17 +406,17 @@ export function Compose({
                 }}
                 placeholder="Search or paste a link…"
                 className={cn(
-                  // The surface's primary action: a tall, confident bar with
-                  // type a clear step up from the app's default fields (18px) so
-                  // it reads as the unmistakable main entry point. The padding
+                  // The surface's primary action: a tall, confident bar, its
+                  // type at the field default so it sits level with the
+                  // in-field Add button. The padding
                   // is transitioned so the text/placeholder glides when the
                   // magnifier comes and goes rather than snapping.
-                  "h-14 border-transparent bg-background text-lg md:text-lg transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
+                  "h-14 border-transparent bg-background transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                   // Left: room for the magnifier only while it shows (empty &
                   // unfocused); otherwise the text runs full width. Right:
                   // room for the in-field Add (pasted link) or the clear ×
                   // (search term), nothing when empty.
-                  showSearchIcon ? "pl-11" : "pl-4",
+                  showSearchIcon ? "pl-10" : "pl-4",
                   queryIsUrl ? "pr-28" : query !== "" ? "pr-12" : "pr-4",
                 )}
                 autoComplete="off"

@@ -109,7 +109,7 @@ export function HeroSearch() {
                 <SearchIcon
                   aria-hidden="true"
                   className={cn(
-                    "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                    "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
                     showSearchIcon ? "opacity-100" : "-translate-x-1 opacity-0",
                   )}
                 />
@@ -121,16 +121,16 @@ export function HeroSearch() {
                   onBlur={() => setFocused(false)}
                   placeholder="Search or paste a link…"
                   className={cn(
-                    // The hero's primary action: a tall, confident bar with type
-                    // a clear step up from the app's default fields (18px) so it
-                    // reads as the unmistakable main entry point of the page. The
+                    // The hero's primary action: a tall, confident bar, its type
+                    // at the field default so it sits level with the in-field
+                    // button rather than towering over it. The
                     // padding is transitioned so the text/placeholder glides when
                     // the magnifier comes and goes rather than snapping.
-                    "h-14 border-transparent bg-background text-lg md:text-lg transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
+                    "h-14 border-transparent bg-background transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                     // Left: room for the magnifier only while it shows (empty &
                     // unfocused); otherwise the text runs full width. Right:
                     // room for Start only where Start is in the field.
-                    showSearchIcon ? "pl-11" : "pl-4",
+                    showSearchIcon ? "pl-10" : "pl-4",
                     "pr-4 sm:pr-24",
                   )}
                   autoComplete="off"
