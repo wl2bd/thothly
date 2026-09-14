@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.core.config import settings
+from app.pipeline.providers import Endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -56,26 +57,39 @@ class STTResult:
     segments: list[STTSegment] = field(default_factory=list)
 
 
-def stt_available() -> bool:
-    """True when a speech-to-text endpoint is configured (model + base URL)."""
-    return bool(settings.stt_base_url and settings.stt_model)
+def stt_endpoint(endpoint: Endpoint | None = None) -> Endpoint | None:
+    """The visitor's endpoint when supplied, else the server's config, else None."""
+    if endpoint is not None:
+        return endpoint
+    if settings.stt_base_url and settings.stt_model:
+        return Endpoint(settings.stt_base_url, settings.stt_model, settings.stt_api_key)
+    return None
 
 
-def _client():
+def stt_available(endpoint: Endpoint | None = None) -> bool:
+    """True when a transcription would have an endpoint to go to."""
+    return stt_endpoint(endpoint) is not None
+
+
+def _client(endpoint: Endpoint):
     """Build the OpenAI SDK client lazily so `openai` is only imported when an
     STT endpoint is actually configured."""
     from openai import OpenAI
 
     return OpenAI(
-        base_url=settings.stt_base_url,
+        base_url=endpoint.base_url,
         # Local servers (vLLM, whisper.cpp) need no key; the SDK still wants one.
-        api_key=settings.stt_api_key or "not-needed",
+        api_key=endpoint.api_key or "not-needed",
         timeout=settings.stt_timeout_s,
     )
 
 
 def transcribe_file(
-    path: Path, *, language: str | None = None, diarize: bool | None = None
+    path: Path,
+    *,
+    language: str | None = None,
+    diarize: bool | None = None,
+    endpoint: Endpoint | None = None,
 ) -> STTResult:
     """Transcribe one audio file into an STTResult.
 
@@ -85,7 +99,8 @@ def transcribe_file(
     TranscribeError is raised only when nothing works, so the caller can skip
     the episode gracefully.
     """
-    if not stt_available():
+    ep = stt_endpoint(endpoint)
+    if ep is None:
         raise TranscribeError("Speech-to-text is not configured")
 
     want_diarize = settings.stt_diarize if diarize is None else diarize
@@ -106,7 +121,7 @@ def transcribe_file(
     last_exc: Exception | None = None
     for params in param_sets:
         try:
-            data = _request_with_retries(path, {**base, **params})
+            data = _request_with_retries(path, ep, {**base, **params})
         except _UnsupportedParams as exc:
             logger.info("STT endpoint rejected extras %s; retrying simpler", list(params))
             last_exc = exc
@@ -116,7 +131,7 @@ def transcribe_file(
     raise TranscribeError(f"Transcription failed: {last_exc}")
 
 
-def _request_with_retries(path: Path, params: dict) -> dict:
+def _request_with_retries(path: Path, ep: Endpoint, params: dict) -> dict:
     """One transcription call (raw JSON), retried on transient errors.
 
     Uses `with_raw_response` so we read the provider's full JSON body — the
@@ -126,8 +141,8 @@ def _request_with_retries(path: Path, params: dict) -> dict:
     for attempt in range(3):
         try:
             with open(path, "rb") as audio:
-                raw = _client().audio.transcriptions.with_raw_response.create(
-                    model=settings.stt_model,
+                raw = _client(ep).audio.transcriptions.with_raw_response.create(
+                    model=ep.model,
                     file=audio,
                     **params,
                 )

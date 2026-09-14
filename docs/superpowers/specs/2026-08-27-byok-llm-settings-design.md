@@ -78,7 +78,6 @@ at boot. Nobody arriving on the public demo will ever do that.
 10. **`GET /llm` keeps its server-side meaning.** It gains the provider
     catalogue and rates; the frontend ORs `available` with what the browser
     holds.
-
 11. **The AI polish panel always renders on the review screen.** With no key
     configured, a "Connect a model" action takes the place of the switch and
     opens the dialog; once a key verifies, the switch returns. The need is met
@@ -99,8 +98,10 @@ cannot reach a visitor's localhost, and no arrangement changes that.
 
 ## Testing
 
-Rules logic, so tests first: allowlist validation (including hosts that
-resemble a provider without being one), the credential store's lifecycle
+Rules logic, so tests first: allowlist validation (the browser names a
+provider id and the server looks its URL up, so a host resembling a provider
+never reaches a comparison; tests cover unknown ids, an ignored base URL on a
+known provider, and the custom flag), the credential store's lifecycle
 (put, read, dropped even when the job fails), and browser-over-env
 precedence. The dialog and the panel are visual and get checked by running
 the app.

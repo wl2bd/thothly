@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, SecretStr
 
 ItemType = Literal["youtube", "blog", "podcast"]
 
@@ -59,11 +59,25 @@ class JobCreate(BaseModel):
     ]
 
 
+class VisitorEndpoint(BaseModel):
+    """A visitor's own provider, key and model, sent from the browser for one
+    job. Ridden in the confirm body rather than a header: bodies reach proxy
+    traces far less often. SecretStr keeps the key out of any repr or log."""
+
+    provider: str
+    api_key: SecretStr | None = None
+    model: Annotated[str, Field(max_length=200)]
+    base_url: str | None = None  # read only for "custom", when the server allows it
+
+
 class JobConfirm(BaseModel):
     selected_ids: Annotated[list[str], Field(min_length=1)]
     book_title: str | None = None
     # Selected LLM role ids (see app/pipeline/roles.py). Empty = zero-LLM compile.
     llm_roles: list[str] = []
+    # The visitor's own model and transcription endpoints. Absent = the server's.
+    llm: VisitorEndpoint | None = None
+    stt: VisitorEndpoint | None = None
 
 
 class DiscoveredItemResponse(BaseModel):

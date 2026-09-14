@@ -140,6 +140,7 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `BRAVE_API_KEY` | empty | Brave Search API key (required when `WEB_SEARCH_BACKEND=brave`) |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
+| `BYOK_ALLOW_CUSTOM_BASE_URL` | `false` | Let users enter any server address for their own model, not just the listed providers. Only for an instance whose users you trust: the server calls whatever they type |
 | `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
 
 ### Web search backends

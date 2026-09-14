@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.database import get_connection
 from app.pipeline.compiler import is_punctuated, segments_to_markdown
 from app.pipeline.llm import LLMError, complete, llm_available
+from app.pipeline.providers import Endpoint
 from app.pipeline.roles import (
     COPYEDIT,
     PREFACE,
@@ -38,21 +39,31 @@ _ATX_HEADING = re.compile(r"(?m)^#{1,6}\s")
 # ---------------------------------------------------------------------------
 # Public entry points
 # ---------------------------------------------------------------------------
-def clean_transcript(transcript: Transcript, role_ids: list[str], model: str) -> str:
+def clean_transcript(
+    transcript: Transcript,
+    role_ids: list[str],
+    model: str,
+    endpoint: Endpoint | None = None,
+) -> str:
     """Markdown for a video transcript with the selected item-roles applied."""
     roles_key = _roles_key(role_ids)
     cached = _get_cached(transcript.video_id, roles_key, model)
     if cached is not None:
         return cached
 
-    md, ok = _build_transcript(transcript, role_ids)
+    md, ok = _build_transcript(transcript, role_ids, endpoint)
     if ok:
         _store(transcript.video_id, roles_key, model, md)
     return md
 
 
 def clean_markdown(
-    content_md: str, role_ids: list[str], model: str, *, content_key: str
+    content_md: str,
+    role_ids: list[str],
+    model: str,
+    *,
+    content_key: str,
+    endpoint: Endpoint | None = None,
 ) -> str:
     """Apply the article-applicable roles (copyedit, sections) to blog markdown."""
     roles_key = _roles_key(role_ids)
@@ -64,13 +75,13 @@ def clean_markdown(
     ok = True
     if has_role(role_ids, COPYEDIT) and body.strip():
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
-        edited, c_ok = _run_role(chunks, COPYEDIT, validate_copyedit)
+        edited, c_ok = _run_role(chunks, COPYEDIT, validate_copyedit, endpoint=endpoint)
         body = edited if edited.strip() else body
         ok = ok and c_ok
     # Only structure articles that have no headings of their own.
     if has_role(role_ids, SECTIONS) and body.strip() and not _ATX_HEADING.search(body):
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
-        structured, s_ok = _run_role(chunks, SECTIONS, validate_sections)
+        structured, s_ok = _run_role(chunks, SECTIONS, validate_sections, endpoint=endpoint)
         body = structured if structured.strip() else body
         ok = ok and s_ok
 
@@ -91,7 +102,9 @@ _SPEAKER_NAMES_PROMPT = (
 )
 
 
-def map_speaker_names(transcript, model: str) -> dict[str, str]:
+def map_speaker_names(
+    transcript, model: str, endpoint: Endpoint | None = None
+) -> dict[str, str]:
     """Map diarization speaker ids (speaker_1, …) to display names via the LLM.
 
     Returns {} — so the renderer falls back to generic "Speaker N" labels —
@@ -99,7 +112,7 @@ def map_speaker_names(transcript, model: str) -> dict[str, str]:
     fails. Cached per (episode, model) so a re-compile never re-calls the LLM.
     """
     speakers = _distinct_speakers(transcript.segments)
-    if len(speakers) < 2 or not llm_available():
+    if len(speakers) < 2 or not llm_available(endpoint):
         return {}
 
     cached = _get_cached(transcript.video_id, _SPEAKER_NAMES_KEY, model)
@@ -107,7 +120,12 @@ def map_speaker_names(transcript, model: str) -> dict[str, str]:
         return _filter_map(_safe_json(cached), speakers)
 
     try:
-        raw = complete(_SPEAKER_NAMES_PROMPT, _dialogue_sample(transcript.segments), max_tokens=400)
+        raw = complete(
+            _SPEAKER_NAMES_PROMPT,
+            _dialogue_sample(transcript.segments),
+            max_tokens=400,
+            endpoint=endpoint,
+        )
     except LLMError as exc:
         logger.warning("Speaker-name mapping failed: %s", exc)
         return {}
@@ -180,7 +198,9 @@ def _filter_map(data: dict, speakers: list[str]) -> dict[str, str]:
     }
 
 
-def generate_preface(book_title: str, chapter_titles: list[str]) -> str | None:
+def generate_preface(
+    book_title: str, chapter_titles: list[str], endpoint: Endpoint | None = None
+) -> str | None:
     """A short generated preface, or None if the LLM call fails."""
     role = get_role(PREFACE)
     if role is None:
@@ -189,7 +209,7 @@ def generate_preface(book_title: str, chapter_titles: list[str]) -> str | None:
         book_title, "\n".join(f"- {t}" for t in chapter_titles)
     )
     try:
-        return complete(role.system_prompt, user)
+        return complete(role.system_prompt, user, endpoint=endpoint)
     except LLMError as exc:
         logger.warning("Preface generation failed: %s", exc)
         return None
@@ -198,7 +218,9 @@ def generate_preface(book_title: str, chapter_titles: list[str]) -> str | None:
 # ---------------------------------------------------------------------------
 # Transcript assembly
 # ---------------------------------------------------------------------------
-def _build_transcript(transcript: Transcript, role_ids: list[str]) -> tuple[str, bool]:
+def _build_transcript(
+    transcript: Transcript, role_ids: list[str], endpoint: Endpoint | None
+) -> tuple[str, bool]:
     roles = {r.id for r in selected_item_roles(role_ids)}
     do_punct = PUNCTUATE in roles
     do_copyedit = COPYEDIT in roles
@@ -209,14 +231,14 @@ def _build_transcript(transcript: Transcript, role_ids: list[str]) -> tuple[str,
         # Chapters already give structure, so the `sections` role is a no-op here.
         sections_out: list[str] = []
         for title, texts in _bucket_by_chapter(transcript):
-            body, body_ok = _body_from_texts(texts, do_punct, do_copyedit)
+            body, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint)
             ok = ok and body_ok
             if body:
                 sections_out.append(f"## {title}\n\n{body}")
         return "\n\n".join(sections_out), ok
 
     texts = [s.text for s in transcript.segments]
-    md, body_ok = _body_from_texts(texts, do_punct, do_copyedit)
+    md, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint)
     ok = ok and body_ok
     if do_sections and md.strip():
         chunks = _group_paragraphs(md, settings.llm_chunk_words)
@@ -225,6 +247,7 @@ def _build_transcript(transcript: Transcript, role_ids: list[str]) -> tuple[str,
         structured, sec_ok = _run_role(
             chunks, SECTIONS, validate_sections,
             system=sections_prompt(transcript.language),
+            endpoint=endpoint,
         )
         md = structured if structured.strip() else md
         ok = ok and sec_ok
@@ -232,7 +255,7 @@ def _build_transcript(transcript: Transcript, role_ids: list[str]) -> tuple[str,
 
 
 def _body_from_texts(
-    texts: list[str], do_punct: bool, do_copyedit: bool
+    texts: list[str], do_punct: bool, do_copyedit: bool, endpoint: Endpoint | None
 ) -> tuple[str, bool]:
     cleaned = [t.strip() for t in texts if t and t.strip()]
     if not cleaned:
@@ -244,7 +267,7 @@ def _body_from_texts(
     # tracks already sentence-split cleanly for free.
     if do_punct and not is_punctuated(full):
         chunks = _split_words(full, settings.llm_chunk_words)
-        body, p_ok = _run_role(chunks, PUNCTUATE, validate_preserve)
+        body, p_ok = _run_role(chunks, PUNCTUATE, validate_preserve, endpoint=endpoint)
         if not body.strip():
             body = segments_to_markdown(texts)  # nothing usable came back
         ok = ok and p_ok
@@ -253,7 +276,7 @@ def _body_from_texts(
 
     if do_copyedit and body.strip():
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
-        edited, c_ok = _run_role(chunks, COPYEDIT, validate_copyedit)
+        edited, c_ok = _run_role(chunks, COPYEDIT, validate_copyedit, endpoint=endpoint)
         body = edited if edited.strip() else body
         ok = ok and c_ok
 
@@ -282,7 +305,12 @@ def _bucket_by_chapter(transcript: Transcript) -> list[tuple[str, list[str]]]:
 # does not (re-running the same model would drift the same way).
 # ---------------------------------------------------------------------------
 def _run_role(
-    chunks: list[str], role_id: str, validate, *, system: str | None = None
+    chunks: list[str],
+    role_id: str,
+    validate,
+    *,
+    system: str | None = None,
+    endpoint: Endpoint | None = None,
 ) -> tuple[str, bool]:
     role = get_role(role_id)
     if not chunks:
@@ -291,7 +319,7 @@ def _run_role(
     # `system` lets a caller pin a parameterised variant (e.g. a language-locked
     # sections prompt); otherwise the role's default prompt is used.
     outputs, no_transient = _transform_chunks(
-        chunks, system or role.system_prompt, validate
+        chunks, system or role.system_prompt, validate, endpoint
     )
     pieces = [
         out if out is not None else raw  # None = fell back to the source chunk
@@ -301,16 +329,20 @@ def _run_role(
 
 
 def _transform_chunks(
-    chunks: list[str], system: str, validate
+    chunks: list[str], system: str, validate, endpoint: Endpoint | None
 ) -> tuple[list[str | None], bool]:
     """Transform chunks in parallel. Output[i] is None when chunk i must fall
-    back (drift or error). Second return is False if any call errored out."""
+    back (drift or error). Second return is False if any call errored out.
+
+    `endpoint` goes to each call as an argument on purpose: the pool's threads
+    don't inherit context, so anything implicit would fall back to the server's
+    own key inside them."""
     results: list[str | None] = [None] * len(chunks)
     transient = False
 
     def work(index: int, chunk: str) -> tuple[int, str | None, bool]:
         try:
-            out = complete(system, chunk, max_tokens=_budget(chunk))
+            out = complete(system, chunk, max_tokens=_budget(chunk), endpoint=endpoint)
         except LLMError as exc:
             logger.warning("Chunk %d: LLM error (%s) — using source text", index, exc)
             return index, None, True  # transient: don't cache, allow retry

@@ -2,6 +2,7 @@ import logging
 import re
 
 from app.core.config import settings
+from app.jobs import credentials
 from app.jobs.models import DiscoveredItemResponse
 from app.jobs.repository import (
     get_job,
@@ -24,8 +25,9 @@ from app.pipeline.compiler import (
     strip_leading_title,
     transcript_to_markdown,
 )
-from app.pipeline.llm import llm_available
+from app.pipeline.llm import llm_endpoint
 from app.pipeline.models import CompiledChapter
+from app.pipeline.providers import Endpoint
 from app.pipeline.roles import PREFACE, has_role
 from app.pipeline.titles import normalize_title
 from app.render.epub import render_epub
@@ -73,12 +75,18 @@ def run_compilation(job_id: str) -> None:
     page (or the RSS preview if scraping fails). When the user selected LLM roles
     *and* an LLM is configured, the selected items are run through the cleanup
     engine instead (cached, with graceful fallback to the free path on failure).
+
+    A visitor's own keys, when confirm received some, are taken here before
+    anything can fail and win over the server's config for every call below.
     """
+    held = credentials.take(job_id)
+    llm = llm_endpoint(held.llm if held else None)
+    stt = held.stt if held else None
     try:
         items = get_selected_items(job_id)
-        # Active only when roles were chosen AND an LLM endpoint is configured.
-        roles = get_job_llm_roles(job_id) if llm_available() else []
-        model = settings.llm_model or ""
+        # Active only when roles were chosen AND an LLM endpoint is available.
+        roles = get_job_llm_roles(job_id) if llm is not None else []
+        model = llm.model if llm else ""
         chapters: list[CompiledChapter] = []
         youtube_unavailable = False
         # Items that ended `failed` (crashed or hit a YouTube rate limit), as
@@ -92,11 +100,11 @@ def run_compilation(job_id: str) -> None:
             set_item_compile_state(job_id, item.id, "compiling")
             try:
                 if item.item_type == "youtube":
-                    chapter = _youtube_chapter(item, job_id, roles, model)
+                    chapter = _youtube_chapter(item, job_id, roles, model, llm)
                 elif item.item_type == "podcast":
-                    chapter = _podcast_chapter(item, job_id, roles, model)
+                    chapter = _podcast_chapter(item, job_id, roles, model, llm, stt)
                 else:
-                    chapter = _blog_chapter(item, job_id, roles, model)
+                    chapter = _blog_chapter(item, job_id, roles, model, llm)
             except ItemSkipped as exc:
                 # Nothing usable to build from. Expected, explainable, and never
                 # fatal: the reason is written against the item and shown next to
@@ -144,7 +152,9 @@ def run_compilation(job_id: str) -> None:
         book_title = (job.book_title if job else None) or "Compilation Thothly"
         book = compile_book(chapters, book_title)
         if has_role(roles, PREFACE):
-            book.preface = generate_preface(book.title, [c.title for c in book.chapters])
+            book.preface = generate_preface(
+                book.title, [c.title for c in book.chapters], llm
+            )
         output_path, output_md_path = _render(book, job_id)
         update_job_status(
             job_id,
@@ -172,7 +182,11 @@ def run_compilation(job_id: str) -> None:
 
 
 def _youtube_chapter(
-    item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
+    item: DiscoveredItemResponse,
+    job_id: str,
+    roles: list[str],
+    model: str,
+    llm: Endpoint | None = None,
 ) -> CompiledChapter:
     video_id = _extract_video_id(item.url)
     # Cache hit from discovery (full segments + chapters); falls back to a live
@@ -188,7 +202,7 @@ def _youtube_chapter(
     # turning it on adds the Punctuation pass (and clean_transcript falls back to
     # a free sentence-split on captions that are already punctuated).
     if roles:
-        content_md = clean_transcript(transcript, roles, model)
+        content_md = clean_transcript(transcript, roles, model, llm)
     else:
         content_md = transcript_to_markdown(transcript)
     if not content_md:
@@ -205,13 +219,18 @@ def _youtube_chapter(
 
 
 def _podcast_chapter(
-    item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
+    item: DiscoveredItemResponse,
+    job_id: str,
+    roles: list[str],
+    model: str,
+    llm: Endpoint | None = None,
+    stt: Endpoint | None = None,
 ) -> CompiledChapter:
     # Transcribe lazily (and cached by audio URL): a metered API call runs once,
     # only for selected episodes. No STT endpoint, or a download/transcription
     # failure, leaves transcript None → the episode is skipped, like a video
     # without subtitles.
-    transcript = load_episode_transcript(item.url)
+    transcript = load_episode_transcript(item.url, stt=stt)
     if transcript is None:
         raise ItemSkipped(NO_TRANSCRIPTION)
 
@@ -221,7 +240,7 @@ def _podcast_chapter(
     # who-speaks labels. Real speaker names via the LLM are opt-in
     # (podcast_speaker_naming); off by default → simple "Speaker N" titles.
     speaker_names = (
-        map_speaker_names(transcript, model) if settings.podcast_speaker_naming else {}
+        map_speaker_names(transcript, model, llm) if settings.podcast_speaker_naming else {}
     )
     content_md = transcript_to_markdown(transcript, speaker_names)
     if not content_md:
@@ -236,7 +255,11 @@ def _podcast_chapter(
 
 
 def _blog_chapter(
-    item: DiscoveredItemResponse, job_id: str, roles: list[str], model: str
+    item: DiscoveredItemResponse,
+    job_id: str,
+    roles: list[str],
+    model: str,
+    llm: Endpoint | None = None,
 ) -> CompiledChapter:
     author = None
     published_at = None
@@ -255,7 +278,9 @@ def _blog_chapter(
         raise ItemSkipped(NO_CONTENT)
 
     if roles:
-        content_md = clean_markdown(content_md, roles, model, content_key=item.url)
+        content_md = clean_markdown(
+            content_md, roles, model, content_key=item.url, endpoint=llm
+        )
 
     return CompiledChapter(
         title=normalize_title(item.title),

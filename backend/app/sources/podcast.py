@@ -28,6 +28,7 @@ import httpx
 from app.core.config import settings
 from app.core.database import get_connection
 from app.core.net import BlockedURLError, assert_public_url
+from app.pipeline.providers import Endpoint
 from app.pipeline.transcribe import (
     STTResult,
     TranscribeError,
@@ -50,20 +51,22 @@ _BROWSER_UA = (
 _CACHE_FORMAT_VERSION = 2
 
 
-def load_episode_transcript(audio_url: str) -> Transcript | None:
+def load_episode_transcript(
+    audio_url: str, stt: Endpoint | None = None
+) -> Transcript | None:
     """Cached transcript for a podcast episode, or None if it can't be produced."""
     cached = _get_cached(audio_url)
     if cached is not None:
         return cached
 
-    transcript = _transcribe_episode(audio_url)
+    transcript = _transcribe_episode(audio_url, stt)
     if transcript is not None:
         _store(transcript)
     return transcript
 
 
-def _transcribe_episode(audio_url: str) -> Transcript | None:
-    if not stt_available():
+def _transcribe_episode(audio_url: str, stt: Endpoint | None) -> Transcript | None:
+    if not stt_available(stt):
         logger.info("No STT endpoint configured; skipping podcast %s", audio_url)
         return None
 
@@ -73,7 +76,7 @@ def _transcribe_episode(audio_url: str) -> Transcript | None:
         if audio_path is None:
             return None
         chunks = _split(audio_path, settings.stt_max_chunk_minutes)
-        results = _transcribe_chunks(chunks)
+        results = _transcribe_chunks(chunks, stt)
     except TranscribeError as exc:
         # One chunk failing leaves a gap, so we drop the whole episode rather
         # than emit a silently-incomplete chapter (the spent calls are wasted,
@@ -234,12 +237,12 @@ def _probe_duration(path: Path) -> float | None:
         return None
 
 
-def _transcribe_chunks(chunks: list[Path]) -> list[STTResult]:
+def _transcribe_chunks(chunks: list[Path], stt: Endpoint | None) -> list[STTResult]:
     """Transcribe chunks in parallel, preserving order. A single chunk's failure
     propagates (TranscribeError) so the caller drops the whole episode."""
     workers = max(1, settings.stt_max_concurrency)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        return list(pool.map(transcribe_file, chunks))
+        return list(pool.map(lambda c: transcribe_file(c, endpoint=stt), chunks))
 
 
 def _suffix_from_url(audio_url: str) -> str:

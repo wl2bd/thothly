@@ -4,11 +4,18 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import FileResponse
 
-from app.jobs import repository
-from app.jobs.models import ItemPreview, JobConfirm, JobCreate, JobResponse
+from app.jobs import credentials, repository
+from app.jobs.models import (
+    ItemPreview,
+    JobConfirm,
+    JobCreate,
+    JobResponse,
+    VisitorEndpoint,
+)
 from app.jobs.phases import run_discovery
 from app.jobs.preview import build_item_preview
 from app.jobs.runner import run_compilation
+from app.pipeline.providers import Endpoint, ProviderRejected, resolve_endpoint
 from app.pipeline.roles import get_role
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -47,6 +54,14 @@ def confirm_job(
             detail="This compilation isn't awaiting review anymore.",
         )
 
+    # Refuse a provider the server won't call before anything about the job
+    # changes, so a rejected confirm leaves it exactly as it was.
+    try:
+        llm = _visitor_endpoint(payload.llm, for_stt=False)
+        stt = _visitor_endpoint(payload.stt, for_stt=True)
+    except ProviderRejected as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     selected = repository.confirm_items(job_id, payload.selected_ids)
     if not selected:
         raise HTTPException(
@@ -63,8 +78,22 @@ def confirm_job(
     # the stored value untouched).
     title = payload.book_title.strip() if payload.book_title else None
     repository.update_job_status(job_id, "processing", book_title=title or None)
+    if llm or stt:
+        credentials.put(job_id, credentials.JobCredentials(llm=llm, stt=stt))
     background_tasks.add_task(run_compilation, job_id)
     return repository.get_job(job_id)
+
+
+def _visitor_endpoint(sent: VisitorEndpoint | None, *, for_stt: bool) -> Endpoint | None:
+    if sent is None:
+        return None
+    return resolve_endpoint(
+        sent.provider,
+        api_key=sent.api_key.get_secret_value() if sent.api_key else None,
+        model=sent.model,
+        base_url=sent.base_url,
+        for_stt=for_stt,
+    )
 
 
 @router.get("/{job_id}/items/{item_id}/preview", response_model=ItemPreview)

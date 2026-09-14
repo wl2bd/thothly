@@ -112,6 +112,11 @@ class Settings(BaseSettings):
     llm_price_per_mtok_in: float = 0.20
     llm_price_per_mtok_out: float = 0.60
 
+    # Bring your own LLM: visitors pick a provider from the allowlist in
+    # app/pipeline/providers.py and the server calls that provider's fixed URL.
+    # On → a visitor may also enter any http(s) base URL. Only for a self-hosted
+    # instance whose users you trust: the server fetches whatever they type.
+    byok_allow_custom_base_url: bool = False
 
 
 settings = Settings()
