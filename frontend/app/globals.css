@@ -72,6 +72,9 @@
    it sings hardest on the black ground. The whole identity re-skins from these
    token values. See DESIGN.md. */
 :root {
+  /* Native controls (scrollbars, the sort select's popup, date pickers) follow
+     the theme instead of staying light on the dark page. */
+  color-scheme: light;
   --background: oklch(0.977 0.011 80);
   --foreground: oklch(0.16 0.015 68);
   --card: oklch(0.995 0.008 80);
@@ -168,6 +171,7 @@
 /* Dark = the night ground (very black, chroma 0). The gold steps forward and
    glows against it — this is where the brand is at its boldest. */
 .dark {
+  color-scheme: dark;
   --background: oklch(0.13 0 0);
   --foreground: oklch(0.97 0 0);
   --card: oklch(0.17 0 0);
