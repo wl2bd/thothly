@@ -1957,18 +1957,18 @@ function RoleSelector({
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-sm font-medium">AI polish</span>
           <span className="text-muted-foreground text-xs">{subtext}</span>
-          {providerLabel && (
-            <span className="text-muted-foreground text-xs">
-              Runs on your {providerLabel} key.{" "}
-              <button
-                type="button"
-                onClick={onConnect}
-                className="text-foreground font-medium underline-offset-4 hover:underline"
-              >
-                Change
-              </button>
-            </span>
-          )}
+          {/* Always a way to bring (or change) your own key from here, even
+              when the server has a model of its own and the switch shows. */}
+          <span className="text-muted-foreground text-xs">
+            {providerLabel ? `Runs on your ${providerLabel} key. ` : ""}
+            <button
+              type="button"
+              onClick={onConnect}
+              className="text-foreground font-medium underline-offset-4 hover:underline"
+            >
+              {providerLabel ? "Change" : "Use your own key"}
+            </button>
+          </span>
         </span>
         <Switch
           checked={masterOn}
