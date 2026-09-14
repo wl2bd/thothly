@@ -100,11 +100,33 @@ export interface LlmPricing {
   llm_per_mtok_out: number;
 }
 
+// An allowlisted provider a visitor can bring a key for. No address: the
+// browser names a provider and the server alone knows where it lives.
+export interface LlmProvider {
+  id: string;
+  label: string;
+  llm_per_mtok_in: number;
+  llm_per_mtok_out: number;
+  stt_per_minute: number | null; // null = no transcription on this provider
+}
+
 export interface LlmConfig {
+  // Whether THIS server has its own key. What the browser holds is added on
+  // top by withBrowserModels (lib/model-keys.ts).
   available: boolean;
   stt_available: boolean;
   roles: LlmRole[];
   pricing: LlmPricing;
+  providers: LlmProvider[];
+  custom_base_url_allowed: boolean;
+}
+
+// A visitor's endpoint as the backend's confirm body names its fields.
+export interface VisitorEndpoint {
+  provider: string;
+  api_key: string;
+  model: string;
+  base_url?: string;
 }
 
 export type ResultType =
@@ -182,18 +204,39 @@ export async function confirmJob(
   selectedIds: string[],
   bookTitle?: string,
   llmRoles: string[] = [],
+  visitor: { llm?: VisitorEndpoint; stt?: VisitorEndpoint } = {},
 ): Promise<JobResponse> {
   const res = await fetch(`/api/jobs/${id}/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    // The visitor's keys ride in the body, never a header or the URL.
     body: JSON.stringify({
       selected_ids: selectedIds,
       book_title: bookTitle,
       llm_roles: llmRoles,
+      llm: visitor.llm,
+      stt: visitor.stt,
     }),
   });
   if (!res.ok) return parseError(res);
   return res.json();
+}
+
+// Checks a key with its provider (through the backend: providers refuse
+// browser calls) and returns the models it grants.
+export async function verifyKey(
+  provider: string,
+  apiKey: string,
+  baseUrl?: string,
+): Promise<string[]> {
+  const res = await fetch("/api/llm/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl }),
+  });
+  if (!res.ok) return parseError(res);
+  const data: { models: string[] } = await res.json();
+  return data.models;
 }
 
 export async function fetchItemPreview(
