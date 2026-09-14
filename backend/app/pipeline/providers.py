@@ -56,6 +56,14 @@ PROVIDERS: tuple[Provider, ...] = (
 _BY_ID = {p.id: p for p in PROVIDERS}
 
 
+def describe_error(exc: BaseException) -> str:
+    """Name a provider failure without quoting it. Provider error bodies can
+    carry part of the key (OpenAI's 401 keeps its last four characters), so the
+    message never goes into a log line or an exception text a caller logs."""
+    code = getattr(exc, "status_code", None)
+    return f"{type(exc).__name__} (HTTP {code})" if code else type(exc).__name__
+
+
 def get_provider(provider_id: str) -> Provider | None:
     return _BY_ID.get(provider_id)
 

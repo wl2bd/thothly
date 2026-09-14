@@ -10,7 +10,7 @@ import logging
 import time
 
 from app.core.config import settings
-from app.pipeline.providers import Endpoint
+from app.pipeline.providers import Endpoint, describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +99,9 @@ def complete(
             logger.warning(
                 "LLM call failed (attempt %d/3): %s — retrying in %ds",
                 attempt + 1,
-                exc,
+                describe_error(exc),
                 wait,
             )
             time.sleep(wait)
 
-    raise LLMError(f"LLM call failed after retries: {last_exc}") from last_exc
+    raise LLMError(f"LLM call failed after retries: {describe_error(last_exc)}") from last_exc

@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.core.config import settings
-from app.pipeline.providers import Endpoint
+from app.pipeline.providers import Endpoint, describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -149,18 +149,18 @@ def _request_with_retries(path: Path, ep: Endpoint, params: dict) -> dict:
             return json.loads(raw.text)
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
             if _is_bad_request(exc):
-                raise _UnsupportedParams(str(exc)) from exc
+                raise _UnsupportedParams(describe_error(exc)) from exc
             last_exc = exc
             wait = 2**attempt
             logger.warning(
                 "Transcription failed (attempt %d/3): %s — retrying in %ds",
                 attempt + 1,
-                exc,
+                describe_error(exc),
                 wait,
             )
             time.sleep(wait)
 
-    raise TranscribeError(f"Transcription failed after retries: {last_exc}") from last_exc
+    raise TranscribeError(f"Transcription failed after retries: {describe_error(last_exc)}") from last_exc
 
 
 def _is_bad_request(exc: Exception) -> bool:

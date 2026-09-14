@@ -268,3 +268,48 @@ def test_verify_refuses_an_unlisted_provider(client: TestClient) -> None:
         )
     assert resp.status_code == 400
     mock_list.assert_not_called()
+
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+
+# What OpenAI puts in a 401 body: part of the key, masked. It must not reach a
+# log line or an exception message that a caller might log.
+_LEAKY = "Incorrect API key provided: sk-proj-****abcd. You can find your API key at ..."
+
+
+class _ProviderError(Exception):
+    status_code = 401
+
+
+def test_a_failed_llm_call_never_logs_the_provider_message(monkeypatch, caplog) -> None:
+    import app.pipeline.llm as llm
+
+    monkeypatch.setattr(llm.time, "sleep", lambda _: None)
+    failing = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(_ProviderError(_LEAKY))))
+    )
+    monkeypatch.setattr(llm, "_client", lambda *a, **k: failing)
+    visitor = Endpoint("https://api.openai.com/v1", "gpt-4o-mini", "sk-proj-secret-abcd")
+
+    with pytest.raises(llm.LLMError) as err:
+        llm.complete("system", "user", endpoint=visitor)
+
+    assert "abcd" not in caplog.text and "abcd" not in str(err.value)
+    assert "401" in caplog.text  # still diagnosable
+
+
+def test_a_failed_transcription_never_logs_the_provider_message(monkeypatch, caplog, tmp_path) -> None:
+    import app.pipeline.transcribe as transcribe
+
+    monkeypatch.setattr(transcribe.time, "sleep", lambda _: None)
+    raw = SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(_ProviderError(_LEAKY)))
+    failing = SimpleNamespace(audio=SimpleNamespace(transcriptions=SimpleNamespace(with_raw_response=raw)))
+    monkeypatch.setattr(transcribe, "_client", lambda *a, **k: failing)
+    audio = tmp_path / "a.mp3"
+    audio.write_bytes(b"ID3")
+    visitor = Endpoint("https://api.mistral.ai/v1", "voxtral-mini-latest", "sk-proj-secret-abcd")
+
+    with pytest.raises(transcribe.TranscribeError) as err:
+        transcribe.transcribe_file(audio, endpoint=visitor)
+
+    assert "abcd" not in caplog.text and "abcd" not in str(err.value)
