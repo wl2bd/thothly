@@ -4,14 +4,15 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
 
+import { ProviderIcon } from "@/components/provider-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
 import { maskKey, writeModels, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
-import { cn } from "@/lib/utils";
 
 export type ModelKind = "llm" | "stt";
 
@@ -30,10 +31,6 @@ const KIND_COPY: Record<ModelKind, { name: string; title: string; purpose: strin
 
 const PRIVACY =
   "Your key stays in this browser. Thothly sends it to your provider only to check it and to run a compilation you start, and never stores it.";
-
-// Same shape as Input, so a native select sits in a form as one of its fields.
-const SELECT_CLASS =
-  "border-input h-11 w-full rounded-lg border bg-transparent px-3 text-base md:text-sm dark:bg-input/30 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none";
 
 // The stored endpoint for one kind: a summary with Replace and Remove once a key
 // is saved, the connect form otherwise. Shared by the review dialog and /settings.
@@ -63,12 +60,15 @@ export function ModelEndpointSettings({
         : (config.providers.find((p) => p.id === current.provider)?.label ?? current.provider);
     return (
       <div className="flex flex-col gap-3">
-        <div className="bg-background flex flex-col gap-1 rounded-lg border px-4 py-3">
-          <span className="text-sm font-medium">
-            {label} <span className="text-muted-foreground font-normal">· {current.model}</span>
-          </span>
-          <span className="text-muted-foreground font-mono text-xs">
-            {maskKey(current.apiKey)}
+        <div className="bg-background flex items-center gap-3 rounded-lg border px-4 py-3">
+          <ProviderIcon provider={current.provider} className="size-5 shrink-0" />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="truncate text-sm font-medium">
+              {label} <span className="text-muted-foreground font-normal">· {current.model}</span>
+            </span>
+            <span className="text-muted-foreground font-mono text-xs">
+              {maskKey(current.apiKey)}
+            </span>
           </span>
         </div>
         <div className="flex gap-2">
@@ -120,10 +120,10 @@ function EndpointForm({
   const options = [
     ...config.providers
       .filter((p) => kind === "llm" || p.stt_per_minute != null)
-      .map((p) => ({ id: p.id, label: p.label })),
-    ...(config.custom_base_url_allowed ? [{ id: "custom", label: "Your own server" }] : []),
-  ];
-  const [provider, setProvider] = useState(initial?.provider ?? options[0]?.id ?? "");
+      .map((p) => ({ value: p.id, label: p.label })),
+    ...(config.custom_base_url_allowed ? [{ value: "custom", label: "Your own server" }] : []),
+  ].map((o) => ({ ...o, icon: <ProviderIcon provider={o.value} className="size-4" /> }));
+  const [provider, setProvider] = useState(initial?.provider ?? options[0]?.value ?? "");
   const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? "");
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<string[] | null>(null);
@@ -173,18 +173,12 @@ function EndpointForm({
         <label htmlFor={`${id}-provider`} className="text-sm font-medium">
           Provider
         </label>
-        <select
+        <Select
           id={`${id}-provider`}
           value={provider}
-          onChange={(e) => edit(setProvider)(e.target.value)}
-          className={SELECT_CLASS}
-        >
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          onValueChange={edit(setProvider)}
+          options={options}
+        />
       </div>
 
       {isCustom && (
@@ -227,21 +221,13 @@ function EndpointForm({
             <label htmlFor={`${id}-model`} className="text-sm font-medium">
               Model
             </label>
-            <select
+            <Select
               id={`${id}-model`}
               value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className={cn(SELECT_CLASS, !model && "text-muted-foreground")}
-            >
-              <option value="" disabled>
-                Choose a model
-              </option>
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              onValueChange={setModel}
+              options={models.map((m) => ({ value: m, label: m }))}
+              placeholder="Choose a model"
+            />
           </div>
           <div className="flex gap-2">
             <Button
