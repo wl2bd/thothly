@@ -6,7 +6,7 @@ import { Logotype } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata: Metadata = {
-  title: "Compose · Thothly",
+  title: "Compose - Thothly",
   // The landing is the page worth finding; this one is a workspace behind it,
   // and a search result landing a stranger on a bare field would explain nothing.
   robots: { index: false, follow: true },

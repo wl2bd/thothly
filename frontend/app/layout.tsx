@@ -87,7 +87,7 @@ const notoSerifThin = Noto_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Thothly · Make anything readable",
+  title: "Thothly - Make anything readable",
   description: "Compile whatever you want to read, no matter where it comes from.",
 };
 
