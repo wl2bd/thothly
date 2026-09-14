@@ -888,7 +888,7 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
                     href={getDownloadUrl(jobId, "md")}
                     download
                     aria-label="Download Markdown"
-                    className={buttonVariants({ variant: "outline", size: "icon" })}
+                    className={buttonVariants({ variant: "secondary", size: "icon" })}
                   >
                     <Download />
                   </a>
@@ -1413,14 +1413,18 @@ function ReviewList({
             autoComplete="off"
           />
           {query !== "" && (
-            <button
+            <Button
               type="button"
+              variant="nav"
+              size="icon-xs"
               onClick={() => setQuery("")}
               aria-label="Clear search"
-              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
+              // An inset (top-2 centres 28px in the 44px field), not
+              // -translate-y-1/2: Button's press translate would replace it.
+              className="absolute top-2 right-2"
             >
               <X className="size-4" />
-            </button>
+            </Button>
           )}
         </div>
       )}

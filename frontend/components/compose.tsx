@@ -439,14 +439,16 @@ export function Compose({
                 </Button>
               ) : (
                 query !== "" && (
-                  <button
+                  <Button
                     type="button"
+                    variant="nav"
+                    size="icon-sm"
                     onClick={clearQuery}
                     aria-label="Clear search"
-                    className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
+                    className="absolute top-3 right-2"
                   >
                     <XIcon className="size-4" />
-                  </button>
+                  </Button>
                 )
               )}
             </AnimatedGoldBorder>
