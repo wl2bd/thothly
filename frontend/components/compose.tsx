@@ -432,7 +432,7 @@ export function Compose({
                   // Equal 8px inset top/bottom/right (h-10 button centered in
                   // the h-14 bar, right-2) so it sits as a balanced pill with
                   // real presence inside the field. An inset, not
-                  // -translate-y-1/2, for the reason the hero's Start gives.
+                  // -translate-y-1/2, for the reason the hero's Search button gives.
                   className="absolute top-2 right-2"
                 >
                   <PlusIcon />

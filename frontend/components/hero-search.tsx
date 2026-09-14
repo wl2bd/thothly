@@ -129,7 +129,7 @@ export function HeroSearch() {
                     "h-14 border-transparent bg-background transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                     // Left: room for the magnifier only while it shows (empty &
                     // unfocused); otherwise the text runs full width. Right:
-                    // room for Start only where Start is in the field.
+                    // room for Search only where Search is in the field.
                     showSearchIcon ? "pl-10" : "pl-4",
                     "pr-4 sm:pr-24",
                   )}
@@ -151,7 +151,7 @@ export function HeroSearch() {
                 type="submit"
                 className="h-12 w-full sm:absolute sm:top-2 sm:right-2 sm:h-10 sm:w-auto"
               >
-                Start
+                Search
               </Button>
             </form>
           </CardContent>
