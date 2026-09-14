@@ -68,7 +68,10 @@ import {
   hostOf,
   kindFromItemType,
 } from "@/components/source-kind";
+import { ConnectModelDialog, type ModelKind } from "@/components/connect-model";
 import { recordCompilation } from "@/lib/history";
+import { toVisitorEndpoint, withBrowserModels, type StoredEndpoint } from "@/lib/model-keys";
+import { useStoredModels } from "@/lib/use-stored-models";
 import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -147,6 +150,12 @@ export default function JobPage() {
   const [confirming, setConfirming] = useState(false);
   const [pollKey, setPollKey] = useState(0);
   const [llm, setLlm] = useState<LlmConfig | null>(null);
+  // A key the visitor saved in this browser counts as much as the server's own.
+  const storedModels = useStoredModels();
+  const effectiveLlm = useMemo(
+    () => withBrowserModels(llm, storedModels),
+    [llm, storedModels],
+  );
   const [roles, setRoles] = useState<Set<string>>(new Set());
   // The compile order of the sources, drag-reorderable in review. Source indices
   // in display order; selected ids are flattened in this order on confirm.
@@ -188,6 +197,8 @@ export default function JobPage() {
           stt_available: false,
           roles: [],
           pricing: { stt_per_minute: 0, llm_per_mtok_in: 0, llm_per_mtok_out: 0 },
+          providers: [],
+          custom_base_url_allowed: false,
         }),
       );
   }, []);
@@ -337,12 +348,22 @@ export default function JobPage() {
         .sort((a, b) => a.item_index - b.item_index)
         .map((it) => it.id),
     );
+    // A stored key only travels when this compilation will use it: the model
+    // with AI polish on, transcription with a podcast selected.
+    const podcastSelected = job.discovered_items.some(
+      (it) => selected.has(it.id) && it.item_type === "podcast",
+    );
+    const visitor = {
+      llm: roles.size > 0 && storedModels.llm ? toVisitorEndpoint(storedModels.llm) : undefined,
+      stt: podcastSelected && storedModels.stt ? toVisitorEndpoint(storedModels.stt) : undefined,
+    };
     try {
       const updated = await confirmJob(
         id,
         orderedIds,
         title.trim() || undefined,
         [...roles],
+        visitor,
       );
       applyJob(updated);
       setPollKey((k) => k + 1); // resume polling for the compilation phase
@@ -399,7 +420,7 @@ export default function JobPage() {
               selected={selected}
               title={title}
               confirming={confirming}
-              llm={llm}
+              llm={effectiveLlm}
               selectedRoles={roles}
               onToggleRole={toggleRole}
               onSetRolesMany={setRolesMany}
@@ -1087,6 +1108,8 @@ function ReviewList({
   onReorderSources,
 }: ReviewListProps) {
   const [query, setQuery] = useState("");
+  const [connecting, setConnecting] = useState<ModelKind | null>(null);
+  const storedModels = useStoredModels();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -1480,11 +1503,27 @@ function ReviewList({
         </p>
       )}
 
+      {/* Podcasts can't be read without transcription: with none available they
+          would be left out, so the way to include them sits right here. */}
+      {llm && !sttAvailable && items.some((it) => it.item_type === "podcast") && (
+        <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span>Podcasts need transcription to be included.</span>
+          <button
+            type="button"
+            onClick={() => setConnecting("stt")}
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
+            Connect transcription
+          </button>
+        </p>
+      )}
+
       {llm &&
-        llm.available &&
         llm.roles.length > 0 &&
         polishableSelected > 0 && (
           <RoleSelector
+            onConnect={() => setConnecting("llm")}
+            browserModel={storedModels.llm}
             llm={llm}
             selectedRoles={selectedRoles}
             onToggleRole={onToggleRole}
@@ -1492,6 +1531,14 @@ function ReviewList({
             unpunctuatedSelected={unpunctuatedSelected}
           />
         )}
+
+      {llm && (
+        <ConnectModelDialog
+          kind={connecting}
+          config={llm}
+          onOpenChange={(open) => !open && setConnecting(null)}
+        />
+      )}
 
       {/* Cost sits right against the action — one decision. The button itself
           says what's blocking it (no source / no title) rather than a separate
@@ -1811,6 +1858,10 @@ function renderInline(text: string): React.ReactNode[] {
 
 interface RoleSelectorProps {
   llm: LlmConfig;
+  // Opens the connect dialog. The panel always renders: with no model, this
+  // takes the switch's place.
+  onConnect: () => void;
+  browserModel: StoredEndpoint | null;
   selectedRoles: Set<string>;
   onToggleRole: (id: string) => void;
   onSetRolesMany: (ids: string[], value: boolean) => void;
@@ -1822,9 +1873,12 @@ interface RoleSelectorProps {
 // clears every optional pass. The opinionated extras that invent structure or
 // generate text (sections, preface) hide behind "Customize", opt-in one by one.
 // Roles are grouped by their backend `tier` so the ids stay out of the UI.
-// Only rendered when a model is configured (caller gates on llm.available).
+// Always rendered: with no model available, "Connect a model" stands where the
+// switch would be, quiet rather than gold, so the free path stays the default.
 function RoleSelector({
   llm,
+  onConnect,
+  browserModel,
   selectedRoles,
   onToggleRole,
   onSetRolesMany,
@@ -1849,6 +1903,34 @@ function RoleSelector({
   }
 
   const plural = unpunctuatedSelected !== 1 ? "s" : "";
+
+  if (!llm.available) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-dashed px-4 py-3">
+        <span
+          aria-hidden
+          className="bg-gold/10 text-gold-deep dark:text-gold flex size-7 shrink-0 items-center justify-center rounded-lg"
+        >
+          <Sparkles className="size-4" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm font-medium">AI polish</span>
+          <span className="text-muted-foreground text-xs">
+            {unpunctuatedSelected > 0
+              ? `${unpunctuatedSelected} raw transcript${plural} would read rough. Connect your own model to punctuate them.`
+              : "Tidy wording with your own OpenAI, Mistral or other key."}
+          </span>
+        </span>
+        <Button type="button" variant="secondary" size="sm" onClick={onConnect} className="shrink-0">
+          Connect a model
+        </Button>
+      </div>
+    );
+  }
+
+  const providerLabel = browserModel
+    ? (llm.providers.find((p) => p.id === browserModel.provider)?.label ?? "your own server")
+    : null;
   const subtext = masterOn
     ? "Punctuation where it's missing, plus a light copyedit."
     : unpunctuatedSelected > 0
@@ -1875,6 +1957,18 @@ function RoleSelector({
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-sm font-medium">AI polish</span>
           <span className="text-muted-foreground text-xs">{subtext}</span>
+          {providerLabel && (
+            <span className="text-muted-foreground text-xs">
+              Runs on your {providerLabel} key.{" "}
+              <button
+                type="button"
+                onClick={onConnect}
+                className="text-foreground font-medium underline-offset-4 hover:underline"
+              >
+                Change
+              </button>
+            </span>
+          )}
         </span>
         <Switch
           checked={masterOn}
