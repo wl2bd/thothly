@@ -3,7 +3,7 @@
 import { useState, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { ChevronDownIcon, ConstructionIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, SearchIcon } from "lucide-react";
 
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
 import { Button } from "@/components/ui/button";
@@ -73,10 +73,6 @@ export function HeroSearch() {
       />
       <div className="flex w-full max-w-2xl flex-col gap-10">
         <div className="flex flex-col items-center gap-5 text-center">
-          <span className="border-gold/30 bg-gold/10 text-foreground inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
-            <ConstructionIcon className="text-gold size-3.5" aria-hidden="true" />
-            Work in progress
-          </span>
           <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
             Make anything readable
           </h1>
@@ -161,14 +157,6 @@ export function HeroSearch() {
           </CardContent>
         </Card>
         </ViewTransition>
-
-        {/* Practical heads-up about what currently works best, kept with the
-            field it qualifies. */}
-        <p className="text-muted-foreground/80 mx-auto max-w-md text-center text-xs leading-relaxed text-balance">
-          Some features are limited or still in progress. YouTube gets
-          rate-limited from the cloud, so pasting an article or blog link works
-          best for now.
-        </p>
       </div>
 
       {/* A quiet nudge past the now-taller fold to "how it works". Soft drift,
