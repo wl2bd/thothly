@@ -509,6 +509,10 @@ def test_primary_language_parsing():
     assert _primary_language("  PT-BR ") == "pt"
     assert _primary_language(None) is None
     assert _primary_language("") is None
+    # A wildcard is not a language: YouTube rejects `lang=*` and the whole
+    # provider fails. Next's proxy sends this header verbatim.
+    assert _primary_language("*") is None
+    assert _primary_language("*;q=0.5") is None
 
 
 def test_search_all_passes_hl_to_providers(monkeypatch):

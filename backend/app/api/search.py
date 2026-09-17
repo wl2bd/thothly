@@ -25,9 +25,11 @@ async def search(
 
 def _primary_language(accept_language: str | None) -> str | None:
     """The base language code of the first Accept-Language entry, e.g.
-    "fr-FR,fr;q=0.9,en;q=0.8" -> "fr". None when the header is absent/empty."""
+    "fr-FR,fr;q=0.9,en;q=0.8" -> "fr". None when the header is absent, empty or
+    not a language — `*` is a valid header value but YouTube rejects it as a
+    `lang`, which fails the whole provider, so anything non-alphabetic is None."""
     if not accept_language:
         return None
     first = accept_language.split(",", 1)[0].split(";", 1)[0].strip()
     base = first.split("-", 1)[0].strip().lower()
-    return base or None
+    return base if base.isalpha() else None
