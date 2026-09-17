@@ -181,6 +181,18 @@ def run_compilation(job_id: str) -> None:
         )
 
 
+def _step(job_id: str, item_id: str, label: str) -> None:
+    """Name the stage an item is currently in, on the item itself.
+
+    A long item (a big transcript through several AI passes, an episode being
+    transcribed) can hold the list for minutes, and a bare spinner there reads
+    as a hang. `compile_note` already carries the per-item line to the screen
+    for skipped/failed, so the stage rides the same field rather than a new
+    column: a terminal state overwrites it on the way out.
+    """
+    set_item_compile_state(job_id, item_id, "compiling", label)
+
+
 def _youtube_chapter(
     item: DiscoveredItemResponse,
     job_id: str,
@@ -192,6 +204,7 @@ def _youtube_chapter(
     # Cache hit from discovery (full segments + chapters); falls back to a live
     # fetch only if the cache was never populated. A YouTubeUnavailable here
     # (e.g. a 429) propagates so run_compilation can report it clearly.
+    _step(job_id, item.id, "Reading the transcript")
     transcript = load_transcript(video_id)
     if transcript is None:
         raise ItemSkipped(NO_SUBTITLES)
@@ -202,6 +215,7 @@ def _youtube_chapter(
     # turning it on adds the Punctuation pass (and clean_transcript falls back to
     # a free sentence-split on captions that are already punctuated).
     if roles:
+        _step(job_id, item.id, "Polishing the text")
         content_md = clean_transcript(transcript, roles, model, llm)
     else:
         content_md = transcript_to_markdown(transcript)
@@ -230,6 +244,7 @@ def _podcast_chapter(
     # only for selected episodes. No STT endpoint, or a download/transcription
     # failure, leaves transcript None → the episode is skipped, like a video
     # without subtitles.
+    _step(job_id, item.id, "Transcribing the audio")
     transcript = load_episode_transcript(item.url, stt=stt)
     if transcript is None:
         raise ItemSkipped(NO_TRANSCRIPTION)
@@ -263,6 +278,7 @@ def _blog_chapter(
 ) -> CompiledChapter:
     author = None
     published_at = None
+    _step(job_id, item.id, "Fetching the article")
     try:
         article = scrape_article(item.url)
         content_html = article.content_html
@@ -278,6 +294,7 @@ def _blog_chapter(
         raise ItemSkipped(NO_CONTENT)
 
     if roles:
+        _step(job_id, item.id, "Polishing the text")
         content_md = clean_markdown(
             content_md, roles, model, content_key=item.url, endpoint=llm
         )

@@ -623,7 +623,12 @@ function CompileStep({
           <span className="text-muted-foreground/80">{note}</span>
         )}
       </span>
-      {active && <span className="text-muted-foreground shrink-0">building…</span>}
+      {/* While an item is running, its note carries the stage it's in — a long
+          transcript through the AI passes can hold the row for minutes, and a
+          bare "building…" there reads as a hang. */}
+      {active && (
+        <span className="text-muted-foreground shrink-0">{note || "building…"}</span>
+      )}
     </li>
   );
 }

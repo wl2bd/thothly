@@ -261,8 +261,15 @@ def _states(mock_state):
     argument is positional in every current call site, but if a future call ever
     passed `note=` instead, reading only `c.args[3]` would silently see None and
     the assertions below would keep passing while checking nothing.
+
+    Consecutive `compiling` writes for the same item collapse into one, with no
+    note: those are the progress stages (`_step`), which exist to keep a long
+    item from looking hung and say nothing about the outcome. What these tests
+    pin is the outcome sequence: every item enters compiling and reaches the
+    right terminal state with the right reason, so a new or reworded stage must
+    not break them. `test_progress_stages_are_written` covers the stages.
     """
-    return [
+    triples = [
         (
             c.args[1],
             c.args[2],
@@ -270,6 +277,14 @@ def _states(mock_state):
         )
         for c in mock_state.call_args_list
     ]
+    out: list[tuple[str, str, str | None]] = []
+    for item_id, state, note in triples:
+        if state == "compiling":
+            if out and out[-1][:2] == (item_id, "compiling"):
+                continue
+            note = None
+        out.append((item_id, state, note))
+    return out
 
 
 def _second_youtube_item() -> DiscoveredItemResponse:
@@ -314,6 +329,38 @@ def test_run_compilation_records_each_item_and_skips_without_stopping(
         ("j-0-1", "compiling", None),
         ("j-0-1", "done", None),
     ]
+
+
+@patch("app.jobs.runner.set_item_compile_state")
+@patch("app.jobs.runner.get_job")
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_progress_stages_are_written(
+    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
+    tmp_path, monkeypatch,
+):
+    """A running item names the stage it's in, so a slow one doesn't read as a
+    hang. The stage rides `compile_note`, and a terminal state clears it."""
+    import app.core.config as cfg
+    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+
+    mock_selected.return_value = [_youtube_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
+    mock_fetch.return_value = _transcript("abc123")
+
+    runner.run_compilation("job1")
+
+    notes = [
+        c.args[3]
+        for c in mock_state.call_args_list
+        if c.args[2] == "compiling" and len(c.args) > 3
+    ]
+    assert notes, "a running item should name its stage"
+    # Terminal write clears the stage rather than leaving the last one showing.
+    assert mock_state.call_args.args[2] == "done"
+    assert len(mock_state.call_args.args) == 3 or mock_state.call_args.args[3] is None
 
 
 @patch("app.jobs.runner.set_item_compile_state")
