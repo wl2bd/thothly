@@ -127,6 +127,9 @@ function DataAndFaq() {
   );
 }
 
+const footerLink =
+  "text-foreground hover:text-gold focus-visible:ring-ring rounded-sm font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none";
+
 function SiteFooter() {
   return (
     <footer className="border-t px-6 py-8">
@@ -138,9 +141,19 @@ function SiteFooter() {
             href="https://wael.work"
             target="_blank"
             rel="noreferrer"
-            className="text-foreground hover:text-gold focus-visible:ring-ring rounded-sm font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+            className={footerLink}
           >
             Wael
+          </a>
+          . Web search powered by{" "}
+          {/* Brave's free monthly API credit requires this attribution. */}
+          <a
+            href="https://brave.com/search/api/"
+            target="_blank"
+            rel="noreferrer"
+            className={footerLink}
+          >
+            Brave
           </a>
           .
         </span>
