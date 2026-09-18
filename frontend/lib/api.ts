@@ -201,7 +201,7 @@ export async function fetchLlmConfig(): Promise<LlmConfig> {
 
 // Most sources a compilation can hold — the backend enforces the same cap
 // (MAX_SOURCES_PER_JOB).
-export const MAX_SOURCES = 10;
+export const MAX_SOURCES = 5;
 
 export async function confirmJob(
   id: string,

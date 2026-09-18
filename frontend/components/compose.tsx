@@ -255,7 +255,7 @@ export function Compose({
     event.preventDefault();
     if (queryIsUrl) {
       if (staged.length >= MAX_SOURCES) {
-        setError(`Up to ${MAX_SOURCES} sources per compilation. Remove one to add another.`);
+        setError(SOURCES_FULL);
         return;
       }
       const url = normalizeUrl(trimmed);
@@ -489,6 +489,11 @@ export function Compose({
                 </Notice>
               );
             })()}
+
+          {/* Full: say why the remaining results can't be checked. */}
+          {showResultsPanel && staged.length >= MAX_SOURCES && (
+            <Notice variant="info">{SOURCES_FULL}</Notice>
+          )}
 
           {/* Chips and Sort share a row where there is room for one. On a phone
               the chips wrap to two or three lines and Sort, pinned right and
@@ -968,6 +973,8 @@ function SearchSourcesHint() {
     </p>
   );
 }
+
+const SOURCES_FULL = `${MAX_SOURCES} sources is the limit for one compilation. Remove one to add another.`;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

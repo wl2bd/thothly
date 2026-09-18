@@ -43,8 +43,8 @@ def test_create_job_empty_sources_returns_422(client: TestClient) -> None:
     assert resp.status_code == 422
 
 
-def test_create_job_over_ten_sources_returns_422(client: TestClient) -> None:
-    sources = [{"url": f"https://example.com/post-{i}"} for i in range(11)]
+def test_create_job_over_five_sources_returns_422(client: TestClient) -> None:
+    sources = [{"url": f"https://example.com/post-{i}"} for i in range(6)]
     resp = client.post("/jobs", json={"sources": sources})
     assert resp.status_code == 422
 
