@@ -68,7 +68,9 @@ interface StagedSource {
   author: string | null;
 }
 
-const SEARCH_DEBOUNCE_MS = 350;
+// Every settled query is a paid search (ScrapeCreators + triage), so wait for a
+// real pause in typing rather than every short hesitation.
+const SEARCH_DEBOUNCE_MS = 800;
 
 // The staging machine: search, pick, stage, compile. It used to live inside the
 // landing's hero, which made one component answer two different questions — how
