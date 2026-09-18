@@ -450,7 +450,7 @@ def test_brave_provider_raises_on_http_error(mock_get):
 
 # ── web backend selection (config-driven) ────────────────────────────────────
 
-# The factory wraps the chosen backend in a cache (see `_CachedWebProvider`), so
+# The factory wraps the chosen backend in a cache (see `_CachedProvider`), so
 # tests reach through `._inner` to assert which backend was selected.
 
 def test_web_backend_defaults_to_marginalia(monkeypatch):
@@ -487,7 +487,7 @@ def test_cached_web_provider_caches_and_skips_short_queries():
             calls["n"] += 1
             return [_result("web:1")]
 
-    cached = service._CachedWebProvider(_Counting())
+    cached = service._CachedProvider(_Counting())
 
     # Too short → skipped entirely, backend never called.
     assert cached.search("ab", 5) == []

@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     treg_token: str | None = None
     treg_base_url: str = "https://treg.to/call"
 
+    # Search triage: one small-model call per search judges every result
+    # (compilable? relevant? level, freshness) and re-orders the list. Any
+    # OpenAI-compatible endpoint with JSON-schema output; unset = untriaged.
+    search_triage_api_key: str | None = None
+    search_triage_base_url: str = "https://openrouter.ai/api/v1"
+    search_triage_model: str = "mistralai/mistral-small-24b-instruct-2501"
+
     # Preferred content language(s), highest priority first. Drives YouTube
     # metadata localization (title, chapters) and is a hint for transcript track
     # choice — though the track picker always prefers the video's ORIGINAL track

@@ -26,6 +26,8 @@ _OEMBED_WORKERS = 8
 _title_cache: dict[str, str] = {}
 _TITLE_CACHE_MAX = 2000
 
+_SCRAPECREATORS_TIMEOUT_S = 10.0
+
 
 class YouTubeProvider:
     """YouTube search via yt-dlp's `ytsearch`.
@@ -49,6 +51,12 @@ class YouTubeProvider:
         # `hl` only sets the FALLBACK title language (the caller's browser
         # language) for the rare result oEmbed can't resolve; the authoritative
         # title is the oEmbed original applied below.
+        # Paid search only feeds the triage (description + date); without it,
+        # the free yt-dlp search is just as good.
+        if settings.treg_token and settings.search_triage_api_key:
+            results = self._search_scrapecreators(query, limit)
+            self._apply_original_titles(results)
+            return results
         lang = [hl] if hl else settings.preferred_languages
         opts = {
             "extract_flat": True,  # metadata only, no per-video network calls
@@ -67,6 +75,44 @@ class YouTubeProvider:
         results = [self._to_result(e) for e in entries if e and e.get("id")]
         self._apply_original_titles(results)
         return results
+
+    def _search_scrapecreators(self, query: str, limit: int) -> list[SearchResult]:
+        """Paid path (see app/sources/scrapecreators.py): unlike the flat yt-dlp
+        search it returns each video's description and publish date, which the
+        triage needs to judge a video and its freshness."""
+        try:
+            response = httpx.get(
+                f"{settings.treg_base_url}/scrapecreators.x.v1-youtube-search",
+                params={"query": query, "type": "videos", "includeExtras": "true"},
+                headers={"X-Treg-Token": settings.treg_token or ""},
+                timeout=_SCRAPECREATORS_TIMEOUT_S,
+            )
+            response.raise_for_status()
+            videos = response.json().get("videos") or []
+        except (httpx.HTTPError, ValueError) as exc:
+            raise RuntimeError(f"YouTube search failed: {exc}") from exc
+        results = []
+        for v in videos:
+            if not v.get("id"):
+                continue
+            channel = v.get("channel") or {}
+            results.append(SearchResult(
+                id=f"youtube:{v['id']}",
+                type="video",
+                title=v.get("title") or "Untitled",
+                url=f"https://www.youtube.com/watch?v={v['id']}",
+                thumbnail=f"https://i.ytimg.com/vi/{v['id']}/hqdefault.jpg",
+                duration_s=v.get("lengthSeconds"),
+                author=channel.get("title"),
+                source="youtube",
+                meta={
+                    "channel_url": f"https://www.youtube.com/channel/{channel['id']}" if channel.get("id") else None,
+                    "view_count": v.get("viewCountInt"),
+                    "snippet": (v.get("description") or "")[:500] or None,
+                    "published_at": v.get("publishDate") or v.get("publishedTime"),
+                },
+            ))
+        return results[:limit]
 
     def _apply_original_titles(self, results: list[SearchResult]) -> None:
         """Overwrite each result's flat (auto-translatable) title with the video's

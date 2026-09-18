@@ -67,7 +67,8 @@ class BraveProvider:
             title=_strip_tags(entry.get("title")) or url,
             url=url,
             source="web",
-            meta={"snippet": description} if description else {},
+            # page_age (ISO) feeds the triage's freshness criterion.
+            meta={k: v for k, v in (("snippet", description), ("published_at", entry.get("page_age"))) if v},
         )
 
 

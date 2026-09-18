@@ -10,14 +10,15 @@ from app.search.brave_provider import BraveProvider
 from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import ProviderError, SearchResponse, SearchResult
 from app.search.podcast_provider import PodcastProvider
+from app.search.triage import triage, triage_enabled
 from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider
 
 logger = logging.getLogger(__name__)
 
 
-class _CachedWebProvider:
-    """Wraps the web backend with a short TTL cache and a min-length skip.
+class _CachedProvider:
+    """Wraps a metered backend (web, paid YouTube) with a short TTL cache and a min-length skip.
 
     The home bar fires a search per keystroke, so without this every prefix of a
     query ("o", "op", "ope"…) and every re-search hits the backend. yt-dlp and
@@ -29,13 +30,13 @@ class _CachedWebProvider:
     error, never a fake empty result.
     """
 
-    name = "web"
     _MIN_QUERY_LEN = 3
     _TTL_S = 300.0
     _MAX_ENTRIES = 256
 
     def __init__(self, inner: Provider):
         self._inner = inner
+        self.name = inner.name
         self._cache: dict[str, tuple[float, list[SearchResult]]] = {}
 
     def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
@@ -62,7 +63,7 @@ class _CachedWebProvider:
 
 def _build_web_provider() -> Provider:
     """Pick the web-article backend from config (see Settings.web_search_backend),
-    wrapped in a per-keystroke cache (see `_CachedWebProvider`).
+    wrapped in a per-keystroke cache (see `_CachedProvider`).
 
     All backends emit `web` results, so the rest of the app is backend-agnostic.
     Selecting "brave" without a key falls back to Marginalia rather than silently
@@ -71,23 +72,30 @@ def _build_web_provider() -> Provider:
     backend = (settings.web_search_backend or "marginalia").strip().lower()
     if backend == "brave":
         if settings.brave_api_key:
-            return _CachedWebProvider(BraveProvider())
+            return _CachedProvider(BraveProvider())
         logger.warning(
             "web_search_backend=brave but BRAVE_API_KEY is unset — "
             "falling back to Marginalia."
         )
-        return _CachedWebProvider(MarginaliaProvider())
+        return _CachedProvider(MarginaliaProvider())
     if backend == "ddg":
-        return _CachedWebProvider(WebProvider())
+        return _CachedProvider(WebProvider())
     if backend != "marginalia":
         logger.warning("Unknown web_search_backend=%r — using Marginalia.", backend)
-    return _CachedWebProvider(MarginaliaProvider())
+    return _CachedProvider(MarginaliaProvider())
 
 
 # The provider registry. Adding a source kind = add one class here; the service,
 # endpoint, and frontend stay untouched. The web slot is pluggable (see
 # `_build_web_provider`); YouTube and podcasts have a single backend each.
-PROVIDERS: list[Provider] = [YouTubeProvider(), _build_web_provider(), PodcastProvider()]
+# YouTube is cached too when it's the paid ScrapeCreators search (see YouTubeProvider).
+PROVIDERS: list[Provider] = [
+    _CachedProvider(YouTubeProvider())
+    if settings.treg_token and settings.search_triage_api_key
+    else YouTubeProvider(),
+    _build_web_provider(),
+    PodcastProvider(),
+]
 
 # Per-provider wall-clock budget: a slow or hung provider must never hold up the
 # results the others already produced, so each is capped independently.
@@ -137,7 +145,10 @@ async def search_all(
         if error is not None:
             errors.append(ProviderError(provider=name, message=error))
 
-    return SearchResponse(results=_rank(ranked_inputs, query), errors=errors)
+    results = _rank(ranked_inputs, query)
+    if triage_enabled():
+        results = await loop.run_in_executor(None, triage, query, results)
+    return SearchResponse(results=results, errors=errors)
 
 
 def _rank(
