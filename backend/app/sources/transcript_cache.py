@@ -14,7 +14,9 @@ the video had no subtitles.
 import json
 from datetime import datetime, timezone
 
+from app.core.config import settings
 from app.core.database import get_connection
+from app.sources import scrapecreators
 from app.sources.models import Chapter, Transcript, TranscriptSegment
 from app.sources.youtube import fetch_transcript
 
@@ -26,7 +28,8 @@ def load_transcript(
     if cached is not None:
         return cached
 
-    transcript = fetch_transcript(video_id, languages)
+    fetch = scrapecreators.fetch_transcript if settings.treg_token else fetch_transcript
+    transcript = fetch(video_id, languages)
     if transcript is not None:
         _store(transcript)
     return transcript

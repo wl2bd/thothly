@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     brave_api_key: str | None = None
     brave_base_url: str = "https://api.search.brave.com/res/v1/web/search"
 
+    # treg token (https://treg.to). When set, YouTube transcripts come from
+    # ScrapeCreators through treg instead of yt-dlp, which YouTube IP-blocks from
+    # datacenter hosts. Use a capped agent token (`treg org agent-new`), not a
+    # personal one.
+    treg_token: str | None = None
+    treg_base_url: str = "https://treg.to/call"
+
     # Preferred content language(s), highest priority first. Drives YouTube
     # metadata localization (title, chapters) and is a hint for transcript track
     # choice — though the track picker always prefers the video's ORIGINAL track

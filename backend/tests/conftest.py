@@ -12,6 +12,7 @@ def _hermetic_external_services(monkeypatch):
     for attr in (
         "stt_base_url", "stt_api_key", "stt_model",
         "llm_base_url", "llm_api_key", "llm_model",
+        "treg_token",
     ):
         monkeypatch.setattr(cfg.settings, attr, None)
 
