@@ -32,6 +32,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import {
   createJob,
+  MAX_SOURCES,
   search,
   type ProviderError,
   type ResultType,
@@ -208,7 +209,9 @@ export function Compose({
     setStaged((prev) =>
       prev.some((s) => s.url === r.url)
         ? prev.filter((s) => s.url !== r.url)
-        : [
+        : prev.length >= MAX_SOURCES
+          ? prev
+          : [
             ...prev,
             {
               url: r.url,
@@ -240,7 +243,7 @@ export function Compose({
           seen.add(s.url);
         }
       }
-      return merged;
+      return merged.slice(0, MAX_SOURCES);
     });
   }
 
@@ -251,6 +254,10 @@ export function Compose({
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (queryIsUrl) {
+      if (staged.length >= MAX_SOURCES) {
+        setError(`Up to ${MAX_SOURCES} sources per compilation. Remove one to add another.`);
+        return;
+      }
       const url = normalizeUrl(trimmed);
       stageSources([
         {
@@ -508,6 +515,7 @@ export function Compose({
               query={trimmed}
               results={visibleResults}
               stagedUrls={stagedUrls}
+              full={staged.length >= MAX_SOURCES}
               onToggle={toggleResultStaged}
               onPointerPick={() => (pickedByPointer.current = true)}
             />
@@ -520,7 +528,7 @@ export function Compose({
             <>
               <div className="flex shrink-0 items-center justify-between gap-3">
                 <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  Sources · {staged.length}
+                  Sources · {staged.length}/{MAX_SOURCES}
                 </h2>
                 <button
                   type="button"
@@ -675,6 +683,8 @@ interface SearchResultsProps {
   query: string;
   results: SearchResult[];
   stagedUrls: Set<string>;
+  // The compilation holds MAX_SOURCES already: unpicked rows can't be checked.
+  full: boolean;
   onToggle: (result: SearchResult) => void;
   // Fired on a pointer press of a row, so the parent can tell a click pick from
   // a keyboard pick and only return focus to the bar for the former.
@@ -687,6 +697,7 @@ function SearchResults({
   query,
   results,
   stagedUrls,
+  full,
   onToggle,
   onPointerPick,
 }: SearchResultsProps) {
@@ -780,7 +791,11 @@ function SearchResults({
                 checked ? "bg-foreground/[0.06]" : "hover:bg-foreground/5",
               )}
             >
-              <Checkbox checked={checked} onCheckedChange={() => onToggle(r)} />
+              <Checkbox
+                checked={checked}
+                disabled={full && !checked}
+                onCheckedChange={() => onToggle(r)}
+              />
               <SourceMedia
                 kind={kind}
                 thumbnail={r.thumbnail}

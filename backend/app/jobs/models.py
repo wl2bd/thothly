@@ -49,8 +49,8 @@ class Source(BaseModel):
 # A single job fans out to one background worker that processes every source
 # sequentially, and each source can enumerate up to `max_items_per_source`
 # items — so an unbounded source count is an easy resource-exhaustion vector.
-# 25 sources is already far more than a readable compilation needs.
-MAX_SOURCES_PER_JOB = 25
+# The frontend states and enforces the same number (MAX_SOURCES).
+MAX_SOURCES_PER_JOB = 10
 
 
 class JobCreate(BaseModel):
