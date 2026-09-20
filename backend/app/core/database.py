@@ -86,6 +86,10 @@ def init_db() -> None:
 _JOB_ADDED_COLUMNS = (
     ("llm_roles", "TEXT"),  # JSON list of selected LLM role ids for the compile
     ("output_md_path", "TEXT"),  # native zero-LLM Markdown companion (for AIs)
+    # Which model actually wrote this book, as "provider/model" — never the key.
+    # Without it a compilation can be measured but not attributed, and comparing
+    # two models on the same source is the point of measuring at all.
+    ("llm_model", "TEXT"),
 )
 
 _DISCOVERED_ITEM_ADDED_COLUMNS = (

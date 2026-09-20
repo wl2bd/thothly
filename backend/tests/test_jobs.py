@@ -362,3 +362,36 @@ def test_confirm_items_clears_the_previous_compile_outcome(client: TestClient) -
     dropped = repository.get_discovered_item(job.id, "item-0")
     assert dropped.compile_state is None
     assert dropped.compile_note is None
+
+
+@patch("app.jobs.router.run_compilation")
+@patch("app.jobs.router.run_discovery")
+def test_confirm_attributes_the_compile_to_the_model_that_runs_it(
+    mock_discovery, mock_compilation, client: TestClient, monkeypatch
+) -> None:
+    """Attribution is the point of the column: a visitor's model is credited by
+    name, the server's own when they brought none, and nothing at all on a free
+    compile — a book no model touched must not be filed under one."""
+    import app.core.config as cfg
+    from app.pipeline.roles import PUNCTUATE
+
+    monkeypatch.setattr(cfg.settings, "llm_model", "server/house-model")
+
+    def confirm(tag: str, **extra) -> str:
+        job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+        repository.save_discovered_items(job_id, [DiscoveredItemResponse(
+            id=tag, source_index=0, item_index=0, item_type="youtube",
+            title="A video", url="https://www.youtube.com/watch?v=abc123",
+        )])
+        repository.update_job_status(job_id, "reviewing", book_title="B")
+        client.post(f"/jobs/{job_id}/confirm", json={"selected_ids": [tag], **extra})
+        return job_id
+
+    visitor = confirm("v", llm_roles=[PUNCTUATE],
+                      llm={"provider": "mistral", "model": "mistral-small", "api_key": "k"})
+    house = confirm("h", llm_roles=[PUNCTUATE])
+    free = confirm("f", llm_roles=[])
+
+    assert repository.get_job_llm_model(visitor) == "mistral/mistral-small"
+    assert repository.get_job_llm_model(house) == "server/house-model"
+    assert repository.get_job_llm_model(free) is None

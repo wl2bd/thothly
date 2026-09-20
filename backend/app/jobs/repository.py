@@ -198,6 +198,25 @@ def set_job_llm_roles(job_id: str, roles: list[str]) -> None:
         conn.commit()
 
 
+def set_job_llm_model(job_id: str, model: str | None) -> None:
+    """Record which model ran this compile, for attribution later.
+
+    The model id only ("openrouter/deepseek-chat"), never the key: this column
+    is read by the audit and is not a secret store.
+    """
+    with get_connection() as conn:
+        conn.execute("UPDATE jobs SET llm_model = ? WHERE id = ?", (model, job_id))
+        conn.commit()
+
+
+def get_job_llm_model(job_id: str) -> str | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT llm_model FROM jobs WHERE id = ?", (job_id,)
+        ).fetchone()
+    return row["llm_model"] if row else None
+
+
 def get_job_llm_roles(job_id: str) -> list[str]:
     with get_connection() as conn:
         row = conn.execute(

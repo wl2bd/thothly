@@ -11,27 +11,48 @@ measurably off. Chapters with no flag need no attention. No model is called.
 
 import sys
 
-from app.jobs.repository import get_job, get_selected_items
+from app.core.database import init_db
+from app.jobs.repository import get_job, get_job_llm_model, get_selected_items
 # The runner's own id extractor, so the audit reads the same cache entry the
 # compile wrote rather than a second, subtly different parse.
 from app.jobs.runner import _extract_video_id
 from app.pipeline.audit import audit_chapter, split_chapters
-from app.pipeline.compiler import transcript_to_markdown
+from app.pipeline.compiler import (
+    demote_headings,
+    html_to_markdown,
+    strip_leading_title,
+    transcript_to_markdown,
+)
 from app.pipeline.titles import normalize_title
+from app.sources.blog import ScrapeUnavailable, scrape_article
+from app.sources.podcast import load_episode_transcript
 from app.sources.transcript_cache import load_transcript
 
 
 def _source_markdown(item) -> str | None:
-    """The chapter as it would read with AI polish off — mirroring exactly what
-    `_youtube_chapter` does on the free path. Only YouTube items can be
-    reconstructed for free: a podcast's source is a paid transcription and a
-    blog's is a live re-scrape, so neither is re-fetched here."""
-    if item.item_type != "youtube":
+    """The chapter as it would read with AI polish off, mirroring each of the
+    runner's free paths.
+
+    Nothing metered runs here: a video's captions and an episode's transcription
+    are both cached from the compile (the transcription was paid for once), and
+    `load_episode_transcript` is called with no STT endpoint so a cache miss
+    returns None rather than quietly buying a second transcription. An article
+    is re-scraped, which costs only a request.
+    """
+    if item.item_type == "youtube":
+        transcript = load_transcript(_extract_video_id(item.url))
+        return transcript_to_markdown(transcript) if transcript else None
+
+    if item.item_type == "podcast":
+        transcript = load_episode_transcript(item.url, stt=None)
+        return transcript_to_markdown(transcript) if transcript else None
+
+    try:
+        content_html = scrape_article(item.url).content_html
+    except ScrapeUnavailable:
         return None
-    transcript = load_transcript(_extract_video_id(item.url))
-    if transcript is None:
-        return None
-    return transcript_to_markdown(transcript)
+    md = html_to_markdown(content_html)
+    return demote_headings(strip_leading_title(md, item.title)) or None
 
 
 def main(argv: list[str]) -> int:
@@ -39,6 +60,10 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 0
     job_id, full = argv[0], "--full" in argv
+
+    # Same idempotent migration the app runs at startup, so the audit works on a
+    # database the current backend hasn't opened yet.
+    init_db()
 
     job = get_job(job_id)
     if job is None:
@@ -62,7 +87,12 @@ def main(argv: list[str]) -> int:
             continue
         audits.append(audit_chapter(item.title, source, body))
 
-    print(f"\n{job.book_title}  ({len(audits)} chapter(s) measured)\n")
+    # The model is the subject of the test, not a footnote: these numbers only
+    # mean something attached to what produced them.
+    model = get_job_llm_model(job_id)
+    print(f"\n{job.book_title}")
+    print(f"model: {model or 'none — compiled on the free path'}")
+    print(f"{len(audits)} chapter(s) measured\n")
     flagged = [a for a in audits if not a.clean]
     for a in audits:
         if a.clean and not full:

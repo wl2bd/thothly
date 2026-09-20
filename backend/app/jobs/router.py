@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import FileResponse
 
+from app.core.config import settings
 from app.jobs import credentials, repository
 from app.jobs.models import (
     ItemPreview,
@@ -73,6 +74,17 @@ def confirm_job(
     # actually configured (otherwise they are ignored — the free path).
     valid_roles = [r for r in payload.llm_roles if get_role(r) is not None]
     repository.set_job_llm_roles(job_id, valid_roles)
+
+    # Attribute the compile to the model that will run it — the visitor's when
+    # they brought one, otherwise the server's own. Recorded only when a role is
+    # actually engaged, so a free compile isn't credited to a model that never
+    # saw it. The id alone; the key stays in the credentials store.
+    repository.set_job_llm_model(
+        job_id,
+        (f"{payload.llm.provider}/{payload.llm.model}" if payload.llm else settings.llm_model)
+        if valid_roles
+        else None,
+    )
 
     # A blank title keeps the discovery-derived default (book_title=None leaves
     # the stored value untouched).
