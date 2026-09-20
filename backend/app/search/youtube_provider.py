@@ -7,6 +7,7 @@ from yt_dlp.utils import YoutubeDLError
 
 from app.core.config import settings
 from app.search.models import SearchResult
+from app.search.triage import triage_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class YouTubeProvider:
         # title is the oEmbed original applied below.
         # Paid search only feeds the triage (description + date); without it,
         # the free yt-dlp search is just as good.
-        if settings.treg_token and settings.search_triage_api_key:
+        if settings.treg_token and triage_enabled():
             results = self._search_scrapecreators(query, limit)
             self._apply_original_titles(results)
             return results

@@ -91,7 +91,7 @@ def _build_web_provider() -> Provider:
 # YouTube is cached too when it's the paid ScrapeCreators search (see YouTubeProvider).
 PROVIDERS: list[Provider] = [
     _CachedProvider(YouTubeProvider())
-    if settings.treg_token and settings.search_triage_api_key
+    if settings.treg_token and triage_enabled()
     else YouTubeProvider(),
     _build_web_provider(),
     PodcastProvider(),

@@ -632,3 +632,20 @@ def test_search_endpoint_surfaces_partial_error(client: TestClient, monkeypatch)
 
     assert len(body["results"]) == 1
     assert [e["provider"] for e in body["errors"]] == ["podcast"]
+
+
+def test_paid_youtube_search_follows_the_triage_whichever_backend_answers(monkeypatch):
+    """The ScrapeCreators search exists to feed the triage descriptions and
+    dates. It must switch on with the triage itself, not with one backend's key:
+    a TypeSafe-only setup used to get the triage AND the blind yt-dlp search."""
+    import app.core.config as cfg
+    from app.search.youtube_provider import YouTubeProvider
+
+    monkeypatch.setattr(cfg.settings, "treg_token", "t")
+    provider = YouTubeProvider()
+    with patch.object(provider, "_search_scrapecreators", return_value=[]) as paid, \
+         patch.object(provider, "_apply_original_titles"):
+        monkeypatch.setattr(cfg.settings, "typesafe_api_key", "k")
+        monkeypatch.setattr(cfg.settings, "search_triage_api_key", None)
+        provider.search("q", 5)
+    assert paid.called
