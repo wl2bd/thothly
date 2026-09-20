@@ -1,4 +1,6 @@
-from unittest.mock import patch
+import sys
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from app.search.models import SearchResult
 from app.search.triage import _Verdict, rank, triage
@@ -49,3 +51,61 @@ def test_failure_returns_results_untouched():
     results = [_r(0), _r(1)]
     with patch("app.search.triage._ask", side_effect=RuntimeError("boom")):
         assert triage("q", results) == results
+
+
+def test_fractional_relevance_drops_below_half_and_sorts_finely():
+    """TypeSafe scores a spectrum, not a rung: 0.4 is off-topic, 0.6 is not, and
+    two results a tenth apart still sort in the right order."""
+    results = [_r(0), _r(1), _r(2)]
+    verdict = _v([_j(0, relevance=2.3), _j(1, relevance=0.4), _j(2, relevance=2.4)])
+    assert [r.id for r in rank(results, verdict)] == ["x:2", "x:0"]
+
+
+def test_typesafe_reads_one_batched_answer_per_result():
+    """The whole point of the batched call: one response carries every result's
+    judgments under indexed keys, and a probability over a half is a yes."""
+    from app.search import triage as t
+
+    answers = SimpleNamespace(
+        nouls={"compilable_0": SimpleNamespace(noul=0.93), "compilable_1": SimpleNamespace(noul=0.07)},
+        scores={"relevance_0": SimpleNamespace(score=2.85), "relevance_1": SimpleNamespace(score=0.02)},
+        choices={
+            "freshness": SimpleNamespace(choice="any"),
+            "wanted_level": SimpleNamespace(choice="expert"),
+            "format_0": SimpleNamespace(choice="lecture"),
+            "level_0": SimpleNamespace(choice="expert"),
+            "format_1": SimpleNamespace(choice="other"),
+            "level_1": SimpleNamespace(choice="intro"),
+        },
+    )
+    client = MagicMock()
+    client.__enter__.return_value.system_one.return_value = answers
+    with patch.dict(sys.modules, {"typesafe_sdk": MagicMock(TypeSafeClient=MagicMock(return_value=client))}):
+        verdict = t._ask_typesafe("q", [_r(0), _r(1)])
+
+    assert verdict.level == "expert"
+    assert [(j.i, j.compilable, j.relevance) for j in verdict.results] == [(0, True, 2.85), (1, False, 0.02)]
+
+
+def test_typesafe_skips_a_result_the_model_left_unanswered():
+    """A missing key must not shift the others onto the wrong result: the gap is
+    skipped and `rank` keeps that result in its original place."""
+    from app.search import triage as t
+
+    answers = SimpleNamespace(
+        nouls={"compilable_1": SimpleNamespace(noul=0.9)},
+        scores={"relevance_1": SimpleNamespace(score=3.0)},
+        choices={
+            "freshness": SimpleNamespace(choice="any"),
+            "wanted_level": SimpleNamespace(choice="any"),
+            "format_1": SimpleNamespace(choice="article"),
+            "level_1": SimpleNamespace(choice="intro"),
+        },
+    )
+    client = MagicMock()
+    client.__enter__.return_value.system_one.return_value = answers
+    with patch.dict(sys.modules, {"typesafe_sdk": MagicMock(TypeSafeClient=MagicMock(return_value=client))}):
+        verdict = t._ask_typesafe("q", [_r(0), _r(1)])
+
+    assert [j.i for j in verdict.results] == [1]
+    assert [r.id for r in rank([_r(0), _r(1)], verdict)] == ["x:1", "x:0"]

@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     search_triage_base_url: str = "https://openrouter.ai/api/v1"
     search_triage_model: str = "mistralai/mistral-small-24b-instruct-2501"
 
+    # TypeSafe System One answers closed questions directly and returns a
+    # probability per answer, instead of writing JSON a word at a time — which
+    # is where a chat model spends its seconds on this task. Set this key and it
+    # takes over the triage; the OpenAI-compatible settings above stay usable so
+    # the two can be compared on the same search.
+    typesafe_api_key: str | None = None
+    typesafe_base_url: str = "https://api.typesafe.ai"
+    typesafe_model: str = "jev-latest"
+
     # Preferred content language(s), highest priority first. Drives YouTube
     # metadata localization (title, chapters) and is a hint for transcript track
     # choice — though the track picker always prefers the video's ORIGINAL track
