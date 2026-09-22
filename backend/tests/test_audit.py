@@ -88,3 +88,19 @@ def test_split_chapters_drops_front_matter():
     assert set(chapters) == {"Chapitre un", "Chapitre deux"}
     assert "## Section" in chapters["Chapitre un"]
     assert chapters["Chapitre deux"] == "Corps deux."
+
+
+def test_the_judge_sees_each_edited_passage_next_to_its_own_source():
+    from app.pipeline.audit_judge import _passages
+
+    source = "one two three four five six seven\n\neight nine ten eleven twelve"
+    edited = (
+        "::: {.source-attribution}\n*Source: x*\n:::\n\n## A heading\n\n"
+        "One, two, three, four.\n\nEleven twelve.\n\nEntirely new words here."
+    )
+    passages = _passages(source, edited)
+    # Chrome (source block, heading) is skipped; an invented paragraph has no source.
+    assert [p for p, _ in passages] == ["One, two, three, four.", "Eleven twelve.", "Entirely new words here."]
+    assert "one two three four" in passages[0][1]
+    assert "eleven twelve" in passages[1][1]
+    assert passages[2][1] is None

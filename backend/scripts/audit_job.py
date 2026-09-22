@@ -1,22 +1,28 @@
 """Score a finished compilation against its sources, so you don't have to read it.
 
-    uv run python scripts/audit_job.py <job-id> [--full]
+    uv run python scripts/audit_job.py <job-id> [--full] [--judge]
 
 Each chapter is compared with the zero-LLM rendering of the same source — what
 would have shipped with AI polish off — and flagged only when something is
 measurably off. Chapters with no flag need no attention. No model is called.
 
 `--full` prints every chapter, including the clean ones.
+
+`--judge` has TypeSafe re-read the chapters the mechanical checks call clean,
+passage by passage, for content the polish invented or meaning it changed.
+It is the one step that calls a model (fractions of a cent per chapter).
 """
 
 import sys
 
+from app.core.config import settings
 from app.core.database import init_db
 from app.jobs.repository import get_job, get_job_llm_model, get_selected_items
 # The runner's own id extractor, so the audit reads the same cache entry the
 # compile wrote rather than a second, subtly different parse.
 from app.jobs.runner import _extract_video_id
 from app.pipeline.audit import audit_chapter, split_chapters
+from app.pipeline.audit_judge import judge_chapter
 from app.pipeline.compiler import (
     demote_headings,
     html_to_markdown,
@@ -59,7 +65,7 @@ def main(argv: list[str]) -> int:
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
         return 0
-    job_id, full = argv[0], "--full" in argv
+    job_id, full, judge = argv[0], "--full" in argv, "--judge" in argv
 
     # Same idempotent migration the app runs at startup, so the audit works on a
     # database the current backend hasn't opened yet.
@@ -85,11 +91,23 @@ def main(argv: list[str]) -> int:
         if body is None or source is None:
             unmeasured.append(item.title)
             continue
-        audits.append(audit_chapter(item.title, source, body))
+        audits.append((audit_chapter(item.title, source, body), source, body))
 
     # The model is the subject of the test, not a footnote: these numbers only
     # mean something attached to what produced them.
     model = get_job_llm_model(job_id)
+    if judge:
+        if not settings.typesafe_api_key:
+            print("--judge needs TYPESAFE_API_KEY")
+            return 1
+        if model == settings.typesafe_model:
+            # A judge grading its own work measures the judge, not the book.
+            print(f"The book was compiled by the judge model ({model}); pick another judge.")
+            return 1
+        for a, source, body in audits:
+            if a.clean:
+                a.flags += judge_chapter(source, body)
+    audits = [a for a, _, _ in audits]
     print(f"\n{job.book_title}")
     print(f"model: {model or 'none — compiled on the free path'}")
     print(f"{len(audits)} chapter(s) measured\n")
@@ -115,7 +133,8 @@ def main(argv: list[str]) -> int:
     print(
         f"{len(flagged)} of {len(audits)} chapter(s) worth a look."
         if flagged
-        else "Nothing flagged. The compilation is faithful on every mechanical check."
+        else "Nothing flagged. The compilation is faithful on every mechanical check"
+        + (" and to the judge." if judge else ".")
     )
     return 0
 
