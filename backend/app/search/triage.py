@@ -20,6 +20,7 @@ Two backends answer those questions, behind one `_Verdict`:
   whole list in a single call. Kept so the two can be compared on one search.
 """
 
+import json
 import logging
 import time
 from datetime import datetime, timezone
@@ -34,9 +35,12 @@ from app.search.models import SearchResult
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_S = 8.0
-# Below this, a result is off-topic and dropped. Integer relevance 0 falls under
-# it and 1 clears it, so the OpenAI path keeps the behaviour it always had.
-_MIN_RELEVANCE = 0.5
+# Below this, a result is off-topic and dropped: "loosely related" is the floor.
+# At 0.5, TypeSafe let self-help podcasts through on "how do transformers work"
+# (scored 1-2 for sharing "transform" and "work"); measured on four searches,
+# 1.0 halves them. Integer relevance 0 falls under it and 1 clears it, so the
+# OpenAI path keeps the behaviour it always had.
+_MIN_RELEVANCE = 1.0
 _SNIPPET_CHARS = 240
 _LEVELS = ["intro", "intermediate", "expert"]
 
@@ -240,7 +244,7 @@ def _ask_openai(query: str, results: list[SearchResult]) -> _Verdict:
     endpoint = Endpoint(
         settings.search_triage_base_url, settings.search_triage_model, settings.search_triage_api_key
     )
-    lines = "\n".join(f"[{i}] {_describe(r)}" for i, r in enumerate(results))
+    lines = "\n".join(f"[{i}] {json.dumps(_describe(r), ensure_ascii=False)}" for i, r in enumerate(results))
     response = _client(endpoint, _TIMEOUT_S, max_retries=0).chat.completions.create(
         model=endpoint.model,
         temperature=0,
@@ -256,19 +260,24 @@ def _ask_openai(query: str, results: list[SearchResult]) -> _Verdict:
     return _Verdict.model_validate_json(response.choices[0].message.content or "")
 
 
-def _describe(r: SearchResult) -> str:
-    parts = [r.type, r.title]
+def _describe(r: SearchResult) -> dict:
+    """Named fields, not one joined line: titles and show names carry their own
+    "|", and a flat line let the judge read a show name as part of the title.
+    Measured on four searches, this alone halved the off-topic results kept."""
+    d: dict = {"kind": r.type, "title": r.title}
     if r.author:
-        parts.append(f"by {r.author}")
+        d["channel_or_show"] = r.author
+    if r.meta.get("genre"):
+        d["genre"] = r.meta["genre"]
     if r.duration_s:
-        parts.append(f"{round(r.duration_s / 60)} min")
+        d["minutes"] = round(r.duration_s / 60)
     date = _published(r)
     if date:
-        parts.append(date.date().isoformat())
+        d["date"] = date.date().isoformat()
     snippet = (r.meta.get("snippet") or "").replace("\n", " ").strip()
     if snippet:
-        parts.append(f"— {snippet[:_SNIPPET_CHARS]}")
-    return " | ".join(parts)
+        d["description"] = snippet[:_SNIPPET_CHARS]
+    return d
 
 
 def rank(results: list[SearchResult], verdict: _Verdict) -> list[SearchResult]:
