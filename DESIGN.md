@@ -192,7 +192,7 @@ just brighter on the night ground (no per-mode color inversion).
 
 > **TYPE SHIFT — 2026-06-24 (factual note; fuller reconciliation pending).** The
 > display face changed from the geometric **CMGeom** to **Prociono** (a roman/
-> serif, OFL, self-hosted) — Wael's call — and the hero glyph-rain Latin letters
+> serif, OFL, self-hosted) — a deliberate choice — and the hero glyph-rain Latin letters
 > changed from Literata to **Noto Serif Display Thin (100)**, a hairline. So the
 > type voice now leans **editorial/literary**, not the "geometric, deliberately
 > not editorial" stance described below. The body text and the Display/Edition
