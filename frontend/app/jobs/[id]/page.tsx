@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   Check,
+  ChevronDown,
   Coins,
   Copy,
   Download,
@@ -925,6 +926,12 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
         )}
       </div>
 
+      {md && (
+        <div className={cn(rise, riseIn)} style={at(1300)}>
+          <BookReader md={md} />
+        </div>
+      )}
+
       {tokens != null && tokens > 200000 && (
         <p
           className={cn("text-muted-foreground text-xs", rise, riseIn)}
@@ -935,6 +942,89 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
       )}
     </div>
   );
+}
+
+// The whole compilation, readable right here, to check it before it goes to an
+// e-reader or an AI. One chapter at a time: the heaviest book (every source at
+// its cap) is tens of thousands of words, and one chapter renders instantly
+// where the whole book would not. Native <details>, closed by default: the
+// downloads stay the headline of this screen.
+function BookReader({ md }: { md: string }) {
+  const chapters = useMemo(() => splitBook(md), [md]);
+  const [at, setAt] = useState(0);
+  const topRef = useRef<HTMLDivElement>(null);
+  if (!chapters.length) return null;
+  const chapter = chapters[Math.min(at, chapters.length - 1)];
+  function go(i: number) {
+    setAt(i);
+    topRef.current?.scrollIntoView({ block: "start" });
+  }
+  return (
+    <details className="group border-t pt-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        Read it here
+        <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <div ref={topRef} className="mt-4 flex scroll-mt-4 flex-col gap-4">
+        <select
+          aria-label="Chapter"
+          value={at}
+          onChange={(e) => go(Number(e.target.value))}
+          className="border-input bg-background h-11 w-full rounded-md border px-3 text-sm"
+        >
+          {chapters.map((c, i) => (
+            <option key={i} value={i}>
+              {c.title} ({countWords(c.body).toLocaleString("en-US")} words)
+            </option>
+          ))}
+        </select>
+        <article className="flex flex-col gap-3">
+          <h2 className="font-display text-xl tracking-tight text-balance">{chapter.title}</h2>
+          <MarkdownPreview md={chapter.body} />
+        </article>
+        {chapters.length > 1 && (
+          <div className="flex justify-between gap-2">
+            <Button type="button" variant="secondary" disabled={at === 0} onClick={() => go(at - 1)}>
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={at >= chapters.length - 1}
+              onClick={() => go(at + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+// The book's Markdown as {title, body} per H1, the way the backend's
+// `split_chapters` reads it. The "Sources" index is navigation, not reading;
+// the source-attribution block (`:::`) is the compiler's, not the text.
+function splitBook(md: string): { title: string; body: string }[] {
+  const out: { title: string; body: string[] }[] = [];
+  let fenced = false;
+  // A book written on Windows comes back with CRLF; a stray "\r" defeats every
+  // "$"-anchored pattern downstream.
+  for (const line of md.replace(/\r\n?/g, "\n").split("\n")) {
+    const h1 = /^#\s+(.*)/.exec(line);
+    if (h1) {
+      out.push({ title: h1[1].trim(), body: [] });
+      continue;
+    }
+    if (line.trim().startsWith(":::")) {
+      fenced = !fenced;
+      continue;
+    }
+    if (!fenced) out[out.length - 1]?.body.push(line);
+  }
+  return out
+    .filter((c) => c.title !== "Sources")
+    .map((c) => ({ title: c.title, body: c.body.join("\n").trim() }));
 }
 
 // What the user picked and didn't get. It sits above the downloads, not below:
@@ -1796,10 +1886,19 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
 // emits (## headings, **bold** speaker labels, bullet lists, links). Avoids
 // pulling in a Markdown dependency for what is just a read-only preview.
 function MarkdownPreview({ md }: { md: string }) {
-  const blocks = md.split(/\n{2,}/).filter((b) => b.trim());
+  // A heading line is its own block even with no blank line around it: the
+  // "sections" pass often writes "## Title\nFirst sentence…".
+  const blocks = md
+    .split(/\n{2,}|\n(?=#{1,6}\s)|(?<=^#{1,6}\s[^\n]*)\n/m)
+    .filter((b) => b.trim());
   return (
     <div className="text-muted-foreground flex flex-col gap-2 text-sm leading-relaxed">
       {blocks.map((block, i) => {
+        const image = /^!\[([^\]]*)\]\((\S+?)\)\s*$/.exec(block.trim());
+        if (image) {
+          // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
+          return <img key={i} src={image[2]} alt={image[1]} loading="lazy" className="max-w-full rounded-sm" />;
+        }
         const heading = /^(#{1,6})\s+(.*)$/.exec(block);
         if (heading) {
           return (
