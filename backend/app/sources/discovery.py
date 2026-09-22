@@ -252,13 +252,21 @@ def _discover_blog(
     if feed_items is not None:
         return feed_items
 
-    # 2) try common feed paths on the same host.
+    # 2) the feed the page itself declares (<link rel="alternate">), the standard
+    # way. It beats guessing: a page at /fr/ can declare /fr/index.xml, while
+    # the guessed /index.xml at the host root is the English blog.
+    html = _fetch_url(url, settings.scrape_timeout_s)
+    for feed_url in _declared_feeds(html, url) if html else []:
+        declared = _feed_to_items(feed_url, source_index)
+        if declared is not None:
+            return declared
+
+    # 3) try common feed paths on the same host.
     autodetected = _try_autodetect_rss(url, source_index)
     if autodetected is not None:
         return autodetected
 
-    # 3) otherwise treat it as a homepage and extract article links.
-    html = _fetch_url(url, settings.scrape_timeout_s)
+    # 4) otherwise treat it as a homepage and extract article links.
     if not html:
         raise RuntimeError(f"Could not fetch homepage: {url}")
 
@@ -288,6 +296,18 @@ def _feed_to_items(
     articles = articles[: settings.max_items_per_source]
     items = [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
     return feed_title, items
+
+
+def _declared_feeds(html: str, page_url: str) -> list[str]:
+    """Feed URLs a page advertises in its <head>, absolute, in page order."""
+    soup = BeautifulSoup(html, "html.parser")
+    return [
+        urljoin(page_url, link["href"])
+        for link in soup.select('link[rel~="alternate"][href]')
+        if any(t in (link.get("type") or "") for t in ("rss", "atom"))
+        # Comment feeds are feeds too, but of the wrong thing.
+        and "comment" not in link["href"].lower()
+    ]
 
 
 def _try_autodetect_rss(

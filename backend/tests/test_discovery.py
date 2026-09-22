@@ -108,6 +108,31 @@ def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
     assert items[0].title == "Great Article"
 
 
+@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.list_feed")
+def test_discover_blog_follows_the_feed_the_page_declares(mock_feed, mock_fetch):
+    # A /fr/ page declares /fr/index.xml; guessing paths at the host root
+    # found /index.xml first and returned the English posts for the French page.
+    feeds = {
+        "https://blog.example.com/fr/index.xml": ("Blog FR", [Article(url="https://blog.example.com/fr/p", title="Article FR", content_html="")]),
+        "https://blog.example.com/index.xml": ("Blog EN", [Article(url="https://blog.example.com/p", title="Post EN", content_html="")]),
+    }
+
+    def feed(url):
+        if url not in feeds:
+            raise FeedUnavailable(url)
+        return feeds[url]
+
+    mock_feed.side_effect = feed
+    mock_fetch.return_value = (
+        '<html><head><link rel="alternate" type="application/rss+xml" href="/fr/index.xml">'
+        "</head><body></body></html>"
+    )
+    name, items = discovery.discover_source("https://blog.example.com/fr/", 0)
+    assert name == "Blog FR"
+    assert [i.title for i in items] == ["Article FR"]
+
+
 def test_collapse_repeated_text():
     # responsive-variant duplication (3x) collapses to one copy
     assert discovery._collapse_repeated_text("Title Sub Title Sub Title Sub") == "Title Sub"
