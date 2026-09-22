@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from app.core.config import settings
 from app.core.net import BlockedURLError, assert_public_url
 from app.sources.models import Article
+from app.sources.wikipedia import is_wikipedia_article, scrape_wikipedia
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,12 @@ def scrape_article(url: str) -> Article:
     Used for blogs without an RSS feed, or to recover the full text of an
     article whose feed only provided a truncated summary.
     """
+    if is_wikipedia_article(url):
+        try:
+            return scrape_wikipedia(url, settings.scrape_timeout_s)
+        except (URLError, ValueError, OSError) as exc:
+            logger.warning("Wikipedia API failed for %s, scraping the page instead: %s", url, exc)
+
     downloaded = _fetch_url(url, settings.scrape_timeout_s)
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
