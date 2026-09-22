@@ -37,3 +37,10 @@ def test_only_article_pages_take_the_api_path():
     assert not is_wikipedia_article("https://en.wikipedia.org/w/index.php?title=Stoicism")
     assert not is_wikipedia_article("https://example.com/wiki/Stoicism")
 
+
+def test_a_pasted_wikipedia_url_is_one_article_named_after_the_page():
+    from app.sources.discovery import discover_source
+
+    title, items = discover_source("https://fr.wikipedia.org/wiki/Sto%C3%AFcisme", 0)
+    assert title == "Stoïcisme"
+    assert [(i.title, i.item_type) for i in items] == [("Stoïcisme", "blog")]

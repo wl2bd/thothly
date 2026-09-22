@@ -11,6 +11,7 @@ from app.pipeline.compiler import is_punctuated
 from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
+from app.sources.wikipedia import article_title, is_wikipedia_article
 from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import (
     YouTubeUnavailable,
@@ -237,6 +238,12 @@ def _discover_blog(
     # 0) a specific article URL → just that article. Otherwise we'd treat the
     # page as a homepage and crawl its links (next/previous, related, nav…),
     # flooding the review list with junk the user never asked for.
+    # A Wikipedia page is one article whatever its URL looks like ("/wiki/Stoicism"
+    # has no date or slug to go on); crawled, it gave 63 items of links and ISBNs.
+    if is_wikipedia_article(url):
+        title = article_title(url)
+        return title, [DiscoveredItem(title=title, url=url, item_type="blog",
+                                      source_index=source_index, item_index=0)]
     if _looks_like_article(url, url):
         return _single_article(url, source_index)
 
