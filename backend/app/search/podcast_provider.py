@@ -74,6 +74,11 @@ class PodcastProvider:
                 "feed_url": entry.get("feedUrl"),
                 "release_date": entry.get("releaseDate"),
                 "episode_page": entry.get("trackViewUrl"),
+                # For the triage: without them an episode is judged on its title
+                # alone, and a self-help show about "transformation" passes for
+                # a talk on transformers.
+                "snippet": (entry.get("description") or "")[:500] or None,
+                "genre": next((g.get("name") for g in entry.get("genres") or [] if isinstance(g, dict)), None),
             },
         )
 
