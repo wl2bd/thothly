@@ -28,6 +28,10 @@ _BROWSER_UA = (
 )
 
 
+# No data table has a cell this long; a page laid out in a table does.
+_LAYOUT_CELL_CHARS = 1000
+
+
 class FeedUnavailable(Exception):
     pass
 
@@ -157,7 +161,9 @@ def _clean_extracted_html(html: str, base_url: str) -> str:
     for graphic in soup.find_all("graphic"):
         src = (graphic.get("src") or "").strip()
         key = re.sub(r"^https?:", "", src)
-        if not src or key in seen_images:
+        # A 1-pixel spacer GIF from a table layout is not a figure.
+        spacer = any((graphic.get(d) or "").strip() in ("0", "1", "2") for d in ("width", "height"))
+        if not src or key in seen_images or spacer:
             graphic.decompose()
             continue
         seen_images.add(key)
@@ -173,7 +179,25 @@ def _clean_extracted_html(html: str, base_url: str) -> str:
         if src and not src.startswith("data:"):
             img["src"] = urljoin(base_url, src)
 
-    # Code-layout tables first, before the generic <row>/<cell> rewrite below.
+    # Layout tables before anything reads a table as data. Old sites
+    # (paulgraham.com) put the whole article in one cell, sometimes as a bare
+    # <row> with no <table> around it. A cell holding several paragraphs or a
+    # page of text is layout, not data, so the container gives way to its
+    # content. One left with no text and no image (spacer GIFs) is dropped.
+    for container in soup.find_all(["table", "row"]):
+        if container.decomposed:
+            continue
+        cells = container.find_all(["cell", "td", "th"])
+        if not container.get_text(strip=True) and not container.find("img"):
+            container.decompose()
+        elif any(len(c.find_all("p")) > 1 or len(c.get_text(strip=True)) > _LAYOUT_CELL_CHARS
+                 for c in cells):
+            for cell in cells:
+                for child in list(cell.contents):
+                    container.insert_before(child)
+            container.decompose()
+
+    # Code-layout tables next, before the generic <row>/<cell> rewrite below.
     for container in soup.find_all(["table", "row"]):
         pres = container.find_all("pre")
         if not pres:

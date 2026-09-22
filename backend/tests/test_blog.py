@@ -28,6 +28,20 @@ def test_clean_extracted_html_converts_trafilatura_table():
     assert "| Hype | Ship milestones |" in md
 
 
+def test_clean_extracted_html_unwraps_a_layout_table():
+    # paulgraham.com lays the whole essay out in one table cell: read as data,
+    # the book got a single giant table row with every paragraph flattened.
+    html = (
+        "<table><row><cell><graphic/></cell><cell><p/><graphic src='/s.gif' width='26' height='1'/>"
+        "</cell></row></table>"
+        "<table><row><cell><p>July 2023</p><p>First paragraph.</p>"
+        "<p>Second paragraph.</p></cell></row></table>"
+    )
+    md = html_to_markdown(_clean_extracted_html(html, "https://x.test/post"))
+    assert "|" not in md and "s.gif" not in md
+    assert "First paragraph.\n\nSecond paragraph." in md
+
+
 def test_clean_extracted_html_collapses_line_number_code_table():
     # A Chroma/Hugo lntable: gutter <pre> of line numbers + a code <pre>.
     html = (
