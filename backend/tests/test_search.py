@@ -211,11 +211,11 @@ def test_web_provider_parses_results(mock_post):
 # source, which discovery expands into the same feed — one card, not three.
 _DDG_LOCALE_HTML = """
 <div class="result"><a class="result__a"
-  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftokenbrice.xyz%2F">TokenBrice</a></div>
+  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fquillnotes.example%2F">QuillNotes</a></div>
 <div class="result"><a class="result__a"
-  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftokenbrice.xyz%2Ffr">TokenBrice FR</a></div>
+  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fquillnotes.example%2Ffr">QuillNotes FR</a></div>
 <div class="result"><a class="result__a"
-  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.tokenbrice.xyz%2Fen-us%3Futm%3Dx">TokenBrice EN</a></div>
+  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.quillnotes.example%2Fen-us%3Futm%3Dx">QuillNotes EN</a></div>
 """
 
 
@@ -223,11 +223,11 @@ _DDG_LOCALE_HTML = """
 def test_web_provider_collapses_locale_home_variants(mock_post):
     mock_post.return_value = _httpx_response(_DDG_LOCALE_HTML)
 
-    results = WebProvider().search("tokenbrice", limit=5)
+    results = WebProvider().search("quillnotes", limit=5)
 
     # All three are the same blog home (bare, /fr, /en-us + tracking) → one hit,
     # the first (best-ranked) bare-home URL kept.
-    assert [r.url for r in results] == ["https://tokenbrice.xyz/"]
+    assert [r.url for r in results] == ["https://quillnotes.example/"]
 
 
 @patch("app.search.web_provider.httpx.post")
@@ -316,13 +316,13 @@ def test_web_provider_drops_home_when_deeper_article_present(mock_post):
 def test_web_provider_keeps_lone_home(mock_post):
     html = """
     <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftokenbrice.xyz%2F">TokenBrice</a></div>
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fquillnotes.example%2F">QuillNotes</a></div>
     """
     mock_post.return_value = _httpx_response(html)
 
     # A home with no deeper sibling is a valid source (discovery expands it).
-    assert [r.url for r in WebProvider().search("tokenbrice", limit=5)] == [
-        "https://tokenbrice.xyz/"
+    assert [r.url for r in WebProvider().search("quillnotes", limit=5)] == [
+        "https://quillnotes.example/"
     ]
 
 

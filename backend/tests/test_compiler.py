@@ -103,9 +103,9 @@ def test_strip_leading_title_removes_duplicate_then_sections_lift():
 
 
 def test_strip_leading_title_matches_despite_site_suffix():
-    md = "# My Post | TokenBrice\n\nbody"
+    md = "# My Post | QuillNotes\n\nbody"
     out = strip_leading_title(md, "My Post")
-    assert "TokenBrice" not in out
+    assert "QuillNotes" not in out
     assert out.strip() == "body"
 
 
@@ -174,7 +174,7 @@ def test_derive_book_title():
     assert derive_book_title(["X", "Y"]) == "X (+1 more)"
     assert derive_book_title(["X", "Y", "Z"]) == "X (+2 more)"
     # None entries are ignored, real names kept
-    assert derive_book_title([None, "TokenBrice"]) == "TokenBrice"
+    assert derive_book_title([None, "QuillNotes"]) == "QuillNotes"
 
 
 def test_strip_leading_title_handles_a_linked_title_and_its_category_line():

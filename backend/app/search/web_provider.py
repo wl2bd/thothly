@@ -104,7 +104,7 @@ def _canonical_key(url: str) -> str:
     """A dedup key that folds the *same source* reached via different URLs.
 
     DuckDuckGo routinely returns a site's home and its localized mirror as two
-    separate hits — `tokenbrice.xyz` and `tokenbrice.xyz/fr` — but that's one
+    separate hits — `quillnotes.example` and `quillnotes.example/fr` — but that's one
     blog, one feed once discovery expands it, so two cards for it is noise. The
     key therefore drops the scheme, `www.`, query string and fragment (tracking
     params and `?lang=` switches don't make a new source) and strips a *leading*
@@ -134,7 +134,7 @@ def _is_article_like(url: str) -> bool:
       words ("/10-best-products-2026") is kept.
 
     Bare homepages are deliberately kept here — a blog's home
-    (`https://tokenbrice.xyz/`) is a valid source discovery expands via RSS.
+    (`https://quillnotes.example/`) is a valid source discovery expands via RSS.
     Whether a home is redundant is decided later by the home-vs-deep collapse in
     `_dedupe_domains`, not by this filter, so a brand query never loses its one
     relevant result.
@@ -213,7 +213,7 @@ class WebProvider:
                 # Deliberately NO Accept-Language: forcing one (e.g. en-US) biases
                 # DuckDuckGo toward that language's mirror of a site, which both
                 # buries non-English sources and produces locale-variant dupes
-                # (tokenbrice.xyz vs /fr). Without it DDG infers language from the
+                # (quillnotes.example vs /fr). Without it DDG infers language from the
                 # query itself, keeping results faithful to what's being searched.
                 headers={"User-Agent": _BROWSER_UA},
                 timeout=_TIMEOUT_S,

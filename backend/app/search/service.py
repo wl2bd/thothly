@@ -168,7 +168,7 @@ def _rank(
          (every provider's #1, then every provider's #2, …);
       3. provider index — a stable, deterministic final tiebreak.
 
-    The result: a query like "tokenbrice" surfaces the tokenbrice.xyz blog
+    The result: a query like "quillnotes" surfaces the quillnotes.example blog
     first, while a generic query keeps the fair round-robin behaviour.
     """
     q_norm = query.strip().lower()
@@ -188,7 +188,7 @@ def _relevance(result: SearchResult, q_compact: str, q_tokens: list[str]) -> int
     Deliberately simple and provider-agnostic — it only reads fields every
     result has (url, title, author) and rewards, in decreasing weight:
       * an exact brand/domain match (query == the site's domain label, so
-        "tokenbrice" == tokenbrice.xyz) — the strongest "this *is* the source"
+        "quillnotes" == quillnotes.example) — the strongest "this *is* the source"
         signal;
       * query tokens appearing in the title (with a bonus for matching all);
       * the query appearing in the author/site name.
