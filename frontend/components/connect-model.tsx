@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { XIcon } from "lucide-react";
+import { ChevronDownIcon, XIcon } from "lucide-react";
 
 import { ProviderIcon } from "@/components/provider-icon";
 import { Button } from "@/components/ui/button";
@@ -301,6 +301,7 @@ export function ConnectModelDialog({
           {kind && (
             <ModelEndpointSettings kind={kind} config={config} onSaved={() => onOpenChange(false)} />
           )}
+          {kind === "llm" && <ModelInstructions config={config} />}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
@@ -318,9 +319,34 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
             <p className="text-muted-foreground text-xs">{KIND_COPY[kind].purpose}</p>
           </div>
           <ModelEndpointSettings kind={kind} config={config} />
+          {kind === "llm" && <ModelInstructions config={config} />}
         </section>
       ))}
     </div>
+  );
+}
+
+// The exact instructions each pass sends to the visitor's model: it is their
+// key and their money, so nothing it is asked to do stays hidden. Native
+// <details>, like the FAQ: closed by default, no JS.
+function ModelInstructions({ config }: { config: LlmConfig }) {
+  return (
+    <details className="group border-t pt-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        What your model is told
+        <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <dl className="mt-3 flex flex-col gap-4">
+        {config.roles.map((role) => (
+          <div key={role.id} className="flex flex-col gap-1.5">
+            <dt className="text-xs font-semibold">{role.label}</dt>
+            <dd className="bg-muted text-muted-foreground rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+              {role.system_prompt}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 

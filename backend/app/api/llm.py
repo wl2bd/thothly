@@ -20,6 +20,9 @@ class RoleInfo(BaseModel):
     description: str
     scope: str
     tier: str  # "auto" | "default" | "extra" — see app/pipeline/roles.py
+    # Shown to the user when they connect their own key: it is their model and
+    # their money, so they see exactly what it is told to do.
+    system_prompt: str
 
 
 class Pricing(BaseModel):
@@ -82,6 +85,7 @@ def get_llm_config() -> LLMConfig:
                 description=r.description,
                 scope=r.scope,
                 tier=r.tier,
+                system_prompt=r.system_prompt,
             )
             for r in ROLES
         ],

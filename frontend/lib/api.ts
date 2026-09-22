@@ -92,6 +92,8 @@ export interface LlmRole {
   // "auto" runs on its own, "default" is the master switch's safe set, "extra"
   // lives behind Customize.
   tier: "auto" | "default" | "extra";
+  // What the model is told, shown when the visitor connects their own key.
+  system_prompt: string;
 }
 
 export interface LlmPricing {
