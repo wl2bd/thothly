@@ -69,7 +69,7 @@ def test_sponsor_read_is_caught():
 
 def test_mechanically_cut_paragraphs_are_caught():
     """Paragraphs of near-identical length can only come from a character
-    counter — the defect Wael spotted in the EPUB."""
+    counter — a defect spotted in a real EPUB."""
     para = " ".join(["mot"] * 100)
     mechanical = "\n\n".join([para] * 6)
     audit = audit_chapter("T", mechanical, mechanical)
