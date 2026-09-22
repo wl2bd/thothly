@@ -175,3 +175,20 @@ def test_derive_book_title():
     assert derive_book_title(["X", "Y", "Z"]) == "X (+2 more)"
     # None entries are ignored, real names kept
     assert derive_book_title([None, "TokenBrice"]) == "TokenBrice"
+
+
+def test_strip_leading_title_handles_a_linked_title_and_its_category_line():
+    # A Hugo theme: cover image, a category link, then the title as a link.
+    md = (
+        "![Pharos](https://x.test/cover.png)\n\n"
+        "[Projects](https://x.test/categories/projects/)\n\n"
+        "# [Pharos: Free Stablecoin Monitor](https://x.test/pharos/)\n\n"
+        "Stablecoins are everywhere."
+    )
+    out = strip_leading_title(md, "Pharos: Free Stablecoin Monitor")
+    assert out == "![Pharos](https://x.test/cover.png)\n\nStablecoins are everywhere."
+
+
+def test_strip_leading_title_keeps_a_linked_heading_that_is_not_the_title():
+    md = "# [Another story](https://x.test/other)\n\nText."
+    assert strip_leading_title(md, "Pharos") == md

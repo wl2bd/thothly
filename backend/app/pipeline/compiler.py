@@ -80,6 +80,18 @@ def _normalize_title(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
+_LONE_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+
+
+def _collapse_blank_runs(lines: list[str]) -> list[str]:
+    out: list[str] = []
+    for line in lines:
+        if not line.strip() and out and not out[-1].strip():
+            continue
+        out.append(line)
+    return out
+
+
 def strip_leading_title(markdown: str, title: str) -> str:
     """Drop a leading heading that merely repeats the chapter title.
 
@@ -94,12 +106,17 @@ def strip_leading_title(markdown: str, title: str) -> str:
         match = _ATX_HEADING.match(line)
         if not match:
             continue
-        heading = _normalize_title(match.group(2))
+        # A title written as a link to its own page ("# [Title](url)", Hugo themes).
+        heading = _normalize_title(_LONE_LINK.sub(r"\1", match.group(2).strip()))
         wanted = _normalize_title(title)
         if heading == wanted or heading.startswith(wanted) or wanted.startswith(heading):
             del lines[i]
             if i < len(lines) and not lines[i].strip():
                 del lines[i]
+            # Above the title, a line that is only a link is the page's category
+            # or breadcrumb, not the author's text. Images (a cover) stay.
+            lines[:i] = [l for l in lines[:i] if not _LONE_LINK.fullmatch(l.strip())]
+            lines[:i] = _collapse_blank_runs(lines[:i]) if i else lines[:i]
         break  # only the first heading can be the duplicated title
     return "\n".join(lines).lstrip("\n")
 
