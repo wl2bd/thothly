@@ -236,7 +236,8 @@ grotesk keeps the tool from reading as either corporate or costume.
 - **Label** (Host Grotesk 500, `text-xs` 0.75rem): badges, metadata, buttons `sm`.
 - **Mono** (Geist Mono, `text-xs`): durations, counts, technical detail.
 - **Miniature** (`text-2xs` 0.625rem, `text-3xs` 0.55rem): only inside the drawn
-  tablets and the funnel figure, a book page at thumbnail scale. Never UI text.
+  tablets and the funnel figure, a book page at thumbnail scale; `text-2xs`
+  also sets keyboard-key hints (mono, tracked capitals). Never other UI text.
 
 ### Named Rules
 **The Display Restraint Rule.** Prociono sets titles only: the hero, section

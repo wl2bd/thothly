@@ -653,13 +653,13 @@ export function Compose({
   );
 }
 
-// A small keyboard-key badge surfaced inside a button to advertise its
-// shortcut, kept discreet: a hairline outline (no fill) drawn in the button's
-// own text colour. The text stays full-contrast (legible/accessible) while the
-// cap recedes, reading on the gold primary and the neutral secondary alike.
+// A keyboard-key hint surfaced inside a button to advertise its shortcut,
+// kept discreet: small tracked mono capitals in the button's own text colour,
+// no cap or fill. The caps are CSS only, so assistive tech still reads the
+// key's name ("Esc"), not its letters.
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border border-current/20 px-1 py-px font-mono text-2xs leading-none font-normal">
+    <kbd className="font-mono text-2xs leading-none font-normal tracking-wider uppercase">
       {children}
     </kbd>
   );
