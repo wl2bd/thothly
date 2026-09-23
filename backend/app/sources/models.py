@@ -53,3 +53,6 @@ class ArticleMeta(BaseModel):
 
 class Article(ArticleMeta):
     content_html: str
+    # Set when a feed entry carries an audio enclosure (a podcast episode).
+    audio_url: str | None = None
+    duration_s: int | None = None

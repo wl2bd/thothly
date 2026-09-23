@@ -149,3 +149,26 @@ def test_looks_like_article_accepts_and_rejects():
     assert not discovery._looks_like_article("https://blog.example.com/about", base)
     assert not discovery._looks_like_article("https://other.com/2024/01/x", base)
     assert not discovery._looks_like_article("https://blog.example.com/logo.png", base)
+
+
+@patch("app.sources.discovery.list_feed")
+def test_discover_podcast_feed_lists_episodes_as_audio(mock_feed):
+    # A pasted podcast RSS feed has no audio extension, so it goes down the blog
+    # path; its entries carry audio enclosures and must become podcast items
+    # (transcribed), not episode web pages to scrape.
+    mock_feed.return_value = (
+        "Example Show",
+        [
+            Article(url="https://show.example.com/ep-1", title="Ep 1", content_html="<p>notes</p>",
+                    audio_url="https://cdn.example.com/ep1.mp3", duration_s=1800),
+            Article(url="https://show.example.com/ep-2", title="Ep 2", content_html="",
+                    audio_url="https://cdn.example.com/ep2.mp3"),
+        ],
+    )
+    name, items = discovery.discover_source("https://feeds.example.com/abc123", 0)
+    assert name == "Example Show"
+    assert [i.item_type for i in items] == ["podcast", "podcast"]
+    assert items[0].url == "https://cdn.example.com/ep1.mp3"
+    assert items[0].title == "Ep 1"
+    assert items[0].estimated_duration_s == 1800
+    assert items[1].item_index == 1

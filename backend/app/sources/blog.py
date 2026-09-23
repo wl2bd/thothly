@@ -324,7 +324,27 @@ def _entry_to_article(entry) -> Article:
         published_at=_parse_struct_time(getattr(entry, "published_parsed", None)),
         author=getattr(entry, "author", None) or None,
         content_html=content_html,
+        audio_url=_audio_enclosure(entry),
+        duration_s=_parse_duration(getattr(entry, "itunes_duration", None)),
     )
+
+
+def _audio_enclosure(entry) -> str | None:
+    for enclosure in getattr(entry, "enclosures", []):
+        if (enclosure.get("type") or "").startswith("audio/") and enclosure.get("href"):
+            return enclosure["href"]
+    return None
+
+
+def _parse_duration(raw: str | None) -> int | None:
+    """itunes:duration is seconds ("1800") or clock time ("30:00", "1:02:03")."""
+    try:
+        seconds = 0
+        for part in str(raw).strip().split(":"):
+            seconds = seconds * 60 + int(float(part))
+        return seconds or None
+    except (TypeError, ValueError):
+        return None
 
 
 def _parse_struct_time(t: struct_time | None) -> datetime | None:

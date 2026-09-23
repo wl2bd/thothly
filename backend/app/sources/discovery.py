@@ -399,6 +399,17 @@ def _looks_like_article(href: str, base_url: str) -> bool:
 
 
 def _article_to_item(article: Article, source_index: int, item_index: int) -> DiscoveredItem:
+    # A podcast feed's episode: the audio is the content, so it's transcribed
+    # at compile like a picked episode, not scraped from its web page.
+    if article.audio_url:
+        return DiscoveredItem(
+            title=article.title or _episode_title_from_url(article.audio_url),
+            url=article.audio_url,
+            item_type="podcast",
+            source_index=source_index,
+            item_index=item_index,
+            estimated_duration_s=article.duration_s,
+        )
     preview = article.content_html[:500] if article.content_html else None
     return DiscoveredItem(
         title=article.title or "Untitled",
