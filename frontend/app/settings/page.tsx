@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 // /app; the keys themselves only ever exist in this browser.
 export default function SettingsPage() {
   return (
-    <main className="flex min-h-screen justify-center p-8 sm:p-12">
+    <main id="main" className="flex min-h-screen justify-center p-8 sm:p-12">
       <div className="flex w-full max-w-xl flex-col gap-10 py-12">
         <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center">

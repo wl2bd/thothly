@@ -394,7 +394,7 @@ export default function JobPage() {
   }
 
   return (
-    <main className="flex min-h-screen justify-center p-8 sm:p-12">
+    <main id="main" className="flex min-h-screen justify-center p-8 sm:p-12">
       <div className="flex w-full max-w-xl flex-col gap-10 py-12">
         <header className="flex items-baseline justify-between">
           {/* transitionTypes tags the return trip so the home hero (a far richer

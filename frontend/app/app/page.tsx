@@ -27,7 +27,7 @@ export default async function AppPage({
 }) {
   const { q } = await searchParams;
   return (
-    <main className="flex min-h-screen justify-center p-8 sm:p-12">
+    <main id="main" className="flex min-h-screen justify-center p-8 sm:p-12">
       <div className="flex w-full max-w-xl flex-col gap-10 py-12">
         {/* A workspace header, not the landing's: the identity and the one
             global control, without the section navigation. The logotype goes

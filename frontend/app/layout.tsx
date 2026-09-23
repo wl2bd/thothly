@@ -130,6 +130,14 @@ export default function RootLayout({
               "(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();",
           }}
         />
+        {/* Skip link: the first Tab stop, hidden until focused, jumps past the
+            header to each page's <main id="main">. */}
+        <a
+          href="#main"
+          className="bg-primary text-primary-foreground sr-only z-50 rounded-lg px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
+        >
+          Skip to content
+        </a>
         {/* Shared SVG filter for the stone tablet edge (components using
             .stone-frame). Defined once here so filter: url(#…) always resolves. */}
         <StoneFilterDefs />
