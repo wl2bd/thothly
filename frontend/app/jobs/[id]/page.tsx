@@ -105,6 +105,24 @@ const MAX_POLL_FAILURES = 5;
 // lands in EPUB metadata, the cover and the filename).
 const BOOK_TITLE_MAX = 100;
 
+// Podcast episodes are the one item whose compile has a real cost (each is
+// transcribed, billed per minute) and a whole feed can list hundreds. So only the
+// first PODCAST_PRESELECT of each source start selected; everything else, and
+// every free item, is pre-selected as usual. The user can still select them all.
+const PODCAST_PRESELECT = 10;
+
+// ponytail: "newest" = feed order (item_index), which is newest-first in
+// practice; sort by publish date if a feed ever proves otherwise.
+function defaultSelection(items: DiscoveredItem[]): Set<string> {
+  return new Set(
+    items
+      .filter(
+        (it) => it.item_type !== "podcast" || it.item_index < PODCAST_PRESELECT,
+      )
+      .map((it) => it.id),
+  );
+}
+
 // The editable default offered for a new compilation, so the title field is
 // never blank on arrival, and tracks the live selection while still auto: a lone
 // SELECTED source lends its own name (podcast / channel / blog, from discovery);
@@ -258,11 +276,11 @@ export default function JobPage() {
   if (job && job.status !== seenStatus) {
     setSeenStatus(job.status);
     if (job.status === "reviewing") {
-      const allIds = new Set(job.discovered_items.map((it) => it.id));
-      setSelected(allIds);
-      // Editable default name (everything selected to start); it stays in sync
+      const initial = defaultSelection(job.discovered_items);
+      setSelected(initial);
+      // Editable default name (from the default selection); it stays in sync
       // with the selection until the user edits it, and is required to generate.
-      setTitle(autoTitleForSelection(job, allIds) ?? "");
+      setTitle(autoTitleForSelection(job, initial) ?? "");
       setTitleIsAuto(true);
       // Natural source order to start; review can drag it into another order.
       setSourceOrder(
@@ -1366,85 +1384,109 @@ function ReviewList({
     }
 
     const someSelected = selectedCount > 0 && !allSelected;
+    // Says why a long podcast feed doesn't start fully selected.
+    const episodeCount = groupItems.filter(
+      (it) => it.item_type === "podcast",
+    ).length;
+    const preselectNote =
+      episodeCount > PODCAST_PRESELECT
+        ? sttAvailable
+          ? `Each episode is transcribed and billed per minute, so only the ${PODCAST_PRESELECT} newest start selected.`
+          : `Only the ${PODCAST_PRESELECT} newest episodes start selected.`
+        : null;
     return (
       <>
         {/* sticky is itself a positioned containing block, so the absolute soft
             fade below anchors to this header. Opaque (not /95) so rows vanish
             cleanly under it instead of ghosting through. Same px/gap as the item
             rows so the checkbox column lines up across header and items. */}
-        <div className="bg-background sticky top-0 z-10 flex items-center gap-3.5 px-3.5 py-2.5">
-          {handleProps && (
-            /* The grip stays a 16px mark but sits in a 24x40 box: a bare button
-               shrink-wraps its icon, which left a 16x16 target on the one control
-               you have to catch AND drag. The box is real rather than a pseudo
-               element because the checkbox next door already extends its own hit
-               area 12px this way, and only a real box keeps the gap (and so the
-               clearance between the two targets) as it grows. */
+        <div className="bg-background sticky top-0 z-10">
+          <div className="flex items-center gap-3.5 px-3.5 py-2.5">
+            {handleProps && (
+              /* The grip stays a 16px mark but sits in a 24x40 box: a bare button
+                 shrink-wraps its icon, which left a 16x16 target on the one control
+                 you have to catch AND drag. The box is real rather than a pseudo
+                 element because the checkbox next door already extends its own hit
+                 area 12px this way, and only a real box keeps the gap (and so the
+                 clearance between the two targets) as it grows. */
+              <button
+                type="button"
+                aria-label="Drag to reorder source"
+                className="text-muted-foreground/50 hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
+                {...(handleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
+              >
+                <GripVertical className="size-4" />
+              </button>
+            )}
+            {/* Selection lives on the LEFT for every row. On a group it's a
+                tri-state toggle for all the source's items (a dash when only some
+                are picked), mirroring the per-item checkboxes beneath it. */}
+            <Checkbox
+              checked={allSelected}
+              indeterminate={someSelected}
+              onCheckedChange={() => onSelectItems(ids, !allSelected)}
+              aria-label={
+                allSelected
+                  ? "Deselect all items in this source"
+                  : "Select all items in this source"
+              }
+            />
             <button
               type="button"
-              aria-label="Drag to reorder source"
-              className="text-muted-foreground/50 hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
-              {...(handleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
-            >
-              <GripVertical className="size-4" />
-            </button>
-          )}
-          {/* Selection lives on the LEFT for every row. On a group it's a
-              tri-state toggle for all the source's items (a dash when only some
-              are picked), mirroring the per-item checkboxes beneath it. */}
-          <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected}
-            onCheckedChange={() => onSelectItems(ids, !allSelected)}
-            aria-label={
-              allSelected
-                ? "Deselect all items in this source"
-                : "Select all items in this source"
-            }
-          />
-          <button
-            type="button"
-            onClick={() => toggleCollapse(sourceIndex)}
-            aria-expanded={!isCollapsed}
-            className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-          >
-            <span className="truncate text-sm font-medium">{title}</span>
-            <span className="text-muted-foreground flex min-w-0 items-center gap-x-1.5 text-xs">
-              {uniformKind && (
-                <SourceTypePill kind={uniformKind} className="shrink-0" />
-              )}
-              {showHost && (
-                <>
-                  {uniformKind && <MetaSep />}
-                  <span className="inline-flex min-w-0 items-center gap-1">
-                    <SourceFavicon url={url} />
-                    <span className="truncate">{host}</span>
-                  </span>
-                </>
-              )}
-              {(uniformKind || showHost) && <MetaSep />}
-              <span className="shrink-0 tabular-nums">
-                {selectedCount}/{groupItems.length}
-              </span>
-            </span>
-          </button>
-          {/* The disclosure (expand/collapse) lives on the RIGHT, in the same
-              slot the per-item Preview button occupies on the rows below. A +/−
-              reads as "show more / show less" there, where a chevron in a
-              right-side button would read as navigate / open-a-menu. */}
-          <Tooltip content={isCollapsed ? "Expand" : "Collapse"}>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
               onClick={() => toggleCollapse(sourceIndex)}
               aria-expanded={!isCollapsed}
-              aria-label={isCollapsed ? "Expand source" : "Collapse source"}
-              className="shrink-0"
+              className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
             >
-              {isCollapsed ? <Plus /> : <Minus />}
-            </Button>
-          </Tooltip>
+              <span className="truncate text-sm font-medium">{title}</span>
+              <span className="text-muted-foreground flex min-w-0 items-center gap-x-1.5 text-xs">
+                {uniformKind && (
+                  <SourceTypePill kind={uniformKind} className="shrink-0" />
+                )}
+                {showHost && (
+                  <>
+                    {uniformKind && <MetaSep />}
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <SourceFavicon url={url} />
+                      <span className="truncate">{host}</span>
+                    </span>
+                  </>
+                )}
+                {(uniformKind || showHost) && <MetaSep />}
+                <span className="shrink-0 tabular-nums">
+                  {selectedCount}/{groupItems.length}
+                </span>
+              </span>
+            </button>
+            {/* The disclosure (expand/collapse) lives on the RIGHT, in the same
+                slot the per-item Preview button occupies on the rows below. A +/−
+                reads as "show more / show less" there, where a chevron in a
+                right-side button would read as navigate / open-a-menu. */}
+            <Tooltip content={isCollapsed ? "Expand" : "Collapse"}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                onClick={() => toggleCollapse(sourceIndex)}
+                aria-expanded={!isCollapsed}
+                aria-label={isCollapsed ? "Expand source" : "Collapse source"}
+                className="shrink-0"
+              >
+                {isCollapsed ? <Plus /> : <Minus />}
+              </Button>
+            </Tooltip>
+          </div>
+          {preselectNote && (
+            /* Inside the sticky header so it stays next to the count it
+               explains. Laid out like the row above (grip and checkbox slots
+               kept empty) so it starts under the source name. */
+            <div className="-mt-1.5 flex gap-3.5 px-3.5 pb-2.5">
+              {handleProps && (
+                <span aria-hidden="true" className="w-6 shrink-0" />
+              )}
+              <span aria-hidden="true" className="w-5 shrink-0" />
+              <p className="text-muted-foreground text-xs">{preselectNote}</p>
+            </div>
+          )}
           {/* Soft edge under the sticky header: rows fade in as they emerge from
               under it rather than appearing on a hard line. Only when expanded —
               collapsed there are no rows to fade, and the span (absolute,
