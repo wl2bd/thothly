@@ -86,9 +86,26 @@ const notoSerifThin = Noto_Serif_Display({
   preload: false,
 });
 
+const DESCRIPTION =
+  "Turn videos, podcasts, articles, even whole playlists into one clean read for your e-reader or your AI.";
+
 export const metadata: Metadata = {
+  // Link previews need absolute URLs (the card image). Vercel sets the
+  // production host; anywhere else (self-hosting, dev) previews are moot.
+  metadataBase: new URL(
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000",
+  ),
   title: "Thothly - Make anything readable",
-  description: "Compile whatever you want to read, no matter where it comes from.",
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "Thothly",
+    title: "Thothly - Make anything readable",
+    description: DESCRIPTION,
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({
