@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 //   </StoneBorder>
 //
 // Render <StoneFilterDefs /> ONCE near the app root so `filter: url(#…)` in the
-// `.stone-frame` rules (globals.css) resolves. Knobs: the `--stone` token, and
+// `.stone-frame` rules (globals.css) resolves. Knobs: the `--rule` token, and
 // the filter primitives below (baseFrequency = erosion scale, scale = how much
 // it's chewed away).
 function StoneBorder({

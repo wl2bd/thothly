@@ -758,7 +758,7 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
     return () => cancelAnimationFrame(id);
   }, []);
   const rise =
-    "transition-[opacity,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none";
+    "transition-[opacity,transform] duration-1000 ease-out-expo motion-reduce:transition-none";
   const riseIn = revealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0";
   const at = (delay: number) => ({
     transitionDelay: revealed ? `${delay}ms` : "0ms",
@@ -785,14 +785,14 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
           <span
             aria-hidden="true"
             className={cn(
-              "bg-gold/50 dark:bg-gold/65 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl",
+              "bg-primary/50 dark:bg-primary/65 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl",
               revealed ? "seal-bloom" : "opacity-0",
             )}
           />
           <span
             aria-hidden="true"
             className={cn(
-              "text-gold flex origin-left transition-[opacity,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+              "text-primary flex origin-left transition-[opacity,transform] duration-1000 ease-out-expo motion-reduce:transition-none",
               revealed ? "scale-100 opacity-100" : "scale-75 opacity-0",
             )}
           >
@@ -813,7 +813,7 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
             </p>
             <h1
               className={cn(
-                "font-display text-3xl leading-[1.1] tracking-tight text-balance",
+                "font-display text-3xl leading-display tracking-tight text-balance",
                 rise,
                 riseIn,
               )}
@@ -825,7 +825,7 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
         ) : (
           <h1
             className={cn(
-              "font-display text-3xl leading-[1.1] tracking-tight text-balance",
+              "font-display text-3xl leading-display tracking-tight text-balance",
               rise,
               riseIn,
             )}
@@ -1589,7 +1589,7 @@ function ReviewList({
           unexplained — and never shows when there's nothing to explain. */}
       {hasMeteredPodcast && (
         <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
-          <Coins className="text-gold-deep dark:text-gold mt-px size-3.5 shrink-0" />
+          <Coins className="text-primary-strong mt-px size-3.5 shrink-0" />
           <span>
             <span className="text-foreground font-medium">Metered either way</span>{" "}
             (transcribing audio). Everything else is free unless you turn on AI
@@ -1772,7 +1772,7 @@ function ReviewItem({
         // foreground-alpha (not bg-muted) so it never collides with the
         // secondary Preview button — in dark, --muted and --secondary share the
         // same value, which made the button melt into the hovered row.
-        checked ? "bg-foreground/[0.06]" : "hover:bg-foreground/5",
+        checked ? "bg-foreground/6" : "hover:bg-foreground/5",
       )}
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
@@ -2013,7 +2013,7 @@ function RoleSelector({
       <div className="flex items-center gap-3 rounded-xl border border-dashed px-4 py-3">
         <span
           aria-hidden
-          className="bg-gold/10 text-gold-deep dark:text-gold flex size-7 shrink-0 items-center justify-center rounded-lg"
+          className="bg-primary/10 text-primary-strong flex size-7 shrink-0 items-center justify-center rounded-lg"
         >
           <Sparkles className="size-4" />
         </span>
@@ -2048,13 +2048,13 @@ function RoleSelector({
         // Dashed + muted while off (reads as "optional, secondary to the free
         // path"); once engaged it firms into a gold-edged panel so the one paid
         // path carries the brand's single accent color.
-        masterOn ? "border-gold/30 bg-foreground/[0.02]" : "border-dashed",
+        masterOn ? "border-primary/30 bg-foreground/2" : "border-dashed",
       )}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <span
           aria-hidden
-          className="bg-gold/10 text-gold-deep dark:text-gold flex size-7 shrink-0 items-center justify-center rounded-lg"
+          className="bg-primary/10 text-primary-strong flex size-7 shrink-0 items-center justify-center rounded-lg"
         >
           <Sparkles className="size-4" />
         </span>
@@ -2094,7 +2094,7 @@ function RoleSelector({
                       "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors",
                       // A faint gold wash marks an active extra; idle rows only
                       // light up on hover.
-                      checked ? "bg-gold/[0.07]" : "hover:bg-foreground/5",
+                      checked ? "bg-primary/7" : "hover:bg-foreground/5",
                     )}
                   >
                     <Checkbox
@@ -2173,7 +2173,7 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
       // the "Raw captions" info icon — side-by-side in the list, mismatched
       // sides read as untidy. The bottom legend (visible, not a hover tip) is
       // this tag's explanation, so it needs no tooltip of its own.
-      <Badge variant="secondary" className="bg-gold/10 text-gold-deep dark:text-gold gap-1">
+      <Badge variant="secondary" className="bg-primary/10 text-primary-strong gap-1">
         From audio
         <Coins />
       </Badge>

@@ -77,7 +77,7 @@ function Select({
                     {o.label}
                   </SelectPrimitive.ItemText>
                   <SelectPrimitive.ItemIndicator>
-                    <CheckIcon className="text-gold-deep dark:text-gold size-4" />
+                    <CheckIcon className="text-primary-strong size-4" />
                   </SelectPrimitive.ItemIndicator>
                 </SelectPrimitive.Item>
               ))}

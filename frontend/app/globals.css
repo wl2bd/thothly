@@ -4,55 +4,34 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tailwind maps the role tokens below onto utilities (bg-primary, text-muted-
+   foreground…). Colors are `inline` because they flip with `.dark`. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-host-grotesk);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-host-grotesk);
-  --font-display: var(--font-prociono);
-  --font-edition: var(--font-literata);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-gold: var(--gold);
-  --color-gold-dark: var(--gold-dark);
-  --color-gold-deep: var(--gold-deep);
-  --color-gold-bright: var(--gold-bright);
-  --color-gold-foreground: var(--gold-foreground);
-  --color-stone: var(--stone);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-surface-sunken: var(--surface-sunken);
   --shadow-flow-card: var(--flow-card-lift);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -64,193 +43,147 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Fonts, type and motion don't flip with the theme, so they are plain `@theme`:
+   Tailwind emits them as real custom properties, which keeps `next dev`
+   (Turbopack doesn't inline `@theme inline` font tokens) matching the build.
+   The `--font-host-grotesk` etc. are injected by next/font on <html>. */
+@theme {
+  --font-sans: var(--font-host-grotesk);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-prociono);
+  --font-edition: var(--font-literata);
+  /* The hero headline. */
+  --text-display: 2.75rem;
+  --leading-display: 1.1;
+  /* Miniature type, only inside the illustrated tablets and the funnel figure
+     (a book page drawn at thumbnail scale), never for interface text. */
+  --text-2xs: 0.625rem;
+  --text-3xs: 0.55rem;
+  /* The house curve: a fast start that settles softly (easeOutQuint). Every
+     transition and the card morph use it. */
+  --ease-out-quint: var(--ease-out-quint);
+  /* The one-shot payoff reveal on the finished compilation (easeOutExpo). */
+  --ease-out-expo: var(--ease-out-expo);
+}
+
 /* ── Gold Leaf ───────────────────────────────────────────────────────────────
-   A stark canvas — a soft off-white by day, near-black by night, neutrals at
-   chroma 0 — carrying ONE strong color: desert gold. Pure-white cards lift above
-   the off-white page. Gold is not rare here; it is the
-   brand action color (primary CTAs, current/active, focus, links, the mark) and
-   it sings hardest on the black ground. The whole identity re-skins from these
-   token values. See DESIGN.md. */
+   Near-neutral grounds (a warm off-white by day, a chroma-0 near-black by night)
+   carrying ONE strong color: desert gold, which is `--primary`. Gold is not rare
+   here: it is the brand action color (primary CTAs, current/active, focus,
+   links, the mark) and it sings hardest on the black ground. Every other token
+   is a role; the identity re-skins from these values alone. See DESIGN.md. */
 :root {
-  /* Native controls (scrollbars, the sort select's popup, date pickers) follow
-     the theme instead of staying light on the dark page. */
+  /* Native controls (scrollbars, select popups, date pickers) follow the theme. */
   color-scheme: light;
   --background: oklch(0.977 0.011 80);
   --foreground: oklch(0.16 0.015 68);
+  /* Cards lift a step above the page. */
   --card: oklch(0.995 0.008 80);
-  --card-foreground: oklch(0.16 0.015 68);
-  /* A darker, recessed surface — sunken below the page/card, for the source
-     chips and the hero search panel. Stark neutral (chroma 0), one step down. */
-  --surface-sunken: oklch(0.957 0.014 80);
-  /* The flow card's lift — one token for the surface that carries the whole
-     journey (the landing's field, the tool's card, the job's card), so the
-     three can never drift apart the way two hard-coded values did. An ambient
-     glow with no offset: the card is meant to sit ON the ground and separate
-     from it, not to hover above it casting a shadow. Kept light. It is the
-     ground's job to hold the card, not the shadow's. */
-  --flow-card-lift: 0 0 32px rgb(0 0 0 / 0.07);
-  /* The hero's light-mode ground — a warm taupe (low chroma toward the gold
-     hue). The ONE place the surface is allowed a tint: it lets the deep-gold
-     glyph rain read on the fold and gives the light hero its own ground, the way
-     the near-black does on dark. A deliberate, scoped exception to the Stark
-     Surface Rule — hero only; the rest of the page stays chroma 0 — and it fades
-     to the page at the fold's bottom so there's no seam. Muted text on it clears
-     AA (5.81:1). */
-  --hero-ground: oklch(0.94 0.026 78);
-  /* The hero legibility scrim — pools the fold's own ground behind the headline
-     so the text always clears the glyph rain. ONE token, theme-flipped, so it
-     can never bleed across modes (no dark:hidden hack): warm taupe on light. */
-  --hero-scrim: radial-gradient(
-    54% 42% at 50% 44%,
-    oklch(0.94 0.026 78 / 0.94),
-    oklch(0.94 0.026 78 / 0.55) 46%,
-    transparent 72%
-  );
-  --popover: oklch(0.995 0.008 80);
-  --popover-foreground: oklch(0.16 0.015 68);
-  /* Primary = desert gold. Text on a gold fill is always near-black (gold is a
-     light, warm metal): 8.9:1. */
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  /* Desert gold. Text on a gold fill is always the ink: 8.9:1. */
   --primary: oklch(0.82 0.145 80);
-  --primary-foreground: oklch(0.16 0.015 68);
+  --primary-foreground: var(--foreground);
+  /* Gold as text or icon on a neutral surface. The fill gold is too light to
+     read on the off-white, so this is a deeper gold (4.0:1, clears the 3:1 of
+     icons and focus indicators). It is also the focus ring. */
+  --primary-strong: oklch(0.6 0.15 75);
   --secondary: oklch(0.915 0.018 80);
-  --secondary-foreground: oklch(0.16 0.015 68);
+  --secondary-foreground: var(--foreground);
   --muted: oklch(0.955 0.014 80);
   --muted-foreground: oklch(0.48 0.02 70);
-  --accent: oklch(0.955 0.014 80);
-  --accent-foreground: oklch(0.16 0.015 68);
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
   --destructive: oklch(0.52 0.21 27);
-  --border: oklch(0.87 0.018 78);
-  --input: oklch(0.87 0.018 78);
-  /* Focus ring: a deeper desert gold so the indicator clears WCAG 3:1 on the
-     pure-white page (4.0:1). On the night ground the bright gold is used. */
-  --ring: oklch(0.6 0.15 75);
-  --chart-1: oklch(0.82 0.145 80);
-  --chart-2: oklch(0.16 0 0);
-  --chart-3: oklch(0.55 0 0);
-  --chart-4: oklch(0.5 0.12 150);
-  --chart-5: oklch(0.52 0.13 255);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.16 0 0);
-  --sidebar-primary: oklch(0.82 0.145 80);
-  --sidebar-primary-foreground: oklch(0.16 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.16 0 0);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0.6 0.15 75);
-  /* The desert gold itself — the single brand color. Same value as --primary;
-     exposed as its own token for gold marks/fills (bg-gold/text-gold). */
-  --gold: oklch(0.82 0.145 80);
-  /* The gold ramp for the Gold Leaf frame — a muted deep gold trough, the deep
-     edge, and the luminous glint. The dark↔bright spread is what makes the
-     rotating contour read. On the light page the trough is kept a deep GOLD
-     (0.6), not a dark bronze: a near-brown trough read too dark on white. */
-  --gold-dark: oklch(0.6 0.13 72);
-  --gold-deep: oklch(0.6 0.15 75);
-  --gold-bright: oklch(0.85 0.14 82);
-  --gold-foreground: oklch(0.16 0.015 68);
-  /* The inscription rule gold — the faint gold of the sinuous lines between the
-     hieroglyph columns (components/hieroglyph-rain.tsx reads this same token for
-     the canvas rules, so the two always match). */
-  --rule-gold: rgba(150, 100, 15, 0.26);
-  /* Stone — the carved tablet rim, tied to the inscription rule gold so the
-     output tablets' edge is the same colour as the lines between the glyphs. The
-     carved cast-shadow (.stone-frame::after) carries the slab's lift; this rim
-     just gives it the gold inscription tone. */
-  --stone: var(--rule-gold);
-  /* Semantic status colors — informational only, kept distinct from the brand
-     gold (warning is pushed to orange, hue 45, so it never reads as the gold). */
+  /* Status colors are informational only, kept apart from the brand gold
+     (warning is pushed to orange, hue 45, so it never reads as the gold). */
   --success: oklch(0.5 0.12 150);
   --success-foreground: oklch(0.98 0 0);
   --warning: oklch(0.53 0.16 45);
   --warning-foreground: oklch(0.98 0 0);
   --info: oklch(0.52 0.13 255);
   --info-foreground: oklch(0.98 0 0);
+  --border: oklch(0.87 0.018 78);
+  --input: var(--border);
+  --ring: var(--primary-strong);
+  --radius: 0.625rem;
+  /* A recessed surface, one step below the page: source chips, the hero
+     search panel. */
+  --surface-sunken: oklch(0.957 0.014 80);
+  /* The flow card's lift: one token for the surface that carries the whole
+     journey (the landing's field, the tool's card, the job's card), so the
+     three never drift apart. An ambient glow with no offset: the card sits ON
+     the ground rather than hovering over it. */
+  --flow-card-lift: 0 0 32px rgb(0 0 0 / 0.07);
+  /* The hero's light ground: a warm taupe. The one surface allowed a visible
+     tint, so the deep-gold glyph rain reads on the fold. Hero only; it fades to
+     the page at the fold's bottom. Muted text on it clears AA (5.81:1). */
+  --hero-ground: oklch(0.94 0.026 78);
+  /* Pools the hero ground behind the headline so the text always clears the
+     glyph rain. Theme-flipped, so it never bleeds across modes. */
+  --hero-scrim: radial-gradient(
+    54% 42% at 50% 44%,
+    color-mix(in oklch, var(--hero-ground) 94%, transparent),
+    color-mix(in oklch, var(--hero-ground) 55%, transparent) 46%,
+    transparent 72%
+  );
+  /* The inscription rule: the faint gold of the lines between the hieroglyph
+     columns, and the carved rim of the stone tablets, so the two always match.
+     The rain tokens below are read by the <canvas> in hieroglyph-rain.tsx; they
+     stay in rgb() because canvas color parsing lags CSS Color 4. */
+  --rule: rgb(150 100 15 / 0.26);
+  /* The rain's head-to-tail tone. Light: a deep bronze-gold lead (the most
+     present glyph on the page), fading to lighter gold that dissolves into the
+     ground. */
+  --rain-lead: rgb(134 79 0);
+  --rain-body: rgb(167 108 0);
+  --rain-tail: rgb(207 145 5);
+  --rain-halo: rgb(120 75 0 / 0.3);
 }
 
-/* Dark = the night ground (very black, chroma 0). The gold steps forward and
-   glows against it — this is where the brand is at its boldest. */
+/* Dark = the night ground (near-black, chroma 0). The gold steps forward and
+   glows against it; this is where the brand is at its boldest. */
 .dark {
   color-scheme: dark;
   --background: oklch(0.13 0 0);
   --foreground: oklch(0.97 0 0);
   --card: oklch(0.17 0 0);
-  --card-foreground: oklch(0.97 0 0);
-  /* Sunken surface on the night ground — a step toward the near-black. */
-  --surface-sunken: oklch(0.15 0 0);
-  /* Black on near-black reads as a pool rather than a shadow, so the night
-     ground needs more of it than the page does to separate the card at all. */
-  --flow-card-lift: 0 0 40px rgb(0 0 0 / 0.3);
-  /* Dark keeps the near-black page as the hero ground (the rain glows on it);
-     transparent so the hero gradient just reveals the page. */
-  --hero-ground: transparent;
-  /* Dark scrim — a subtle near-black pool behind the headline (the night ground
-     already carries the rain; just enough to settle the text over it). */
-  --hero-scrim: radial-gradient(
-    54% 40% at 50% 44%,
-    oklch(0 0 0 / 0.5),
-    oklch(0 0 0 / 0.2) 46%,
-    transparent 70%
-  );
-  --popover: oklch(0.17 0 0);
-  --popover-foreground: oklch(0.97 0 0);
   --primary: oklch(0.71 0.135 78);
   --primary-foreground: oklch(0.16 0 0);
+  /* On the night ground the fill gold already reads as text. */
+  --primary-strong: var(--primary);
   --secondary: oklch(0.22 0 0);
-  --secondary-foreground: oklch(0.97 0 0);
   --muted: oklch(0.22 0 0);
   --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.22 0 0);
-  --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.68 0.2 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.71 0.135 78);
-  --chart-1: oklch(0.71 0.135 78);
-  --chart-2: oklch(0.97 0 0);
-  --chart-3: oklch(0.7 0 0);
-  --chart-4: oklch(0.72 0.14 150);
-  --chart-5: oklch(0.7 0.14 255);
-  --sidebar: oklch(0.17 0 0);
-  --sidebar-foreground: oklch(0.97 0 0);
-  --sidebar-primary: oklch(0.71 0.135 78);
-  --sidebar-primary-foreground: oklch(0.16 0 0);
-  --sidebar-accent: oklch(0.22 0 0);
-  --sidebar-accent-foreground: oklch(0.97 0 0);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.71 0.135 78);
-  --gold: oklch(0.71 0.135 78);
-  /* On the night ground the gold steps forward — the ramp lifts with it (the
-     dark stays light enough to read against the near-black field). */
-  --gold-dark: oklch(0.52 0.13 72);
-  --gold-deep: oklch(0.66 0.15 78);
-  --gold-bright: oklch(0.9 0.12 86);
-  --gold-foreground: oklch(0.16 0 0);
-  /* The inscription rule gold on the night ground (canvas rules read this too);
-     the tablet rim is tied to it so the two match. */
-  --rule-gold: rgba(212, 165, 95, 0.22);
-  --stone: var(--rule-gold);
   --success: oklch(0.72 0.14 150);
   --success-foreground: oklch(0.16 0 0);
   --warning: oklch(0.78 0.15 55);
   --warning-foreground: oklch(0.16 0 0);
   --info: oklch(0.7 0.14 255);
   --info-foreground: oklch(0.16 0 0);
-}
-
-/* Font theme tokens as real custom properties. `@theme inline` (above) inlines
-   these into the utilities in a production build, so this block is redundant on
-   Vercel — but Turbopack's dev CSS pipeline emits `font-sans` etc. as
-   `var(--font-sans)` instead of inlining, and without this block those vars are
-   empty, so `body`/`html`/headings fall back to Times New Roman in `next dev`
-   only. Defining them here makes dev match prod. The referenced
-   `--font-host-grotesk` etc. are injected by next/font on <html>. */
-:root {
-  --font-sans: var(--font-host-grotesk);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-host-grotesk);
-  --font-display: var(--font-prociono);
-  --font-edition: var(--font-literata);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --surface-sunken: oklch(0.15 0 0);
+  /* Black on near-black reads as a pool rather than a shadow, so the night
+     ground needs more of it to separate the card at all. */
+  --flow-card-lift: 0 0 40px rgb(0 0 0 / 0.3);
+  /* The near-black page is the hero ground (the rain glows on it). */
+  --hero-ground: transparent;
+  --hero-scrim: radial-gradient(
+    54% 40% at 50% 44%,
+    oklch(0 0 0 / 0.5),
+    oklch(0 0 0 / 0.2) 46%,
+    transparent 70%
+  );
+  --rule: rgb(212 165 95 / 0.22);
+  /* Dark: a warm white-hot lead, then bright gold, then desert gold fading out
+     into the near-black, with a gold bloom behind the lead. */
+  --rain-lead: rgb(255 247 230);
+  --rain-body: rgb(240 206 140);
+  --rain-tail: rgb(214 167 96);
+  --rain-halo: rgb(245 215 150 / 0.5);
 }
 
 @layer base {
@@ -345,6 +278,11 @@
 
 .gold-frame {
   position: relative;
+  /* The ramp around the brand gold: a muted deep-gold trough and a luminous
+     glint. Their spread is what makes the rotating contour read. On the light
+     page the trough stays a deep gold, not a bronze (too dark on the ground). */
+  --frame-trough: oklch(0.6 0.13 72);
+  --frame-glint: oklch(0.85 0.14 82);
   /* Own stacking context so the glow (z -1) sits behind the wrapped surface and
      the edge (z 2) above it, independent of the surrounding section. */
   isolation: isolate;
@@ -363,18 +301,18 @@
   padding: 2px;
   background: conic-gradient(
     from var(--gold-angle),
-    var(--gold-dark) 0%,
-    var(--gold-dark) 12%,
-    var(--gold) 20%,
-    var(--gold-bright) 25%,
-    var(--gold) 30%,
-    var(--gold-dark) 38%,
-    var(--gold-dark) 62%,
-    var(--gold) 70%,
-    var(--gold-bright) 75%,
-    var(--gold) 80%,
-    var(--gold-dark) 88%,
-    var(--gold-dark) 100%
+    var(--frame-trough) 0%,
+    var(--frame-trough) 12%,
+    var(--primary) 20%,
+    var(--frame-glint) 25%,
+    var(--primary) 30%,
+    var(--frame-trough) 38%,
+    var(--frame-trough) 62%,
+    var(--primary) 70%,
+    var(--frame-glint) 75%,
+    var(--primary) 80%,
+    var(--frame-trough) 88%,
+    var(--frame-trough) 100%
   );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -389,8 +327,14 @@
   opacity: 0.72;
   /* Spins continuously; calmer at rest, quicker once the field is engaged. */
   animation: thothly-gold-spin 9s linear infinite;
-  transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 240ms var(--ease-out-quint);
   pointer-events: none;
+}
+
+/* On the night ground the ramp lifts with the gold. */
+.dark .gold-frame {
+  --frame-trough: oklch(0.52 0.13 72);
+  --frame-glint: oklch(0.9 0.12 86);
 }
 
 /* Night ground: the whole ramp glows against the near-black, so the resting
@@ -408,10 +352,10 @@
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: var(--gold);
+  background: var(--primary);
   filter: blur(16px);
   opacity: 0;
-  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 320ms var(--ease-out-quint);
   pointer-events: none;
 }
 
@@ -463,7 +407,7 @@
   z-index: -1;
   border-radius: inherit;
   background: var(--card);
-  border: 2px solid var(--stone);
+  border: 2px solid var(--rule);
   filter: url(#thothly-stone-edge);
   pointer-events: none;
 }
@@ -487,7 +431,7 @@
 }
 
 .dark .stone-frame::after {
-  border-color: var(--stone);
+  border-color: var(--rule);
   filter: url(#thothly-stone-edge) blur(5px);
   transform: none;
   opacity: 0.2;
@@ -523,7 +467,7 @@
    arms it clipped until the entrance. */
 .funnel-svg {
   clip-path: inset(0 0 0 0);
-  transition: clip-path 900ms cubic-bezier(0.22, 1, 0.36, 1) 200ms;
+  transition: clip-path 900ms var(--ease-out-quint) 200ms;
 }
 
 [data-reveal="hidden"] .funnel-svg {
@@ -558,7 +502,7 @@
 }
 
 .seal-bloom {
-  animation: seal-bloom 1600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: seal-bloom 1600ms var(--ease-out-expo) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -608,19 +552,19 @@
    lands abruptly. Applied to the box morph AND the content cross-fade. */
 ::view-transition-group(flow-card) {
   animation-duration: 300ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-timing-function: var(--ease-out-quint);
 }
 ::view-transition-old(flow-card),
 ::view-transition-new(flow-card) {
   animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-timing-function: var(--ease-out-quint);
 }
 /* The page chrome (everything outside the card) cross-fades on navigation —
    align it to the same curve/timing so nothing in the frame eases differently. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-timing-function: var(--ease-out-quint);
 }
 
 /* Returning to the home page (the "New compilation" / logo links carry the

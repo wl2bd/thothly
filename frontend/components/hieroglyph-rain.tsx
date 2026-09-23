@@ -120,9 +120,11 @@ export function HieroglyphRain({ className }: { className?: string }) {
     // Hairline (100) serif so the letters' stroke weight sits as fine as the
     // thin single-weight hieroglyphs, instead of reading heavier than them.
     let serifFont = `100 ${LETTER_SIZE}px serif`;
-    // The corridor rules' colour — read from the --rule-gold token so it always
-    // matches the output tablets' rim (which is tied to the same token in CSS).
-    let ruleColor = isDark ? "rgba(212,165,95,0.22)" : "rgba(150,100,15,0.26)";
+    // Colours come from the theme tokens in globals.css (--rule, --rain-*), read
+    // in setup below, so the rules always match the output tablets' rim.
+    let ruleColor = "transparent";
+    let tones = ["transparent", "transparent", "transparent"];
+    let halo = "transparent";
     let visible = true;
 
     const randomGlyph = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
@@ -286,6 +288,7 @@ export function HieroglyphRain({ className }: { className?: string }) {
     function draw() {
       ctx!.clearRect(0, 0, width, height);
       ctx!.shadowBlur = 0;
+      ctx!.globalAlpha = 1;
       if (sepCanvas) ctx!.drawImage(sepCanvas, 0, 0, width, height);
       ctx!.textAlign = "center";
       ctx!.textBaseline = "top";
@@ -304,32 +307,16 @@ export function HieroglyphRain({ className }: { className?: string }) {
           b *= col.opacity;
           if (b < 0.03) continue;
           const cell = col.cells[j % col.cells.length];
-          // The head-to-tail tone, flipped per ground. Dark: lead a warm
-          // white-hot, then bright gold, then desert gold (≈ --gold) fading out
-          // into the near-black. Light: the ramp inverts — a deep bronze-gold
-          // lead (the darkest, most present on the page), then gold, then a
-          // lighter gold that the alpha ramp dissolves up into the off-white.
-          // The light ramp is pulled deeper than the gold tokens so the glyphs
-          // read dark (not washed) on the off-white, rather than bright gold.
-          const tone = isDark
-            ? j === 0
-              ? "255,247,230"
-              : j < 3
-                ? "240,206,140"
-                : "214,167,96"
-            : j === 0
-              ? "134,79,0"
-              : j < 3
-                ? "167,108,0"
-                : "207,145,5";
+          // The head-to-tail tone (lead, body, tail), flipped per ground by the
+          // --rain-* tokens: white-hot to desert gold on the night ground, deep
+          // bronze-gold to light gold on the light page.
+          const tone = tones[j === 0 ? 0 : j < 3 ? 1 : 2];
           const cx = col.x + COLUMN_STEP * 0.5;
           if (j === 0) {
             // Dark: a gold bloom behind the hot lead. Light: a glow would only
             // wash to white, so the lead gets a faint warm-dark halo instead —
             // a touch of carved weight rather than a glow.
-            ctx!.shadowColor = isDark
-              ? "rgba(245,215,150,0.5)"
-              : "rgba(120,75,0,0.3)";
+            ctx!.shadowColor = halo;
             ctx!.shadowBlur = isDark ? 6 : 4;
           }
           // Crossfade: dissolve the previous glyph out while the new one fades in
@@ -344,7 +331,8 @@ export function HieroglyphRain({ className }: { className?: string }) {
                 ctx!.font = fp;
                 curFont = fp;
               }
-              ctx!.fillStyle = `rgba(${tone},${aPrev})`;
+              ctx!.fillStyle = tone;
+              ctx!.globalAlpha = aPrev;
               ctx!.fillText(cell.prev, cx, y);
             }
           }
@@ -355,7 +343,8 @@ export function HieroglyphRain({ className }: { className?: string }) {
               ctx!.font = fc;
               curFont = fc;
             }
-            ctx!.fillStyle = `rgba(${tone},${aCur})`;
+            ctx!.fillStyle = tone;
+            ctx!.globalAlpha = aCur;
             ctx!.fillText(cell.ch, cx, y);
           }
           if (j === 0) {
@@ -407,8 +396,10 @@ export function HieroglyphRain({ className }: { className?: string }) {
     const serifRaw = rootStyle.getPropertyValue("--font-rain-serif").trim();
     if (hieroRaw) hieroFont = `${GLYPH_SIZE}px ${hieroRaw}`;
     if (serifRaw) serifFont = `100 ${LETTER_SIZE}px ${serifRaw}`;
-    const ruleRaw = rootStyle.getPropertyValue("--rule-gold").trim();
-    if (ruleRaw) ruleColor = ruleRaw;
+    const token = (name: string) => rootStyle.getPropertyValue(name).trim();
+    ruleColor = token("--rule");
+    tones = [token("--rain-lead"), token("--rain-body"), token("--rain-tail")];
+    halo = token("--rain-halo");
 
     // Start immediately — sizing the canvas and the loop must not wait on the
     // font download, or a slow (or already-settled) promise leaves it blank.

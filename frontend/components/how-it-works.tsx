@@ -17,7 +17,7 @@ export function HowItWorks() {
   // render is the final, visible state.
   const { ref: figureRef, shown } = useReveal<HTMLElement>();
   const rise =
-    "transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
+    "transition-[opacity,transform] duration-700 ease-out-quint motion-reduce:transition-none";
   const riseIn = shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2";
   const steps = [
     {
@@ -86,7 +86,7 @@ export function HowItWorks() {
                 style={{ transitionDelay: shown ? `${i * 60}ms` : "0ms" }}
               >
                 <s.Icon className="text-muted-foreground size-4" />
-                <span className="text-muted-foreground text-[0.55rem] leading-none">
+                <span className="text-muted-foreground text-3xs leading-none">
                   {s.kind}
                 </span>
               </div>
@@ -121,7 +121,7 @@ export function HowItWorks() {
                   gradientUnits="userSpaceOnUse"
                 >
                   <stop offset="0" stopColor="var(--muted-foreground)" stopOpacity="0.32" />
-                  <stop offset="1" stopColor="var(--gold)" stopOpacity="0.95" />
+                  <stop offset="1" stopColor="var(--primary)" stopOpacity="0.95" />
                 </linearGradient>
                 <linearGradient
                   id="funnel-diverge"
@@ -131,7 +131,7 @@ export function HowItWorks() {
                   y2="48"
                   gradientUnits="userSpaceOnUse"
                 >
-                  <stop offset="0" stopColor="var(--gold)" stopOpacity="0.95" />
+                  <stop offset="0" stopColor="var(--primary)" stopOpacity="0.95" />
                   <stop offset="1" stopColor="var(--muted-foreground)" stopOpacity="0.26" />
                 </linearGradient>
               </defs>
@@ -173,14 +173,14 @@ export function HowItWorks() {
             >
               <span
                 className={cn(
-                  "relative block transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  "relative block transition-[opacity,transform] duration-700 ease-out-quint motion-reduce:transition-none",
                   shown ? "scale-100 opacity-100" : "scale-90 opacity-0",
                 )}
                 style={{ transitionDelay: shown ? "560ms" : "0ms" }}
               >
-                <span className="bg-gold/15 dark:bg-gold/30 absolute top-1/2 left-1/2 size-11 -translate-x-1/2 -translate-y-1/2 rounded-full blur-lg dark:size-16 dark:blur-xl" />
-                <span className="border-gold/45 relative flex size-4 items-center justify-center rounded-full border">
-                  <span className="bg-gold size-2 rounded-full" />
+                <span className="bg-primary/15 dark:bg-primary/30 absolute top-1/2 left-1/2 size-11 -translate-x-1/2 -translate-y-1/2 rounded-full blur-lg dark:size-16 dark:blur-xl" />
+                <span className="border-primary/45 relative flex size-4 items-center justify-center rounded-full border">
+                  <span className="bg-primary size-2 rounded-full" />
                 </span>
               </span>
             </span>

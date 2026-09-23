@@ -389,7 +389,7 @@ export function Compose({
               <SearchIcon
                 aria-hidden="true"
                 className={cn(
-                  "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-out-quint motion-reduce:transition-none",
                   showSearchIcon ? "opacity-100" : "-translate-x-1 opacity-0",
                 )}
               />
@@ -420,7 +420,7 @@ export function Compose({
                   // in-field Add button. The padding
                   // is transitioned so the text/placeholder glides when the
                   // magnifier comes and goes rather than snapping.
-                  "h-14 border-transparent bg-background transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
+                  "h-14 border-transparent bg-background transition-[padding] duration-300 ease-out-quint focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                   // Left: room for the magnifier only while it shows (empty &
                   // unfocused); otherwise the text runs full width. Right:
                   // room for the in-field Add (pasted link) or the clear ×
@@ -659,7 +659,7 @@ export function Compose({
 // cap recedes, reading on the gold primary and the neutral secondary alike.
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border border-current/20 px-1 py-px font-mono text-[10px] leading-none font-normal">
+    <kbd className="rounded border border-current/20 px-1 py-px font-mono text-2xs leading-none font-normal">
       {children}
     </kbd>
   );
@@ -795,7 +795,7 @@ function SearchResults({
               onPointerDown={onPointerPick}
               className={cn(
                 "flex cursor-pointer items-center gap-3.5 rounded-lg px-3.5 py-3.5 transition-colors",
-                checked ? "bg-foreground/[0.06]" : "hover:bg-foreground/5",
+                checked ? "bg-foreground/6" : "hover:bg-foreground/5",
               )}
             >
               <Checkbox

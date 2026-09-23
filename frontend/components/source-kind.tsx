@@ -190,7 +190,7 @@ export function SourceMedia({
         </span>
       )}
       {duration && (
-        <span className="absolute right-1 bottom-1 rounded-[3px] bg-black/72 px-1 py-px text-[10px] leading-tight font-medium text-white tabular-nums">
+        <span className="absolute right-1 bottom-1 rounded-xs bg-black/72 px-1 py-px text-2xs leading-tight font-medium text-white tabular-nums">
           {duration}
         </span>
       )}
@@ -232,7 +232,7 @@ export function SourceFavicon({
       src={src}
       alt=""
       loading="lazy"
-      className={cn("size-3.5 shrink-0 rounded-[2px]", className)}
+      className={cn("size-3.5 shrink-0 rounded-xs", className)}
       onError={(e) => {
         e.currentTarget.style.display = "none";
       }}

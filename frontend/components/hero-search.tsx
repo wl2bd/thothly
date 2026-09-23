@@ -62,7 +62,7 @@ export function HeroSearch() {
       {/* Grain stays a whisper on the night ground: mix-blend-overlay lifts
           the near-black toward grey fast, so dark opacity is kept low (~0.08)
           to keep the ground a rich black under the gold rain. */}
-      <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-[0.12] mix-blend-overlay dark:opacity-[0.08]" />
+      <Grain className="pointer-events-none absolute inset-0 -z-10 size-full opacity-12 mix-blend-overlay dark:opacity-8" />
       {/* Legibility scrim, painted over the grain. Its tone is the single
           theme-flipped --hero-scrim token (warm taupe on light, near-black on
           dark) so it can never bleed across modes. */}
@@ -73,10 +73,10 @@ export function HeroSearch() {
       />
       <div className="flex w-full max-w-2xl flex-col gap-10">
         <div className="flex flex-col items-center gap-5 text-center">
-          <h1 className="font-display text-[2.75rem] leading-[1.05] tracking-tight text-balance sm:text-6xl">
+          <h1 className="font-display text-display leading-display tracking-tight text-balance sm:text-6xl">
             Make anything readable
           </h1>
-          <p className="text-muted-foreground max-w-xl text-balance text-lg leading-[1.4] sm:text-xl">
+          <p className="text-muted-foreground max-w-xl text-balance text-lg leading-snug sm:text-xl">
             Turn videos, podcasts, articles, even whole playlists into one
             clean read for your e-reader or your AI.
           </p>
@@ -109,7 +109,7 @@ export function HeroSearch() {
                 <SearchIcon
                   aria-hidden="true"
                   className={cn(
-                    "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                    "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-out-quint motion-reduce:transition-none",
                     showSearchIcon ? "opacity-100" : "-translate-x-1 opacity-0",
                   )}
                 />
@@ -126,7 +126,7 @@ export function HeroSearch() {
                     // button rather than towering over it. The
                     // padding is transitioned so the text/placeholder glides when
                     // the magnifier comes and goes rather than snapping.
-                    "h-14 border-transparent bg-background transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
+                    "h-14 border-transparent bg-background transition-[padding] duration-300 ease-out-quint focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                     // Left: room for the magnifier only while it shows (empty &
                     // unfocused); otherwise the text runs full width. Right:
                     // room for Search only where Search is in the field.

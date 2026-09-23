@@ -126,7 +126,7 @@ export default function RootLayout({
             identically on the night ground and the light page from a single
             opacity (no `dark:` variant). The small uniform lift this puts on the
             black is the intended film-grain texture, kept to a few levels. */}
-        <Grain className="pointer-events-none fixed inset-0 -z-10 size-full opacity-[0.05]" />
+        <Grain className="pointer-events-none fixed inset-0 -z-10 size-full opacity-5" />
         {children}
       </body>
     </html>

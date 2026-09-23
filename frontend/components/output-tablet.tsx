@@ -63,7 +63,7 @@ function EpubTablet({ className, eyebrow, title, body }: EpubTabletProps) {
       >
         <div className="flex h-full flex-col gap-2">
           <div className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-[0.55rem] font-medium tracking-[0.2em] uppercase">
+            <span className="text-muted-foreground text-3xs font-medium tracking-[0.2em] uppercase">
               {real ? (eyebrow ?? "Chapter 1") : "Chapter 2"}
             </span>
             <span className="font-edition text-foreground line-clamp-2 text-[0.95rem] leading-tight font-semibold">
@@ -72,7 +72,7 @@ function EpubTablet({ className, eyebrow, title, body }: EpubTabletProps) {
           </div>
           {real ? (
             body ? (
-              <p className="font-edition text-muted-foreground line-clamp-6 text-[0.66rem] leading-relaxed">
+              <p className="font-edition text-muted-foreground line-clamp-6 text-2xs leading-relaxed">
                 {body}
               </p>
             ) : (
@@ -80,7 +80,7 @@ function EpubTablet({ className, eyebrow, title, body }: EpubTabletProps) {
             )
           ) : (
             <>
-              <p className="font-edition text-muted-foreground text-[0.66rem] leading-relaxed">
+              <p className="font-edition text-muted-foreground text-2xs leading-relaxed">
                 A safe, idempotent way to send a body with your queries.
               </p>
               <PageBars />
@@ -128,13 +128,13 @@ function MarkdownTablet({ className, lines }: MarkdownTabletProps) {
         )}
       >
         {lines ? (
-          <div className="flex h-full flex-col gap-1 font-mono text-[0.6rem] leading-relaxed">
+          <div className="flex h-full flex-col gap-1 font-mono text-2xs leading-relaxed">
             {lines.slice(0, 10).map((line, i) => (
               <MarkdownLine key={i} line={line} />
             ))}
           </div>
         ) : (
-          <div className="flex h-full flex-col gap-1.5 font-mono text-[0.6rem] leading-relaxed">
+          <div className="flex h-full flex-col gap-1.5 font-mono text-2xs leading-relaxed">
             <p className="text-foreground"># Sources</p>
             <p className="text-foreground mt-1">## The new HTTP QUERY method</p>
             <p className="text-muted-foreground">

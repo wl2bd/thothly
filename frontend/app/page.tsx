@@ -128,7 +128,7 @@ function DataAndFaq() {
 }
 
 const footerLink =
-  "text-foreground hover:text-gold focus-visible:ring-ring rounded-sm font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none";
+  "text-foreground hover:text-primary-strong focus-visible:ring-ring rounded-sm font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none";
 
 function SiteFooter() {
   return (

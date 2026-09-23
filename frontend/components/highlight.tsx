@@ -16,7 +16,7 @@ export function highlightMatch(text: string, query: string): ReactNode {
   // split() with a capturing group keeps the matches, at the odd indices.
   return text.split(re).map((part, i) =>
     i % 2 === 1 ? (
-      <mark key={i} className="bg-gold/30 rounded-[2px] text-inherit">
+      <mark key={i} className="bg-primary/30 rounded-xs text-inherit">
         {part}
       </mark>
     ) : (

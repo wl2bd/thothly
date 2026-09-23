@@ -10,7 +10,7 @@
 //
 // Drop it into a `relative isolate overflow-hidden` container and let it fill:
 //   <Grain className="pointer-events-none absolute inset-0 -z-10 size-full
-//     opacity-[0.06] mix-blend-overlay dark:opacity-[0.12]" />
+//     opacity-6 mix-blend-overlay dark:opacity-12" />
 
 export function Grain({ className }: { className?: string }) {
   return (
