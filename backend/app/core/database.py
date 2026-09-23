@@ -12,6 +12,9 @@ def get_connection() -> sqlite3.Connection:
 
 def init_db() -> None:
     with get_connection() as conn:
+        # WAL lets the job page's polling read while a compile writes, instead
+        # of both queuing on one lock. It is stored in the file, so once is enough.
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
                 id          TEXT PRIMARY KEY,
