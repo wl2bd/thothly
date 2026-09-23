@@ -1020,18 +1020,34 @@ function BookReader({ md }: { md: string }) {
   );
 }
 
+// A book H1 as the compiler writes it: the title, then optional Pandoc
+// attributes ("{lang=fr}" on a chapter, "{.front-matter}" on the Sources index
+// and the preface, whose headings are in the book's language). Books compiled
+// before the marker existed are recognised by their English headings.
+function parseHeading(text: string): { title: string; frontMatter: boolean } {
+  const m = /^(.*?)\s*\{([^{}]*)\}\s*$/.exec(text);
+  const title = (m ? m[1] : text).trim();
+  const attrs = m ? m[2] : "";
+  return {
+    title,
+    frontMatter:
+      attrs.includes(".front-matter") ||
+      (!m && (title === "Sources" || title === "Preface")),
+  };
+}
+
 // The book's Markdown as {title, body} per H1, the way the backend's
 // `split_chapters` reads it. The "Sources" index is navigation, not reading;
 // the source-attribution block (`:::`) is the compiler's, not the text.
 function splitBook(md: string): { title: string; body: string }[] {
-  const out: { title: string; body: string[] }[] = [];
+  const out: { title: string; frontMatter: boolean; body: string[] }[] = [];
   let fenced = false;
   // A book written on Windows comes back with CRLF; a stray "\r" defeats every
   // "$"-anchored pattern downstream.
   for (const line of md.replace(/\r\n?/g, "\n").split("\n")) {
     const h1 = /^#\s+(.*)/.exec(line);
     if (h1) {
-      out.push({ title: h1[1].trim(), body: [] });
+      out.push({ ...parseHeading(h1[1]), body: [] });
       continue;
     }
     if (line.trim().startsWith(":::")) {
@@ -1041,7 +1057,7 @@ function splitBook(md: string): { title: string; body: string }[] {
     if (!fenced) out[out.length - 1]?.body.push(line);
   }
   return out
-    .filter((c) => c.title !== "Sources")
+    .filter((c) => !c.frontMatter)
     .map((c) => ({ title: c.title, body: c.body.join("\n").trim() }));
 }
 
@@ -1146,8 +1162,9 @@ function firstChapter(md: string): { title: string; body: string } | null {
   let title = "";
   for (; i < lines.length; i++) {
     const m = /^#\s+(.*)/.exec(lines[i]);
-    if (m && m[1].trim() !== "Sources" && m[1].trim() !== "Preface") {
-      title = m[1].trim();
+    const h = m && parseHeading(m[1]);
+    if (h && !h.frontMatter) {
+      title = h.title;
       break;
     }
   }

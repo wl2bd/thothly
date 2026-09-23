@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
+from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 
 # Wikimedia asks API clients to identify themselves with a contact.
@@ -71,6 +72,8 @@ def scrape_wikipedia(url: str, timeout: float) -> Article:
         title=article_title(url),
         published_at=None,
         author="Wikipedia contributors",
+        # The subdomain is the edition: fr.wikipedia.org is French.
+        language=normalize_language(host.split(".")[0]),
         content_html=clean_wikipedia_html(html, f"https://{host}/wiki/{title}"),
     )
 

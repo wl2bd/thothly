@@ -170,12 +170,28 @@ def split_chapters(book_md: str) -> dict[str, str]:
         if line.startswith("# "):
             if title is not None:
                 out[title] = "\n".join(body).strip()
-            title = line[2:].strip()
+            title, attrs = _heading(line[2:])
+            if ".front-matter" in attrs:
+                title = _FRONT_MATTER
             body = []
         elif title is not None:
             body.append(line)
     if title is not None:
         out[title] = "\n".join(body).strip()
+    out.pop(_FRONT_MATTER, None)
+    # Books compiled before the front matter was marked: English headings.
     out.pop("Sources", None)
     out.pop("Preface", None)
     return out
+
+
+_FRONT_MATTER = "\0front-matter"
+_ATTRS = re.compile(r"\s*\{([^{}]*)\}\s*$")
+
+
+def _heading(text: str) -> tuple[str, str]:
+    """A heading's title and its trailing Pandoc attributes ("{lang=fr}")."""
+    match = _ATTRS.search(text)
+    if not match:
+        return text.strip(), ""
+    return text[: match.start()].strip(), match.group(1)

@@ -26,6 +26,7 @@ from app.pipeline.roles import (
     SECTIONS,
     get_role,
     has_role,
+    preface_prompt,
     sections_prompt,
     selected_item_roles,
 )
@@ -199,7 +200,10 @@ def _filter_map(data: dict, speakers: list[str]) -> dict[str, str]:
 
 
 def generate_preface(
-    book_title: str, chapter_titles: list[str], endpoint: Endpoint | None = None
+    book_title: str,
+    chapter_titles: list[str],
+    endpoint: Endpoint | None = None,
+    language: str | None = None,
 ) -> str | None:
     """A short generated preface, or None if the LLM call fails."""
     role = get_role(PREFACE)
@@ -209,7 +213,7 @@ def generate_preface(
         book_title, "\n".join(f"- {t}" for t in chapter_titles)
     )
     try:
-        return complete(role.system_prompt, user, endpoint=endpoint)
+        return complete(preface_prompt(language), user, endpoint=endpoint)
     except LLMError as exc:
         logger.warning("Preface generation failed: %s", exc)
         return None

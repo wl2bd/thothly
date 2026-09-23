@@ -210,14 +210,16 @@ def _pick_subtitle_track(info: dict, languages: list[str]) -> tuple[str, str] | 
     auto = info.get("automatic_captions") or {}
     original = (info.get("language") or "").split("-")[0]
 
-    # 1) Human-made subtitles in a preferred language.
+    # 1) The video's own language: human subtitles, then its auto-caption (real
+    # ASR, never a translation). A book stays in the language it was said in.
+    if original:
+        for tracks in (manual, auto):
+            picked = _match_track(tracks, original)
+            if picked:
+                return picked
+    # 2) Human-made subtitles in a preferred language (a hand translation).
     for lang in languages:
         picked = _match_track(manual, lang)
-        if picked:
-            return picked
-    # 2) The original-language auto-caption (real ASR, never a translation).
-    if original:
-        picked = _match_track(auto, original)
         if picked:
             return picked
     # 3) Last resort: an auto-caption in a preferred language (may be translated).

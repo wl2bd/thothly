@@ -25,6 +25,7 @@ from app.pipeline.compiler import (
     strip_leading_title,
     transcript_to_markdown,
 )
+from app.pipeline.i18n import chrome, detect_language, normalize_language
 from app.pipeline.llm import llm_endpoint
 from app.pipeline.models import CompiledChapter
 from app.pipeline.providers import Endpoint
@@ -153,7 +154,7 @@ def run_compilation(job_id: str) -> None:
         book = compile_book(chapters, book_title)
         if has_role(roles, PREFACE):
             book.preface = generate_preface(
-                book.title, [c.title for c in book.chapters], llm
+                book.title, [c.title for c in book.chapters], llm, book.language
             )
         output_path, output_md_path = _render(book, job_id)
         update_job_status(
@@ -229,6 +230,7 @@ def _youtube_chapter(
         author=transcript.uploader,
         channel_url=transcript.channel_url,
         content_md=content_md,
+        language=normalize_language(transcript.language) or detect_language(content_md),
     )
 
 
@@ -257,7 +259,11 @@ def _podcast_chapter(
     speaker_names = (
         map_speaker_names(transcript, model, llm) if settings.podcast_speaker_naming else {}
     )
-    content_md = transcript_to_markdown(transcript, speaker_names)
+    # STT rarely reports a language, so it is read off the words themselves.
+    language = normalize_language(transcript.language) or detect_language(
+        transcript.full_text
+    )
+    content_md = transcript_to_markdown(transcript, speaker_names, chrome(language)["speaker"])
     if not content_md:
         raise ItemSkipped(NO_CONTENT)
 
@@ -266,6 +272,7 @@ def _podcast_chapter(
         source_type="podcast",
         source_url=item.url,
         content_md=content_md,
+        language=language,
     )
 
 
@@ -278,12 +285,14 @@ def _blog_chapter(
 ) -> CompiledChapter:
     author = None
     published_at = None
+    declared_language = None
     _step(job_id, item.id, "Fetching the article")
     try:
         article = scrape_article(item.url)
         content_html = article.content_html
         author = article.author
         published_at = article.published_at
+        declared_language = article.language
     except ScrapeUnavailable:
         logger.warning("Scrape failed for %s (job %s), using RSS preview", item.url, job_id)
         content_html = item.preview_html or ""
@@ -292,6 +301,8 @@ def _blog_chapter(
     content_md = demote_headings(strip_leading_title(content_md, item.title))
     if not content_md:
         raise ItemSkipped(NO_CONTENT)
+
+    language = normalize_language(declared_language) or detect_language(content_md)
 
     if roles:
         _step(job_id, item.id, "Polishing the text")
@@ -306,6 +317,7 @@ def _blog_chapter(
         author=author,
         published_at=published_at,
         content_md=content_md,
+        language=language,
     )
 
 

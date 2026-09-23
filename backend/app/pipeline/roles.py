@@ -104,13 +104,22 @@ def sections_prompt(language: str | None) -> str:
         return _SECTIONS_PROMPT
     return _sections_prompt(f"in {name}, the language of the transcript (do not translate)")
 
-_PREFACE_PROMPT = (
-    "You are the editor of a reading collection. You are given the book's title "
-    "and the list of its chapters. Write a short preface (2 to 4 paragraphs) "
-    "that introduces the collection and what the reader will find in it. Write "
-    "in English, in a sober, editorial tone. Reply only with the preface text in "
-    "Markdown, with no title or commentary."
-)
+def _preface_prompt(language_name: str) -> str:
+    return (
+        "You are the editor of a reading collection. You are given the book's title "
+        "and the list of its chapters. Write a short preface (2 to 4 paragraphs) "
+        "that introduces the collection and what the reader will find in it. Write "
+        f"in {language_name}, in a sober, editorial tone. Reply only with the preface "
+        "text in Markdown, with no title or commentary."
+    )
+
+
+_PREFACE_PROMPT = _preface_prompt("English")
+
+
+def preface_prompt(language: str | None) -> str:
+    """The preface prompt in the book's language (English when unknown)."""
+    return _preface_prompt(language_name(language) or "English")
 
 
 # Order matters for item-scoped roles: punctuate first (creates sentences),

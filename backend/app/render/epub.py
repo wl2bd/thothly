@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from app.core.config import settings
+from app.pipeline.i18n import chrome
 from app.pipeline.models import CompiledBook
 from app.render.cover import generate_cover
 from app.render.images import fetch_favicon, fetch_remote_icon, localize_images
@@ -47,7 +48,7 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
         if not output_path.exists():
             raise RenderError(f"Pandoc produced no output at {output_path}")
 
-        _add_bodymatter_landmark(output_path)
+        _add_bodymatter_landmark(output_path, chrome(book.language)["start"])
         logger.info("EPUB generated: %s", output_path)
         return output_path
     finally:
@@ -130,8 +131,8 @@ def _metadata_yaml(book: CompiledBook) -> str:
     lines = [f"title: {q(book.title)}", "author:"]
     lines += [f"  - {q(name)}" for name in authors]
     lines += [
-        'lang: "en"',
-        'toc-title: "Table of contents"',
+        f"lang: {q(book.language)}",
+        f"toc-title: {q(chrome(book.language)['toc'])}",
         f'date: "{book.generated_at.strftime("%Y-%m-%d")}"',
     ]
     return "\n".join(lines) + "\n"
@@ -166,7 +167,7 @@ def _build_command(
     return cmd
 
 
-def _add_bodymatter_landmark(epub_path: Path) -> None:
+def _add_bodymatter_landmark(epub_path: Path, label: str = "Start of content") -> None:
     """Add a "start of text" (bodymatter) landmark to nav.xhtml.
 
     Pandoc only emits titlepage + toc landmarks and offers no flag for the
@@ -183,7 +184,7 @@ def _add_bodymatter_landmark(epub_path: Path) -> None:
             nav = archive.read(nav_name).decode("utf-8")
             entries = [(n, archive.read(n)) for n in names]
 
-        patched = _inject_bodymatter(nav)
+        patched = _inject_bodymatter(nav, label)
         if patched == nav:
             return  # nothing to add (already present, or structure unexpected)
 
@@ -205,7 +206,7 @@ def _add_bodymatter_landmark(epub_path: Path) -> None:
         logger.warning("Could not add bodymatter landmark: %s", exc)
 
 
-def _inject_bodymatter(nav: str) -> str:
+def _inject_bodymatter(nav: str, label: str = "Start of content") -> str:
     toc = re.search(r'epub:type="toc".*?</nav>', nav, re.DOTALL)
     if not toc:
         return nav
@@ -218,7 +219,7 @@ def _inject_bodymatter(nav: str) -> str:
 
     item = (
         f'\n    <li>\n      <a href="{first_link.group(1)}" '
-        'epub:type="bodymatter">Start of content</a>\n    </li>'
+        f'epub:type="bodymatter">{label}</a>\n    </li>'
     )
     block = landmarks.group(1) + landmarks.group(2) + item + landmarks.group(3)
     return nav[: landmarks.start()] + block + nav[landmarks.end() :]

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from markdownify import markdownify as md
 
+from app.pipeline.i18n import dominant_language
 from app.pipeline.models import CompiledBook, CompiledChapter
 from app.sources.models import Transcript, TranscriptSegment
 
@@ -257,13 +258,15 @@ def _paragraphs_from_segments(
     return paragraphs
 
 
-def _generic_speaker_label(speaker: str | None) -> str:
+def _generic_speaker_label(speaker: str | None, word: str = "Speaker") -> str:
     match = re.search(r"(\d+)$", speaker or "")
-    return f"Speaker {match.group(1)}" if match else (speaker or "Speaker")
+    return f"{word} {match.group(1)}" if match else (speaker or word)
 
 
 def segments_to_dialogue_markdown(
-    segments: list[TranscriptSegment], speaker_names: dict[str, str] | None = None
+    segments: list[TranscriptSegment],
+    speaker_names: dict[str, str] | None = None,
+    speaker_word: str = "Speaker",
 ) -> str:
     """Render diarized segments as dialogue: each speaker turn is prefixed with
     the speaker's mapped name (or a generic 'Speaker N'). A long turn splits into
@@ -276,7 +279,7 @@ def segments_to_dialogue_markdown(
         if not text.strip():
             continue
         if speaker is not None and (first or speaker != prev_speaker):
-            label = names.get(speaker) or _generic_speaker_label(speaker)
+            label = names.get(speaker) or _generic_speaker_label(speaker, speaker_word)
             out.append(f"**{label}:** {text}")
         else:
             out.append(text)
@@ -292,7 +295,9 @@ def segments_to_paragraph_markdown(segments: list[TranscriptSegment]) -> str:
 
 
 def transcript_to_markdown(
-    transcript: Transcript, speaker_names: dict[str, str] | None = None
+    transcript: Transcript,
+    speaker_names: dict[str, str] | None = None,
+    speaker_word: str = "Speaker",
 ) -> str:
     """Render a transcript to Markdown.
 
@@ -307,7 +312,7 @@ def transcript_to_markdown(
 
     if not transcript.chapters:
         if has_speakers:
-            return segments_to_dialogue_markdown(segments, speaker_names)
+            return segments_to_dialogue_markdown(segments, speaker_names, speaker_word)
         if _looks_sentence_segmented(segments) and _has_timing(segments):
             return segments_to_paragraph_markdown(segments)
         return segments_to_markdown([s.text for s in segments])
@@ -341,4 +346,5 @@ def compile_book(chapters: list[CompiledChapter], title: str) -> CompiledBook:
         title=title,
         generated_at=datetime.now(timezone.utc),
         chapters=usable,
+        language=dominant_language([(c.language, len(c.content_md)) for c in usable]),
     )

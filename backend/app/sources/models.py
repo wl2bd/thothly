@@ -53,6 +53,8 @@ class ArticleMeta(BaseModel):
 
 class Article(ArticleMeta):
     content_html: str
+    # The language the page declares (<html lang>), when it does.
+    language: str | None = None
     # Set when a feed entry carries an audio enclosure (a podcast episode).
     audio_url: str | None = None
     duration_s: int | None = None

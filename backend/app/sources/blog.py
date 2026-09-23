@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 from app.core.config import settings
 from app.core.net import BlockedURLError, assert_public_url
+from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 from app.sources.wikipedia import is_wikipedia_article, scrape_wikipedia
 
@@ -100,7 +101,17 @@ def scrape_article(url: str) -> Article:
         published_at=published_at,
         author=author,
         content_html=content_html,
+        language=_html_language(downloaded),
     )
+
+
+_HTML_LANG = re.compile(r"<html\b[^>]*?\b(?:xml:)?lang\s*=\s*[\"']?([A-Za-z]{2,3}(?:[-_][A-Za-z0-9]+)*)", re.I)
+
+
+def _html_language(html: str) -> str | None:
+    """The primary language a page declares on its <html> element."""
+    match = _HTML_LANG.search(html[:5000])
+    return normalize_language(match.group(1)) if match else None
 
 
 def _unwrap_image_links(html: str) -> str:

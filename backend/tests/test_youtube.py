@@ -118,19 +118,21 @@ def test_fetch_transcript_returns_transcript(mock_cls):
 
 
 @patch("app.sources.youtube.YoutubeDL")
-def test_fetch_transcript_prefers_manual_over_auto(mock_cls):
+def test_fetch_transcript_prefers_the_original_language_over_a_hand_translation(mock_cls):
+    # An English video with hand-made French subtitles: the book keeps the words
+    # as they were said (English auto-captions), not the French translation.
     info = {
         "language": "en",
         "subtitles": {"fr": _track("http://x/fr-manual.json3")},
         "automatic_captions": {"en": _track("http://x/en-auto.json3")},
     }
-    mock_ydl = _transcript_ydl(info, _json3(_event("Salut", 0, 1000)))
+    mock_ydl = _transcript_ydl(info, _json3(_event("Hello", 0, 1000)))
     mock_cls.return_value.__enter__.return_value = mock_ydl
 
     result = fetch_transcript("vid", languages=["fr", "en"])
 
-    assert result.language == "fr"
-    mock_ydl.urlopen.assert_called_once_with("http://x/fr-manual.json3")
+    assert result.language == "en"
+    mock_ydl.urlopen.assert_called_once_with("http://x/en-auto.json3")
 
 
 @patch("app.sources.youtube.YoutubeDL")
