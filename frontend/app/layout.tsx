@@ -31,7 +31,7 @@ const hostGrotesk = localFont({
 });
 
 // Display — Prociono (`--font-display`): the brand's display voice, reserved for
-// the biggest moments (the hero line + the landing section headings). Regular
+// titles only (the hero, section headings, page and chapter titles). Regular
 // only; never used for body, UI or data. See DESIGN.md, The Display Restraint
 // Rule. (Replaced the geometric CMGeom 2026-06-24.)
 const prociono = localFont({
