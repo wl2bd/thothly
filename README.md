@@ -177,6 +177,22 @@ BACKEND_URL=http://127.0.0.1:8000 pnpm dev
 The Markdown companion is free, but the EPUB step shells out to **Pandoc**, so
 install it locally if you compile outside Docker.
 
+## ▸ Command line
+
+The same flow runs from a terminal, no server needed. From `backend/`, after `uv sync`:
+
+```bash
+uv run thothly list https://example.blog/            # what the sources contain
+uv run thothly list https://example.blog/ --json     # the same, for scripts and agents
+uv run thothly compile https://example.blog/         # asks which items to keep
+uv run thothly compile URL... -s 1-3,7 -o book.epub  # picks without asking
+uv run thothly compile URL... -a -f md               # every item, as Markdown
+```
+
+`--ai` adds AI polish when `LLM_BASE_URL` and `LLM_MODEL` are set. Each run uses a
+temporary database; set `DATA_DIR` to keep the transcript cache between runs.
+Pandoc is needed for both formats for now.
+
 ## ▸ Architecture
 
 - **Next.js (App Router) for the frontend.** Server Components and small route
