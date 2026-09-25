@@ -20,4 +20,5 @@ export const concepts = [
   { href: "/concepts/a", label: "A · Tool first" },
   { href: "/concepts/b", label: "B · Two-pane workspace" },
   { href: "/concepts/c", label: "C · The book is the canvas" },
+  { href: "/concepts/d", label: "D · B with compact rows" },
 ];
