@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ClockIcon,
   FileTextIcon,
@@ -161,11 +162,15 @@ export function SourceMedia({
   kind,
   thumbnail,
   duration,
+  url,
   className = "h-12 w-20",
 }: {
   kind: SourceKind;
   thumbnail?: string | null;
   duration?: string | null;
+  // A text source shows its site's mark when given, so ten articles from ten
+  // sites don't read as ten identical placeholders.
+  url?: string;
   className?: string;
 }) {
   const { text, Icon } = KIND_META[kind];
@@ -190,7 +195,11 @@ export function SourceMedia({
           className="text-muted-foreground/60 flex size-full items-center justify-center"
           aria-hidden="true"
         >
-          {text ? <DocumentGlyph /> : <Icon className="size-5" />}
+          {text ? (
+            url ? <SiteMark url={url} /> : <DocumentGlyph />
+          ) : (
+            <Icon className="size-5" />
+          )}
         </span>
       )}
       {duration && (
@@ -199,6 +208,24 @@ export function SourceMedia({
         </span>
       )}
     </span>
+  );
+}
+
+// The site's favicon, drawn larger, falling back to the document lines when the
+// site has none.
+function SiteMark({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = faviconUrl(url);
+  if (!src || failed) return <DocumentGlyph />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- tiny decorative favicon
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      className="size-6 rounded-sm"
+      onError={() => setFailed(true)}
+    />
   );
 }
 

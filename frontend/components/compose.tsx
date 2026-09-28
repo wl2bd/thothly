@@ -40,7 +40,6 @@ import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   MetaSep,
-  SourceFavicon,
   SourceMedia,
   SourceTypePill,
   hostOf,
@@ -558,6 +557,7 @@ function StagedRow({
     <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-[opacity,translate] duration-300 ease-out-quint motion-reduce:transition-none starting:-translate-x-3 starting:opacity-0">
       <SourceMedia
         kind={kind}
+        url={s.url}
         thumbnail={s.thumbnail}
         duration={formatDuration(s.durationS)}
         className="h-9 w-14"
@@ -567,10 +567,7 @@ function StagedRow({
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 overflow-hidden text-xs">
           <SourceTypePill kind={kind} className="shrink-0" />
           <MetaSep />
-          <span className="inline-flex min-w-0 items-center gap-1">
-            <SourceFavicon url={s.url} />
-            <span className="truncate">{s.author ?? hostOf(s.url)}</span>
-          </span>
+          <span className="min-w-0 truncate">{s.author ?? hostOf(s.url)}</span>
           {isContainerKind(kind) && (
             <>
               <MetaSep />
@@ -716,6 +713,7 @@ function SearchResults({
               />
               <SourceMedia
                 kind={kind}
+                url={r.url}
                 thumbnail={r.thumbnail}
                 duration={formatDuration(r.duration_s)}
               />
@@ -726,10 +724,7 @@ function SearchResults({
                 <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
                   <SourceTypePill kind={kind} className="shrink-0" />
                   <MetaSep />
-                  <span className="inline-flex min-w-0 items-center gap-1">
-                    <SourceFavicon url={r.url} />
-                    <span className="truncate">{hostOf(r.url)}</span>
-                  </span>
+                  <span className="min-w-0 truncate">{hostOf(r.url)}</span>
                   {r.author && (
                     <>
                       <MetaSep />
