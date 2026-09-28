@@ -1,32 +1,19 @@
 import type { ComponentProps } from "react"
-import { cva, type VariantProps } from "class-variance-authority"
 import { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from "lucide-react"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 
-// One inline message treatment for every banner-level notice, so a given
-// severity looks the same wherever it appears (home + job error banners, the
-// search degraded-provider notice). The colour carries the nature; the leading
-// icon makes it readable at a glance. Semantic tokens only (see badge.tsx) so
-// it re-skins with the theme. Per-item micro-notes (a preview caveat, a
-// truncation line) stay as plain coloured text — this box is for banners.
-const noticeVariants = cva(
-  "flex items-start gap-2.5 rounded-lg px-4 py-3 text-sm leading-relaxed [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        error: "bg-destructive/10 text-destructive dark:bg-destructive/20",
-        warning: "bg-warning/10 text-warning dark:bg-warning/20",
-        info: "bg-info/10 text-info dark:bg-info/20",
-      },
-    },
-    defaultVariants: {
-      variant: "error",
-    },
-  },
-)
+// Our three banner severities, drawn with shadcn's Alert so every message box
+// is the kit's own. The colour carries the nature; the icon makes it readable
+// at a glance. Per-item micro-notes stay plain coloured text.
+const tone = {
+  error: "text-destructive *:data-[slot=alert-description]:text-destructive/90",
+  warning: "text-warning *:data-[slot=alert-description]:text-warning/90",
+  info: "text-info *:data-[slot=alert-description]:text-info/90",
+} as const
 
-const noticeIcon = {
+const icon = {
   error: CircleAlertIcon,
   warning: TriangleAlertIcon,
   info: InfoIcon,
@@ -37,22 +24,19 @@ function Notice({
   variant = "error",
   children,
   ...props
-}: ComponentProps<"div"> & VariantProps<typeof noticeVariants>) {
-  const resolved = variant ?? "error"
-  const Icon = noticeIcon[resolved]
+}: ComponentProps<"div"> & { variant?: keyof typeof tone }) {
+  const Icon = icon[variant]
   return (
-    <div
+    <Alert
       // Errors interrupt (assertive); softer notices announce politely.
-      role={resolved === "error" ? "alert" : "status"}
-      className={cn(noticeVariants({ variant }), className)}
+      role={variant === "error" ? "alert" : "status"}
+      className={cn("px-4 py-3", tone[variant], className)}
       {...props}
     >
       <Icon aria-hidden="true" />
-      {/* min-w-0: a flex item won't shrink below its content by default, so a
-          truncated line inside would push the box wider instead of clipping. */}
-      <span className="min-w-0 flex-1">{children}</span>
-    </div>
+      <AlertDescription className="text-pretty">{children}</AlertDescription>
+    </Alert>
   )
 }
 
-export { Notice, noticeVariants }
+export { Notice }
