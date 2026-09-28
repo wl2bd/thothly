@@ -91,9 +91,9 @@
      read on the off-white, so this is a deeper gold (4.0:1, clears the 3:1 of
      icons and focus indicators). It is also the focus ring. */
   --primary-strong: oklch(0.6 0.15 75);
-  --secondary: oklch(0.915 0.035 75);
+  --secondary: oklch(0.92 0.02 85);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.95 0.025 77);
+  --muted: oklch(0.955 0.014 85);
   --muted-foreground: oklch(0.48 0.02 70);
   --accent: var(--muted);
   --accent-foreground: var(--foreground);
@@ -106,13 +106,13 @@
   --warning-foreground: oklch(0.98 0 0);
   --info: oklch(0.52 0.13 255);
   --info-foreground: oklch(0.98 0 0);
-  --border: oklch(0.87 0.04 75);
+  --border: oklch(0.87 0.022 85);
   --input: var(--border);
   --ring: var(--primary-strong);
   --radius: 0.625rem;
   /* A recessed surface, one step below the page: source chips, the hero
      search panel. */
-  --surface-sunken: oklch(0.955 0.025 77);
+  --surface-sunken: oklch(0.96 0.014 85);
   /* The flow card's lift: one token for the surface that carries the whole
      journey (the landing's field, the tool's card, the job's card), so the
      three never drift apart. An ambient glow with no offset: the card sits ON
