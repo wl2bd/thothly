@@ -57,6 +57,8 @@ class JobCreate(BaseModel):
     sources: Annotated[
         list[Source], Field(min_length=1, max_length=MAX_SOURCES_PER_JOB)
     ]
+    # Named in the workspace before discovery. Absent = derived from the sources.
+    book_title: Annotated[str | None, Field(max_length=200)] = None
 
 
 class VisitorEndpoint(BaseModel):

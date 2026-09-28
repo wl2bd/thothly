@@ -25,7 +25,8 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=JobResponse)
 def create_job(payload: JobCreate, background_tasks: BackgroundTasks) -> JobResponse:
     job = repository.create_job(payload)
-    background_tasks.add_task(run_discovery, job.id, payload.sources)
+    title = payload.book_title.strip() if payload.book_title else None
+    background_tasks.add_task(run_discovery, job.id, payload.sources, title or None)
     return job
 
 

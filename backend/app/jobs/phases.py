@@ -13,7 +13,9 @@ from app.sources.youtube import YouTubeUnavailable
 logger = logging.getLogger(__name__)
 
 
-def run_discovery(job_id: str, sources: list[Source]) -> None:
+def run_discovery(
+    job_id: str, sources: list[Source], book_title: str | None = None
+) -> None:
     """Background phase: list what each source contains, then await review.
 
     Discovery stays light — it only enumerates items (video/article metadata).
@@ -74,7 +76,9 @@ def run_discovery(job_id: str, sources: list[Source]) -> None:
 
         save_discovered_items(job_id, items)
         update_job_status(
-            job_id, "reviewing", book_title=derive_book_title(source_names)
+            job_id,
+            "reviewing",
+            book_title=book_title or derive_book_title(source_names),
         )
         logger.info("Discovery done for job %s: %d items", job_id, len(items))
 

@@ -46,3 +46,18 @@ def test_run_discovery_handles_source_error(mock_discover, mock_save, mock_updat
     phases.run_discovery("job1", [SOURCE])
 
     assert mock_update.call_args.args[1] == "failed"
+
+
+@patch("app.jobs.phases.set_job_sources")
+@patch("app.jobs.phases.update_job_status")
+@patch("app.jobs.phases.save_discovered_items")
+@patch("app.jobs.phases.discover_source")
+def test_run_discovery_keeps_a_title_given_at_creation(mock_discover, mock_save, mock_update, mock_set_sources):
+    mock_discover.return_value = (
+        "Ma Playlist",
+        [DiscoveredItem(title="A", url="https://www.youtube.com/watch?v=a",
+                        item_type="youtube", source_index=0, item_index=0)],
+    )
+    phases.run_discovery("job1", [SOURCE], book_title="How transformers work")
+
+    assert mock_update.call_args.kwargs["book_title"] == "How transformers work"
