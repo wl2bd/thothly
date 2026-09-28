@@ -501,14 +501,16 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             {compileError && <Notice variant="error">{compileError}</Notice>}
             <div className="flex items-center justify-between gap-3">
               {staged.length > 0 ? (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={resetStaged}
                   disabled={submitting}
-                  className="text-muted-foreground hover:text-foreground text-xs transition-colors disabled:opacity-50"
+                  className="text-muted-foreground -ml-2.5"
                 >
                   Clear all
-                </button>
+                </Button>
               ) : (
                 <span className="text-muted-foreground text-xs">
                   Up to {MAX_SOURCES} sources

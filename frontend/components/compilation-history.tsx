@@ -4,6 +4,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { XIcon } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 import { ApiError, fetchJob, type JobStatus } from "@/lib/api";
 import {
   forgetCompilation,
@@ -149,17 +151,16 @@ export function CompilationHistory() {
               </span>
             </Link>
             {/* Browser-local and cheap to redo, so it forgets on the press with
-                no confirmation. The hit area is widened past the glyph to clear
-                24 CSS pixels, the same reason the job screen's drag handle is
-                built this way. */}
-            <button
+                no confirmation. */}
+            <Button
               type="button"
+              variant="nav"
+              size="icon-sm"
               onClick={() => forgetCompilation(entry.id)}
               aria-label="Forget this compilation"
-              className="text-muted-foreground/60 hover:text-foreground focus-visible:ring-ring inline-grid h-10 w-6 shrink-0 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
-              <XIcon className="size-4" />
-            </button>
+              <XIcon />
+            </Button>
           </li>
         ))}
       </ul>
