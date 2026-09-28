@@ -20,7 +20,6 @@ import {
   XIcon,
 } from "lucide-react";
 
-import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,7 +27,6 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
-import { HieroglyphRain } from "@/components/hieroglyph-rain";
 import {
   createJob,
   MAX_SOURCES,
@@ -107,15 +105,9 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
   // is, a failed Review where the Review button is.
   const [error, setError] = useState<string | null>(null);
   const [compileError, setCompileError] = useState<string | null>(null);
-  // Whether the bar is engaged. The leading magnifier is treated as resting-
-  // state chrome (like the placeholder): it shows only on an empty, unfocused
-  // bar and clears the moment the field is focused, leaving the full width to
-  // type into.
-  const [focused, setFocused] = useState(false);
 
   const trimmed = query.trim();
   const queryIsUrl = looksLikeUrl(trimmed);
-  const showSearchIcon = query === "" && !focused;
   // The results panel is gated on a DEFERRED query, so its appearance and
   // disappearance ride a transition (which activates the flow-card
   // ViewTransition) — the card animates open as the search launches and shut
@@ -337,35 +329,24 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
         aria-label="Search"
         className={cn(
           "flex min-h-0 flex-1 flex-col lg:overflow-y-auto",
-          // Phone, intro hidden (see Intro below): hug the field so the
-          // compilation sits right under it instead of at the bottom.
-          staged.length > 0 && !showResults && "max-lg:flex-none",
+          // Phone, no search: hug the field so the compilation sits right
+          // under it.
+          !showResults && "max-lg:flex-none",
         )}
       >
         <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-5 p-4 sm:p-6">
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
-            <AnimatedGoldBorder>
-              {/* The magnifier is resting-state chrome, like the placeholder:
-                  this bar both searches and takes a pasted link, so a "search"
-                  glyph isn't always accurate. It clears the instant the field
-                  is focused (or holds content), handing the full width over to
-                  type into. Kept in the DOM (absolute, so no layout cost) and
-                  cross-faded with a slight slide so the placeholder glides in
-                  to replace it instead of the text snapping sideways. */}
+            {/* A plain field, the magnifier always in place. */}
+            <div className="relative">
               <SearchIcon
                 aria-hidden="true"
-                className={cn(
-                  "text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 transition-[opacity,transform] duration-300 ease-out-quint motion-reduce:transition-none",
-                  showSearchIcon ? "opacity-100" : "-translate-x-1 opacity-0",
-                )}
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2"
               />
               <Input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
                 onKeyDown={(e) => {
                   // Escape wipes the bar (and only then) so a held query can be
                   // cleared without reaching for the × or select-all-delete.
@@ -376,14 +357,9 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                 }}
                 placeholder="Search or paste a link…"
                 className={cn(
-                  // The page's primary action: a tall, confident bar. The
-                  // padding is transitioned so the text/placeholder glides when
-                  // the magnifier comes and goes rather than snapping.
-                  "h-14 border-transparent bg-background transition-[padding] duration-300 ease-out-quint focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
-                  // Left: room for the magnifier only while it shows (empty &
-                  // unfocused). Right: room for the in-field Add (pasted link)
-                  // or the clear × (search term), nothing when empty.
-                  showSearchIcon ? "pl-10" : "pl-4",
+                  "bg-card dark:bg-card h-12 rounded-xl pl-10 shadow-sm",
+                  // Right: room for the in-field Add (pasted link) or the
+                  // clear × (search term), nothing when empty.
                   queryIsUrl ? "pr-28" : query !== "" ? "pr-12" : "pr-4",
                 )}
                 autoComplete="off"
@@ -398,7 +374,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                   aria-label="Add to sources"
                   // An inset, not -translate-y-1/2: Button's press affordance
                   // writes the same translate and would drop the pill.
-                  className="absolute top-2 right-2"
+                  className="absolute top-1.5 right-1.5 h-9"
                 >
                   <PlusIcon />
                   Add
@@ -411,13 +387,13 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                     size="icon-sm"
                     onClick={clearQuery}
                     aria-label="Clear search"
-                    className="absolute top-3 right-2"
+                    className="absolute top-2 right-2"
                   >
                     <XIcon className="size-4" />
                   </Button>
                 )
               )}
-            </AnimatedGoldBorder>
+            </div>
             {!queryIsUrl && <SearchSourcesHint />}
           </form>
 
@@ -468,7 +444,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             </div>
           )}
 
-          {showResults ? (
+          {showResults && (
             <SearchResults
               searching={searching}
               settled={settled}
@@ -479,10 +455,6 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
               onToggle={toggleResultStaged}
               onPointerPick={() => (pickedByPointer.current = true)}
             />
-          ) : (
-            // On a phone the compilation sits under this; once it holds
-            // something, it is what matters, so the intro steps aside.
-            <Intro className={cn(staged.length > 0 && "max-lg:hidden")} />
           )}
         </div>
       </section>
@@ -617,34 +589,6 @@ function StagedRow({
         </Button>
       </Tooltip>
     </li>
-  );
-}
-
-// What the search pane holds before anything is typed: the brand's glyph rain
-// and the one-line promise, where the old landing's hero used to be.
-function Intro({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "relative isolate flex min-h-72 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-xl px-6 py-12 text-center",
-        className,
-      )}
-      style={{ background: "var(--hero-ground)" }}
-    >
-      <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-90 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{ background: "var(--hero-scrim)" }}
-      />
-      <h1 className="font-display text-4xl tracking-tight text-balance sm:text-5xl">
-        Make anything readable
-      </h1>
-      <p className="text-muted-foreground max-w-md text-base leading-snug text-balance sm:text-lg">
-        Turn videos, podcasts, articles, even whole playlists into one clean
-        read for your e-reader or your AI.
-      </p>
-    </div>
   );
 }
 
