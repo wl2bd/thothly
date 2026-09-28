@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { Dialog } from "@base-ui/react/dialog";
-import { ChevronDownIcon, XIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ChevronDownIcon } from "lucide-react";
 
 import { ProviderIcon } from "@/components/provider-icon";
 import { Button } from "@/components/ui/button";
@@ -317,29 +323,20 @@ export function ConnectModelDialog({
 }) {
   const copy = KIND_COPY[kind ?? "llm"];
   return (
-    <Dialog.Root open={kind !== null} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-        <Dialog.Popup className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100svh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-xl border p-6 shadow-xl transition-[opacity,scale] duration-150 outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-          <div className="flex flex-col gap-1.5 pr-8">
-            <Dialog.Title className="text-base font-semibold">{copy.title}</Dialog.Title>
-            <Dialog.Description className="text-muted-foreground text-sm">
-              {copy.purpose} {PRIVACY}
-            </Dialog.Description>
-          </div>
-          <Dialog.Close
-            aria-label="Close"
-            render={<Button variant="nav" size="icon-sm" className="absolute top-4 right-4" />}
-          >
-            <XIcon />
-          </Dialog.Close>
-          {kind && (
-            <ModelEndpointSettings kind={kind} config={config} onSaved={() => onOpenChange(false)} />
-          )}
-          {kind === "llm" && <ModelInstructions config={config} />}
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Dialog open={kind !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] gap-5 overflow-y-auto p-6 sm:max-w-md">
+        <DialogHeader className="pr-8">
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>
+            {copy.purpose} {PRIVACY}
+          </DialogDescription>
+        </DialogHeader>
+        {kind && (
+          <ModelEndpointSettings kind={kind} config={config} onSaved={() => onOpenChange(false)} />
+        )}
+        {kind === "llm" && <ModelInstructions config={config} />}
+      </DialogContent>
+    </Dialog>
   );
 }
 
