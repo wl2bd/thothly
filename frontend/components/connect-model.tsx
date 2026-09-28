@@ -8,7 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDownIcon } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 import { ProviderIcon } from "@/components/provider-icon";
 import { Button } from "@/components/ui/button";
@@ -359,16 +364,15 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
 }
 
 // The exact instructions each pass sends to the visitor's model: it is their
-// key and their money, so nothing it is asked to do stays hidden. Native
-// <details>, like the FAQ: closed by default, no JS.
+// key and their money, so nothing it is asked to do stays hidden. Closed by
+// default, like the FAQ.
 function ModelInstructions({ config }: { config: LlmConfig }) {
   return (
-    <details className="group border-t pt-4">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
-        What your model is told
-        <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
-      </summary>
-      <dl className="mt-3 flex flex-col gap-4">
+    <Accordion className="border-t pt-2">
+      <AccordionItem value="instructions">
+        <AccordionTrigger>What your model is told</AccordionTrigger>
+        <AccordionContent>
+      <dl className="mt-1 flex flex-col gap-4">
         {config.roles.map((role) => (
           <div key={role.id} className="flex flex-col gap-1.5">
             <dt className="text-xs font-semibold">{role.label}</dt>
@@ -378,7 +382,9 @@ function ModelInstructions({ config }: { config: LlmConfig }) {
           </div>
         ))}
       </dl>
-    </details>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 

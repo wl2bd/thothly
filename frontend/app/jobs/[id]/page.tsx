@@ -956,8 +956,8 @@ function CompletedView({
 // The whole compilation, readable right here, to check it before it goes to an
 // e-reader or an AI. One chapter at a time: the heaviest book (every source at
 // its cap) is tens of thousands of words, and one chapter renders instantly
-// where the whole book would not. Native <details>, closed by default: the
-// downloads stay the headline of this screen.
+// where the whole book would not. Open on the left pane; the
+// downloads sit in the compilation pane.
 function BookReader({ md }: { md: string }) {
   const chapters = useMemo(() => splitBook(md), [md]);
   const [at, setAt] = useState(0);

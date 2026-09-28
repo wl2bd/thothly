@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronDownIcon } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { HowItWorks } from "@/components/how-it-works";
 import { Logotype } from "@/components/brand";
 import { buttonVariants } from "@/components/ui/button";
@@ -87,21 +92,18 @@ function DataAndFaq() {
           <h2 className="font-display text-2xl tracking-tight text-balance">
             Questions
           </h2>
-          {/* Native <details>: the disclosure is the browser's, so the FAQ needs
-              no JS and stays server-rendered. */}
-          <div className="mt-4 flex flex-col">
+          <Accordion className="mt-4">
             {items.map((it) => (
-              <details key={it.q} className="group border-b py-3.5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                  {it.q}
-                  <ChevronDownIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
-                </summary>
-                <p className="text-muted-foreground mt-2 text-sm leading-relaxed text-balance">
-                  {it.a}
-                </p>
-              </details>
+              <AccordionItem key={it.q} value={it.q}>
+                <AccordionTrigger className="py-3.5">{it.q}</AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-muted-foreground leading-relaxed text-balance">
+                    {it.a}
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
       </div>
     </section>
