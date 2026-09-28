@@ -23,6 +23,8 @@ export interface Source {
   // `item_count` is how many items it yielded.
   resolved?: boolean;
   item_count?: number;
+  // Why the source yielded nothing, when it failed. The others carry on.
+  error?: string | null;
 }
 
 export type CompileState =

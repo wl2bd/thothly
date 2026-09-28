@@ -507,7 +507,9 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
               className="bg-muted/40 flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs"
             >
               <span className="flex size-3.5 shrink-0 items-center justify-center">
-                {s.resolved ? (
+                {s.resolved && s.error ? (
+                  <X className="text-muted-foreground size-3.5" />
+                ) : s.resolved ? (
                   <Check className="text-foreground/60 size-3.5" />
                 ) : isActive ? (
                   <Spinner className="size-3.5" />
@@ -524,7 +526,11 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
               >
                 {label}
               </span>
-              {s.resolved ? (
+              {s.resolved && s.error ? (
+                <span className="text-muted-foreground shrink-0">
+                  {s.error}
+                </span>
+              ) : s.resolved ? (
                 <span className="text-muted-foreground shrink-0 tabular-nums">
                   {count} item{count !== 1 ? "s" : ""}
                 </span>

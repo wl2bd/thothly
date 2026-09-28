@@ -12,6 +12,11 @@ from app.sources.youtube import YouTubeUnavailable
 
 logger = logging.getLogger(__name__)
 
+_YOUTUBE_BUSY = (
+    "YouTube didn't respond. It rate-limits requests from some networks, so "
+    "try again in a little while."
+)
+
 
 def run_discovery(
     job_id: str, sources: list[Source], book_title: str | None = None
@@ -28,13 +33,23 @@ def run_discovery(
         items: list[DiscoveredItemResponse] = []
         source_names: list[str | None] = []
         for index, source in enumerate(sources):
-            source_name, discovered = discover_source(
-                str(source.url),
-                index,
-                kind=source.kind,
-                title=source.title,
-                duration_s=source.duration_s,
-            )
+            try:
+                source_name, discovered = discover_source(
+                    str(source.url),
+                    index,
+                    kind=source.kind,
+                    title=source.title,
+                    duration_s=source.duration_s,
+                )
+            except YouTubeUnavailable:
+                logger.exception("Source %d of job %s: YouTube refused", index, job_id)
+                source_name, discovered = None, []
+                source.error = _YOUTUBE_BUSY
+            except Exception:
+                # The raw exception stays in the log; the source gets one line.
+                logger.exception("Source %d of job %s couldn't be read", index, job_id)
+                source_name, discovered = None, []
+                source.error = "Couldn't be read."
             source_names.append(source_name)
             items.extend(
                 DiscoveredItemResponse(
@@ -67,10 +82,17 @@ def run_discovery(
             set_job_sources(job_id, sources)
 
         if not items:
+            errors = {s.error for s in sources}
             update_job_status(
                 job_id,
                 "failed",
-                error="Those sources had no content to compile.",
+                error=(
+                    _YOUTUBE_BUSY
+                    if errors == {_YOUTUBE_BUSY}
+                    else "Those sources couldn't be read. Try again."
+                    if None not in errors
+                    else "Those sources had no content to compile."
+                ),
             )
             return
 
@@ -87,10 +109,7 @@ def run_discovery(
         update_job_status(
             job_id,
             "failed",
-            error=(
-                "YouTube didn't respond. It rate-limits requests from some "
-                "networks, so try again in a little while."
-            ),
+            error=_YOUTUBE_BUSY,
         )
     except Exception:
         # The raw exception (yt-dlp text, a blocked-URL guard, a network error)

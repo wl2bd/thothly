@@ -44,6 +44,9 @@ class Source(BaseModel):
     # it yielded.
     resolved: bool = False
     item_count: int = 0
+    # Why this source yielded nothing, when it failed. The others still go on:
+    # one unreadable site must not sink a whole compilation.
+    error: str | None = None
 
 
 # A single job fans out to one background worker that processes every source
