@@ -8,7 +8,6 @@ import {
   useMemo,
   useRef,
   useState,
-  ViewTransition,
   type ButtonHTMLAttributes,
   type CSSProperties,
   type ReactNode,
@@ -17,7 +16,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   Check,
-  ChevronDown,
   Coins,
   Copy,
   Download,
@@ -53,15 +51,18 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { Logomark, Logotype } from "@/components/brand";
-import { EpubTablet, MarkdownTablet } from "@/components/output-tablet";
+import { Logomark } from "@/components/brand";
+import { AppHeader } from "@/components/app-header";
+import {
+  CompilationPane,
+  WorkPane,
+  Workspace,
+} from "@/components/compilation-pane";
 import {
   MetaSep,
   SourceFavicon,
@@ -399,74 +400,120 @@ export default function JobPage() {
     }
   }
 
-  return (
-    <main id="main" className="flex min-h-screen justify-center p-8 sm:p-12">
-      <div className="flex w-full max-w-xl flex-col gap-10 py-12">
-        <header className="flex items-baseline justify-between">
-          {/* transitionTypes tags the return trip so the home hero (a far richer
-              view than this one) can ease back in gently — see the to-home rules
-              in globals.css — instead of snapping in at the forward speed. */}
-          <Link
-            href="/"
-            transitionTypes={["to-home"]}
-            className="flex items-center"
-          >
-            <Logotype className="h-8 w-auto" title="Thothly" />
-          </Link>
-          <Link
-            href="/"
-            className="text-muted-foreground text-sm hover:underline"
-          >
-            ← New compilation
-          </Link>
-        </header>
+  // The one way out of a finished or failed compilation.
+  const newCompilation = (
+    <Link
+      href="/"
+      className={cn(buttonVariants({ variant: "secondary" }), "w-full")}
+    >
+      New compilation
+    </Link>
+  );
 
-        {error && <Notice variant="error">{error}</Notice>}
-
-        {/* Same view-transition identity as the home search card, so arriving
-            here morphs that card into this one instead of a hard page cut. */}
-        {(job || !error) && (
-        <ViewTransition name="flow-card">
-        <Card className="bg-surface-sunken shadow-flow-card">
-          <CardContent>
-          {!job ? (
-            <StatusMessage label="Loading…" />
-          ) : job.status === "pending" || job.status === "discovering" ? (
-            <DiscoveringView sources={job.sources} />
-          ) : job.status === "reviewing" ? (
-            <ReviewList
-              jobId={id}
-              items={job.discovered_items}
-              sources={job.sources}
-              selected={selected}
-              title={title}
-              confirming={confirming}
-              llm={effectiveLlm}
-              selectedRoles={roles}
-              onToggleRole={toggleRole}
-              onSetRolesMany={setRolesMany}
-              onTitleChange={onTitleChange}
-              onToggle={toggle}
-              onSelectItems={selectItems}
-              onSelectAll={() => setSelected(new Set(job.discovered_items.map((it) => it.id)))}
-              onSelectNone={() => setSelected(new Set())}
-              onConfirm={onConfirm}
-              sourceOrder={sourceOrder}
-              onReorderSources={setSourceOrder}
-            />
-          ) : job.status === "processing" ? (
-            <CompilingView items={job.discovered_items} />
-          ) : job.status === "completed" ? (
-            <CompletedView jobId={id} job={job} />
+  // Each step fills both panes: what it is working on, on the left; the
+  // compilation, on the right. Review and the finished book lay out their own
+  // two panes; the simpler steps are laid out here.
+  let panes: ReactNode;
+  if (!job) {
+    panes = (
+      <>
+        <WorkPane>
+          {error ? (
+            <Notice variant="error">{error}</Notice>
           ) : (
-            <FailedView job={job} />
+            <StatusMessage label="Loading…" />
           )}
-          </CardContent>
-        </Card>
-        </ViewTransition>
-        )}
-      </div>
-    </main>
+        </WorkPane>
+        <CompilationPane title="" footer={error ? newCompilation : undefined} />
+      </>
+    );
+  } else if (job.status === "pending" || job.status === "discovering") {
+    const n = job.sources.length;
+    panes = (
+      <>
+        <WorkPane>
+          <DiscoveringView sources={job.sources} />
+        </WorkPane>
+        <CompilationPane
+          title={job.book_title ?? ""}
+          meta={`${n} source${n !== 1 ? "s" : ""}`}
+        >
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Listing what each source contains. You pick what goes in next.
+          </p>
+        </CompilationPane>
+      </>
+    );
+  } else if (job.status === "reviewing") {
+    panes = (
+      <ReviewList
+        jobId={id}
+        items={job.discovered_items}
+        sources={job.sources}
+        selected={selected}
+        title={title}
+        confirming={confirming}
+        error={error}
+        llm={effectiveLlm}
+        selectedRoles={roles}
+        onToggleRole={toggleRole}
+        onSetRolesMany={setRolesMany}
+        onTitleChange={onTitleChange}
+        onToggle={toggle}
+        onSelectItems={selectItems}
+        onSelectAll={() =>
+          setSelected(new Set(job.discovered_items.map((it) => it.id)))
+        }
+        onSelectNone={() => setSelected(new Set())}
+        onConfirm={onConfirm}
+        sourceOrder={sourceOrder}
+        onReorderSources={setSourceOrder}
+      />
+    );
+  } else if (job.status === "processing") {
+    const built = job.discovered_items.filter(
+      (it) => it.compile_state === "done",
+    ).length;
+    panes = (
+      <>
+        <WorkPane>
+          <CompilingView items={job.discovered_items} />
+        </WorkPane>
+        <CompilationPane
+          title={job.book_title ?? ""}
+          meta={`${built} of ${job.discovered_items.length} ready`}
+        >
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            This can take a few minutes. It keeps going if you leave, and waits
+            for you in Recent compilations.
+          </p>
+        </CompilationPane>
+      </>
+    );
+  } else if (job.status === "completed") {
+    panes = (
+      <CompletedView jobId={id} job={job} newCompilation={newCompilation} />
+    );
+  } else {
+    panes = (
+      <>
+        <WorkPane>
+          <FailedView job={job} />
+        </WorkPane>
+        <CompilationPane
+          title={job.book_title ?? ""}
+          meta="Did not finish"
+          footer={newCompilation}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="flex min-h-svh flex-col lg:h-svh">
+      <AppHeader />
+      <Workspace>{panes}</Workspace>
+    </div>
   );
 }
 
@@ -496,7 +543,7 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
         Looking through your {sources.length} source
         {sources.length !== 1 ? "s" : ""}…
       </div>
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col divide-y">
         {sources.map((s, i) => {
           const label = s.name?.trim() || s.title?.trim() || sourceLabel(s.url);
           const isActive = i === activeIndex;
@@ -504,7 +551,7 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
           return (
             <li
               key={`${s.url}-${i}`}
-              className="bg-muted/40 flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs"
+              className="flex items-center gap-3 py-3.5 text-sm"
             >
               <span className="flex size-3.5 shrink-0 items-center justify-center">
                 {s.resolved && s.error ? (
@@ -541,9 +588,6 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
           );
         })}
       </ul>
-      <p className="text-muted-foreground text-xs">
-        Listing what each one contains. You pick what goes in next.
-      </p>
     </div>
   );
 }
@@ -571,8 +615,6 @@ function CompilingView({ items }: { items: DiscoveredItem[] }) {
     items.every((it) =>
       ["done", "skipped", "failed"].includes(it.compile_state ?? "pending"),
     );
-  const built = items.filter((it) => it.compile_state === "done").length;
-
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-3 text-sm font-medium">
@@ -581,7 +623,7 @@ function CompilingView({ items }: { items: DiscoveredItem[] }) {
           ? "Building your compilation…"
           : `Working through your ${items.length} item${items.length !== 1 ? "s" : ""}…`}
       </div>
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col divide-y">
         {items.map((it) => (
           <CompileStep
             key={it.id}
@@ -597,9 +639,6 @@ function CompilingView({ items }: { items: DiscoveredItem[] }) {
           label="Building the file"
         />
       </ul>
-      <p className="text-muted-foreground text-xs">
-        {built} of {items.length} ready. This can take a few minutes.
-      </p>
     </div>
   );
 }
@@ -622,7 +661,7 @@ function CompileStep({
   const active = state === "compiling";
   const out = state === "skipped" || state === "failed";
   return (
-    <li className="bg-muted/40 flex items-start gap-2.5 rounded-lg px-3 py-2 text-xs">
+    <li className="flex items-start gap-3 py-3.5 text-sm">
       <span className="flex size-3.5 shrink-0 items-center justify-center pt-0.5">
         {done ? (
           <Check className="text-foreground/60 size-3.5" />
@@ -679,7 +718,7 @@ function FailedView({ job }: { job: JobResponse }) {
         <p className="text-muted-foreground text-sm">{job.error}</p>
       )}
       {job.discovered_items.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col divide-y">
           {job.discovered_items.map((it) => (
             <CompileStep
               key={it.id}
@@ -713,7 +752,15 @@ function builtChapterItems(items: DiscoveredItem[]): DiscoveredItem[] {
 // Markdown twin is fetched once so we can offer instant Copy and show its size
 // (the AI's context budget is the thing the user weighs). We never gate by size:
 // the right limit depends on the target LLM, so we inform rather than hide.
-function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
+function CompletedView({
+  jobId,
+  job,
+  newCompilation,
+}: {
+  jobId: string;
+  job: JobResponse;
+  newCompilation: ReactNode;
+}) {
   const [md, setMd] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const hasMarkdown = !!job.output_md_path;
@@ -746,31 +793,6 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   const sourceCount =
     new Set(counted.map((it) => it.source_index)).size || job.sources.length;
 
-  // A real mini-preview of the compilation for the two slabs: the EPUB shows the
-  // first chapter as a book page, the Markdown shows the actual top of the twin
-  // (its "# Sources" index). Built from the fetched Markdown once it's in, with a
-  // structure derived from the built items (the same preference `counted` above
-  // uses) until then — so the placeholder title and the EPUB slab's fallback
-  // never name a chapter that didn't make it into the book, and no faux stand-in
-  // text ever flashes here either; this IS the thing that was just made.
-  const preview = useMemo(() => {
-    const chapters = builtChapterItems(job.discovered_items);
-    const mdLines =
-      md && md.trim()
-        ? md.split("\n")
-        : ["# Sources", "", ...chapters.map((it) => `- [${it.title}](${it.url})`)];
-    // Prefer the first real chapter parsed from the Markdown (it's the EPUB's
-    // actual opening page and is always present); fall back to the first built
-    // item, then the book title, while the Markdown is still loading.
-    const ch = md ? firstChapter(md) : null;
-    return {
-      mdLines,
-      epubTitle:
-        ch?.title ?? chapters[0]?.title ?? job.book_title ?? "Your compilation",
-      epubBody: ch?.body ?? "",
-    };
-  }, [md, job]);
-
   // The payoff. Arriving on this screen (the job just finished, or a completed
   // job opened) plays a one-shot arrival: the gold seal — the thothly mark —
   // blooms in and flares, then the title and outputs cascade beneath it. It
@@ -801,172 +823,127 @@ function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
     }
   }
 
-  return (
-    <div className="flex flex-col gap-7">
-      <div className="flex flex-col gap-2">
-        {/* The seal — the thothly mark, in gold — lands first and its gold flares
-            once (see .seal-bloom), the scribe's mark closing a finished work,
-            before the title it heralds rises in beneath it. */}
-        <span className="relative isolate mb-1 flex w-fit items-center">
-          <span
-            aria-hidden="true"
-            className={cn(
-              "bg-primary/50 dark:bg-primary/65 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl",
-              revealed ? "seal-bloom" : "opacity-0",
-            )}
-          />
-          <span
-            aria-hidden="true"
-            className={cn(
-              "text-primary flex origin-left transition-[opacity,transform] duration-1000 ease-out-expo motion-reduce:transition-none",
-              revealed ? "scale-100 opacity-100" : "scale-75 opacity-0",
-            )}
-          >
-            <Logomark className="h-8 w-auto" />
-          </span>
-        </span>
+  const meta = `${sourceCount} source${sourceCount !== 1 ? "s" : ""}${
+    words != null ? ` · ~${words.toLocaleString("en-US")} words` : ""
+  }`;
 
-        {/* The book title is the artifact's name, so it's the hero here; the
-            "ready" line steps back to an eyebrow above it. Falls back to the
-            generic line as the title when no name was set. */}
-        {job.book_title ? (
-          <>
-            <p
-              className={cn("text-muted-foreground text-sm", rise, riseIn)}
-              style={at(320)}
-            >
-              Your compilation is ready
-            </p>
-            <h1
-              className={cn(
-                "font-display text-3xl leading-display tracking-tight text-balance",
-                rise,
-                riseIn,
-              )}
-              style={at(520)}
-            >
-              {job.book_title}
-            </h1>
-          </>
+  return (
+    <>
+      {/* The book itself, open on the left: the thing just made, to check
+          before it goes to an e-reader or an AI. */}
+      <WorkPane label="Your book">
+        {md ? (
+          <BookReader md={md} />
+        ) : hasMarkdown ? (
+          <StatusMessage label="Opening the book…" />
         ) : (
-          <h1
-            className={cn(
-              "font-display text-3xl leading-display tracking-tight text-balance",
-              rise,
-              riseIn,
-            )}
-            style={at(520)}
-          >
-            Your compilation is ready
-          </h1>
+          <p className="text-muted-foreground text-sm">
+            Download the EPUB to read it.
+          </p>
         )}
-        <p
-          className={cn("text-muted-foreground text-xs", rise, riseIn)}
-          style={at(760)}
-        >
-          {sourceCount} source{sourceCount !== 1 ? "s" : ""}
-          {words != null && ` · ~${words.toLocaleString("en-US")} words`}
-        </p>
+      </WorkPane>
+
+      <CompilationPane
+        eyebrow={
+          <>
+            {/* The seal — the thothly mark, in gold — flares once as the
+                pane arrives, the scribe's mark closing a finished work. */}
+            <span className="relative isolate flex items-center">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "bg-primary/50 dark:bg-primary/65 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full blur-lg",
+                  revealed ? "seal-bloom" : "opacity-0",
+                )}
+              />
+              <Logomark className="text-primary-strong h-3.5 w-auto" />
+            </span>
+            Ready
+          </>
+        }
+        title={job.book_title ?? ""}
+        meta={meta}
+        footer={newCompilation}
+      >
+        {/* EPUB — to read. The one gold action: reading on an e-reader is the
+            product's headline use. */}
+        <div className={cn("flex flex-col gap-3", rise, riseIn)} style={at(200)}>
+          <span className="flex flex-col">
+            <span className="text-sm font-medium">EPUB</span>
+            <span className="text-muted-foreground text-xs">
+              For your e-reader
+            </span>
+          </span>
+          <a
+            href={getDownloadUrl(jobId)}
+            download
+            className={cn(buttonVariants(), "w-full")}
+          >
+            <Download />
+            Download
+          </a>
+        </div>
+
+        {/* Markdown — to feed an AI. Copy is the natural gesture there; the
+            token size rides the destination line (the AI's context budget is
+            what the user weighs). */}
+        {hasMarkdown && (
+          <div className={cn("flex flex-col gap-3", rise, riseIn)} style={at(350)}>
+            <span className="flex flex-col">
+              <span className="text-sm font-medium">Markdown</span>
+              <span className="text-muted-foreground text-xs">
+                {tokens != null
+                  ? `For an AI · ~${formatTokens(tokens)} tokens`
+                  : "For an AI"}
+              </span>
+            </span>
+            <div className="flex w-full gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={copy}
+                disabled={!md}
+                className="flex-1"
+              >
+                {copied ? (
+                  <>
+                    <Check />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy />
+                    Copy
+                  </>
+                )}
+              </Button>
+              <Tooltip content="Download Markdown">
+                <a
+                  href={getDownloadUrl(jobId, "md")}
+                  download
+                  aria-label="Download Markdown"
+                  className={buttonVariants({ variant: "secondary", size: "icon" })}
+                >
+                  <Download />
+                </a>
+              </Tooltip>
+            </div>
+            {tokens != null && tokens > 200000 && (
+              <p className="text-muted-foreground text-xs">
+                This file is large for some AIs. Downloading and attaching it may
+                work better.
+              </p>
+            )}
+          </div>
+        )}
+
         <LeftOutNotice
           items={job.discovered_items}
           className={cn(rise, riseIn)}
-          style={at(880)}
+          style={at(500)}
         />
-      </div>
-
-      <div className={cn("grid gap-4", hasMarkdown && "sm:grid-cols-2")}>
-        {/* EPUB — to read. The gold primary lives here: reading on an e-reader is
-            the product's headline use, so its download is the one accented act.
-            The stone tablet is the same one the landing's funnel showed, so what
-            was promised is what's handed over. */}
-        <div className={cn(rise, riseIn)} style={at(1000)}>
-          <OutputTile
-            tablet={
-              <EpubTablet
-                eyebrow="Chapter 1"
-                title={preview.epubTitle}
-                body={preview.epubBody}
-              />
-            }
-            format="EPUB"
-            destination="For your e-reader"
-          >
-            <a
-              href={getDownloadUrl(jobId)}
-              download
-              className={cn(buttonVariants(), "w-full")}
-            >
-              <Download />
-              Download
-            </a>
-          </OutputTile>
-        </div>
-
-        {/* Markdown — to feed an AI. Copy is the natural gesture there, so it
-            leads; the token size rides the destination line (the AI's context
-            budget is what the user weighs). Only shown when the twin exists. */}
-        {hasMarkdown && (
-          <div className={cn(rise, riseIn)} style={at(1200)}>
-            <OutputTile
-              tablet={<MarkdownTablet lines={preview.mdLines} />}
-              format="Markdown"
-              destination={
-                tokens != null
-                  ? `For an AI · ~${formatTokens(tokens)} tokens`
-                  : "For an AI"
-              }
-            >
-              <div className="flex w-full gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={copy}
-                  disabled={!md}
-                  className="flex-1"
-                >
-                  {copied ? (
-                    <>
-                      <Check />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy />
-                      Copy
-                    </>
-                  )}
-                </Button>
-                <Tooltip content="Download Markdown">
-                  <a
-                    href={getDownloadUrl(jobId, "md")}
-                    download
-                    aria-label="Download Markdown"
-                    className={buttonVariants({ variant: "secondary", size: "icon" })}
-                  >
-                    <Download />
-                  </a>
-                </Tooltip>
-              </div>
-            </OutputTile>
-          </div>
-        )}
-      </div>
-
-      {md && (
-        <div className={cn(rise, riseIn)} style={at(1300)}>
-          <BookReader md={md} />
-        </div>
-      )}
-
-      {tokens != null && tokens > 200000 && (
-        <p
-          className={cn("text-muted-foreground text-xs", rise, riseIn)}
-          style={at(1400)}
-        >
-          This file is large for some AIs. Downloading and attaching it may work better.
-        </p>
-      )}
-    </div>
+      </CompilationPane>
+    </>
   );
 }
 
@@ -986,17 +963,12 @@ function BookReader({ md }: { md: string }) {
     topRef.current?.scrollIntoView({ block: "start" });
   }
   return (
-    <details className="group border-t pt-4">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
-        Read it here
-        <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
-      </summary>
-      <div ref={topRef} className="mt-4 flex scroll-mt-4 flex-col gap-4">
+    <div ref={topRef} className="flex scroll-mt-20 flex-col gap-6">
         <select
           aria-label="Chapter"
           value={at}
           onChange={(e) => go(Number(e.target.value))}
-          className="border-input bg-background h-11 w-full rounded-md border px-3 text-sm"
+          className="text-muted-foreground focus-visible:ring-ring w-full cursor-pointer truncate rounded-xs bg-transparent text-sm focus-visible:ring-2 focus-visible:outline-none"
         >
           {chapters.map((c, i) => (
             <option key={i} value={i}>
@@ -1004,8 +976,10 @@ function BookReader({ md }: { md: string }) {
             </option>
           ))}
         </select>
-        <article className="flex flex-col gap-3">
-          <h2 className="font-display text-xl tracking-tight text-balance">{chapter.title}</h2>
+        <article className="flex max-w-prose flex-col gap-4">
+          <h2 className="font-display text-3xl tracking-tight text-balance">
+            {chapter.title}
+          </h2>
           <MarkdownPreview md={chapter.body} />
         </article>
         {chapters.length > 1 && (
@@ -1023,8 +997,7 @@ function BookReader({ md }: { md: string }) {
             </Button>
           </div>
         )}
-      </div>
-    </details>
+    </div>
   );
 }
 
@@ -1115,38 +1088,6 @@ function LeftOutNotice({
   );
 }
 
-// One format tile: its stone-tablet illustration on top (the carved preview the
-// landing already showed for this format), then the format name, its
-// destination, and the format's action(s) as children. No surrounding box — the
-// tablet's own carved edge is the frame. The two outputs stay visual peers; the
-// only accent is the gold on EPUB's primary download.
-function OutputTile({
-  tablet,
-  format,
-  destination,
-  children,
-}: {
-  tablet: ReactNode;
-  format: string;
-  destination: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      {/* The tablet is a desktop-only flourish: on a narrow screen the two would
-          stack into a tall scroll, so below sm we keep just the label + action. */}
-      <div className="hidden sm:block">{tablet}</div>
-      <div className="flex flex-col gap-3 px-0.5">
-        <span className="flex min-w-0 flex-col">
-          <span className="text-sm font-medium">{format}</span>
-          <span className="text-muted-foreground text-xs">{destination}</span>
-        </span>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function countWords(text: string): number {
   const t = text.trim();
   return t ? t.split(/\s+/).length : 0;
@@ -1156,54 +1097,6 @@ function formatTokens(n: number): string {
   return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
 }
 
-// Pull the first real chapter — its title and the opening prose — out of the
-// Markdown twin, for the EPUB slab's mini-preview (the actual first page of the
-// book). Skips the "# Sources" index and any "# Preface" front matter, then the
-// chapter's "::: {.source-attribution}" block, and flattens the first ~320 chars
-// of body into clean prose (leading heading/quote/bullet markers and inline
-// bold/italic/link/code/image syntax stripped) so it reads as a book page at the
-// tiny slab size. Returns null when there's no chapter; `body` is "" when the
-// chapter has no prose (e.g. all images), and the slab then shows its page bars.
-function firstChapter(md: string): { title: string; body: string } | null {
-  const lines = md.split("\n");
-  let i = 0;
-  let title = "";
-  for (; i < lines.length; i++) {
-    const m = /^#\s+(.*)/.exec(lines[i]);
-    const h = m && parseHeading(m[1]);
-    if (h && !h.frontMatter) {
-      title = h.title;
-      break;
-    }
-  }
-  if (i >= lines.length) return null;
-  let j = i + 1;
-  while (j < lines.length && lines[j].trim() === "") j++;
-  if (lines[j]?.trim().startsWith(":::")) {
-    j++;
-    while (j < lines.length && !lines[j].trim().startsWith(":::")) j++;
-    j++; // past the closing fence
-  }
-  const out: string[] = [];
-  for (; j < lines.length && out.join(" ").length < 320; j++) {
-    const t = lines[j].trim();
-    if (/^#\s+/.test(t)) break; // reached the next chapter (H1)
-    if (/^#{2,6}\s+/.test(t)) continue; // skip sub-headings; open on prose
-    if (!t || t.startsWith(":::")) continue;
-    const clean = t
-      .replace(/^>\s?/, "")
-      .replace(/^[-*]\s+/, "")
-      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
-      .replace(/`([^`]+)`/g, "$1")
-      .trim();
-    if (clean) out.push(clean);
-  }
-  return { title, body: out.join(" ").slice(0, 320) };
-}
-
 interface ReviewListProps {
   jobId: string;
   items: DiscoveredItem[];
@@ -1211,6 +1104,7 @@ interface ReviewListProps {
   selected: Set<string>;
   title: string;
   confirming: boolean;
+  error: string | null;
   llm: LlmConfig | null;
   selectedRoles: Set<string>;
   onToggleRole: (id: string) => void;
@@ -1232,6 +1126,7 @@ function ReviewList({
   selected,
   title,
   confirming,
+  error,
   llm,
   selectedRoles,
   onToggleRole,
@@ -1249,7 +1144,6 @@ function ReviewList({
   const [connecting, setConnecting] = useState<ModelKind | null>(null);
   const storedModels = useStoredModels();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
-  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1337,14 +1231,6 @@ function ReviewList({
   // to reorder otherwise.
   const reorderable = needle === "" && sourceOrder.length > 1;
 
-  // Bottom-only fade: the sticky source headers already mask the top (rows
-  // vanish under an opaque header), so only the bottom edge dissolves. Re-measured
-  // when the rendered content changes (filtering, collapsing, reordering).
-  const scrollFade = useScrollFade(scrollerRef, { top: false }, [
-    visibleGroups,
-    collapsed,
-  ]);
-
   const toggleCollapse = (index: number) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -1425,7 +1311,7 @@ function ReviewList({
             fade below anchors to this header. Opaque (not /95) so rows vanish
             cleanly under it instead of ghosting through. Same px/gap as the item
             rows so the checkbox column lines up across header and items. */}
-        <div className="bg-background sticky top-0 z-10">
+        <div className="bg-background sticky top-14 z-10 lg:top-0">
           <div className="flex items-center gap-3.5 px-3.5 py-2.5">
             {handleProps && (
               /* The grip stays a 16px mark but sits in a 24x40 box: a bare button
@@ -1489,7 +1375,7 @@ function ReviewList({
             <Tooltip content={isCollapsed ? "Expand" : "Collapse"}>
               <Button
                 type="button"
-                variant="secondary"
+                variant="nav"
                 size="icon"
                 onClick={() => toggleCollapse(sourceIndex)}
                 aria-expanded={!isCollapsed}
@@ -1542,28 +1428,8 @@ function ReviewList({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="book-title" className="text-muted-foreground text-xs">
-            Compilation title
-          </Label>
-          <span className="text-muted-foreground/60 text-xs tabular-nums">
-            {title.length}/{BOOK_TITLE_MAX}
-          </span>
-        </div>
-        <Input
-          id="book-title"
-          type="text"
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Compilation title"
-          maxLength={BOOK_TITLE_MAX}
-          aria-required="true"
-          autoComplete="off"
-        />
-      </div>
-
+    <>
+      <WorkPane label="Items">
       {/* Bulk selection lives on the LEFT, as a tri-state checkbox mirroring the
           per-source group headers — every "select this" affordance on the screen
           is a checkbox in the left column, so the master belongs there too. The
@@ -1614,11 +1480,7 @@ function ReviewList({
         </div>
       )}
 
-      <div
-        ref={scrollerRef}
-        className="-mx-2 flex max-h-[55vh] flex-col gap-2 overflow-y-auto"
-        style={scrollFade}
-      >
+      <div className="-mx-2 flex flex-col gap-2">
         {visibleGroups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-8 text-center text-sm">
             No results for “{query}”
@@ -1680,9 +1542,39 @@ function ReviewList({
         </p>
       )}
 
-      {llm &&
-        llm.roles.length > 0 &&
-        polishableSelected > 0 && (
+      </WorkPane>
+
+      {/* The compilation: its name, what goes in, the one optional cost, and the
+          action. Polish and price sit here, against Compile, once we know what
+          was found. */}
+      <CompilationPane
+        title={title}
+        onTitleChange={onTitleChange}
+        meta={`${selected.size} of ${items.length} item${items.length !== 1 ? "s" : ""} selected`}
+        footer={
+          <>
+            {error && <Notice variant="error">{error}</Notice>}
+            {selected.size > 0 && <CostEstimate cost={cost} />}
+            {/* The button says what's blocking it (no item / no title), so
+                the message is where the click is. */}
+            <Button
+              size="lg"
+              onClick={onConfirm}
+              disabled={confirming || selected.size === 0 || title.trim() === ""}
+              className="w-full"
+            >
+              {confirming
+                ? "Starting…"
+                : selected.size === 0
+                  ? "Select an item"
+                  : title.trim() === ""
+                    ? "Add a title"
+                    : "Compile"}
+            </Button>
+          </>
+        }
+      >
+        {llm && llm.roles.length > 0 && polishableSelected > 0 ? (
           <RoleSelector
             onConnect={() => setConnecting("llm")}
             browserModel={storedModels.llm}
@@ -1692,7 +1584,14 @@ function ReviewList({
             onSetRolesMany={onSetRolesMany}
             unpunctuatedSelected={unpunctuatedSelected}
           />
+        ) : (
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Pick what goes in on the left.
+            {sourceOrder.length > 1 &&
+              " Drag a source to change its place in the book."}
+          </p>
         )}
+      </CompilationPane>
 
       {llm && (
         <ConnectModelDialog
@@ -1701,28 +1600,7 @@ function ReviewList({
           onOpenChange={(open) => !open && setConnecting(null)}
         />
       )}
-
-      {/* Cost sits right against the action — one decision. The button itself
-          says what's blocking it (no source / no title) rather than a separate
-          hint, so the message is where the click is. */}
-      <div className="flex flex-col gap-2">
-        {selected.size > 0 && <CostEstimate cost={cost} />}
-        <Button
-          size="lg"
-          onClick={onConfirm}
-          disabled={confirming || selected.size === 0 || title.trim() === ""}
-          className="w-full"
-        >
-          {confirming
-            ? "Starting…"
-            : selected.size === 0
-              ? "Select a source"
-              : title.trim() === ""
-                ? "Add a title"
-                : "Generate"}
-        </Button>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -1839,7 +1717,8 @@ function ReviewItem({
         // foreground-alpha (not bg-muted) so it never collides with the
         // secondary Preview button — in dark, --muted and --secondary share the
         // same value, which made the button melt into the hovered row.
-        checked ? "bg-foreground/6" : "hover:bg-foreground/5",
+        // No fill when picked: the checkbox says it once.
+        "hover:bg-foreground/5",
       )}
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
@@ -1879,7 +1758,7 @@ function ReviewItem({
         <Tooltip content={open ? "Hide preview" : "Preview"}>
           <Button
             type="button"
-            variant="secondary"
+            variant="nav"
             size="icon"
             onClick={toggleOpen}
             aria-expanded={open}

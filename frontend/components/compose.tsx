@@ -6,7 +6,6 @@ import {
   useEffect,
   useRef,
   useState,
-  ViewTransition,
 } from "react";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
+import { CompilationPane, WorkPane } from "@/components/compilation-pane";
 import {
   createJob,
   MAX_SOURCES,
@@ -331,19 +331,13 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       : "Review";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_400px]">
-      {/* Search pane. Capped and centred so a wide screen doesn't stretch a
-          result title across 2000px. */}
-      <section
-        aria-label="Search"
-        className={cn(
-          "flex min-h-0 flex-1 flex-col lg:overflow-y-auto",
-          // Phone, no search: hug the field so the compilation sits right
-          // under it.
-          !showResults && "max-lg:flex-none",
-        )}
+    <>
+      <WorkPane
+        label="Search"
+        // Phone, no search: hug the field so the compilation sits right
+        // under it.
+        className={cn(!showResults && "max-lg:flex-none")}
       >
-        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-8">
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
             {/* A plain field, the magnifier always in place. */}
             <div className="relative">
@@ -465,65 +459,19 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
               onPointerPick={() => (pickedByPointer.current = true)}
             />
           )}
-        </div>
-      </section>
+      </WorkPane>
 
-      {/* The compilation. Same flow-card identity as the job page's card, so
-          Review morphs this pane into the job instead of hard-cutting. On a
-          phone it gives way to the search while one runs, and a compact bar
-          (below) keeps Review within reach of the thumb. */}
-      <ViewTransition name="flow-card">
-        <aside
-          aria-label="Your compilation"
-          className={cn(
-            "bg-surface-sunken flex min-h-0 flex-col border-t max-lg:flex-1 lg:border-t-0 lg:border-l",
-            showResults && "max-lg:hidden",
-          )}
-        >
-          {/* The header exists once there is a compilation to name; before
-              that, the pane is the history, with its own heading. */}
-          {staged.length > 0 && (
-            <div className="flex flex-col gap-2 border-b px-6 py-6">
-              <h2 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
-                Your compilation
-              </h2>
-                {/* The book's name, in the book's voice. Editable in place. */}
-                <input
-                  value={title}
-                  onChange={(e) => setTypedTitle(e.target.value)}
-                  placeholder="Untitled compilation"
-                  aria-label="Compilation title"
-                  maxLength={100}
-                  className="font-display placeholder:text-muted-foreground/60 focus-visible:ring-ring -mx-1 rounded-sm bg-transparent px-1 text-2xl tracking-tight focus-visible:ring-2 focus-visible:outline-none"
-                />
-                <span className="text-muted-foreground text-xs tabular-nums">
-                  {staged.length} of {MAX_SOURCES} sources
-                </span>
-            </div>
-          )}
-
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col overflow-y-auto",
-              staged.length > 0 ? "p-5" : "px-6 py-6",
-            )}
-          >
-            {staged.length === 0 ? (
-              <CompilationHistory />
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {staged.map((s) => (
-                  <StagedRow
-                    key={s.url}
-                    source={s}
-                    onRemove={() => removeStaged(s.url)}
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 border-t px-6 py-5">
+      {/* The compilation. On a phone it gives way to the search while one
+          runs, and a compact bar (below) keeps Review within thumb's reach. */}
+      <CompilationPane
+        // No header until there is a compilation to name; before that, the
+        // pane is the history, with its own heading.
+        title={staged.length > 0 ? title : undefined}
+        onTitleChange={setTypedTitle}
+        meta={`${staged.length} of ${MAX_SOURCES} sources`}
+        className={cn(showResults && "max-lg:hidden")}
+        footer={
+          <>
             {compileError && <Notice variant="error">{compileError}</Notice>}
             <div className="flex items-center justify-between gap-3">
               {staged.length > 0 ? (
@@ -547,9 +495,23 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                 {reviewLabel}
               </Button>
             </div>
-          </div>
-        </aside>
-      </ViewTransition>
+          </>
+        }
+      >
+        {staged.length === 0 ? (
+          <CompilationHistory />
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {staged.map((s) => (
+              <StagedRow
+                key={s.url}
+                source={s}
+                onRemove={() => removeStaged(s.url)}
+              />
+            ))}
+          </ul>
+        )}
+      </CompilationPane>
 
       {/* Phone only, while a search runs: the compilation shrinks to its count
           and its action, pinned at the bottom of the screen. */}
@@ -563,7 +525,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
           </Button>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

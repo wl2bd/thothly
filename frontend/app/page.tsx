@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/app-header";
 import { Compose } from "@/components/compose";
+import { Workspace } from "@/components/compilation-pane";
 
 // The workspace is the home page: search on one side, the compilation it builds
 // on the other. What used to persuade a stranger (How it works, the FAQ) lives
@@ -16,9 +17,9 @@ export default async function Home({
   return (
     <div className="flex min-h-svh flex-col lg:h-svh">
       <AppHeader />
-      <main id="main" className="flex min-h-0 flex-1 flex-col">
+      <Workspace>
         <Compose initialQuery={q} />
-      </main>
+      </Workspace>
     </div>
   );
 }
