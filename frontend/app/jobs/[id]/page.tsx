@@ -280,8 +280,14 @@ export default function JobPage() {
       setSelected(initial);
       // Editable default name (from the default selection); it stays in sync
       // with the selection until the user edits it, and is required to generate.
-      setTitle(autoTitleForSelection(job, initial) ?? "");
-      setTitleIsAuto(true);
+      // A title typed in the workspace is the user's own: keep it, frozen.
+      if (job.title_named && job.book_title) {
+        setTitle(job.book_title);
+        setTitleIsAuto(false);
+      } else {
+        setTitle(autoTitleForSelection(job, initial) ?? "");
+        setTitleIsAuto(true);
+      }
       // Natural source order to start; review can drag it into another order.
       setSourceOrder(
         [...new Set(job.discovered_items.map((it) => it.source_index))].sort(

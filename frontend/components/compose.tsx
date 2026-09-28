@@ -99,6 +99,12 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
   const [sortBy, setSortBy] = useState<string>("relevance");
 
   const [staged, setStaged] = useState<StagedSource[]>([]);
+  // The compilation's name. Suggested from the search that brought in its
+  // first source, until the user types their own; a pasted link suggests
+  // nothing, so the title never freezes on a URL.
+  const [suggestedTitle, setSuggestedTitle] = useState("");
+  const [typedTitle, setTypedTitle] = useState<string | null>(null);
+  const title = typedTitle ?? suggestedTitle;
   const [submitting, setSubmitting] = useState(false);
   // Two error slots, one per pane: a failed search is said where the search
   // is, a failed Review where the Review button is.
@@ -185,6 +191,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
   // from `staged`, so the results list, the Sources recap and the count always
   // agree, and a selection survives moving from one search to the next.
   function toggleResultStaged(r: SearchResult) {
+    if (staged.length === 0) setSuggestedTitle(sentenceCase(trimmed));
     setStaged((prev) =>
       prev.some((s) => s.url === r.url)
         ? prev.filter((s) => s.url !== r.url)
@@ -258,6 +265,8 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
   // sources" escape hatch beside Review.
   function resetStaged() {
     setStaged([]);
+    setSuggestedTitle("");
+    setTypedTitle(null);
   }
 
   // Empty the bar and hand focus back — the shared "start a fresh search"
@@ -288,6 +297,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
               }
             : { url: s.url, title: s.title },
         ),
+        title.trim(),
       );
       // Remembered before the navigation, so a compile that is still running
       // when the tab is closed is already in this browser's list to come back
@@ -333,7 +343,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
           !showResults && "max-lg:flex-none",
         )}
       >
-        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-5 p-4 sm:p-6">
+        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-8">
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
             {/* A plain field, the magnifier always in place. */}
             <div className="relative">
@@ -470,18 +480,29 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             showResults && "max-lg:hidden",
           )}
         >
-          <div className="flex items-baseline justify-between gap-3 border-b px-5 py-4">
-            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          <div className="flex flex-col gap-2 border-b px-6 py-6">
+            <h2 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
               Your compilation
             </h2>
             {staged.length > 0 && (
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {staged.length} of {MAX_SOURCES} sources
-              </span>
+              <>
+                {/* The book's name, in the book's voice. Editable in place. */}
+                <input
+                  value={title}
+                  onChange={(e) => setTypedTitle(e.target.value)}
+                  placeholder="Untitled compilation"
+                  aria-label="Compilation title"
+                  maxLength={100}
+                  className="font-display placeholder:text-muted-foreground/60 focus-visible:ring-ring -mx-1 rounded-sm bg-transparent px-1 text-2xl tracking-tight focus-visible:ring-2 focus-visible:outline-none"
+                />
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {staged.length} of {MAX_SOURCES} sources
+                </span>
+              </>
             )}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
             {staged.length === 0 ? (
               <CompilationHistory />
             ) : (
@@ -497,7 +518,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             )}
           </div>
 
-          <div className="flex flex-col gap-3 border-t p-5">
+          <div className="flex flex-col gap-3 border-t px-6 py-5">
             {compileError && <Notice variant="error">{compileError}</Notice>}
             <div className="flex items-center justify-between gap-3">
               {staged.length > 0 ? (
@@ -554,7 +575,7 @@ function StagedRow({
   return (
     // Slides in from the search side when picked, so the eye follows the
     // result into the compilation. @starting-style: no JS, no library.
-    <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-[opacity,translate] duration-300 ease-out-quint motion-reduce:transition-none starting:-translate-x-3 starting:opacity-0">
+    <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-3 transition-[opacity,translate] duration-300 ease-out-quint motion-reduce:transition-none starting:-translate-x-3 starting:opacity-0">
       <SourceMedia
         kind={kind}
         url={s.url}
@@ -897,6 +918,10 @@ function SearchSourcesHint() {
 const SOURCES_FULL = `${MAX_SOURCES} sources is the limit for one compilation. Remove one to add another.`;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+function sentenceCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 function formatDuration(s: number | null): string | null {
   if (s == null) return null;

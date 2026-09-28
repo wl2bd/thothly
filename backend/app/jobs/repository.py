@@ -18,12 +18,14 @@ def create_job(payload: JobCreate) -> JobResponse:
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
     sources_json = json.dumps([s.model_dump(mode="json") for s in payload.sources])
+    title = (payload.book_title or "").strip() or None
 
     with get_connection() as conn:
         conn.execute(
-            "INSERT INTO jobs (id, status, sources, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (job_id, "discovering", sources_json, now_iso, now_iso),
+            "INSERT INTO jobs (id, status, sources, book_title, title_named, "
+            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (job_id, "discovering", sources_json, title, int(title is not None),
+             now_iso, now_iso),
         )
         conn.commit()
 
@@ -33,6 +35,8 @@ def create_job(payload: JobCreate) -> JobResponse:
         sources=payload.sources,
         created_at=now,
         updated_at=now,
+        book_title=title,
+        title_named=title is not None,
     )
 
 
@@ -347,6 +351,7 @@ def _row_to_response(row) -> JobResponse:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         book_title=row["book_title"],
+        title_named=bool(row["title_named"]),
         output_path=row["output_path"],
         output_md_path=row["output_md_path"],
         error=row["error"],

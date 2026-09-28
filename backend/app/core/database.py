@@ -93,6 +93,9 @@ _JOB_ADDED_COLUMNS = (
     # Without it a compilation can be measured but not attributed, and comparing
     # two models on the same source is the point of measuring at all.
     ("llm_model", "TEXT"),
+    # 1 when the title was typed in the workspace, so review keeps it instead
+    # of offering its own default.
+    ("title_named", "INTEGER"),
 )
 
 _DISCOVERED_ITEM_ADDED_COLUMNS = (

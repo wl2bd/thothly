@@ -58,7 +58,7 @@ class JobCreate(BaseModel):
         list[Source], Field(min_length=1, max_length=MAX_SOURCES_PER_JOB)
     ]
     # Named in the workspace before discovery. Absent = derived from the sources.
-    book_title: Annotated[str | None, Field(max_length=200)] = None
+    book_title: Annotated[str | None, Field(max_length=100)] = None
 
 
 class VisitorEndpoint(BaseModel):
@@ -143,6 +143,8 @@ class JobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     book_title: str | None = None
+    # The title was typed by the user when the job was created.
+    title_named: bool = False
     output_path: str | None = None
     # Standalone Markdown twin of the EPUB content (zero-LLM), for feeding the
     # compilation to an AI or any plain-text tool. Set once the job completes.

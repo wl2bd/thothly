@@ -76,6 +76,8 @@ export interface JobResponse {
   created_at: string;
   updated_at: string;
   book_title: string | null;
+  // The title was typed in the workspace; review keeps it as the user's own.
+  title_named: boolean;
   output_path: string | null;
   // Standalone Markdown twin of the EPUB (zero-LLM), for feeding to an AI.
   output_md_path: string | null;
@@ -179,11 +181,14 @@ async function parseError(res: Response): Promise<never> {
   throw new ApiError(data.detail ?? `The request failed (${res.status}).`, res.status);
 }
 
-export async function createJob(sources: Source[]): Promise<JobResponse> {
+export async function createJob(
+  sources: Source[],
+  bookTitle?: string,
+): Promise<JobResponse> {
   const res = await fetch("/api/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sources }),
+    body: JSON.stringify({ sources, book_title: bookTitle || undefined }),
   });
   if (!res.ok) return parseError(res);
   return res.json();

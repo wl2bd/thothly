@@ -28,6 +28,19 @@ def test_get_job_returns_created_job(mock_discovery, client: TestClient) -> None
     assert resp.json()["status"] == "discovering"
 
 
+@patch("app.jobs.router.run_discovery")
+def test_a_title_given_at_creation_is_marked_as_named(mock_discovery, client: TestClient) -> None:
+    job_id = client.post(
+        "/jobs", json={"sources": [VALID_SOURCE], "book_title": " Stoicism "}
+    ).json()["id"]
+    body = client.get(f"/jobs/{job_id}").json()
+    assert body["book_title"] == "Stoicism"
+    assert body["title_named"] is True
+
+    unnamed = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()
+    assert unnamed["title_named"] is False
+
+
 def test_get_job_unknown_id_returns_404(client: TestClient) -> None:
     resp = client.get("/jobs/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404
