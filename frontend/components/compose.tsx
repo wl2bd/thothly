@@ -553,7 +553,9 @@ function StagedRow({
 }) {
   const kind = kindFromResultType(s.type);
   return (
-    <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-2.5">
+    // Slides in from the search side when picked, so the eye follows the
+    // result into the compilation. @starting-style: no JS, no library.
+    <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-[opacity,translate] duration-300 ease-out-quint motion-reduce:transition-none starting:-translate-x-3 starting:opacity-0">
       <SourceMedia
         kind={kind}
         thumbnail={s.thumbnail}
@@ -703,10 +705,9 @@ function SearchResults({
           <li key={r.id}>
             <label
               onPointerDown={onPointerPick}
-              className={cn(
-                "flex cursor-pointer items-center gap-3.5 rounded-lg px-3.5 py-3.5 transition-colors",
-                checked ? "bg-muted" : "hover:bg-muted/60",
-              )}
+              // No fill when picked: the checkbox says it, the row doesn't
+              // say it twice.
+              className="hover:bg-muted/60 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
             >
               <Checkbox
                 checked={checked}
