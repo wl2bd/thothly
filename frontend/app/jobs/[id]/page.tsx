@@ -50,7 +50,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
-import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -1447,9 +1446,7 @@ function ReviewList({
               : "Select all items"
           }
         />
-        <span className="text-muted-foreground">
-          {selected.size} of {items.length} selected
-        </span>
+        <span className="text-muted-foreground">Select all</span>
       </label>
 
       {items.length > 8 && (
@@ -1843,7 +1840,7 @@ function MarkdownPreview({ md }: { md: string }) {
         const image = /^!\[([^\]]*)\]\((\S+?)\)\s*$/.exec(block.trim());
         if (image) {
           // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
-          return <img key={i} src={image[2]} alt={image[1]} loading="lazy" className="max-w-full rounded-sm" />;
+          return <img key={i} src={image[2]} alt={image[1]} loading="lazy" className="max-h-80 max-w-full rounded-sm object-contain" />;
         }
         const heading = /^(#{1,6})\s+(.*)$/.exec(block);
         if (heading) {
@@ -2119,24 +2116,24 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
       // the "Raw captions" info icon — side-by-side in the list, mismatched
       // sides read as untidy. The bottom legend (visible, not a hover tip) is
       // this tag's explanation, so it needs no tooltip of its own.
-      <Badge variant="secondary" className="bg-primary/10 text-primary-strong gap-1">
+      <Tag className="text-primary-strong">
         From audio
         <Coins />
-      </Badge>
+      </Tag>
     ) : (
-      <Badge variant="secondary">From audio</Badge>
+      <Tag>From audio</Tag>
     );
   }
   if (item.item_type === "blog") {
-    return <Badge variant="secondary">Web text</Badge>;
+    return <Tag>Web text</Tag>;
   }
   // YouTube: the content state varies per item, so this is where it earns its
   // place — clean transcript, rough auto-captions, or nothing usable.
   if (item.has_transcript === false) {
-    return <Badge variant="destructive">No subtitles</Badge>;
+    return <Tag className="text-destructive">No subtitles</Tag>;
   }
   if (item.has_transcript == null) {
-    return <Badge variant="secondary">Subtitles unchecked</Badge>;
+    return <Tag>Subtitles unchecked</Tag>;
   }
   if (item.is_punctuated === false) {
     // Neutral, not an alarm: raw captions still work, they just read rougher.
@@ -2146,16 +2143,31 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
     // job, and that panel exists only when there's a fix to offer.
     return (
       <Tooltip content="Auto-generated captions, without punctuation, so they read a bit rough as-is.">
-        <Badge variant="secondary" tabIndex={0}>
+        <Tag tabIndex={0}>
           Raw captions
           {/* A visible marker that there's a note here — a bare hover tip can't
               be guessed at. Neutral, so it informs without alarming. */}
           <Info className="opacity-60" />
-        </Badge>
+        </Tag>
       </Tooltip>
     );
   }
-  return <Badge variant="secondary">Transcript</Badge>;
+  return <Tag>Transcript</Tag>;
+}
+
+// What was retrieved, in the same small tracked capitals as a source's type on
+// the home page: a label, not a chip.
+// Spreads its props (ref included) so it can be a tooltip's trigger.
+function Tag({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      {...props}
+      className={cn(
+        "text-muted-foreground text-2xs inline-flex shrink-0 items-center gap-1 font-medium tracking-wider uppercase [&_svg]:size-3",
+        className,
+      )}
+    />
+  );
 }
 
 // --- Pre-compile cost estimate -------------------------------------------------
