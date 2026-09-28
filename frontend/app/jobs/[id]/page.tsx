@@ -53,6 +53,13 @@ import { highlightMatch } from "@/components/highlight";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Logomark } from "@/components/brand";
@@ -963,18 +970,28 @@ function BookReader({ md }: { md: string }) {
   }
   return (
     <div ref={topRef} className="flex scroll-mt-20 flex-col gap-6">
-        <select
-          aria-label="Chapter"
-          value={at}
-          onChange={(e) => go(Number(e.target.value))}
-          className="text-muted-foreground focus-visible:ring-ring w-full cursor-pointer truncate rounded-xs bg-transparent text-sm focus-visible:ring-2 focus-visible:outline-none"
+        <Select
+          items={chapters.map((c, i) => ({ value: String(i), label: c.title }))}
+          value={String(at)}
+          onValueChange={(v) => typeof v === "string" && go(Number(v))}
         >
-          {chapters.map((c, i) => (
-            <option key={i} value={i}>
-              {c.title} ({countWords(c.body).toLocaleString("en-US")} words)
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            aria-label="Chapter"
+            className="text-muted-foreground hover:bg-muted/60 -ml-2.5 max-w-full border-transparent dark:bg-transparent"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start" alignItemWithTrigger={false}>
+            {chapters.map((c, i) => (
+              <SelectItem key={i} value={String(i)}>
+                <span className="truncate">{c.title}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {countWords(c.body).toLocaleString("en-US")} words
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <article className="flex max-w-prose flex-col gap-4">
           <h2 className="font-display text-3xl tracking-tight text-balance">
             {chapter.title}

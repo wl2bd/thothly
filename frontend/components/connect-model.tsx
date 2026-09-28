@@ -8,7 +8,13 @@ import { ProviderIcon } from "@/components/provider-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
 import { maskKey, writeModels, type StoredEndpoint } from "@/lib/model-keys";
@@ -174,11 +180,32 @@ function EndpointForm({
           Provider
         </label>
         <Select
-          id={`${id}-provider`}
+          items={options.map(({ value, label }) => ({ value, label }))}
           value={provider}
-          onValueChange={edit(setProvider)}
-          options={options}
-        />
+          onValueChange={(v) => typeof v === "string" && edit(setProvider)(v)}
+        >
+          <SelectTrigger id={`${id}-provider`} className="h-11 w-full">
+            <SelectValue>
+              {(v: string) => {
+                const o = options.find((x) => x.value === v);
+                return o ? (
+                  <>
+                    {o.icon}
+                    {o.label}
+                  </>
+                ) : null;
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.icon}
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isCustom && (
@@ -222,12 +249,20 @@ function EndpointForm({
               Model
             </label>
             <Select
-              id={`${id}-model`}
-              value={model}
-              onValueChange={setModel}
-              options={models.map((m) => ({ value: m, label: m }))}
-              placeholder="Choose a model"
-            />
+              value={model || null}
+              onValueChange={(v) => typeof v === "string" && setModel(v)}
+            >
+              <SelectTrigger id={`${id}-model`} className="h-11 w-full">
+                <SelectValue placeholder="Choose a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-2">
             <Button

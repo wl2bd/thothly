@@ -23,6 +23,13 @@ import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
@@ -816,6 +823,13 @@ function sortResults(results: SearchResult[], sortBy: string): SearchResult[] {
 // Pushed to the far end of the chip row where the two share one, but only
 // there: on its own stacked line the auto margin would strand it against the
 // right edge, away from the chips it belongs with.
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Relevance" },
+  { value: "duration-asc", label: "Shortest" },
+  { value: "duration-desc", label: "Longest" },
+  { value: "title", label: "Title A–Z" },
+];
+
 function SortSelect({
   value,
   onChange,
@@ -824,19 +838,29 @@ function SortSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="text-muted-foreground flex shrink-0 items-center gap-2 text-sm sm:ml-auto">
-      Sort
-      <select
+    <div className="flex shrink-0 items-center gap-2 text-sm sm:ml-auto">
+      <span className="text-muted-foreground">Sort</span>
+      <Select
+        items={SORT_OPTIONS}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="text-foreground focus-visible:ring-ring cursor-pointer rounded-xs bg-transparent text-sm focus-visible:ring-2 focus-visible:outline-none"
+        onValueChange={(v) => typeof v === "string" && onChange(v)}
       >
-        <option value="relevance">Relevance</option>
-        <option value="duration-asc">Shortest</option>
-        <option value="duration-desc">Longest</option>
-        <option value="title">Title A–Z</option>
-      </select>
-    </label>
+        {/* Borderless: it reads as a word in the filter row, not a field. */}
+        <SelectTrigger
+          aria-label="Sort results"
+          className="hover:bg-muted/60 border-transparent px-2 dark:bg-transparent"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent align="end" alignItemWithTrigger={false}>
+          {SORT_OPTIONS.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
