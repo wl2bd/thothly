@@ -2,6 +2,7 @@ import re
 from bisect import bisect_right
 from datetime import datetime, timezone
 
+from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
 from app.pipeline.i18n import dominant_language
@@ -71,7 +72,13 @@ def derive_book_title(source_names: list[str | None]) -> str:
 def html_to_markdown(html: str) -> str:
     if not html or not html.strip():
         return ""
-    return md(html, heading_style="ATX", bullets="-").strip()
+    # Markdown ends a link's URL at the first ")", so a target like
+    # Naturalism_(philosophy) would land on the wrong page. Percent-encoded
+    # parentheses are the same URL to every browser and e-reader.
+    soup = BeautifulSoup(html, "html.parser")
+    for a in soup.find_all("a", href=True):
+        a["href"] = a["href"].replace("(", "%28").replace(")", "%29")
+    return md(str(soup), heading_style="ATX", bullets="-").strip()
 
 
 _ATX_HEADING = re.compile(r"^(#{1,6})(\s.*)$")

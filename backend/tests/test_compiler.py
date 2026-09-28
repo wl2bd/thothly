@@ -192,3 +192,9 @@ def test_strip_leading_title_handles_a_linked_title_and_its_category_line():
 def test_strip_leading_title_keeps_a_linked_heading_that_is_not_the_title():
     md = "# [Another story](https://x.test/other)\n\nText."
     assert strip_leading_title(md, "Pharos") == md
+
+
+def test_a_link_with_parentheses_keeps_its_whole_url():
+    html = '<p>See <a href="https://en.wikipedia.org/wiki/Naturalism_(philosophy)">naturalism</a>.</p>'
+    md = html_to_markdown(html)
+    assert "(https://en.wikipedia.org/wiki/Naturalism_%28philosophy%29)" in md
