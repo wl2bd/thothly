@@ -11,7 +11,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { type ResultType } from "@/lib/api";
 
@@ -89,7 +88,7 @@ export function isContainerKind(kind: SourceKind): boolean {
   return KIND_META[kind].container;
 }
 
-// The type chip: a plain label, stark neutral. The word alone disambiguates the
+// The type label: small tracked capitals, no chip around it. The word alone disambiguates the
 // kind — these labels are content-type terms (Video / Episode / Article), not
 // provider names, so they generalize as new platforms are added and read the
 // same wherever they appear: the chip here, the filter above the results.
@@ -101,9 +100,14 @@ export function SourceTypePill({
   className?: string;
 }) {
   return (
-    <Badge variant="secondary" className={cn("font-normal", className)}>
+    <span
+      className={cn(
+        "text-muted-foreground text-2xs font-medium tracking-wider uppercase",
+        className,
+      )}
+    >
       {KIND_META[kind].label}
-    </Badge>
+    </span>
   );
 }
 

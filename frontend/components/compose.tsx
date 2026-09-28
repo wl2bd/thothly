@@ -782,18 +782,27 @@ function TypeFilter({
   ];
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    // Text tabs: the current one carries the ink and a gold underline, the
+    // rest stay quiet. No filled chips competing with the results.
+    <div className="flex flex-wrap gap-x-5 gap-y-1">
       {chips.map(({ key, label, count }) => (
-        <Button
+        <button
           key={key}
           type="button"
-          size="xs"
-          variant={active === key ? "default" : "secondary"}
+          aria-pressed={active === key}
           onClick={() => onChange(key)}
+          className={cn(
+            "focus-visible:ring-ring -mb-px rounded-xs border-b-2 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
+            active === key
+              ? "border-primary text-foreground"
+              : "text-muted-foreground hover:text-foreground border-transparent",
+          )}
         >
           {label}
-          <span className="ml-1 opacity-60">{count}</span>
-        </Button>
+          <span className="text-muted-foreground ml-1.5 text-xs tabular-nums">
+            {count}
+          </span>
+        </button>
       ))}
     </div>
   );
@@ -831,12 +840,12 @@ function SortSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs sm:ml-auto">
+    <label className="text-muted-foreground flex shrink-0 items-center gap-2 text-sm sm:ml-auto">
       Sort
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-input bg-background rounded-md border px-2 py-1 text-xs"
+        className="text-foreground focus-visible:ring-ring cursor-pointer rounded-xs bg-transparent text-sm focus-visible:ring-2 focus-visible:outline-none"
       >
         <option value="relevance">Relevance</option>
         <option value="duration-asc">Shortest</option>
