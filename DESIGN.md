@@ -116,9 +116,9 @@ components:
 
 **Creative North Star: "Gold Leaf."**
 
-One precious metal on a quiet ground. The grounds are near-neutral: a warm
-off-white by day (a whisper of the gold's hue, chroma ≤ 0.018), a true near-black
-by night (chroma 0). Against them, one strong color does the talking: **desert
+One precious metal on a quiet ground. By day the ground is pure white, dominant,
+with tan for what is recessed (panels, chips, borders); by night a true
+near-black (chroma 0). (Light mode was a warm off-white until 2026-09-28.) Against them, one strong color does the talking: **desert
 gold**, the brand's action color. It is the heir of the name (Thoth, writing,
 the gilt of an illuminated page), executed as a flat, bold, modern color rather
 than a texture. It is at its most alive on the night ground.
@@ -134,7 +134,7 @@ Light and dark are both first-class. The theme is set before paint.
 
 **Key Characteristics:**
 - One brand color, desert gold, on primary actions, focus, current/active, the mark.
-- Near-neutral grounds: warm off-white (light), chroma-0 near-black (dark).
+- Grounds: pure white with tan surfaces (light), chroma-0 near-black (dark).
 - A serif display voice (Prociono) over a warm grotesk UI (Host Grotesk).
 - Flat surfaces; depth from tonal steps, with one ambient lift on the flow card.
 - One role-named token layer re-skins both modes.

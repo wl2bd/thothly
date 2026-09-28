@@ -705,7 +705,7 @@ function SearchResults({
               onPointerDown={onPointerPick}
               className={cn(
                 "flex cursor-pointer items-center gap-3.5 rounded-lg px-3.5 py-3.5 transition-colors",
-                checked ? "bg-foreground/6" : "hover:bg-foreground/5",
+                checked ? "bg-muted" : "hover:bg-muted/60",
               )}
             >
               <Checkbox
