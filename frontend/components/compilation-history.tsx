@@ -25,9 +25,9 @@ const STATUS_LABEL: Partial<Record<JobStatus, string>> = {
   failed: "Did not finish",
 };
 
-// The compilations this browser remembers. It is the second half of /app's
-// primary action: start a new compilation, or return to one you already made.
-export function CompilationHistory({ hidden }: { hidden: boolean }) {
+// The compilations this browser remembers, shown in the compilation pane while
+// nothing is staged: start a new compilation, or return to one you made.
+export function CompilationHistory() {
   // `null` is the phase before storage has been read, which the server is
   // permanently in. Subscribing to the store rather than copying it into state
   // means a write anywhere — this component, a job page, another tab — lands
@@ -87,11 +87,6 @@ export function CompilationHistory({ hidden }: { hidden: boolean }) {
     };
   }, []);
 
-  // A query owns the column while it is running: results and history never
-  // compete for the same space. Rendering null rather than unmounting keeps the
-  // refresh from firing again every time the field is cleared.
-  if (hidden) return null;
-
   // Storage has not been read yet, which is the whole server pass and every
   // frame until hydration. Measured on the deployed demo, that is about two
   // seconds on a phone, not the single frame it takes locally.
@@ -101,7 +96,7 @@ export function CompilationHistory({ hidden }: { hidden: boolean }) {
   // renders is a guess shown to everyone — and most people arriving at a demo
   // have no history at all, so the guess would be a fake list that collapses
   // into "Nothing compiled yet" a second later. A quiet gap beats inventing
-  // rows. It costs no layout shift either: this list appends below the card, so
+  // rows. It costs no layout shift either: the list has the pane to itself, so
   // arriving late moves nothing the reader is already using.
   if (entries === null) return null;
 
@@ -110,11 +105,11 @@ export function CompilationHistory({ hidden }: { hidden: boolean }) {
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Nothing compiled yet</h2>
         <p className="text-muted-foreground text-sm leading-relaxed text-balance">
-          Search above, or paste a link: a video, a podcast, an article, even a
-          whole playlist or blog.
+          Search, or paste a link: a video, a podcast, an article, even a whole
+          playlist or blog. It lands here, ready to review.
         </p>
         <Link
-          href="/#how-it-works"
+          href="/about#how-it-works"
           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring w-fit rounded-sm text-sm underline underline-offset-4 transition-colors focus-visible:ring-2 focus-visible:outline-none"
         >
           See how it works

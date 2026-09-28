@@ -407,12 +407,8 @@ export default function JobPage() {
           >
             <Logotype className="h-8 w-auto" title="Thothly" />
           </Link>
-          {/* To the tool, not the landing: starting another compilation is
-              work, and sending someone back through the hero would make them
-              submit the field twice. No `to-home` tag either, since /app is a
-              plain surface and has nothing rich to ease back into. */}
           <Link
-            href="/app"
+            href="/"
             className="text-muted-foreground text-sm hover:underline"
           >
             ← New compilation

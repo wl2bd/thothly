@@ -24,10 +24,10 @@ export default function SettingsPage() {
         </header>
         <div className="flex flex-col gap-2">
           <Link
-            href="/app"
+            href="/"
             className="text-muted-foreground hover:text-foreground text-sm transition-colors"
           >
-            ← Back to compose
+            ← Back to the workspace
           </Link>
           <h1 className="font-display text-3xl tracking-tight">Your models</h1>
         </div>

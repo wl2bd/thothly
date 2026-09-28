@@ -11,8 +11,6 @@ import {
 import { useRouter } from "next/navigation";
 
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   GlobeIcon,
   PlayIcon,
   PlusIcon,
@@ -25,11 +23,12 @@ import {
 import { AnimatedGoldBorder } from "@/components/ui/animated-gold-border";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
+import { CompilationHistory } from "@/components/compilation-history";
+import { HieroglyphRain } from "@/components/hieroglyph-rain";
 import {
   createJob,
   MAX_SOURCES,
@@ -72,20 +71,10 @@ interface StagedSource {
 // real pause in typing rather than every short hesitation.
 const SEARCH_DEBOUNCE_MS = 800;
 
-// The staging machine: search, pick, stage, compile. It used to live inside the
-// landing's hero, which made one component answer two different questions — how
-// Thothly persuades a stranger, and how it serves someone at work. This is the
-// second one, and it owns the whole of /app's card.
-export function Compose({
-  initialQuery,
-  onQueryActiveChange,
-}: {
-  initialQuery?: string;
-  // Reported upward so the surface around the card can step aside while the
-  // card is busy. Compose itself owns no layout beyond its own card, and must
-  // stay usable on its own, so this is optional.
-  onQueryActiveChange?: (active: boolean) => void;
-}) {
+// The staging machine: search on the left, the compilation it builds on the
+// right. Picking a result puts it in the compilation, which stays on screen
+// while the search goes on — the two used to take turns inside one card.
+export function Compose({ initialQuery }: { initialQuery?: string }) {
   const router = useRouter();
   // Held so the clear (×) button and Escape can wipe the bar and hand focus
   // straight back, keeping the search → pick → clear → re-search loop on the
@@ -96,9 +85,7 @@ export function Compose({
   // fluid) WITHOUT stealing it from a keyboard user tabbing the checkboxes.
   const pickedByPointer = useRef(false);
 
-  // Seeded from the landing's field, handed over through /app?q=…. This is what
-  // keeps the split from costing anything: you type on the landing, you arrive
-  // here with the search already running rather than typing it twice.
+  // Seeded from ?q=…, so an old /app?q= link arrives with its search running.
   const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
@@ -116,16 +103,15 @@ export function Compose({
 
   const [staged, setStaged] = useState<StagedSource[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // Two error slots, one per pane: a failed search is said where the search
+  // is, a failed Review where the Review button is.
   const [error, setError] = useState<string | null>(null);
+  const [compileError, setCompileError] = useState<string | null>(null);
   // Whether the bar is engaged. The leading magnifier is treated as resting-
   // state chrome (like the placeholder): it shows only on an empty, unfocused
   // bar and clears the moment the field is focused, leaving the full width to
   // type into.
   const [focused, setFocused] = useState(false);
-  // Which face the card shows once sources are staged: the search results, or
-  // the staged compilation. "View N sources" flips it on; typing or Back flips
-  // it off. The card swaps content in place rather than scrolling to a section.
-  const [viewingSources, setViewingSources] = useState(false);
 
   const trimmed = query.trim();
   const queryIsUrl = looksLikeUrl(trimmed);
@@ -226,9 +212,6 @@ export function Compose({
             },
           ],
     );
-    // Picking happens on the results face — keep it there (a stale "viewing
-    // sources" flag must not yank the user to the sources face mid-pick).
-    setViewingSources(false);
     // Click picks return to the bar so the next query types straight away;
     // keyboard picks keep their place in the list (see pickedByPointer).
     if (pickedByPointer.current) inputRef.current?.focus();
@@ -284,7 +267,6 @@ export function Compose({
   // sources" escape hatch beside Review.
   function resetStaged() {
     setStaged([]);
-    setViewingSources(false);
   }
 
   // Empty the bar and hand focus back — the shared "start a fresh search"
@@ -297,7 +279,7 @@ export function Compose({
   async function onCompile() {
     if (staged.length === 0) return;
     setSubmitting(true);
-    setError(null);
+    setCompileError(null);
     try {
       const job = await createJob(
         staged.map((s) =>
@@ -322,19 +304,12 @@ export function Compose({
       recordCompilation(job);
       router.push(`/jobs/${job.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setCompileError(err instanceof Error ? err.message : String(err));
       setSubmitting(false);
     }
   }
 
   const showResults = !looksLikeUrl(deferredTrimmed) && deferredTrimmed !== "";
-  // The card's two faces. Sources view wins when explicitly toggled on (and
-  // there's something staged), or whenever there's no active search to show —
-  // so a pasted link or a cleared bar naturally reveals the compilation. The
-  // results face only shows while searching and not viewing sources.
-  const inSourcesView = viewingSources && staged.length > 0;
-  const showResultsPanel = showResults && !inSourcesView;
-  const showSourcesPanel = staged.length > 0 && (viewingSources || !showResults);
   // True once a search has actually run for the live query. Before that the list
   // shows a skeleton, not the empty state, so "No results" can never precede the
   // loading indicator for a query whose search is still pending.
@@ -345,38 +320,29 @@ export function Compose({
       : results.filter((r) => kindFromResultType(r.type) === typeFilter);
   const visibleResults = sortResults(filteredResults, sortBy);
   // Checkbox state for each result is read from the staged list (by URL), so the
-  // results, the Sources recap and the count never drift apart.
+  // results, the compilation and the count never drift apart.
   const stagedUrls = new Set(staged.map((s) => s.url));
-
-  // Whether the card holds anything below the field. A running search counts,
-  // and so does a staged source with an empty bar — a pasted link fills the card
-  // without a query behind it. /app reads this to hide the compilations list, so
-  // results and history never contend for the same column.
-  const cardIsBusy = showResults || staged.length > 0;
-  useEffect(() => {
-    onQueryActiveChange?.(cardIsBusy);
-  }, [cardIsBusy, onQueryActiveChange]);
+  const full = staged.length >= MAX_SOURCES;
+  const reviewLabel = submitting
+    ? "Starting…"
+    : staged.length > 0
+      ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
+      : "Review";
 
   return (
-    /* Shared identity with the landing's field and the job page's card: both
-       carry the same flow-card name, so arriving here from / and leaving for a
-       job morph one continuous surface instead of hard-cutting between pages. */
-    <ViewTransition name="flow-card">
-      <Card
+    <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_400px]">
+      {/* Search pane. Capped and centred so a wide screen doesn't stretch a
+          result title across 2000px. */}
+      <section
+        aria-label="Search"
         className={cn(
-          "bg-surface-sunken shadow-flow-card flex flex-col",
-          // Cap the card against the viewport so a scrollable face (results or
-          // the staged list) keeps its footer on screen. The space reserved
-          // above is this surface's own chrome — the slim header and the column
-          // padding — not the landing's hero, which no longer sits over it.
-          // A phone gets a tighter reserve: everything inside the card costs
-          // more lines there (the field's hint wraps, a provider notice wraps,
-          // the filters stack), and a 16rem reserve left room for exactly one
-          // result.
-          "max-h-[calc(100svh-12rem)] sm:max-h-[calc(100svh-16rem)]",
+          "flex min-h-0 flex-1 flex-col lg:overflow-y-auto",
+          // Phone, intro hidden (see Intro below): hug the field so the
+          // compilation sits right under it instead of at the bottom.
+          staged.length > 0 && !showResults && "max-lg:flex-none",
         )}
       >
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
+        <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-5 p-4 sm:p-6">
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
             <AnimatedGoldBorder>
               {/* The magnifier is resting-state chrome, like the placeholder:
@@ -397,12 +363,7 @@ export function Compose({
                 ref={inputRef}
                 type="text"
                 value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  // Typing always means "search" — flip back to the results
-                  // face if the sources face was open.
-                  setViewingSources(false);
-                }}
+                onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 onKeyDown={(e) => {
@@ -415,16 +376,13 @@ export function Compose({
                 }}
                 placeholder="Search or paste a link…"
                 className={cn(
-                  // The surface's primary action: a tall, confident bar, its
-                  // type at the field default so it sits level with the
-                  // in-field Add button. The padding
-                  // is transitioned so the text/placeholder glides when the
-                  // magnifier comes and goes rather than snapping.
+                  // The page's primary action: a tall, confident bar. The
+                  // padding is transitioned so the text/placeholder glides when
+                  // the magnifier comes and goes rather than snapping.
                   "h-14 border-transparent bg-background transition-[padding] duration-300 ease-out-quint focus-visible:ring-0 motion-reduce:transition-none dark:bg-background",
                   // Left: room for the magnifier only while it shows (empty &
-                  // unfocused); otherwise the text runs full width. Right:
-                  // room for the in-field Add (pasted link) or the clear ×
-                  // (search term), nothing when empty.
+                  // unfocused). Right: room for the in-field Add (pasted link)
+                  // or the clear × (search term), nothing when empty.
                   showSearchIcon ? "pl-10" : "pl-4",
                   queryIsUrl ? "pr-28" : query !== "" ? "pr-12" : "pr-4",
                 )}
@@ -438,10 +396,8 @@ export function Compose({
                   type="submit"
                   disabled={submitting}
                   aria-label="Add to sources"
-                  // Equal 8px inset top/bottom/right (h-10 button centered in
-                  // the h-14 bar, right-2) so it sits as a balanced pill with
-                  // real presence inside the field. An inset, not
-                  // -translate-y-1/2, for the reason the hero's Search button gives.
+                  // An inset, not -translate-y-1/2: Button's press affordance
+                  // writes the same translate and would drop the pill.
                   className="absolute top-2 right-2"
                 >
                   <PlusIcon />
@@ -467,7 +423,8 @@ export function Compose({
 
           {error && <Notice variant="error">{error}</Notice>}
 
-          {searchErrors.length > 0 &&
+          {showResults &&
+            searchErrors.length > 0 &&
             (() => {
               // Concrete, distinct names — "web search", not "the web" (too
               // broad when YouTube/podcast results are still shown). The raw
@@ -493,15 +450,11 @@ export function Compose({
             })()}
 
           {/* Full: say why the remaining results can't be checked. */}
-          {showResultsPanel && staged.length >= MAX_SOURCES && (
-            <Notice variant="info">{SOURCES_FULL}</Notice>
-          )}
+          {showResults && full && <Notice variant="info">{SOURCES_FULL}</Notice>}
 
           {/* Chips and Sort share a row where there is room for one. On a phone
-              the chips wrap to two or three lines and Sort, pinned right and
-              vertically centred against them, floats in the middle of the
-              block; stacking is the only honest reading there. */}
-          {showResultsPanel && results.length > 0 && (
+              the chips wrap and Sort stacks under them. */}
+          {showResults && results.length > 0 && (
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <TypeFilter
                 results={results}
@@ -515,28 +468,68 @@ export function Compose({
             </div>
           )}
 
-          {showResultsPanel && (
+          {showResults ? (
             <SearchResults
               searching={searching}
               settled={settled}
               query={trimmed}
               results={visibleResults}
               stagedUrls={stagedUrls}
-              full={staged.length >= MAX_SOURCES}
+              full={full}
               onToggle={toggleResultStaged}
               onPointerPick={() => (pickedByPointer.current = true)}
             />
+          ) : (
+            // On a phone the compilation sits under this; once it holds
+            // something, it is what matters, so the intro steps aside.
+            <Intro className={cn(staged.length > 0 && "max-lg:hidden")} />
           )}
+        </div>
+      </section>
 
-          {/* Sources face — the staged compilation, swapped into the card in
-              place of the results when "View N sources" is tapped (or whenever
-              there's no active search to show). */}
-          {showSourcesPanel && (
-            <>
-              <div className="flex shrink-0 items-center justify-between gap-3">
-                <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  Sources · {staged.length}/{MAX_SOURCES}
-                </h2>
+      {/* The compilation. Same flow-card identity as the job page's card, so
+          Review morphs this pane into the job instead of hard-cutting. On a
+          phone it gives way to the search while one runs, and a compact bar
+          (below) keeps Review within reach of the thumb. */}
+      <ViewTransition name="flow-card">
+        <aside
+          aria-label="Your compilation"
+          className={cn(
+            "bg-surface-sunken flex min-h-0 flex-col border-t max-lg:flex-1 lg:border-t-0 lg:border-l",
+            showResults && "max-lg:hidden",
+          )}
+        >
+          <div className="flex items-baseline justify-between gap-3 border-b px-5 py-4">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              Your compilation
+            </h2>
+            {staged.length > 0 && (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {staged.length} of {MAX_SOURCES} sources
+              </span>
+            )}
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+            {staged.length === 0 ? (
+              <CompilationHistory />
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {staged.map((s) => (
+                  <StagedRow
+                    key={s.url}
+                    source={s}
+                    onRemove={() => removeStaged(s.url)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 border-t p-5">
+            {compileError && <Notice variant="error">{compileError}</Notice>}
+            <div className="flex items-center justify-between gap-3">
+              {staged.length > 0 ? (
                 <button
                   type="button"
                   onClick={resetStaged}
@@ -545,140 +538,113 @@ export function Compose({
                 >
                   Clear all
                 </button>
-              </div>
-              <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1">
-                {staged.map((s) => (
-                  <li
-                    key={s.url}
-                    className="bg-background flex items-center gap-3.5 rounded-lg border px-3.5 py-3.5"
-                  >
-                    <SourceMedia
-                      kind={kindFromResultType(s.type)}
-                      thumbnail={s.thumbnail}
-                      duration={formatDuration(s.durationS)}
-                      className="h-10 w-16"
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <span className="truncate text-sm">{s.title}</span>
-                      <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
-                        <SourceTypePill
-                          kind={kindFromResultType(s.type)}
-                          className="shrink-0"
-                        />
-                        <MetaSep />
-                        <span className="inline-flex min-w-0 items-center gap-1">
-                          <SourceFavicon url={s.url} />
-                          <span className="truncate">{hostOf(s.url)}</span>
-                        </span>
-                        {s.author && (
-                          <>
-                            <MetaSep />
-                            <span className="min-w-0 truncate">{s.author}</span>
-                          </>
-                        )}
-                        {isContainerKind(kindFromResultType(s.type)) && (
-                          <>
-                            <MetaSep />
-                            <span className="shrink-0">
-                              expands when you review
-                            </span>
-                          </>
-                        )}
-                      </span>
-                    </span>
-                    <Tooltip content="Remove source">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="icon"
-                        onClick={() => removeStaged(s.url)}
-                        aria-label="Remove source"
-                        className="ml-2"
-                      >
-                        <XIcon />
-                      </Button>
-                    </Tooltip>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {/* Footer adapts to the face. Results: start over, or flip to your
-              sources. Sources: step back to the results, and Reset / Review the
-              compilation. Only ever one Review, and it sits with the list. */}
-          {showResultsPanel && (
-            <div className="flex items-center justify-between gap-3 border-t pt-4">
-              <NewSearchShortcut onClick={clearQuery} />
-              {staged.length > 0 && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  // startTransition makes this a React transition, which is what
-                  // activates the flow-card ViewTransition — the card then
-                  // cross-fades + resizes between faces instead of hard-swapping.
-                  onClick={() => startTransition(() => setViewingSources(true))}
-                >
-                  View {staged.length}{" "}
-                  {staged.length === 1 ? "source" : "sources"}
-                  <ChevronRightIcon />
-                </Button>
-              )}
-            </div>
-          )}
-
-          {showSourcesPanel && (
-            <div className="flex items-center justify-between gap-3 border-t pt-4">
-              {showResults ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => startTransition(() => setViewingSources(false))}
-                  disabled={submitting}
-                >
-                  <ChevronLeftIcon />
-                  Back to results
-                </Button>
               ) : (
-                <span />
+                <span className="text-muted-foreground text-xs">
+                  Up to {MAX_SOURCES} sources
+                </span>
               )}
-              <Button onClick={onCompile} disabled={submitting}>
-                {submitting ? "Starting…" : "Review"}
+              <Button
+                onClick={onCompile}
+                disabled={submitting || staged.length === 0}
+              >
+                {reviewLabel}
               </Button>
             </div>
+          </div>
+        </aside>
+      </ViewTransition>
+
+      {/* Phone only, while a search runs: the compilation shrinks to its count
+          and its action, pinned at the bottom of the screen. */}
+      {showResults && staged.length > 0 && (
+        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 flex items-center justify-between gap-3 border-t px-4 py-3 backdrop-blur lg:hidden">
+          <span className="text-muted-foreground text-sm tabular-nums">
+            {staged.length} of {MAX_SOURCES} sources
+          </span>
+          <Button onClick={onCompile} disabled={submitting}>
+            {reviewLabel}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One source in the compilation pane. The pane is 400px wide, so the row is the
+// search row's compact cousin: smaller media, one meta line.
+function StagedRow({
+  source: s,
+  onRemove,
+}: {
+  source: StagedSource;
+  onRemove: () => void;
+}) {
+  const kind = kindFromResultType(s.type);
+  return (
+    <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-2.5">
+      <SourceMedia
+        kind={kind}
+        thumbnail={s.thumbnail}
+        duration={formatDuration(s.durationS)}
+        className="h-9 w-14"
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="truncate text-sm">{s.title}</span>
+        <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 overflow-hidden text-xs">
+          <SourceTypePill kind={kind} className="shrink-0" />
+          <MetaSep />
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <SourceFavicon url={s.url} />
+            <span className="truncate">{s.author ?? hostOf(s.url)}</span>
+          </span>
+          {isContainerKind(kind) && (
+            <>
+              <MetaSep />
+              <span className="shrink-0">expands when you review</span>
+            </>
           )}
-        </CardContent>
-      </Card>
-    </ViewTransition>
+        </span>
+      </span>
+      <Tooltip content="Remove source">
+        <Button
+          type="button"
+          variant="nav"
+          size="icon-sm"
+          onClick={onRemove}
+          aria-label="Remove source"
+        >
+          <XIcon />
+        </Button>
+      </Tooltip>
+    </li>
   );
 }
 
-// A keyboard-key hint surfaced inside a button to advertise its shortcut,
-// kept discreet: small tracked mono capitals in the button's own text colour,
-// no cap or fill. The caps are CSS only, so assistive tech still reads the
-// key's name ("Esc"), not its letters.
-function Kbd({ children }: { children: React.ReactNode }) {
+// What the search pane holds before anything is typed: the brand's glyph rain
+// and the one-line promise, where the old landing's hero used to be.
+function Intro({ className }: { className?: string }) {
   return (
-    <kbd className="font-mono text-2xs leading-none font-normal tracking-wider uppercase">
-      {children}
-    </kbd>
-  );
-}
-
-// The "start over" escape beside every card-footer CTA, written as a shortcut
-// rather than a competing button so the single primary action (Add / Review)
-// stays unambiguous. Clicking it does what Escape does: wipe the bar and hand
-// focus back for the next query.
-function NewSearchShortcut({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs transition-colors"
+    <div
+      className={cn(
+        "relative isolate flex min-h-72 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-xl px-6 py-12 text-center",
+        className,
+      )}
+      style={{ background: "var(--hero-ground)" }}
     >
-      New search
-      <Kbd>Esc</Kbd>
-    </button>
+      <HieroglyphRain className="pointer-events-none absolute inset-0 -z-30 size-full opacity-90 [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_84%,transparent)]" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{ background: "var(--hero-scrim)" }}
+      />
+      <h1 className="font-display text-4xl tracking-tight text-balance sm:text-5xl">
+        Make anything readable
+      </h1>
+      <p className="text-muted-foreground max-w-md text-base leading-snug text-balance sm:text-lg">
+        Turn videos, podcasts, articles, even whole playlists into one clean
+        read for your e-reader or your AI.
+      </p>
+    </div>
   );
 }
 
@@ -971,7 +937,21 @@ function SearchSourcesHint() {
           </span>
         ))}
       </span>
-      Searches YouTube, podcasts and the web
+      <span>
+        Searches YouTube, podcasts and the web
+        {/* Brave's free monthly API credit requires this attribution. */}
+        <span>
+          , via{" "}
+          <a
+            href="https://brave.com/search/api/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground underline-offset-4 hover:underline"
+          >
+            Brave
+          </a>
+        </span>
+      </span>
     </p>
   );
 }
