@@ -23,6 +23,7 @@ import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -773,29 +774,20 @@ function TypeFilter({
   ];
 
   return (
-    // Text tabs: the current one carries the ink and a gold underline, the
-    // rest stay quiet. No filled chips competing with the results.
-    <div className="flex flex-wrap gap-x-5 gap-y-1">
-      {chips.map(({ key, label, count }) => (
-        <button
-          key={key}
-          type="button"
-          aria-pressed={active === key}
-          onClick={() => onChange(key)}
-          className={cn(
-            "focus-visible:ring-ring -mb-px rounded-xs border-b-2 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
-            active === key
-              ? "border-primary text-foreground"
-              : "text-muted-foreground hover:text-foreground border-transparent",
-          )}
-        >
-          {label}
-          <span className="text-muted-foreground ml-1.5 text-xs tabular-nums">
-            {count}
-          </span>
-        </button>
-      ))}
-    </div>
+    // shadcn's line tabs: the current one carries the ink and a gold
+    // underline, the rest stay quiet.
+    <Tabs value={active} onValueChange={(v) => onChange(String(v))}>
+      <TabsList variant="line" aria-label="Filter by type">
+        {chips.map(({ key, label, count }) => (
+          <TabsTrigger key={key} value={key} className="after:bg-primary px-2">
+            {label}
+            <span className="text-muted-foreground text-xs font-normal tabular-nums">
+              {count}
+            </span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
