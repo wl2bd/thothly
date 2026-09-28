@@ -847,7 +847,7 @@ function SortSelect({
   );
 }
 
-// The sources a query reaches, shown as a small overlapping pile under the bar
+// The sources a query reaches, shown as a row of bare glyphs under the bar
 // so it's clear up front what Thothly searches: YouTube, podcasts and the
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
@@ -855,8 +855,7 @@ function SortSelect({
 // Monochrome lucide glyphs in the muted (secondary) tone — never the
 // brand gold, never multicolor brand logos that would clash on the night ground.
 // lucide carries no brand marks, so each source reads through its medium, in the
-// same icon language the funnel uses (Play = video, podcast waves, globe = web);
-// each is ringed in the panel's own sunken surface so they read as a stacked pile.
+// same icon language the funnel uses (Play = video, podcast waves, globe = web).
 const SEARCH_SOURCES = [
   { key: "youtube", label: "YouTube", Icon: PlayIcon },
   { key: "podcast", label: "Podcasts", Icon: PodcastIcon },
@@ -866,19 +865,9 @@ const SEARCH_SOURCES = [
 function SearchSourcesHint() {
   return (
     <p className="text-muted-foreground flex items-center justify-center gap-2 px-1 text-xs">
-      <span className="flex items-center" aria-hidden="true">
-        {SEARCH_SOURCES.map(({ key, label, Icon }, i) => (
-          <span
-            key={key}
-            title={label}
-            className="ring-surface-sunken bg-muted flex size-6 items-center justify-center rounded-full ring-2"
-            style={{
-              marginLeft: i === 0 ? 0 : "-0.25rem",
-              zIndex: SEARCH_SOURCES.length - i,
-            }}
-          >
-            <Icon className="size-3.5" />
-          </span>
+      <span className="flex items-center gap-1.5" aria-hidden="true">
+        {SEARCH_SOURCES.map(({ key, Icon }) => (
+          <Icon key={key} className="size-3.5" />
         ))}
       </span>
       <span>
