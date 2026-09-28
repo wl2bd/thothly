@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import {
   GlobeIcon,
@@ -265,8 +266,25 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
     }
   }
 
+  // Removing is instant and undoable: the toast puts the source back where it
+  // was, so a slip of the finger costs nothing.
   function removeStaged(url: string) {
+    const index = staged.findIndex((s) => s.url === url);
+    if (index === -1) return;
+    const removed = staged[index];
     setStaged((prev) => prev.filter((s) => s.url !== url));
+    toast("Source removed", {
+      description: removed.title,
+      action: {
+        label: "Undo",
+        onClick: () =>
+          setStaged((prev) =>
+            prev.some((s) => s.url === url) || prev.length >= MAX_SOURCES
+              ? prev
+              : [...prev.slice(0, index), removed, ...prev.slice(index)],
+          ),
+      },
+    });
   }
 
   // Wipe the whole staged compilation — the "start over with entirely different

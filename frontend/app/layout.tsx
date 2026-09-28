@@ -8,6 +8,7 @@ import {
 import localFont from "next/font/local";
 import "./globals.css";
 import { Grain } from "@/components/grain";
+import { Toaster } from "@/components/ui/sonner";
 import { StoneFilterDefs } from "@/components/ui/stone-border";
 
 // Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
@@ -153,6 +154,7 @@ export default function RootLayout({
             black is the intended film-grain texture, kept to a few levels. */}
         <Grain className="pointer-events-none fixed inset-0 -z-10 size-full opacity-5" />
         {children}
+        <Toaster position="bottom-center" />
       </body>
     </html>
   );
