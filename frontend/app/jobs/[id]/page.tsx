@@ -1900,7 +1900,7 @@ function renderInline(text: string): React.ReactNode[] {
         <a
           key={key++}
           // A Markdown link may carry a title after its URL: `(url "Title")`.
-          href={match[3].replace(/s+"[^"]*"$/, "")}
+          href={match[3].replace(/\s+"[^"]*"$/, "")}
           target="_blank"
           rel="noreferrer"
           className="underline"
