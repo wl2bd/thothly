@@ -480,12 +480,13 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             showResults && "max-lg:hidden",
           )}
         >
-          <div className="flex flex-col gap-2 border-b px-6 py-6">
-            <h2 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
-              Your compilation
-            </h2>
-            {staged.length > 0 && (
-              <>
+          {/* The header exists once there is a compilation to name; before
+              that, the pane is the history, with its own heading. */}
+          {staged.length > 0 && (
+            <div className="flex flex-col gap-2 border-b px-6 py-6">
+              <h2 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
+                Your compilation
+              </h2>
                 {/* The book's name, in the book's voice. Editable in place. */}
                 <input
                   value={title}
@@ -498,11 +499,15 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                 <span className="text-muted-foreground text-xs tabular-nums">
                   {staged.length} of {MAX_SOURCES} sources
                 </span>
-              </>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col overflow-y-auto",
+              staged.length > 0 ? "p-5" : "px-6 py-6",
+            )}
+          >
             {staged.length === 0 ? (
               <CompilationHistory />
             ) : (

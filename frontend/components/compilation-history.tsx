@@ -120,8 +120,8 @@ export function CompilationHistory() {
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-        Your compilations
+      <h2 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
+        Recent compilations
       </h2>
       <ul className="flex flex-col">
         {entries.map((entry) => (
