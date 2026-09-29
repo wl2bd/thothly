@@ -964,8 +964,9 @@ function BookReader({ md }: { md: string }) {
           onValueChange={(v) => typeof v === "string" && go(Number(v))}
         >
           <SelectTrigger
+            size="sm"
             aria-label="Chapter"
-            className="text-muted-foreground hover:bg-muted/60 -ml-2.5 max-w-full border-transparent dark:bg-transparent"
+            className="text-muted-foreground hover:bg-muted/60 -ml-2.5 max-w-full border-transparent bg-transparent dark:bg-transparent"
           >
             <SelectValue />
           </SelectTrigger>

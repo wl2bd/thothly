@@ -195,7 +195,7 @@ function EndpointForm({
           value={provider}
           onValueChange={(v) => typeof v === "string" && edit(setProvider)(v)}
         >
-          <SelectTrigger id={`${id}-provider`} className="h-11 w-full">
+          <SelectTrigger id={`${id}-provider`} className="w-full">
             <SelectValue>
               {(v: string) => {
                 const o = options.find((x) => x.value === v);
@@ -263,7 +263,7 @@ function EndpointForm({
               value={model || null}
               onValueChange={(v) => typeof v === "string" && setModel(v)}
             >
-              <SelectTrigger id={`${id}-model`} className="h-11 w-full">
+              <SelectTrigger id={`${id}-model`} className="w-full">
                 <SelectValue placeholder="Choose a model" />
               </SelectTrigger>
               <SelectContent>

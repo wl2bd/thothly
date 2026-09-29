@@ -859,8 +859,9 @@ function SortSelect({
       >
         {/* Borderless: it reads as a word in the filter row, not a field. */}
         <SelectTrigger
+          size="sm"
           aria-label="Sort results"
-          className="hover:bg-muted/60 border-transparent px-2 dark:bg-transparent"
+          className="hover:bg-muted/60 border-transparent bg-transparent px-2 dark:bg-transparent"
         >
           <SelectValue />
         </SelectTrigger>
