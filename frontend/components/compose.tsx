@@ -358,14 +358,6 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
       : "Review";
 
-  // The layout's glow eases down to a trace while results are up, and back
-  // when the bar clears.
-  useEffect(() => {
-    const html = document.documentElement;
-    html.toggleAttribute("data-searching", showResults);
-    return () => html.removeAttribute("data-searching");
-  }, [showResults]);
-
   return (
     <>
       <WorkPane

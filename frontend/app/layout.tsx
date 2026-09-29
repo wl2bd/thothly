@@ -156,7 +156,7 @@ export default function RootLayout({
         {/* A still glow falling from under the header. It lives here, in the
             layout that persists across navigation, so it carries from page to
             page instead of redrawing. White panes (the compilation) simply sit
-            over it. The home search dims it while results are up. */}
+            over it. */}
         <div
           aria-hidden="true"
           className="glow-layer bg-(image:--glow-top) pointer-events-none fixed inset-x-0 top-14 bottom-0 -z-10 bg-no-repeat"

@@ -514,14 +514,10 @@
   }
 }
 
-/* The layout's glow (see app/layout.tsx): full while the page is at rest, a
-   trace while search results fill the column. */
+/* The layout's glow (see app/layout.tsx): one steady strength on every page
+   and every state, halfway between the old rest and search levels. */
 .glow-layer {
-  transition: opacity 700ms var(--ease-out-quint);
-}
-
-[data-searching] .glow-layer {
-  opacity: 0.25;
+  opacity: 0.6;
 }
 
 /* View Transitions — the home search card and the job card share the
