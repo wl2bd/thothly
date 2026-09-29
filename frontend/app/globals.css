@@ -162,8 +162,16 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Host Grotesk is dense: running text sits a notch under Regular (the
+     variable font covers 300 to 800), and bold inside it stops at 600.
+     Interface labels and buttons set their own 500. */
   body {
     @apply bg-background text-foreground;
+    font-weight: 350;
+  }
+  b,
+  strong {
+    font-weight: 600;
   }
   html {
     @apply font-sans;

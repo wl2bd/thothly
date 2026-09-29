@@ -46,7 +46,7 @@ typography:
   body:
     fontFamily: "Host Grotesk, system-ui, sans-serif"
     fontSize: "0.875rem"
-    fontWeight: 400
+    fontWeight: 350
     lineHeight: 1.43
   label:
     fontFamily: "Host Grotesk, system-ui, sans-serif"
@@ -221,7 +221,7 @@ premium faces is under discussion (2026-09-29).
 - **Headline** (Prociono 400): `text-3xl` page titles (AI models, About, the
   reader's chapter title); `text-xl` pane titles (the compilation's name).
 - **Title** (Host Grotesk 500, 1rem): item titles, card and dialog headers.
-- **Body** (Host Grotesk 400, `text-sm` 0.875rem; About prose adds
+- **Body** (Host Grotesk 350, a notch under Regular since the face is dense; bold inside it is 600; `text-sm` 0.875rem; About prose adds
   `leading-relaxed`; the catchline's subtitle is `text-lg`, `leading-snug`).
 - **Label** (Host Grotesk 500, `text-xs` 0.75rem): badges, metadata, buttons `sm`.
 - **Mono** (Geist Mono, `text-xs`): durations, counts, technical detail.
