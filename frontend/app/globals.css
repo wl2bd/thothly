@@ -258,6 +258,32 @@
   }
 }
 
+/* The home sketch: the sources fall into their tilted places, the book rises
+   under them, then the threads draw down. Once, on arrival. */
+.sketch-card {
+  transform: translateY(var(--drop)) rotate(var(--tilt));
+  animation: sketch-card-in 700ms var(--ease-out-quint) backwards;
+}
+
+@keyframes sketch-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--drop) - 18px)) rotate(calc(var(--tilt) * -1.5));
+  }
+}
+
+.sketch-book {
+  transform: rotate(-1deg);
+  animation: sketch-book-in 800ms var(--ease-out-quint) 300ms backwards;
+}
+
+@keyframes sketch-book-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(1.5deg);
+  }
+}
+
 /* The home sketch's threads draw themselves once, source to book. */
 .sketch-thread {
   stroke-width: 1px;
@@ -276,6 +302,10 @@
   .sketch-thread {
     animation: none;
     stroke-dashoffset: 0;
+  }
+  .sketch-card,
+  .sketch-book {
+    animation: none;
   }
 }
 

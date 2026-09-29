@@ -17,6 +17,8 @@ const SOURCES = [
     kind: "Video",
     title: "Stoicism, TED-Ed",
     meta: "5:30",
+    tilt: -3.5,
+    drop: 10,
   },
   {
     src: "/sketch/podcast.jpg",
@@ -24,6 +26,8 @@ const SOURCES = [
     kind: "Episode",
     title: "10 Stoic principles",
     meta: "17:12",
+    tilt: 1.5,
+    drop: -4,
   },
   {
     src: "/sketch/wikipedia.png",
@@ -31,21 +35,33 @@ const SOURCES = [
     kind: "Article",
     title: "Stoicism, Wikipedia",
     meta: "12 min",
+    tilt: 4,
+    drop: 14,
   },
 ];
 
-// Thread starts under each of the three equal columns (x in a 0-300 viewBox),
-// all meeting in the middle, on top of the book.
+// Laid down like cards on a table: each source tilted and dropped a little
+// (`tilt` in degrees, `drop` in px), the book barely turned. On arrival they
+// fall into place one after the other, then the threads draw down to the book.
+// Thread starts sit under each of the three equal columns (x in a 0-300
+// viewBox, y following each card's drop), all meeting on top of the book.
 const STARTS = [50, 150, 250];
 
 export function ToolSketch() {
   return (
     <div aria-hidden className="mx-auto flex w-full max-w-xl flex-col items-center">
       <ul className="grid w-full grid-cols-3 gap-3">
-        {SOURCES.map(({ src, media, kind, title, meta }) => (
+        {SOURCES.map(({ src, media, kind, title, meta, tilt, drop }, i) => (
           <li
             key={kind}
-            className="border-foreground/10 text-muted-foreground flex min-w-0 items-center gap-2.5 rounded-lg border p-2 text-left"
+            style={
+              {
+                "--tilt": `${tilt}deg`,
+                "--drop": `${drop}px`,
+                animationDelay: `${i * 110}ms`,
+              } as React.CSSProperties
+            }
+            className="sketch-card border-foreground/10 bg-background/60 text-muted-foreground flex min-w-0 items-center gap-2.5 rounded-lg border p-2 text-left"
           >
             <span
               className={cn(
@@ -72,16 +88,16 @@ export function ToolSketch() {
         {STARTS.map((x, i) => (
           <path
             key={x}
-            d={`M${x} 0 C ${x} 26, 150 22, 150 48`}
+            d={`M${x} ${SOURCES[i].drop} C ${x} 30, 150 22, 150 48`}
             pathLength={1}
             className="sketch-thread stroke-foreground/15 fill-none"
-            style={{ animationDelay: `${150 + i * 120}ms` }}
+            style={{ animationDelay: `${520 + i * 110}ms` }}
           />
         ))}
       </svg>
 
       {/* The book: its top only, fading out toward the field it comes from. */}
-      <div className="border-foreground/15 text-muted-foreground flex h-36 w-64 flex-col rounded-t-lg border border-b-0 px-5 pt-4 text-left [mask-image:linear-gradient(to_bottom,#000_45%,transparent)]">
+      <div className="sketch-book border-foreground/15 text-muted-foreground flex h-36 w-64 flex-col rounded-t-lg border border-b-0 px-5 pt-4 text-left [mask-image:linear-gradient(to_bottom,#000_45%,transparent)]">
         <span className="eyebrow text-inherit">Compilation</span>
         <span className="font-display text-foreground/75 mt-1.5 text-lg tracking-tight">
           Stoicism
