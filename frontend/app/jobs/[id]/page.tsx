@@ -970,7 +970,7 @@ function BookReader({ md }: { md: string }) {
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent align="start" alignItemWithTrigger={false}>
+          <SelectContent align="start">
             {chapters.map((c, i) => (
               <SelectItem key={i} value={String(i)}>
                 <span className="truncate">{c.title}</span>

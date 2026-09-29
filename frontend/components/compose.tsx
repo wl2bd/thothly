@@ -890,7 +890,7 @@ function SortSelect({
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent align="end" alignItemWithTrigger={false}>
+        <SelectContent align="end">
           {SORT_OPTIONS.map((o) => (
             <SelectItem key={o.value} value={o.value}>
               {o.label}
