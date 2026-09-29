@@ -1426,7 +1426,7 @@ function ReviewList({
               <Button
                 type="button"
                 variant="nav"
-                size="icon"
+                size="icon-sm"
                 onClick={() => toggleCollapse(sourceIndex)}
                 aria-expanded={!isCollapsed}
                 aria-label={isCollapsed ? "Expand source" : "Collapse source"}
@@ -1515,12 +1515,12 @@ function ReviewList({
             <Button
               type="button"
               variant="nav"
-              size="icon-xs"
+              size="icon-sm"
               onClick={() => setQuery("")}
               aria-label="Clear search"
-              // An inset (top-1.5 centres 28px in the 40px field), not
+              // An inset (top-1 centres 32px in the 40px field), not
               // -translate-y-1/2: Button's press translate would replace it.
-              className="absolute top-1.5 right-1.5"
+              className="absolute top-1 right-1"
             >
               <X className="size-4" />
             </Button>
@@ -1806,7 +1806,7 @@ function ReviewItem({
           <Button
             type="button"
             variant="nav"
-            size="icon"
+            size="icon-sm"
             onClick={toggleOpen}
             aria-expanded={open}
             aria-label={open ? "Hide preview" : "Preview"}

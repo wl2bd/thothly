@@ -554,7 +554,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="xs"
+                  size="sm"
                   onClick={resetStaged}
                   disabled={submitting}
                   className="text-muted-foreground -ml-2.5"
