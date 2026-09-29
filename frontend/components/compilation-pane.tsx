@@ -34,7 +34,7 @@ export function CompilationPane({
       <aside
         aria-label="Your compilation"
         className={cn(
-          "bg-card flex min-h-0 flex-col border-t lg:shadow-[-1px_0_0_var(--border),-16px_0_40px_-32px_rgb(0_0_0/0.25)] max-lg:flex-1 lg:border-t-0 lg:border-l",
+          "bg-card flex min-h-0 flex-col border-t max-lg:flex-1 lg:border-t-0 lg:border-l",
           className,
         )}
       >

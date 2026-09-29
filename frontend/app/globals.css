@@ -124,7 +124,7 @@
     radial-gradient(70% 38% at 40% 0%, oklch(0.86 0.13 85 / 0.8), transparent),
     radial-gradient(55% 32% at 75% 0%, oklch(0.83 0.12 55 / 0.6), transparent);
   /* A surface's edge: a hairline shadow under a white card. */
-  --surface-lift: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 1px rgb(0 0 0 / 0.03);
+  --surface-lift: 0 1px 1px rgb(0 0 0 / 0.03);
   /* The flow card's lift: one token for the surface that carries the whole
      journey (the landing's field, the tool's card, the job's card), so the
      three never drift apart. An ambient glow with no offset: the card sits ON
@@ -184,7 +184,7 @@
     radial-gradient(70% 38% at 40% 0%, oklch(0.55 0.12 80 / 0.45), transparent),
     radial-gradient(55% 32% at 75% 0%, oklch(0.5 0.12 50 / 0.35), transparent);
   /* At night a surface is lit from above: a faint top highlight. */
-  --surface-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.5);
+  --surface-lift: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 1px rgb(0 0 0 / 0.3);
   /* Black on near-black reads as a pool rather than a shadow, so the night
      ground needs more of it to separate the card at all. */
   --flow-card-lift: 0 0 40px rgb(0 0 0 / 0.3);
