@@ -30,7 +30,7 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section className="flex flex-col gap-3">
+        <section id="how-it-works" className="flex scroll-mt-20 flex-col gap-3">
           <h2 className="font-display text-xl tracking-tight">How it works</h2>
           <ol className="text-muted-foreground marker:text-muted-foreground/60 flex list-decimal flex-col gap-2 pl-5 leading-relaxed">
             <li>Search, or paste a link. Add up to 5 sources.</li>
@@ -112,5 +112,4 @@ const faq = [
   },
 ];
 
-const link =
-  "text-foreground underline-offset-4 hover:underline focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none";
+const link = "text-foreground text-link";

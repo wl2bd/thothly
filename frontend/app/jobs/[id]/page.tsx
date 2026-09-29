@@ -1583,7 +1583,7 @@ function ReviewList({
           <button
             type="button"
             onClick={() => setConnecting("stt")}
-            className="text-foreground font-medium underline-offset-4 hover:underline"
+            className="text-foreground text-link font-medium"
           >
             Connect transcription
           </button>
@@ -1944,7 +1944,7 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
           href={token.href}
           target="_blank"
           rel="noreferrer"
-          className="decoration-current/35 hover:decoration-current underline underline-offset-3 transition-colors"
+          className="text-link"
         >
           {token.text}
         </a>
@@ -2054,7 +2054,7 @@ function RoleSelector({
             <button
               type="button"
               onClick={onConnect}
-              className="text-foreground font-medium underline-offset-4 hover:underline"
+              className="text-foreground text-link font-medium"
             >
               {providerLabel ? "Change" : "Use your own key"}
             </button>
