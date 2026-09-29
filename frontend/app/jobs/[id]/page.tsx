@@ -405,7 +405,7 @@ export default function JobPage() {
   const newCompilation = (
     <Link
       href="/"
-      className={cn(buttonVariants({ variant: "secondary" }), "w-full")}
+      className={cn(buttonVariants({ variant: "outline" }), "w-full")}
     >
       New compilation
     </Link>
@@ -493,7 +493,7 @@ export default function JobPage() {
     );
   } else if (job.status === "completed") {
     panes = (
-      <CompletedView jobId={id} job={job} newCompilation={newCompilation} />
+      <CompletedView jobId={id} job={job} />
     );
   } else {
     panes = (
@@ -765,11 +765,9 @@ function builtChapterItems(items: DiscoveredItem[]): DiscoveredItem[] {
 function CompletedView({
   jobId,
   job,
-  newCompilation,
 }: {
   jobId: string;
   job: JobResponse;
-  newCompilation: ReactNode;
 }) {
   const [md, setMd] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -863,92 +861,83 @@ function CompletedView({
         }
         title={job.book_title ?? ""}
         meta={meta}
-        footer={newCompilation}
-      >
-        {/* EPUB — to read. The one gold action: reading on an e-reader is the
-            product's headline use. */}
-        <div className={cn("flex flex-col gap-3", rise, riseIn)} style={delay(200)}>
-          <span className="flex flex-col">
-            <span className="text-sm font-medium">EPUB</span>
-            <span className="text-muted-foreground text-xs">
-              For your e-reader
-            </span>
-          </span>
-          <div className="flex w-full gap-2">
-            <a
-              href={getDownloadUrl(jobId)}
-              download
-              className={cn(buttonVariants(), "flex-1")}
-            >
-              <Download />
-              Download
-            </a>
-            <SendToReader epubUrl={getDownloadUrl(jobId)} title={job.book_title ?? ""} />
-          </div>
-        </div>
-
-        {/* Markdown — to feed an AI. Copy is the natural gesture there; the
-            token size rides the destination line (the AI's context budget is
-            what the user weighs). */}
-        {hasMarkdown && (
-          <div className={cn("flex flex-col gap-3", rise, riseIn)} style={delay(350)}>
-            <span className="flex flex-col">
-              <span className="text-sm font-medium">Markdown</span>
-              <span className="text-muted-foreground text-xs">
-                {tokens != null
-                  ? `For an AI · ~${formatTokens(tokens)} tokens`
-                  : "For an AI"}
-              </span>
-            </span>
+        // What you do with the book, pinned under its contents so a long
+        // table never pushes the downloads off screen. EPUB is the one gold
+        // action; the Markdown copy is for an AI; starting over is the quietest.
+        footer={
+          <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
             <div className="flex w-full gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={copy}
-                disabled={!md}
-                className="flex-1"
+              <a
+                href={getDownloadUrl(jobId)}
+                download
+                className={cn(buttonVariants(), "flex-1")}
               >
-                {copied ? (
-                  <>
-                    <Check />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy />
-                    Copy
-                  </>
-                )}
-              </Button>
-              <Tooltip content="Download Markdown">
-                <a
-                  href={getDownloadUrl(jobId, "md")}
-                  download
-                  aria-label="Download Markdown"
-                  className={buttonVariants({ variant: "outline", size: "icon" })}
-                >
-                  <Download />
-                </a>
-              </Tooltip>
+                <Download />
+                Download EPUB
+              </a>
+              <SendToReader epubUrl={getDownloadUrl(jobId)} title={job.book_title ?? ""} />
             </div>
-            {tokens != null && tokens > 200000 && (
-              <p className="text-muted-foreground text-xs">
-                This file is large for some AIs. Downloading and attaching it may
-                work better.
-              </p>
+            {hasMarkdown && (
+              <>
+                <div className="flex w-full gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={copy}
+                    disabled={!md}
+                    className="flex-1"
+                  >
+                    {copied ? (
+                      <>
+                        <Check />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy />
+                        Copy Markdown
+                      </>
+                    )}
+                  </Button>
+                  <Tooltip content="Download Markdown">
+                    <a
+                      href={getDownloadUrl(jobId, "md")}
+                      download
+                      aria-label="Download Markdown"
+                      className={buttonVariants({ variant: "outline", size: "icon" })}
+                    >
+                      <Download />
+                    </a>
+                  </Tooltip>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {tokens != null
+                    ? `Markdown is for an AI · ~${formatTokens(tokens)} tokens`
+                    : "Markdown is for an AI"}
+                  {tokens != null &&
+                    tokens > 200000 &&
+                    ". Large for some AIs: attaching the file may work better."}
+                </p>
+              </>
             )}
+            <Link
+              href="/"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-muted-foreground mt-1 self-center")}
+            >
+              New compilation
+            </Link>
           </div>
-        )}
+        }
+      >
+        <div className={cn(rise, riseIn)} style={delay(200)}>
+          <BookContents chapters={chapters} at={at} onGo={setAt} />
+        </div>
 
         <LeftOutNotice
           items={job.discovered_items}
           className={cn(rise, riseIn)}
           style={delay(500)}
         />
-
-        <div className={cn(rise, riseIn)} style={delay(650)}>
-          <BookContents chapters={chapters} at={at} onGo={setAt} />
-        </div>
       </CompilationPane>
     </>
   );
