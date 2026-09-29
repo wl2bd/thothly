@@ -34,6 +34,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
+import { ToolSketch } from "@/components/tool-sketch";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
 import {
   createJob,
@@ -491,6 +492,11 @@ function ComposeWorkspace({
                     {q}
                   </Button>
                 ))}
+              </div>
+              {/* What it does, drawn: only on a wide screen, where the column
+                  has the room; a phone keeps the compilation under the field. */}
+              <div className="hidden w-full pt-14 lg:block">
+                <ToolSketch />
               </div>
             </div>
           )}

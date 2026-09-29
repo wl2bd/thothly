@@ -258,6 +258,27 @@
   }
 }
 
+/* The home sketch's threads draw themselves once, source to book. */
+.sketch-thread {
+  stroke-width: 1px;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sketch-draw 900ms var(--ease-out-quint) forwards;
+}
+
+@keyframes sketch-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sketch-thread {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 /* The row being worked on: a soft light passes over its title. The only moving
    thing on a waiting screen. Reduced motion keeps the plain text. */
 .text-shimmer {
