@@ -460,6 +460,39 @@
   mask-size: 100% 100%;
 }
 
+/* The row being worked on: a soft light passes over its title. The only moving
+   thing on a waiting screen. Reduced motion keeps the plain text. */
+.text-shimmer {
+  background: linear-gradient(
+      100deg,
+      var(--muted-foreground) 40%,
+      var(--foreground) 50%,
+      var(--muted-foreground) 60%
+    )
+    0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 2.2s linear infinite;
+}
+
+@keyframes text-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer {
+    animation: none;
+    color: var(--foreground);
+    background: none;
+  }
+}
+
 /* View Transitions — the home search card and the job card share the
    `flow-card` name, so the card morphs (size + position) across every phase: the
    home→job navigation, the results↔sources face swap, search settling, and the

@@ -50,6 +50,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
+import { Progress } from "@/components/ui/progress";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -532,6 +533,22 @@ function StatusMessage({ label }: { label: string }) {
   );
 }
 
+// The head of both waits. No spinner: the one thing in motion is the row being
+// worked on (its title shimmers); the bar only moves when a step lands, so it
+// says exactly how far along it is rather than that something is spinning.
+function WaitHeader({ label, done, total }: { label: string; done: number; total: number }) {
+  return (
+    <Progress value={total ? (done / total) * 100 : 0} aria-label={label} className="gap-2.5">
+      <span className="flex w-full items-baseline justify-between text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {done} of {total}
+        </span>
+      </span>
+    </Progress>
+  );
+}
+
 // The wait between staging sources and reviewing items. It lists the sources by
 // the names the user just picked (the staged title shows immediately; the
 // discovered name replaces it once known), and shows each one's live state as
@@ -544,11 +561,11 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
   const activeIndex = sources.findIndex((s) => !s.resolved);
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3 text-sm font-medium">
-        <Spinner />
-        Looking through your {sources.length} source
-        {sources.length !== 1 ? "s" : ""}…
-      </div>
+      <WaitHeader
+        label="Opening your sources"
+        done={sources.filter((s) => s.resolved).length}
+        total={sources.length}
+      />
       <ul className="flex flex-col divide-y">
         {sources.map((s, i) => {
           const label = s.name?.trim() || s.title?.trim() || sourceLabel(s.url);
@@ -564,8 +581,6 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
                   <X className="text-muted-foreground size-3.5" />
                 ) : s.resolved ? (
                   <Check className="text-foreground/60 size-3.5" />
-                ) : isActive ? (
-                  <Spinner className="size-3.5" />
                 ) : (
                   <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
                 )}
@@ -573,7 +588,8 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
               <span
                 className={cn(
                   "min-w-0 flex-1 truncate",
-                  s.resolved ? "text-foreground" : "text-muted-foreground",
+                  s.resolved ? "text-foreground/80" : "text-muted-foreground",
+                  isActive && "text-shimmer",
                   !s.resolved && !isActive && "opacity-50",
                 )}
               >
@@ -588,7 +604,7 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
                   {count} item{count !== 1 ? "s" : ""}
                 </span>
               ) : isActive ? (
-                <span className="text-muted-foreground shrink-0">scanning…</span>
+                <span className="text-muted-foreground shrink-0">Listing items</span>
               ) : null}
             </li>
           );
@@ -623,12 +639,11 @@ function CompilingView({ items }: { items: DiscoveredItem[] }) {
     );
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3 text-sm font-medium">
-        <Spinner />
-        {building
-          ? "Building your compilation…"
-          : `Working through your ${items.length} item${items.length !== 1 ? "s" : ""}…`}
-      </div>
+      <WaitHeader
+        label={building ? "Building the file" : "Writing your chapters"}
+        done={items.filter((it) => it.compile_state && it.compile_state !== "pending" && it.compile_state !== "compiling").length}
+        total={items.length}
+      />
       <ul className="flex flex-col divide-y">
         {items.map((it) => (
           <CompileStep
@@ -671,8 +686,6 @@ function CompileStep({
       <span className="flex size-3.5 shrink-0 items-center justify-center pt-0.5">
         {done ? (
           <Check className="text-foreground/60 size-3.5" />
-        ) : active ? (
-          <Spinner className="size-3.5" />
         ) : state === "failed" ? (
           <X className="text-destructive size-3.5" />
         ) : state === "skipped" ? (
@@ -685,7 +698,8 @@ function CompileStep({
         <span
           className={cn(
             "truncate",
-            done ? "text-foreground" : "text-muted-foreground",
+            done ? "text-foreground/80" : "text-muted-foreground",
+            active && "text-shimmer",
             state === "pending" && "opacity-50",
           )}
         >
@@ -699,7 +713,7 @@ function CompileStep({
           transcript through the AI passes can hold the row for minutes, and a
           bare "building…" there reads as a hang. */}
       {active && (
-        <span className="text-muted-foreground shrink-0">{note || "building…"}</span>
+        <span className="text-muted-foreground shrink-0">{note || "Writing"}</span>
       )}
     </li>
   );
