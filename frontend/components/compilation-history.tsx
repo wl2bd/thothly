@@ -105,7 +105,7 @@ export function CompilationHistory() {
   if (entries.length === 0) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">Nothing compiled yet</h2>
+        <h2 className="font-display text-xl tracking-tight">Nothing compiled yet</h2>
         <p className="text-muted-foreground text-sm leading-relaxed text-balance">
           Search, or paste a link: a video, a podcast, an article, even a whole
           playlist or blog. It lands here, ready to review.

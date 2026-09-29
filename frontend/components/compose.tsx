@@ -605,7 +605,7 @@ function StagedRow({
         className="h-9 w-14"
       />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate text-sm">{s.title}</span>
+        <span className="font-display truncate text-base leading-snug">{s.title}</span>
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 overflow-hidden text-xs">
           <SourceTypePill kind={kind} className="shrink-0" />
           <MetaSep />

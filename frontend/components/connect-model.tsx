@@ -352,7 +352,7 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
       {(["llm", "stt"] as const).map((kind) => (
         <section key={kind} className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
-            <h2 className="text-sm font-semibold">{KIND_COPY[kind].name}</h2>
+            <h2 className="font-display text-xl tracking-tight">{KIND_COPY[kind].name}</h2>
             <p className="text-muted-foreground text-xs">{KIND_COPY[kind].purpose}</p>
           </div>
           <ModelEndpointSettings kind={kind} config={config} />

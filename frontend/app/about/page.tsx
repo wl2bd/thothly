@@ -31,7 +31,7 @@ export default function AboutPage() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="font-medium">How it works</h2>
+          <h2 className="font-display text-xl tracking-tight">How it works</h2>
           <ol className="text-muted-foreground marker:text-muted-foreground/60 flex list-decimal flex-col gap-2 pl-5 leading-relaxed">
             <li>Search, or paste a link. Add up to 5 sources.</li>
             <li>Pick the items you want from each source.</li>
@@ -43,7 +43,7 @@ export default function AboutPage() {
             analytics in the code, history and keys in localStorage, queries
             in the URL and so in the host's request logs, no volume on Fly. */}
         <section id="privacy" className="flex scroll-mt-20 flex-col gap-3">
-          <h2 className="font-medium">Privacy</h2>
+          <h2 className="font-display text-xl tracking-tight">Privacy</h2>
           <ul className="text-muted-foreground marker:text-muted-foreground/60 flex list-disc flex-col gap-2 pl-5 leading-relaxed">
             <li>No account, no analytics, no tracking.</li>
             <li>
@@ -63,7 +63,7 @@ export default function AboutPage() {
         </section>
 
         <section className="flex flex-col gap-1">
-          <h2 className="font-medium">Questions</h2>
+          <h2 className="font-display text-xl tracking-tight">Questions</h2>
           <Accordion>
             {faq.map((it) => (
               <AccordionItem key={it.q} value={it.q}>
