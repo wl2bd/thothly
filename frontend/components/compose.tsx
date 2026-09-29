@@ -367,7 +367,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       <div
         aria-hidden="true"
         className={cn(
-          "bg-(image:--glow-top) pointer-events-none fixed top-14 bottom-0 right-[400px] left-0 -z-10 hidden bg-no-repeat transition-opacity duration-700 ease-out-quint lg:block",
+          "bg-(image:--glow-top) pointer-events-none fixed top-14 right-0 bottom-0 left-0 -z-10 bg-no-repeat transition-opacity duration-700 ease-out-quint lg:right-[400px]",
           showResults ? "opacity-25" : "opacity-100",
         )}
       />
