@@ -7,15 +7,11 @@ import {
   useRef,
   useState,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
-  GlobeIcon,
-  PlayIcon,
   PlusIcon,
-  PodcastIcon,
   SearchIcon,
   SearchXIcon,
   Trash2Icon,
@@ -433,7 +429,6 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                 )
               )}
             </div>
-            {!queryIsUrl && <SearchSourcesHint />}
           </form>
 
           {/* First visit: something to press instead of a blank pane. A real
@@ -918,50 +913,6 @@ function SortSelect({
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
-// Monochrome lucide glyphs in the muted (secondary) tone — never the
-// brand gold, never multicolor brand logos that would clash on the night ground.
-// lucide carries no brand marks, so each source reads through its medium, in the
-// same icon language the funnel uses (Play = video, podcast waves, globe = web).
-const SEARCH_SOURCES = [
-  { key: "youtube", label: "YouTube", Icon: PlayIcon },
-  { key: "podcast", label: "Podcasts", Icon: PodcastIcon },
-  { key: "web", label: "the web", Icon: GlobeIcon },
-];
-
-function SearchSourcesHint() {
-  return (
-    <p className="text-muted-foreground flex items-center justify-center gap-2 px-1 text-xs">
-      <span className="flex items-center gap-1.5" aria-hidden="true">
-        {SEARCH_SOURCES.map(({ key, Icon }) => (
-          <Icon key={key} className="size-3.5" />
-        ))}
-      </span>
-      <span>
-        Searches YouTube, podcasts and the web
-        {/* Brave's free monthly API credit requires this attribution. */}
-        <span>
-          , via{" "}
-          <a
-            href="https://brave.com/search/api/"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground underline-offset-4 hover:underline"
-          >
-            Brave
-          </a>
-        </span>
-        {" · "}
-        <Link
-          href="/about#privacy"
-          className="hover:text-foreground underline-offset-4 hover:underline"
-        >
-          No account, no tracking
-        </Link>
-      </span>
-    </p>
-  );
-}
-
 const EXAMPLE_SEARCHES = [
   "Stoicism",
   "How transformers work",
