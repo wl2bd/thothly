@@ -967,8 +967,10 @@ function BookReader({
   }, [at]);
   if (!chapters.length) return null;
   const chapter = chapters[Math.min(at, chapters.length - 1)];
+  // Bottom room (pb-16) so Previous / Next never sit on the window's edge
+  // once scrolled to the end: a scroll box drops its own bottom padding.
   return (
-    <div ref={topRef} className="flex scroll-mt-20 flex-col gap-6">
+    <div ref={topRef} className="flex scroll-mt-20 flex-col gap-6 pb-16">
         <span className="text-muted-foreground text-xs tabular-nums">
           Chapter {at + 1} of {chapters.length}
         </span>
