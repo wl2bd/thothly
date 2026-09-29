@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { ChevronDownIcon, ExternalLinkIcon, Share2Icon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon, SendIcon, Share2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -60,7 +60,8 @@ export function SendToReader({ epubUrl, title }: { epubUrl: string; title: strin
     <>
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="outline" />}>
-          Send to
+          <SendIcon />
+          Send
           <ChevronDownIcon className="text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">

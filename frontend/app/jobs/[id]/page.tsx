@@ -18,6 +18,7 @@ import {
   Check,
   Coins,
   Copy,
+  ChevronDown,
   Download,
   Eye,
   EyeOff,
@@ -51,6 +52,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { SendToReader } from "@/components/send-to-reader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -789,6 +796,23 @@ function CompletedView({
     };
   }, [jobId, hasMarkdown]);
 
+  // The EPUB's weight, shown on its download. Read from the file itself.
+  // ponytail: one extra fetch of a small file; expose the size on the job if it grows.
+  const [epubBytes, setEpubBytes] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(getDownloadUrl(jobId))
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("fetch failed"))))
+      .then((b) => {
+        if (!cancelled) setEpubBytes(b.size);
+      })
+      .catch(() => {
+        /* no weight shown; the download still works */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId]);
   const chapters = useMemo(() => (md ? splitBook(md) : []), [md]);
   const [at, setAt] = useState(0);
   const words = md ? countWords(md) : null;
@@ -866,59 +890,60 @@ function CompletedView({
         // action; the Markdown copy is for an AI; starting over is the quietest.
         footer={
           <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
+            {/* Three quick actions: Download (pick the format), Copy (the
+                Markdown, for an AI), Send (to an e-reader). */}
             <div className="flex w-full gap-2">
-              <a
-                href={getDownloadUrl(jobId)}
-                download
-                className={cn(buttonVariants(), "flex-1")}
-              >
-                <Download />
-                Download EPUB
-              </a>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button className="flex-1" />}>
+                  <Download />
+                  Download
+                  <ChevronDown />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-60">
+                  <DropdownMenuItem
+                    className="py-2"
+                    render={<a href={getDownloadUrl(jobId)} download />}
+                  >
+                    <span className="flex flex-col">
+                      <span>EPUB</span>
+                      <span className="text-muted-foreground text-xs">
+                        {epubBytes != null
+                          ? `For your e-reader · ${formatBytes(epubBytes)}`
+                          : "For your e-reader"}
+                      </span>
+                    </span>
+                  </DropdownMenuItem>
+                  {hasMarkdown && (
+                    <DropdownMenuItem
+                      className="py-2"
+                      render={<a href={getDownloadUrl(jobId, "md")} download />}
+                    >
+                      <span className="flex flex-col">
+                        <span>Markdown</span>
+                        <span className="text-muted-foreground text-xs">
+                          {tokens != null
+                            ? `For an AI · ~${formatTokens(tokens)} tokens`
+                            : "For an AI"}
+                        </span>
+                      </span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {hasMarkdown && (
+                <Tooltip content="Copy the Markdown, to paste into an AI">
+                  <Button type="button" variant="outline" onClick={copy} disabled={!md}>
+                    {copied ? <Check /> : <Copy />}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                </Tooltip>
+              )}
               <SendToReader epubUrl={getDownloadUrl(jobId)} title={job.book_title ?? ""} />
             </div>
-            {hasMarkdown && (
-              <>
-                <div className="flex w-full gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={copy}
-                    disabled={!md}
-                    className="flex-1"
-                  >
-                    {copied ? (
-                      <>
-                        <Check />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy />
-                        Copy Markdown
-                      </>
-                    )}
-                  </Button>
-                  <Tooltip content="Download Markdown">
-                    <a
-                      href={getDownloadUrl(jobId, "md")}
-                      download
-                      aria-label="Download Markdown"
-                      className={buttonVariants({ variant: "outline", size: "icon" })}
-                    >
-                      <Download />
-                    </a>
-                  </Tooltip>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {tokens != null
-                    ? `Markdown is for an AI · ~${formatTokens(tokens)} tokens`
-                    : "Markdown is for an AI"}
-                  {tokens != null &&
-                    tokens > 200000 &&
-                    ". Large for some AIs: attaching the file may work better."}
-                </p>
-              </>
+            {tokens != null && tokens > 200000 && (
+              <p className="text-muted-foreground text-xs">
+                Large for some AIs: attaching the Markdown file may work better than pasting it.
+              </p>
             )}
             <Link
               href="/"
@@ -1136,6 +1161,11 @@ function LeftOutNotice({
 function countWords(text: string): number {
   const t = text.trim();
   return t ? t.split(/\s+/).length : 0;
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatTokens(n: number): string {
