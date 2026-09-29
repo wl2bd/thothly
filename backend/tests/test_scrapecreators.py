@@ -1,6 +1,9 @@
 from unittest.mock import patch
 
-from app.sources.scrapecreators import _pick_language, fetch_transcript
+import pytest
+
+from app.sources.scrapecreators import _pick_language, fetch_transcript, fetch_video_meta
+from app.sources.youtube import YouTubeUnavailable
 
 # Trimmed from real responses (video 822YgahP3H0, 2026-09-18).
 DETAIL = {
@@ -51,3 +54,18 @@ def test_pick_language_prefers_human_subtitles_in_preferred_language():
 def test_pick_language_takes_original_asr_over_foreign_human_track():
     tracks = [{"languageCode": "de"}, {"languageCode": "fr", "kind": "asr"}]
     assert _pick_language(tracks, ["en"]) == "fr"
+
+
+# A single pasted video: yt-dlp is bot-walled on Fly (2026-09-29), so its title
+# and duration come from the detail call.
+@patch("app.sources.scrapecreators._call", return_value={"id": "KAcTCHamXvQ", "title": "Le Journal de Minuit", "durationMs": 12212000})
+def test_fetch_video_meta_maps_detail(_):
+    v = fetch_video_meta("https://www.youtube.com/watch?v=KAcTCHamXvQ")
+    assert (v.id, v.title, v.duration_s) == ("KAcTCHamXvQ", "Le Journal de Minuit", 12212)
+    assert v.url == "https://www.youtube.com/watch?v=KAcTCHamXvQ"
+
+
+@patch("app.sources.scrapecreators._call", return_value={})
+def test_fetch_video_meta_missing_video_is_unavailable(_):
+    with pytest.raises(YouTubeUnavailable):
+        fetch_video_meta("https://www.youtube.com/watch?v=gone")

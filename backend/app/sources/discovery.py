@@ -12,6 +12,7 @@ from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
 from app.sources.wikipedia import article_title, is_wikipedia_article
+from app.sources import scrapecreators
 from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import (
     YouTubeUnavailable,
@@ -160,7 +161,8 @@ def _discover_youtube(
 def _discover_youtube_video(
     url: str, source_index: int
 ) -> tuple[str | None, list[DiscoveredItem]]:
-    video = fetch_video_meta(_clean_video_url(url))
+    meta = scrapecreators.fetch_video_meta if settings.treg_token else fetch_video_meta
+    video = meta(_clean_video_url(url))
     item = DiscoveredItem(
         title=video.title or f"YouTube video {video.id}",
         url=video.url,

@@ -15,7 +15,7 @@ so a video is paid for once, ever.
 import httpx
 
 from app.core.config import settings
-from app.sources.models import Chapter, Transcript, TranscriptSegment
+from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
 from app.sources.youtube import YouTubeUnavailable
 
 _TIMEOUT_S = 60.0
@@ -39,6 +39,22 @@ def fetch_transcript(video_id: str, languages: list[str] | None = None) -> Trans
         chapters=_parse_chapters(detail.get("chapters") or [], (detail.get("durationMs") or 0) / 1000),
         uploader=channel.get("title"),
         channel_url=channel.get("url"),
+    )
+
+
+def fetch_video_meta(url: str) -> VideoMeta:
+    """Title and duration of one video. yt-dlp's full extraction hits YouTube's
+    "confirm you're not a bot" wall from datacenter IPs, like the subtitles."""
+    detail = _call("scrapecreators.youtube.video.detail", url=url)
+    if not detail.get("id"):
+        raise YouTubeUnavailable(f"ScrapeCreators has no video at {url}")
+    # ponytail: fetch_transcript repeats this detail call (~$0.002); share it if volume grows.
+    duration_ms = detail.get("durationMs")
+    return VideoMeta(
+        id=detail["id"],
+        title=detail.get("title") or "",
+        url=f"https://www.youtube.com/watch?v={detail['id']}",
+        duration_s=round(duration_ms / 1000) if duration_ms else None,
     )
 
 
