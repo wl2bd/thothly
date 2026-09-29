@@ -400,20 +400,13 @@ function ComposeWorkspace({
             aria-hidden={showResults}
           >
             <div className="overflow-hidden">
-              <div className="flex flex-col items-center gap-3 pt-10 pb-6 text-center">
+              <div className="flex flex-col items-center gap-3 pt-10 pb-8 text-center">
                 <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
                   Make anything readable
                 </h1>
                 <p className="text-muted-foreground max-w-md text-balance">
-                  Turn videos, podcasts and articles into a book for your
-                  e-reader, or a clean file for your AI.
+                  Turn videos, podcasts and articles into one book.
                 </p>
-                {/* What it does, drawn, folding away with the catchline. Not on
-                    a phone: three columns don't fit and it would push the
-                    field down. */}
-                <div className="hidden w-full pt-8 sm:block">
-                  <ToolSketch />
-                </div>
               </div>
             </div>
           </div>
@@ -498,6 +491,13 @@ function ComposeWorkspace({
                     {q}
                   </Button>
                 ))}
+              </div>
+              {/* What a search gives, drawn in reading order: the sources it
+                  finds, threaded down into one book. Not on a phone: three
+                  columns don't fit, and the compilation belongs right under
+                  the field there. */}
+              <div className="hidden w-full pt-12 sm:block">
+                <ToolSketch />
               </div>
             </div>
           )}

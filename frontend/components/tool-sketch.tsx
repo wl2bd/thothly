@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 
 // The home page at rest: what the tool does, drawn with its own parts. Three
 // real sources at the top (a video, a podcast episode, an article, with their
-// own artwork), threaded down into one book that fades into the search field
-// below it. Set a step back from the interface (outlines, muted ink) so it
+// own artwork, what the "Stoicism" example finds), threaded down into one book.
+// Set a step back from the interface (outlines, muted ink) so it
 // reads as an illustration, never as controls. Decorative, so hidden from
 // assistive tech: the catchline above already says it. The images are copies
 // in /public, so the home page calls no third party.
@@ -96,7 +96,7 @@ export function ToolSketch() {
         ))}
       </svg>
 
-      {/* The book: its top only, fading out toward the field it comes from. */}
+      {/* The book: its top only, fading out into the page. */}
       <div className="sketch-book border-foreground/15 text-muted-foreground flex h-36 w-64 flex-col rounded-t-lg border border-b-0 px-5 pt-4 text-left [mask-image:linear-gradient(to_bottom,#000_45%,transparent)]">
         <span className="eyebrow text-inherit">Compilation</span>
         <span className="font-display text-foreground/75 mt-1.5 text-lg tracking-tight">
