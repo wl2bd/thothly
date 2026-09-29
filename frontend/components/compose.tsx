@@ -360,17 +360,22 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
 
   return (
     <>
+      {/* A still glow rising from the bottom of the search column. It dresses
+          the empty column, then eases down to a trace behind the results
+          rather than vanishing. Fixed to the column (the viewport minus the
+          400px compilation pane), so it stays put while results scroll. */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          "bg-(image:--glow-bottom) pointer-events-none fixed inset-y-0 right-[400px] left-0 -z-10 hidden bg-no-repeat transition-opacity duration-700 ease-out-quint lg:block",
+          showResults ? "opacity-25" : "opacity-100",
+        )}
+      />
       <WorkPane
         label="Search"
         // Phone, no search: hug the field so the compilation sits right
         // under it.
-        className={cn(
-          // The empty column wears a still glow rising from the bottom; it
-          // leaves as soon as results need the space.
-          "bg-no-repeat transition-[background-color] lg:bg-(image:--glow-bottom)",
-          showResults && "lg:bg-none",
-          !showResults && "max-lg:flex-none",
-        )}
+        className={cn(!showResults && "max-lg:flex-none")}
       >
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
             {/* A plain field, the magnifier always in place. */}
