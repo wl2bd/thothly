@@ -40,7 +40,7 @@ export function CompilationPane({
       >
         {title !== undefined && (
           <div className="flex flex-col gap-2 border-b px-6 py-6">
-            <h2 className="text-muted-foreground text-2xs flex items-center gap-2 font-medium tracking-wider uppercase">
+            <h2 className="eyebrow flex items-center gap-2">
               {eyebrow}
             </h2>
             {onTitleChange ? (

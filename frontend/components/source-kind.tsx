@@ -103,7 +103,7 @@ export function SourceTypePill({
   return (
     <span
       className={cn(
-        "text-muted-foreground text-2xs font-medium tracking-wider uppercase",
+        "eyebrow",
         className,
       )}
     >

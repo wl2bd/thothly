@@ -206,6 +206,12 @@
   --rain-halo: rgb(245 215 150 / 0.5);
 }
 
+/* The one small label style: section names (Contents, Recent compilations,
+   the menu's Download / Send groups, the pane's Ready). */
+@utility eyebrow {
+  @apply text-muted-foreground text-2xs font-medium tracking-wider uppercase;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

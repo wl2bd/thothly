@@ -440,7 +440,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
               search, so it shows the tool at work, and never a dead link. */}
           {trimmed === "" && staged.length === 0 && (
             <div className="flex flex-col items-center gap-3 pt-6">
-              <span className="text-muted-foreground text-xs">Try a search</span>
+              <span className="eyebrow">Try a search</span>
               <div className="flex flex-wrap justify-center gap-2">
                 {EXAMPLE_SEARCHES.map((q) => (
                   <Button

@@ -122,7 +122,7 @@ export function CompilationHistory() {
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
+      <h2 className="eyebrow">
         Recent compilations
       </h2>
       <ul className="flex flex-col">

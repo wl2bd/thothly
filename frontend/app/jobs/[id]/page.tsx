@@ -1013,7 +1013,7 @@ function BookContents({
   if (chapters.length < 2) return null;
   return (
     <nav aria-label="Contents" className="flex flex-col gap-2">
-      <h3 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
+      <h3 className="eyebrow">
         Contents
       </h3>
       <ol className="-mx-2 flex flex-col">
@@ -2213,7 +2213,7 @@ function Tag({ className, ...props }: React.ComponentProps<"span">) {
     <span
       {...props}
       className={cn(
-        "text-muted-foreground text-2xs inline-flex shrink-0 items-center gap-1 font-medium tracking-wider uppercase [&_svg]:size-3",
+        "eyebrow inline-flex shrink-0 items-center gap-1 [&_svg]:size-3",
         className,
       )}
     />

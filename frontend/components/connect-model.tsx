@@ -380,7 +380,7 @@ function ModelInstructions({ config }: { config: LlmConfig }) {
       <dl className="mt-1 flex flex-col gap-4">
         {config.roles.map((role) => (
           <div key={role.id} className="flex flex-col gap-1.5">
-            <dt className="text-xs font-semibold">{role.label}</dt>
+            <dt className="text-xs font-medium">{role.label}</dt>
             <dd className="bg-muted text-muted-foreground rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
               {role.system_prompt}
             </dd>
