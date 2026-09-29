@@ -979,7 +979,7 @@ function BookReader({
           <h2 className="font-display text-3xl tracking-tight text-balance">
             {chapter.title}
           </h2>
-          <MarkdownPreview md={chapter.body} />
+          <MarkdownPreview md={chapter.body} reading />
         </article>
         {chapters.length > 1 && (
           <div className="flex justify-between gap-2">
@@ -1878,14 +1878,23 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
 // A deliberately small Markdown renderer for the narrow subset the compiler
 // emits (## headings, **bold** speaker labels, bullet lists, links). Avoids
 // pulling in a Markdown dependency for what is just a read-only preview.
-function MarkdownPreview({ md }: { md: string }) {
+// `reading`: the chapter in the reader, set for long reading (ink, 16px, open
+// leading). Without it, a compact muted excerpt (the review preview).
+function MarkdownPreview({ md, reading = false }: { md: string; reading?: boolean }) {
   // A heading line is its own block even with no blank line around it: the
   // "sections" pass often writes "## Title\nFirst sentence…".
   const blocks = md
     .split(/\n{2,}|\n(?=#{1,6}\s)|(?<=^#{1,6}\s[^\n]*)\n/m)
     .filter((b) => b.trim());
   return (
-    <div className="text-muted-foreground flex flex-col gap-2 text-sm leading-relaxed">
+    <div
+      className={cn(
+        "flex flex-col",
+        reading
+          ? "text-foreground gap-4 text-base leading-[1.65]"
+          : "text-muted-foreground gap-2 text-sm leading-relaxed",
+      )}
+    >
       {blocks.map((block, i) => {
         const image = /^!\[([^\]]*)\]\((\S+?)\)\s*$/.exec(block.trim());
         if (image) {
@@ -1895,7 +1904,7 @@ function MarkdownPreview({ md }: { md: string }) {
         const heading = /^(#{1,6})\s+(.*)$/.exec(block);
         if (heading) {
           return (
-            <p key={i} className="text-foreground mt-1 font-semibold">
+            <p key={i} className={cn("text-foreground font-semibold", reading ? "mt-4" : "mt-1")}>
               {renderInline(heading[2])}
             </p>
           );

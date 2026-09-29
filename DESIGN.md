@@ -223,6 +223,9 @@ premium faces is under discussion (2026-09-29).
 - **Title** (Host Grotesk 500, 1rem): item titles, card and dialog headers.
 - **Body** (Host Grotesk 350, a notch under Regular since the face is dense; bold inside it is 600; `text-sm` 0.875rem; About prose adds
   `leading-relaxed`; the catchline's subtitle is `text-lg`, `leading-snug`).
+- **Reading** (Host Grotesk 350, `text-base` 1rem, leading 1.65, ink, `max-w-prose`):
+  the chapter text in the reader. Links underline at 35% of the text color, full
+  on hover. The review preview keeps a compact muted `text-sm` excerpt.
 - **Label** (Host Grotesk 500, `text-xs` 0.75rem): badges, metadata, buttons `sm`.
 - **Mono** (Geist Mono, `text-xs`): durations, counts, technical detail.
 - **Miniature** (`text-2xs` 0.625rem): the `eyebrow` labels and keyboard-key
