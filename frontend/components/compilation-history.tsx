@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { XIcon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -150,16 +150,16 @@ export function CompilationHistory() {
                 )}
               </span>
             </Link>
-            {/* Browser-local and cheap to redo, so it forgets on the press with
-                no confirmation. */}
+            {/* Browser-local and cheap to redo, so it goes on the press with
+                no confirmation. A bin, not a cross: this deletes. */}
             <Button
               type="button"
               variant="nav"
               size="icon-sm"
               onClick={() => forgetCompilation(entry.id)}
-              aria-label="Forget this compilation"
+              aria-label="Delete this compilation"
             >
-              <XIcon />
+              <Trash2Icon />
             </Button>
           </li>
         ))}

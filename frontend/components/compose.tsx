@@ -17,6 +17,7 @@ import {
   PodcastIcon,
   SearchIcon,
   SearchXIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react";
 
@@ -624,7 +625,7 @@ function StagedRow({
           onClick={onRemove}
           aria-label="Remove source"
         >
-          <XIcon />
+          <Trash2Icon />
         </Button>
       </Tooltip>
     </li>
