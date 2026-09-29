@@ -1,38 +1,28 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { Logotype } from "@/components/brand";
+import { AppHeader } from "@/components/app-header";
 import { ModelSettingsPanel } from "@/components/connect-model";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata: Metadata = {
-  title: "Settings - Thothly",
+  title: "AI model - Thothly",
   robots: { index: false, follow: true },
 };
 
-// Where a visitor's own keys are changed or erased. Same workspace header as
-// /app; the keys themselves only ever exist in this browser.
+// Where a visitor's own keys are changed or erased. The keys themselves only
+// ever exist in this browser.
 export default function SettingsPage() {
   return (
-    <main id="main" className="flex min-h-screen justify-center p-8 sm:p-12">
-      <div className="flex w-full max-w-xl flex-col gap-10 py-12">
-        <header className="flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <Logotype className="h-8 w-auto" title="Thothly" />
-          </Link>
-          <ThemeToggle />
-        </header>
+    <div className="flex min-h-screen flex-col">
+      <AppHeader />
+      <main id="main" className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-12 sm:px-6">
         <div className="flex flex-col gap-2">
-          <Link
-            href="/"
-            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-          >
-            ← Back to the workspace
-          </Link>
-          <h1 className="font-display text-3xl tracking-tight">Your models</h1>
+          <h1 className="font-display text-3xl tracking-tight">AI model</h1>
+          <p className="text-muted-foreground text-sm">
+            Optional. Connect your own model to polish transcripts. The key stays in this browser.
+          </p>
         </div>
         <ModelSettingsPanel />
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
