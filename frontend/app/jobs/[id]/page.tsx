@@ -1993,13 +1993,8 @@ function RoleSelector({
 
   if (!llm.available) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-dashed px-4 py-3">
-        <span
-          aria-hidden
-          className="bg-muted text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg"
-        >
-          <Sparkles className="size-4" />
-        </span>
+      <div className="flex items-center gap-3 rounded-lg border px-4 py-3">
+        <Sparkles aria-hidden className="text-muted-foreground size-4 shrink-0" />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-sm font-medium">AI polish</span>
           <span className="text-muted-foreground text-xs">
@@ -2027,20 +2022,13 @@ function RoleSelector({
   return (
     <div
       className={cn(
-        "rounded-xl border transition-colors",
-        // Dashed + muted while off (reads as "optional, secondary to the free
-        // path"); once engaged it firms into a gold-edged panel so the one paid
-        // path carries the brand's single accent color.
-        masterOn ? "bg-foreground/2" : "border-dashed",
+        "rounded-lg border transition-colors",
+        // A faint fill once engaged; the switch itself carries the gold.
+        masterOn && "bg-foreground/2",
       )}
     >
       <div className="flex items-center gap-3 px-4 py-3">
-        <span
-          aria-hidden
-          className="bg-muted text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg"
-        >
-          <Sparkles className="size-4" />
-        </span>
+        <Sparkles aria-hidden className="text-muted-foreground size-4 shrink-0" />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-sm font-medium">AI polish</span>
           <span className="text-muted-foreground text-xs">{subtext}</span>
