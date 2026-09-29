@@ -153,13 +153,13 @@ export default function RootLayout({
             opacity (no `dark:` variant). The small uniform lift this puts on the
             black is the intended film-grain texture, kept to a few levels. */}
         <Grain className="pointer-events-none fixed inset-0 -z-10 size-full opacity-5" />
-        {/* A still glow falling from under the header. It lives here, in the
+        {/* A still glow rising from the bottom of the page. It lives here, in the
             layout that persists across navigation, so it carries from page to
             page instead of redrawing. White panes (the compilation) simply sit
             over it. */}
         <div
           aria-hidden="true"
-          className="glow-layer bg-(image:--glow-top) pointer-events-none fixed inset-x-0 top-14 bottom-0 -z-10 bg-no-repeat"
+          className="glow-layer bg-(image:--glow) pointer-events-none fixed inset-x-0 top-14 bottom-0 -z-10 bg-no-repeat"
         />
         {children}
         <Toaster position="bottom-center" />

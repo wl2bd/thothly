@@ -118,12 +118,12 @@
   /* A recessed surface, one step below the page: source chips, the hero
      search panel. */
   --surface-sunken: oklch(0.955 0 0);
-  /* A broad still glow falling from the top of the empty search column,
+  /* A broad still glow rising from the bottom of the page,
      about half its height, two tones: desert gold on the left, a muted tan on
      the right, so it never reads as one flat yellow. */
-  --glow-top:
-    radial-gradient(70% 55% at 22% 0%, oklch(0.87 0.12 85 / 0.7), transparent),
-    radial-gradient(75% 60% at 82% 0%, oklch(0.84 0.045 65 / 0.75), transparent);
+  --glow:
+    radial-gradient(70% 55% at 22% 100%, oklch(0.87 0.12 85 / 0.7), transparent),
+    radial-gradient(75% 60% at 82% 100%, oklch(0.84 0.045 65 / 0.75), transparent);
   /* A surface's edge: a hairline shadow under a white card. */
   --surface-lift: 0 1px 1px rgb(0 0 0 / 0.03);
   /* The flow card's lift: one token for the surface that carries the whole
@@ -181,9 +181,9 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --surface-sunken: oklch(0.15 0 0);
-  --glow-top:
-    radial-gradient(70% 55% at 22% 0%, oklch(0.55 0.12 80 / 0.42), transparent),
-    radial-gradient(75% 60% at 82% 0%, oklch(0.45 0.04 60 / 0.5), transparent);
+  --glow:
+    radial-gradient(70% 55% at 22% 100%, oklch(0.55 0.12 80 / 0.42), transparent),
+    radial-gradient(75% 60% at 82% 100%, oklch(0.45 0.04 60 / 0.5), transparent);
   /* At night a surface is lit from above: a faint top highlight. */
   --surface-lift: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 1px rgb(0 0 0 / 0.3);
   /* Black on near-black reads as a pool rather than a shadow, so the night
