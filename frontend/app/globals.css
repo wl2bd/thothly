@@ -519,7 +519,7 @@
    full colour only on the home page at rest (no search running). The change
    eases both ways, including across navigation, since the layer persists. */
 .glow-layer {
-  opacity: 0.3;
+  opacity: 0.15;
   transition: opacity 900ms var(--ease-out-quint);
 }
 
