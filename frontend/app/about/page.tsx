@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AppHeader } from "@/components/app-header";
+import { BackLink } from "@/components/back-link";
 import {
   Accordion,
   AccordionContent,
@@ -23,6 +24,7 @@ export default function AboutPage() {
         className="mx-auto flex w-full max-w-xl flex-col gap-10 px-4 py-12 sm:px-6"
       >
         <section className="flex flex-col gap-3">
+          <BackLink className="mb-3" />
           <h1 className="font-display text-3xl tracking-tight">About</h1>
           <p className="text-muted-foreground leading-relaxed">
             Thothly turns videos, podcasts and articles into one clean read: an

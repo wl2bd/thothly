@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AppHeader } from "@/components/app-header";
+import { BackLink } from "@/components/back-link";
 import { ModelSettingsPanel } from "@/components/connect-model";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function SettingsPage() {
       <AppHeader />
       <main id="main" className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-12 sm:px-6">
         <div className="flex flex-col gap-2">
+          <BackLink className="mb-4" />
           <h1 className="font-display text-3xl tracking-tight">AI models</h1>
           <p className="text-muted-foreground text-sm">
             Optional. Your own models, one to polish text and one to transcribe podcasts.

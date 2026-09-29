@@ -58,6 +58,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Logomark } from "@/components/brand";
 import { AppHeader } from "@/components/app-header";
+import { BackLink } from "@/components/back-link";
 import {
   CompilationPane,
   WorkPane,
@@ -72,6 +73,7 @@ import {
 } from "@/components/source-kind";
 import { ConnectModelDialog, type ModelKind } from "@/components/connect-model";
 import { recordCompilation } from "@/lib/history";
+import { clearDraft, restoreJobDraft } from "@/lib/workspace-draft";
 import { toVisitorEndpoint, withBrowserModels, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 import { cn } from "@/lib/utils";
@@ -405,6 +407,7 @@ export default function JobPage() {
   const newCompilation = (
     <Link
       href="/"
+      onClick={clearDraft}
       className={cn(buttonVariants({ variant: "outline" }), "w-full")}
     >
       New compilation
@@ -433,6 +436,7 @@ export default function JobPage() {
     panes = (
       <>
         <WorkPane>
+          <BackToSources jobId={id} sources={job.sources} title={job.book_title} />
           <DiscoveringView sources={job.sources} />
         </WorkPane>
         <CompilationPane
@@ -515,6 +519,25 @@ export default function JobPage() {
       <AppHeader />
       <Workspace>{panes}</Workspace>
     </div>
+  );
+}
+
+// Back to the workspace while the list can still change: the same sources and
+// title come back there, and launching again starts a new compilation (this
+// one stays in Recent compilations).
+function BackToSources({
+  jobId,
+  sources,
+  title,
+}: {
+  jobId: string;
+  sources: Source[];
+  title: string | null;
+}) {
+  return (
+    <BackLink href="/" onNavigate={() => restoreJobDraft(jobId, sources, title || null)}>
+      Sources
+    </BackLink>
   );
 }
 
@@ -920,6 +943,7 @@ function CompletedView({
             )}
             <Link
               href="/"
+              onClick={clearDraft}
               className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground w-full")}
             >
               New compilation
@@ -1480,6 +1504,7 @@ function ReviewList({
   return (
     <>
       <WorkPane label="Items">
+      <BackToSources jobId={jobId} sources={sources} title={title} />
       {/* Bulk selection lives on the LEFT, as a tri-state checkbox mirroring the
           per-source group headers — every "select this" affordance on the screen
           is a checkbox in the left column, so the master belongs there too. The
