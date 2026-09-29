@@ -215,6 +215,12 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 leaves buttons on the arrow; the hand says "this is pressable"
+     (the rule Tailwind's upgrade guide gives). */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
   /* Tidy line breaks everywhere: balance headings into even-length lines, and
      keep paragraphs from stranding a lone word on the last line (pretty). */
   h1,
