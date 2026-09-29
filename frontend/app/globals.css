@@ -484,38 +484,6 @@
   }
 }
 
-/* ── Completion seal ─────────────────────────────────────────────────────────
-   The payoff on the finished-compilation screen: the thothly seal lands and its
-   gold flares once — a single bloom that swells past then settles, the metal
-   catching the light — then rests. No pulse; it plays once, when the seal's
-   reveal adds .seal-bloom. Reduced motion holds the settled glow, no flare. */
-@keyframes seal-bloom {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
-  55% {
-    opacity: 0.95;
-    transform: translate(-50%, -50%) scale(1.35);
-  }
-  100% {
-    opacity: 0.62;
-    transform: translate(-50%, -50%) scale(1.15);
-  }
-}
-
-.seal-bloom {
-  animation: seal-bloom 1600ms var(--ease-out-expo) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .seal-bloom {
-    animation: none;
-    opacity: 0.55;
-    transform: translate(-50%, -50%) scale(1.15);
-  }
-}
-
 /* View Transitions — the home search card and the job card share the
    `flow-card` name, so the card morphs (size + position) across every phase: the
    home→job navigation, the results↔sources face swap, search settling, and the

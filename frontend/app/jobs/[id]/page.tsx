@@ -800,8 +800,7 @@ function CompletedView({
     new Set(counted.map((it) => it.source_index)).size || job.sources.length;
 
   // The payoff. Arriving on this screen (the job just finished, or a completed
-  // job opened) plays a one-shot arrival: the gold seal — the thothly mark —
-  // blooms in and flares, then the title and outputs cascade beneath it. It
+  // job opened) plays a one-shot arrival: the outputs cascade in. It
   // plays once on mount (this view mounts only when the job is completed, a
   // terminal state); reduced motion renders the settled state instantly. The
   // rAF defers the flip one frame so the transition actually runs from the
@@ -852,18 +851,7 @@ function CompletedView({
       <CompilationPane
         eyebrow={
           <>
-            {/* The seal — the thothly mark, in gold — flares once as the
-                pane arrives, the scribe's mark closing a finished work. */}
-            <span className="relative isolate flex items-center">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "bg-primary/50 dark:bg-primary/65 pointer-events-none absolute top-1/2 left-1/2 -z-10 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full blur-lg",
-                  revealed ? "seal-bloom" : "opacity-0",
-                )}
-              />
-              <Logomark className="text-primary-strong h-3.5 w-auto" />
-            </span>
+            <Logomark className="h-3.5 w-auto" />
             Ready
           </>
         }
@@ -906,7 +894,7 @@ function CompletedView({
             <div className="flex w-full gap-2">
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={copy}
                 disabled={!md}
                 className="flex-1"
@@ -928,7 +916,7 @@ function CompletedView({
                   href={getDownloadUrl(jobId, "md")}
                   download
                   aria-label="Download Markdown"
-                  className={buttonVariants({ variant: "secondary", size: "icon" })}
+                  className={buttonVariants({ variant: "outline", size: "icon" })}
                 >
                   <Download />
                 </a>
@@ -1974,7 +1962,7 @@ function RoleSelector({
       <div className="flex items-center gap-3 rounded-xl border border-dashed px-4 py-3">
         <span
           aria-hidden
-          className="bg-primary/10 text-primary-strong flex size-7 shrink-0 items-center justify-center rounded-lg"
+          className="bg-muted text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg"
         >
           <Sparkles className="size-4" />
         </span>
@@ -2009,13 +1997,13 @@ function RoleSelector({
         // Dashed + muted while off (reads as "optional, secondary to the free
         // path"); once engaged it firms into a gold-edged panel so the one paid
         // path carries the brand's single accent color.
-        masterOn ? "border-primary/30 bg-foreground/2" : "border-dashed",
+        masterOn ? "bg-foreground/2" : "border-dashed",
       )}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <span
           aria-hidden
-          className="bg-primary/10 text-primary-strong flex size-7 shrink-0 items-center justify-center rounded-lg"
+          className="bg-muted text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg"
         >
           <Sparkles className="size-4" />
         </span>
@@ -2055,7 +2043,7 @@ function RoleSelector({
                       "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors",
                       // A faint gold wash marks an active extra; idle rows only
                       // light up on hover.
-                      checked ? "bg-primary/7" : "hover:bg-foreground/5",
+                      checked ? "bg-foreground/5" : "hover:bg-foreground/5",
                     )}
                   >
                     <Checkbox

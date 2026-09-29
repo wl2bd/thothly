@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils"
 // at a glance. Per-item micro-notes stay plain coloured text.
 const tone = {
   error: "text-destructive *:data-[slot=alert-description]:text-destructive/90",
-  warning: "text-warning *:data-[slot=alert-description]:text-warning/90",
+  // News, not an alarm: the kit's neutral Alert, no orange (Wael, 2026-09-28).
+  warning: "",
   info: "text-info *:data-[slot=alert-description]:text-info/90",
 } as const
 
