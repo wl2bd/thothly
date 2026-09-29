@@ -2,7 +2,9 @@
 name: Thothly
 description: Read anything like a book. Near-neutral grounds carrying one strong color, desert gold.
 colors:
-  background: "oklch(0.975 0 0)"
+  background: "oklch(0.993 0 0)"
+  field: "oklch(0.967 0 0)"
+  field-dark: "oklch(0.2 0 0)"
   foreground: "oklch(0.16 0.015 68)"
   card: "oklch(1 0 0)"
   secondary: "oklch(0.955 0 0)"
@@ -111,8 +113,8 @@ components:
 
 **Creative North Star: "Gold Leaf."**
 
-One precious metal on a quiet ground. By day a light neutral grey page with
-pure white surfaces on it; by night a true near-black (chroma 0) with a step
+One precious metal on a quiet ground. By day a near-white page with pure
+white surfaces on it and light grey controls; by night a true near-black (chroma 0) with a step
 lighter for surfaces. No tint in the grounds, borders or recessed fills: the tan
 of 2026-09-28 was dropped the next day ("too much colour"). Against them, one
 strong color does the talking: **desert gold**, the brand's action color. It is
@@ -131,7 +133,7 @@ Light and dark are both first-class. The theme is set before paint.
 
 **Key Characteristics:**
 - One brand color, desert gold: the primary action, the active tab, keyboard focus, the mark.
-- Grounds: light grey page with white surfaces (light), chroma-0 near-black (dark).
+- Grounds: near-white page, white surfaces, light grey controls (light); chroma-0 near-black (dark).
 - A serif voice (Prociono) on titles over a grotesk UI (Host Grotesk).
 - Flat surfaces; depth from tonal steps and one hairline (`shadow-surface`).
 - One role-named token layer re-skins both modes.
@@ -172,7 +174,7 @@ raw values. Names describe a role, never a value (`--primary`, not `--gold`).
 
 ### Neutral
 Chroma 0 everywhere except the ink, which keeps a faint warm pull.
-- **Page** (`--background`, `oklch(0.975 0 0)` / `oklch(0.13 0 0)`).
+- **Page** (`--background`, `oklch(0.993 0 0)` / `oklch(0.13 0 0)`): near-white by day.
 - **Ink** (`--foreground`, `oklch(0.16 0.015 68)` / `oklch(0.97 0 0)`).
 - **Card** (`--card`, `oklch(1 0 0)` / `oklch(0.17 0 0)`): pure white surfaces
   on the grey page; popovers share it.
@@ -180,6 +182,10 @@ Chroma 0 everywhere except the ink, which keeps a faint warm pull.
 - **Muted** (`oklch(0.965 0 0)` / `oklch(0.22 0 0)`) with **Muted Ink**
   (`oklch(0.5 0 0)` / `oklch(0.7 0 0)`).
 - **Hairline** (`--border`, `oklch(0.945 0 0)` / white at 6%).
+- **Field** (`--field`, `oklch(0.967 0 0)` / `oklch(0.2 0 0)`; hover `--field-hover`,
+  `oklch(0.945 0 0)` / `oklch(0.24 0 0)`): the fill of inputs, select triggers and
+  outline buttons, a step below the white by day and a step above the black at
+  night, so controls stand out slightly in both.
 - **Field edge** (`--input`, `oklch(0.905 0 0)` / white at 8%): firmer than a
   divider so a field doesn't melt into the white.
 
@@ -302,7 +308,7 @@ Leave their internals conventional; brand lives in the tokens and the signatures
 
 ### Cards, inputs, controls
 - **Card / panel:** `bg-card`, 1px solid border, `rounded-lg`. Never nested, never dashed.
-- **Input:** card ground, hairline stroke, placeholder in muted ink (≥ 4.5:1).
+- **Input:** `field` fill, hairline stroke, placeholder in muted ink (≥ 4.5:1).
 - **Field focus:** fields (Input, Select trigger) focus in neutral ink, not gold:
   `border-foreground/45` + `ring-3 ring-foreground/6`, also while a Select is open.
   A field takes focus on every click, so a gold halo there reads as an alarm.

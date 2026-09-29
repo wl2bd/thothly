@@ -31,6 +31,8 @@
   --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-field: var(--field);
+  --color-field-hover: var(--field-hover);
   --color-ring: var(--ring);
   --shadow-surface: var(--surface-lift);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -78,7 +80,7 @@
      as too much colour (Wael, 2026-09-28). */
   /* The ground sits a step below white so the surfaces on it (fields,
      cards, the compilation) read as laid on top, not printed flat. */
-  --background: oklch(0.975 0 0);
+  --background: oklch(0.993 0 0);
   --foreground: oklch(0.16 0.015 68);
   /* Cards lift a step above the page. */
   --card: oklch(1 0 0);
@@ -110,6 +112,10 @@
   --border: oklch(0.945 0 0);
   /* Fields need a firmer edge than dividers, or they melt into the white. */
   --input: oklch(0.905 0 0);
+  /* Fields and outline buttons sit a step below the near-white page and the
+     white pane, so they read as controls without a heavy edge. */
+  --field: oklch(0.967 0 0);
+  --field-hover: oklch(0.945 0 0);
   --ring: var(--primary-strong);
   --radius: 0.625rem;
   /* A broad still glow rising from the bottom of the page,
@@ -145,6 +151,9 @@
   --info-foreground: oklch(0.16 0 0);
   --border: oklch(1 0 0 / 6%);
   --input: oklch(1 0 0 / 8%);
+  /* At night a control is a step above both the page and the pane. */
+  --field: oklch(0.2 0 0);
+  --field-hover: oklch(0.24 0 0);
   --glow:
     radial-gradient(70% 55% at 22% 100%, oklch(0.55 0.12 80 / 0.42), transparent),
     radial-gradient(75% 60% at 82% 100%, oklch(0.45 0.04 60 / 0.5), transparent);
