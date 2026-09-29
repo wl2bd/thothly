@@ -581,14 +581,7 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
                   <X className="text-muted-foreground size-3.5" />
                 ) : s.resolved ? (
                   <Check className="text-foreground/60 size-3.5" />
-                ) : (
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      isActive ? "bg-foreground" : "bg-muted-foreground/30",
-                    )}
-                  />
-                )}
+                ) : null}
               </span>
               <span
                 className={cn(
@@ -695,9 +688,7 @@ function CompileStep({
           <X className="text-destructive size-3.5" />
         ) : state === "skipped" ? (
           <Minus className="text-muted-foreground size-3.5" />
-        ) : (
-          <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
-        )}
+        ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
