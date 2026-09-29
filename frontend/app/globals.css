@@ -110,9 +110,9 @@
   --warning-foreground: oklch(0.98 0 0);
   --info: oklch(0.52 0.13 255);
   --info-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0 0);
+  --border: oklch(0.925 0 0);
   /* Fields need a firmer edge than dividers, or they melt into the white. */
-  --input: oklch(0.82 0 0);
+  --input: oklch(0.87 0 0);
   --ring: var(--primary-strong);
   --radius: 0.625rem;
   /* A recessed surface, one step below the page: source chips, the hero
@@ -178,8 +178,8 @@
   --warning-foreground: oklch(0.16 0 0);
   --info: oklch(0.7 0.14 255);
   --info-foreground: oklch(0.16 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 11%);
   --surface-sunken: oklch(0.15 0 0);
   --glow:
     radial-gradient(70% 55% at 22% 100%, oklch(0.55 0.12 80 / 0.42), transparent),
