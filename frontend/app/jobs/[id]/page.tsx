@@ -54,13 +54,6 @@ import { Progress } from "@/components/ui/progress";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Logomark } from "@/components/brand";
@@ -797,6 +790,8 @@ function CompletedView({
     };
   }, [jobId, hasMarkdown]);
 
+  const chapters = useMemo(() => (md ? splitBook(md) : []), [md]);
+  const [at, setAt] = useState(0);
   const words = md ? countWords(md) : null;
   const tokens = words != null ? Math.round(words * TOKENS_PER_WORD) : null;
 
@@ -823,8 +818,8 @@ function CompletedView({
   const rise =
     "transition-[opacity,transform] duration-1000 ease-out-expo motion-reduce:transition-none";
   const riseIn = revealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0";
-  const at = (delay: number) => ({
-    transitionDelay: revealed ? `${delay}ms` : "0ms",
+  const delay = (ms: number) => ({
+    transitionDelay: revealed ? `${ms}ms` : "0ms",
   });
 
   async function copy() {
@@ -848,7 +843,7 @@ function CompletedView({
           before it goes to an e-reader or an AI. */}
       <WorkPane label="Your book">
         {md ? (
-          <BookReader md={md} />
+          <BookReader chapters={chapters} at={at} onGo={setAt} />
         ) : hasMarkdown ? (
           <StatusMessage label="Opening the book…" />
         ) : (
@@ -871,7 +866,7 @@ function CompletedView({
       >
         {/* EPUB — to read. The one gold action: reading on an e-reader is the
             product's headline use. */}
-        <div className={cn("flex flex-col gap-3", rise, riseIn)} style={at(200)}>
+        <div className={cn("flex flex-col gap-3", rise, riseIn)} style={delay(200)}>
           <span className="flex flex-col">
             <span className="text-sm font-medium">EPUB</span>
             <span className="text-muted-foreground text-xs">
@@ -892,7 +887,7 @@ function CompletedView({
             token size rides the destination line (the AI's context budget is
             what the user weighs). */}
         {hasMarkdown && (
-          <div className={cn("flex flex-col gap-3", rise, riseIn)} style={at(350)}>
+          <div className={cn("flex flex-col gap-3", rise, riseIn)} style={delay(350)}>
             <span className="flex flex-col">
               <span className="text-sm font-medium">Markdown</span>
               <span className="text-muted-foreground text-xs">
@@ -944,8 +939,12 @@ function CompletedView({
         <LeftOutNotice
           items={job.discovered_items}
           className={cn(rise, riseIn)}
-          style={at(500)}
+          style={delay(500)}
         />
+
+        <div className={cn(rise, riseIn)} style={delay(650)}>
+          <BookContents chapters={chapters} at={at} onGo={setAt} />
+        </div>
       </CompilationPane>
     </>
   );
@@ -956,41 +955,33 @@ function CompletedView({
 // its cap) is tens of thousands of words, and one chapter renders instantly
 // where the whole book would not. Open on the left pane; the
 // downloads sit in the compilation pane.
-function BookReader({ md }: { md: string }) {
-  const chapters = useMemo(() => splitBook(md), [md]);
-  const [at, setAt] = useState(0);
+function BookReader({
+  chapters,
+  at,
+  onGo,
+}: {
+  chapters: Chapter[];
+  at: number;
+  onGo: (i: number) => void;
+}) {
   const topRef = useRef<HTMLDivElement>(null);
+  // Every chapter change (the contents in the side pane, or Previous/Next)
+  // brings the reader back to the chapter's top. Not on arrival.
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    topRef.current?.scrollIntoView({ block: "start" });
+  }, [at]);
   if (!chapters.length) return null;
   const chapter = chapters[Math.min(at, chapters.length - 1)];
-  function go(i: number) {
-    setAt(i);
-    topRef.current?.scrollIntoView({ block: "start" });
-  }
   return (
     <div ref={topRef} className="flex scroll-mt-20 flex-col gap-6">
-        <Select
-          items={chapters.map((c, i) => ({ value: String(i), label: c.title }))}
-          value={String(at)}
-          onValueChange={(v) => typeof v === "string" && go(Number(v))}
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label="Chapter"
-            className="text-muted-foreground hover:bg-muted/60 -ml-2.5 max-w-full border-transparent bg-transparent dark:bg-transparent"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="start">
-            {chapters.map((c, i) => (
-              <SelectItem key={i} value={String(i)}>
-                <span className="truncate">{c.title}</span>
-                <span className="text-muted-foreground tabular-nums">
-                  {countWords(c.body).toLocaleString("en-US")} words
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <span className="text-muted-foreground text-xs tabular-nums">
+          Chapter {at + 1} of {chapters.length}
+        </span>
         <article className="flex max-w-prose flex-col gap-4">
           <h2 className="font-display text-3xl tracking-tight text-balance">
             {chapter.title}
@@ -999,14 +990,14 @@ function BookReader({ md }: { md: string }) {
         </article>
         {chapters.length > 1 && (
           <div className="flex justify-between gap-2">
-            <Button type="button" variant="secondary" disabled={at === 0} onClick={() => go(at - 1)}>
+            <Button type="button" variant="outline" disabled={at === 0} onClick={() => onGo(at - 1)}>
               Previous
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               disabled={at >= chapters.length - 1}
-              onClick={() => go(at + 1)}
+              onClick={() => onGo(at + 1)}
             >
               Next
             </Button>
@@ -1015,6 +1006,52 @@ function BookReader({ md }: { md: string }) {
     </div>
   );
 }
+
+// The book's contents in the side pane, next to the downloads: every chapter
+// with its length, the one open in the reader marked. Picking one opens it.
+function BookContents({
+  chapters,
+  at,
+  onGo,
+}: {
+  chapters: Chapter[];
+  at: number;
+  onGo: (i: number) => void;
+}) {
+  if (chapters.length < 2) return null;
+  return (
+    <nav aria-label="Contents" className="flex flex-col gap-2">
+      <h3 className="text-muted-foreground text-2xs font-medium tracking-wider uppercase">
+        Contents
+      </h3>
+      <ol className="-mx-2 flex flex-col">
+        {chapters.map((c, i) => (
+          <li key={i}>
+            <button
+              type="button"
+              onClick={() => onGo(i)}
+              aria-current={i === at ? "true" : undefined}
+              className={cn(
+                "hover:bg-muted focus-visible:ring-ring flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                i === at ? "text-foreground font-medium" : "text-muted-foreground",
+              )}
+            >
+              <span className="text-muted-foreground/70 w-5 shrink-0 text-xs tabular-nums">
+                {i + 1}
+              </span>
+              <span className="line-clamp-2 min-w-0 flex-1">{c.title}</span>
+              <span className="text-muted-foreground/70 shrink-0 text-xs tabular-nums">
+                {countWords(c.body).toLocaleString("en-US")}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+type Chapter = { title: string; body: string };
 
 // A book H1 as the compiler writes it: the title, then optional Pandoc
 // attributes ("{lang=fr}" on a chapter, "{.front-matter}" on the Sources index
@@ -1035,7 +1072,7 @@ function parseHeading(text: string): { title: string; frontMatter: boolean } {
 // The book's Markdown as {title, body} per H1, the way the backend's
 // `split_chapters` reads it. The "Sources" index is navigation, not reading;
 // the source-attribution block (`:::`) is the compiler's, not the text.
-function splitBook(md: string): { title: string; body: string }[] {
+function splitBook(md: string): Chapter[] {
   const out: { title: string; frontMatter: boolean; body: string[] }[] = [];
   let fenced = false;
   // A book written on Windows comes back with CRLF; a stray "\r" defeats every
