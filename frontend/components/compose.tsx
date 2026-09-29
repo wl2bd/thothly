@@ -358,19 +358,16 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
       : "Review";
 
+  // The layout's glow eases down to a trace while results are up, and back
+  // when the bar clears.
+  useEffect(() => {
+    const html = document.documentElement;
+    html.toggleAttribute("data-searching", showResults);
+    return () => html.removeAttribute("data-searching");
+  }, [showResults]);
+
   return (
     <>
-      {/* A still glow falling from the top of the search column. It dresses
-          the empty column, then eases down to a trace behind the results
-          rather than vanishing. Fixed to the column (the viewport minus the
-          400px compilation pane), so it stays put while results scroll. */}
-      <div
-        aria-hidden="true"
-        className={cn(
-          "bg-(image:--glow-top) pointer-events-none fixed top-14 right-0 bottom-0 left-0 -z-10 bg-no-repeat transition-opacity duration-700 ease-out-quint lg:right-[400px]",
-          showResults ? "opacity-25" : "opacity-100",
-        )}
-      />
       <WorkPane
         label="Search"
         // Phone, no search: hug the field so the compilation sits right
