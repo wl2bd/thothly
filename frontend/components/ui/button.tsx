@@ -8,7 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        // Gold only when it can be pressed: hover deepens it, disabled drops to
+        // a plain grey instead of a washed-out yellow.
+        default:
+          "bg-primary text-primary-foreground hover:brightness-95 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
         outline:
           "border-border bg-card shadow-surface hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
