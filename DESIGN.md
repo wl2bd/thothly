@@ -313,6 +313,9 @@ Leave their internals conventional; brand lives in the tokens and the signatures
   `border-foreground/45` + `ring-3 ring-foreground/6`, also while a Select is open.
   A field takes focus on every click, so a gold halo there reads as an alarm.
   The gold ring stays for keyboard focus on buttons and links.
+- **Checkbox:** checked in ink (`bg-foreground`, the tick in the page color), not gold.
+  A review list checks every row, and a column of gold squares outshouts the one
+  gold action (Compile).
 - **Switch:** gold track when on; used only for the "AI polish" master toggle.
   Checkboxes everywhere else.
 
