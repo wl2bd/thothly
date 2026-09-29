@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon, Share2Icon } from "lucide-react";
+import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -76,9 +76,12 @@ export function BookActions({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button className="flex-1" />}>
-          <DownloadIcon />
-          Download
+        {/* Label on the left, the menu's chevron at the far end. */}
+        <DropdownMenuTrigger render={<Button className="flex-1 justify-between" />}>
+          <span className="flex items-center gap-2">
+            <DownloadIcon />
+            Download
+          </span>
           <ChevronDownIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-(--anchor-width) min-w-60">
@@ -104,7 +107,6 @@ export function BookActions({
             <DropdownMenuLabel>Send to an e-reader</DropdownMenuLabel>
             {shareable && (
               <DropdownMenuItem onClick={share} className="py-2">
-                <Share2Icon />
                 Share…
               </DropdownMenuItem>
             )}
