@@ -56,6 +56,9 @@ const KIND_META: Record<SourceKind, KindMeta> = {
   channel: { label: "Channel", Icon: TvIcon, text: false, container: true },
 };
 
+// The one display order for kinds, wherever they are listed side by side.
+export const KIND_ORDER = Object.keys(KIND_META) as SourceKind[];
+
 // Search hits speak ResultType; discovered items speak item_type. Both fold into
 // the one SourceKind vocabulary so downstream screens never special-case either.
 export function kindFromResultType(type: ResultType): SourceKind {

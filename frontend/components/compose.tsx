@@ -51,9 +51,9 @@ import {
   SourceTypePill,
   hostOf,
   isContainerKind,
+  KIND_ORDER,
   kindFromResultType,
   kindLabel,
-  type SourceKind,
 } from "@/components/source-kind";
 
 // A source the user has staged for compilation. Built either from a picked
@@ -833,14 +833,14 @@ function TypeFilter({
     const k = kindFromResultType(r.type);
     counts[k] = (counts[k] ?? 0) + 1;
   }
-  const kinds = Object.keys(counts);
+  const kinds = KIND_ORDER.filter((k) => counts[k]);
   if (kinds.length < 2) return null;
 
   const chips = [
     { key: "all", label: "All", count: results.length },
     ...kinds.map((k) => ({
       key: k,
-      label: kindLabel(k as SourceKind),
+      label: kindLabel(k),
       count: counts[k],
     })),
   ];
