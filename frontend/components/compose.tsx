@@ -368,7 +368,13 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       >
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
             {/* A plain field, the magnifier always in place. */}
-            <div className="relative">
+            <div className="relative isolate">
+              {/* A still gold halo hugging the field: the one place the eye
+                  should land. Blurred colour, no motion. */}
+              <span
+                aria-hidden="true"
+                className="bg-(image:--search-glow) pointer-events-none absolute -inset-x-4 -inset-y-3 -z-10 blur-xl"
+              />
               <SearchIcon
                 aria-hidden="true"
                 className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
