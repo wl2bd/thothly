@@ -161,10 +161,6 @@ raw values. Names describe a role, never a value (`--primary`, not `--gold`).
 | `surface-lift` | The one hairline shadow under a surface (`shadow-surface`). |
 | `glow` | The page glow: two radial gradients, gold left, muted tan right. |
 
-Tokens still declared in `globals.css` but read by no screen: `surface-sunken`,
-`hero-ground`, `hero-scrim`, `flow-card-lift`, `rule`, `rain-*`, and the
-`.gold-frame` / `.stone-frame` ramps (see Signatures).
-
 ### Primary
 - **Desert Gold** (`--primary`, `oklch(0.82 0.145 80)` light, `oklch(0.71 0.135 78)`
   dark): primary buttons, the switch track, the current/active item, the mark,
@@ -212,10 +208,6 @@ self-hosted.
 **Body / UI Font:** Host Grotesk (with system-ui, sans-serif). Variable, runs the
 whole tool.
 **Mono Font:** Geist Mono (with ui-monospace). Durations, counts, the Markdown twin.
-
-Still loaded in `app/layout.tsx` but set by no screen: Literata (the old output
-tablets), Noto Sans Egyptian Hieroglyphs and Noto Serif Display Thin (the old
-glyph rain).
 
 **Character:** A literary serif voice for titles over a warm, readable grotesk
 for the work. The display face gives the product its "edition" feel; the grotesk
@@ -325,11 +317,9 @@ Leave their internals conventional; brand lives in the tokens and the signatures
 - **Grain** (`components/grain.tsx`): fractal noise over the whole page at 5%,
   and on the wordmark. Decorative, `aria-hidden`, never lowers text contrast.
 
-Retired from the screens but still in the code: the hieroglyph rain
-(`components/hieroglyph-rain.tsx`), the rotating gold frame (`.gold-frame`,
-`components/ui/animated-gold-border.tsx`) and the stone tablets (`.stone-frame`,
-`components/ui/stone-border.tsx`, `components/output-tablet.tsx`; their SVG
-filter is still mounted in the layout).
+Retired and deleted on 2026-09-29: the hieroglyph rain, the rotating gold frame
+around the search field and the stone tablets, with their tokens and fonts
+(Literata, Noto Sans Egyptian Hieroglyphs, Noto Serif Display Thin).
 
 ### Motion
 One house curve, `ease-out-quint` (`cubic-bezier(0.22, 1, 0.36, 1)`), for every

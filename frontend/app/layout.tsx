@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
-import {
-  Geist_Mono,
-  Literata,
-  Noto_Sans_Egyptian_Hieroglyphs,
-  Noto_Serif_Display,
-} from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Grain } from "@/components/grain";
 import { Toaster } from "@/components/ui/sonner";
-import { StoneFilterDefs } from "@/components/ui/stone-border";
 
 // Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
 // the whole tool (`--font-sans`). Upright + italic variable files cover 300–800.
@@ -49,44 +43,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Glyph rain font — Noto Sans Egyptian Hieroglyphs (`--font-hieroglyph`), used
-// by the hero canvas in both modes (components/hieroglyph-rain.tsx). Self-hosted
-// at build like the rest; not preloaded, since it's a decorative background asset
-// that must never block first paint. Latin subset included so the interspersed
-// letters render in the same family as the hieroglyphs.
-const notoHieroglyphs = Noto_Sans_Egyptian_Hieroglyphs({
-  weight: "400",
-  subsets: ["egyptian-hieroglyphs", "latin"],
-  variable: "--font-hieroglyph",
-  display: "swap",
-  preload: false,
-});
-
-// Edition serif — Literata (`--font-edition`): the serif Google designed for
-// e-reader reading. Reserved for the EPUB tablet in the landing illustration —
-// the meaningful "book" surface — so the edition has a literary voice while the
-// tool stays grotesk. NOT for UI/body. (The hero rain letters use a thinner
-// serif, below.)
-const literata = Literata({
-  weight: ["400", "600"],
-  subsets: ["latin"],
-  variable: "--font-literata",
-  display: "swap",
-});
-
-// Rain serif — Noto Serif Display Thin (`--font-rain-serif`): a true hairline
-// (weight 100, finer than Literata's lightest 200) for the Latin letters in the
-// hero glyph rain only. Pairs with the Noto hieroglyphs (same superfamily) and
-// keeps the falling letters as fine as the single-weight glyphs. Decorative,
-// dark+light background asset → not preloaded.
-const notoSerifThin = Noto_Serif_Display({
-  weight: "100",
-  subsets: ["latin"],
-  variable: "--font-rain-serif",
-  display: "swap",
-  preload: false,
-});
-
 const DESCRIPTION =
   "Turn videos, podcasts, articles, even whole playlists into one clean read for your e-reader or your AI.";
 
@@ -118,7 +74,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${hostGrotesk.variable} ${prociono.variable} ${geistMono.variable} ${notoHieroglyphs.variable} ${literata.variable} ${notoSerifThin.variable} h-full antialiased`}
+      className={`${hostGrotesk.variable} ${prociono.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* No-flash theme: set the `dark` class before first paint from the
@@ -139,9 +95,6 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        {/* Shared SVG filter for the stone tablet edge (components using
-            .stone-frame). Defined once here so filter: url(#…) always resolves. */}
-        <StoneFilterDefs />
         {/* App-wide grain — Thothly's signature material promoted to a system
             ground. One fixed layer behind all content (-z-10), so it textures
             the page background and lets transparent sections reveal it while

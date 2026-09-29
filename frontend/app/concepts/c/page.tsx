@@ -34,7 +34,7 @@ export default function ConceptC() {
                 <li key={c.title} className="flex items-baseline gap-4 py-3">
                   <GripVerticalIcon className="text-muted-foreground size-4 self-center opacity-40" />
                   <span className="font-display text-muted-foreground w-6 text-lg tabular-nums">{i + 1}</span>
-                  <span className="font-edition flex-1 text-lg">{c.title}</span>
+                  <span className="font-display flex-1 text-lg">{c.title}</span>
                   <span className="text-muted-foreground text-xs">{c.words}</span>
                 </li>
               ))}
