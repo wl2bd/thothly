@@ -50,6 +50,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
+import { SendToReader } from "@/components/send-to-reader";
 import { Progress } from "@/components/ui/progress";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -873,14 +874,17 @@ function CompletedView({
               For your e-reader
             </span>
           </span>
-          <a
-            href={getDownloadUrl(jobId)}
-            download
-            className={cn(buttonVariants(), "w-full")}
-          >
-            <Download />
-            Download
-          </a>
+          <div className="flex w-full gap-2">
+            <a
+              href={getDownloadUrl(jobId)}
+              download
+              className={cn(buttonVariants(), "flex-1")}
+            >
+              <Download />
+              Download
+            </a>
+            <SendToReader epubUrl={getDownloadUrl(jobId)} title={job.book_title ?? ""} />
+          </div>
         </div>
 
         {/* Markdown — to feed an AI. Copy is the natural gesture there; the
