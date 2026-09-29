@@ -62,9 +62,9 @@
   --text-3xs: 0.55rem;
   /* The house curve: a fast start that settles softly (easeOutQuint). Every
      transition and the card morph use it. */
-  --ease-out-quint: var(--ease-out-quint);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   /* The one-shot payoff reveal on the finished compilation (easeOutExpo). */
-  --ease-out-expo: var(--ease-out-expo);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── Gold Leaf ───────────────────────────────────────────────────────────────
