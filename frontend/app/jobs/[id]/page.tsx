@@ -900,9 +900,14 @@ function CompletedView({
               />
               {hasMarkdown && (
                 <Tooltip content="Copy the Markdown, to paste into an AI">
+                  {/* Both labels share one grid cell, the idle one hidden, so
+                      "Copied" never widens the button or shifts its row. */}
                   <Button type="button" variant="outline" onClick={copy} disabled={!md}>
                     {copied ? <Check /> : <Copy />}
-                    {copied ? "Copied" : "Copy"}
+                    <span className="grid">
+                      <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
+                      <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Copied</span>
+                    </span>
                   </Button>
                 </Tooltip>
               )}

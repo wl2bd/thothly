@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import { fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
 import { maskKey, writeModels, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
@@ -299,9 +300,13 @@ function EndpointForm({
         </>
       ) : (
         <div className="flex gap-2">
-          <Button type="submit" variant="secondary" disabled={!canCheck}>
+          <Button type="submit" variant="outline" disabled={!canCheck}>
             {checking && <Spinner className="size-4" />}
-            {checking ? "Checking…" : "Check key"}
+            {/* Both labels in one cell so the button keeps its width. */}
+            <span className="grid">
+              <span className={cn("col-start-1 row-start-1", checking && "invisible")}>Check key</span>
+              <span className={cn("col-start-1 row-start-1", !checking && "invisible")}>Checking…</span>
+            </span>
           </Button>
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel}>
