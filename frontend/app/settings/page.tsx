@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/app-header";
 import { ModelSettingsPanel } from "@/components/connect-model";
 
 export const metadata: Metadata = {
-  title: "AI model - Thothly",
+  title: "AI models - Thothly",
   robots: { index: false, follow: true },
 };
 
@@ -16,9 +16,9 @@ export default function SettingsPage() {
       <AppHeader />
       <main id="main" className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-12 sm:px-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-3xl tracking-tight">AI model</h1>
+          <h1 className="font-display text-3xl tracking-tight">AI models</h1>
           <p className="text-muted-foreground text-sm">
-            Optional. Connect your own model to polish transcripts. The key stays in this browser.
+            Optional. Your own models, one to polish text and one to transcribe podcasts.
           </p>
         </div>
         <ModelSettingsPanel />

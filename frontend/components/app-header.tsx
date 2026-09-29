@@ -18,7 +18,7 @@ export function AppHeader() {
       <div className="flex items-center gap-1 sm:gap-2">
         {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}
         <Link href="/settings" className={navLink}>
-          AI model
+          AI models
         </Link>
         <Link href="/about" className={navLink}>
           About
