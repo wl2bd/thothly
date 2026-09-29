@@ -332,6 +332,15 @@ transition and the flow-card morph (300ms group, 220ms cross-fade; slower when
 returning home). `ease-out-expo` is reserved for the one-shot completion reveal.
 Every animation has a `prefers-reduced-motion` alternative.
 
+## Control scale (2026-09-29)
+
+- Two control heights only: 40px (`h-10`) for every field, dropdown and button; 32px (`size="sm"`) for compact inline controls (sort, example chips, actions inside a row).
+- Three button styles: gold `default` (the one primary action per surface), `outline` (secondary), `ghost` (tertiary, e.g. New compilation). No grey `secondary`.
+- A disabled primary button is plain grey, never faded gold. Hover deepens the gold.
+- A button whose label changes (Copy / Copied) keeps one width: both labels share one grid cell.
+- Type sizes: `2xs` eyebrows, `xs` meta, `sm` interface, `base` reading, `xl` pane titles, `3xl` page titles. Serif (`font-display`) names content (titles, headings), never small list rows.
+- Shadows: one hairline (`shadow-surface`) on surfaces; panes carry a border, no cast shadow.
+
 ## Do's and Don'ts
 
 ### Do:
