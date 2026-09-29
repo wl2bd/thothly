@@ -370,6 +370,27 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
         // under it.
         className={cn(!showResults && "max-lg:flex-none")}
       >
+          {/* The catchline, only while the page is at rest: it folds away
+              (height and fade together) as soon as results need the room. */}
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-500 ease-out-quint",
+              showResults ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+            )}
+            aria-hidden={showResults}
+          >
+            <div className="overflow-hidden">
+              <div className="flex flex-col items-center gap-3 pt-10 pb-8 text-center">
+                <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
+                  Make anything readable.
+                </h1>
+                <p className="text-muted-foreground max-w-md text-balance">
+                  Turn videos, podcasts and articles into a book for your
+                  e-reader, or a clean file for your AI.
+                </p>
+              </div>
+            </div>
+          </div>
           <form onSubmit={onSubmit} className="flex flex-col gap-2">
             {/* A plain field, the magnifier always in place. */}
             <div className="relative">
