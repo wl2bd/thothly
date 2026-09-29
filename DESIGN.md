@@ -218,8 +218,8 @@ premium faces is under discussion (2026-09-29).
 - **Display** (Prociono 400, `text-display` 2.75rem rising to 3.75rem at `sm`,
   `leading-display` 1.1, `tracking-tight`): the home catchline ("Make anything
   readable"), folded away once results show.
-- **Headline** (Prociono 400): `text-3xl` page titles (AI models, About, the
-  reader's chapter title); `text-xl` pane titles (the compilation's name).
+- **Headline** (Prociono 400): `text-3xl` page titles (About, the reader's
+  chapter title); `text-xl` pane titles (the compilation's name, the AI models panel).
 - **Title** (Host Grotesk 500, 1rem): item titles, card and dialog headers.
 - **Body** (Host Grotesk 350, a notch under Regular since the face is dense; bold inside it is 600; `text-sm` 0.875rem; About prose adds
   `leading-relaxed`; the catchline's subtitle is `text-lg`, `leading-snug`).
@@ -249,8 +249,10 @@ pane on the right, `lg:grid-cols-[minmax(0,1fr)_400px]`, each scrolling on its
 own at full viewport height. The work pane centres its content in `max-w-3xl`
 with `p-4` / `sm:p-8`; the compilation pane pads `px-6 py-6` and pins its action
 footer (Compile, Download) at its bottom. Below `lg` the panes stack and the
-footer is fixed to the bottom of the screen, within reach of the thumb. Text
-pages (AI models, About) are a single centred column. The pane carries the
+footer is fixed to the bottom of the screen, within reach of the thumb. The one
+text page (About) is a single centred column. AI models is not a page: the
+header opens it as a side panel (`Sheet`, right, full width on a phone, 448px
+from `sm`) over whatever screen is open. The pane carries the
 `flow-card` view-transition name, so it morphs across the flow instead of
 hard-cutting. Spacing follows Tailwind's 0.25rem scale. Breakpoints are
 Tailwind's defaults (`sm` 640, `md` 768, `lg` 1024).

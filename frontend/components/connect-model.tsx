@@ -51,7 +51,7 @@ const PRIVACY =
   "Your key stays in this browser. Thothly sends it to your provider only to check it and to run a compilation you start, and never stores it.";
 
 // The stored endpoint for one kind: a summary with Replace and Remove once a key
-// is saved, the connect form otherwise. Shared by the review dialog and /settings.
+// is saved, the connect form otherwise. Shared by the review dialog and the AI models panel.
 export function ModelEndpointSettings({
   kind,
   config,
@@ -321,7 +321,7 @@ function EndpointForm({
 
 // The in-flow entry from the review screen: one kind at a time, the one the
 // visitor just reached for. Closes itself once a checked key is saved. Changing
-// or removing a key later lives on /settings too.
+// or removing a key later lives in the AI models panel too.
 export function ConnectModelDialog({
   kind,
   config,
@@ -393,7 +393,7 @@ function ModelInstructions({ config }: { config: LlmConfig }) {
   );
 }
 
-// /settings: both kinds, for changing a model, replacing an expired key or
+// The AI models panel: both kinds, for changing a model, replacing an expired key or
 // erasing one from this browser.
 export function ModelSettingsPanel() {
   const [config, setConfig] = useState<LlmConfig | null>(null);

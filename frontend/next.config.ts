@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
     // Next's bundled react-experimental, where <ViewTransition> lives.
     viewTransition: true,
   },
+  // AI models moved from a page into a side panel on every screen.
+  async redirects() {
+    return [{ source: "/settings", destination: "/", permanent: false }];
+  },
 };
 
 export default nextConfig;

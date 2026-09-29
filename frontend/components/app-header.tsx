@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AiModelsSheet } from "@/components/ai-models-sheet";
 import { Logotype } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -17,9 +18,7 @@ export function AppHeader() {
       </Link>
       <div className="flex items-center gap-1 sm:gap-2">
         {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}
-        <Link href="/settings" className={navLink}>
-          AI models
-        </Link>
+        <AiModelsSheet triggerClassName={navLink} />
         <Link href="/about" className={navLink}>
           About
         </Link>
