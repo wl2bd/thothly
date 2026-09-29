@@ -10,8 +10,8 @@ const Watercolor = dynamic(() => import("@/components/watercolor"), { ssr: false
 // enough to be felt rather than seen. Neutral into the brand gold; it sits
 // behind everything and never under text without a surface in between.
 const TONES = {
-  light: { color1: "#ffffff", color2: "#e9cf94", opacity: 0.55 },
-  dark: { color1: "#0a0a0a", color2: "#5a4214", opacity: 0.6 },
+  light: { color1: "#ffffff", color2: "#f1dfb4", opacity: 0.35 },
+  dark: { color1: "#0a0a0a", color2: "#3d2d10", opacity: 0.45 },
 };
 
 // The theme toggle flips the class on <html>; follow it live.
@@ -48,6 +48,10 @@ export function AmbientBackground() {
         speed={still ? 0 : 0.25}
         saturation={1}
         brightness={0}
+        // Broad, smooth pools rather than the default marbling.
+        scale={0.18}
+        octaves={2}
+        persistence={0.35}
       />
     </div>
   );
