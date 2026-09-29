@@ -2,6 +2,7 @@
 
 import { ViewTransition, type ReactNode } from "react";
 
+import { AmbientBackground } from "@/components/ambient-background";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ export function CompilationPane({
       <aside
         aria-label="Your compilation"
         className={cn(
-          "bg-surface-sunken flex min-h-0 flex-col border-t max-lg:flex-1 lg:border-t-0 lg:border-l",
+          "bg-surface-sunken/75 flex min-h-0 flex-col border-t backdrop-blur-xl max-lg:flex-1 lg:border-t-0 lg:border-l",
           className,
         )}
       >
@@ -74,7 +75,7 @@ export function CompilationPane({
         {footer && (
           // On a phone the pane sits under a long list, so its action stays
           // pinned within reach of the thumb.
-          <div className="bg-surface-sunken flex flex-col gap-3 border-t px-6 py-5 max-lg:sticky max-lg:bottom-0">
+          <div className="flex flex-col gap-3 border-t px-6 py-5 max-lg:sticky max-lg:bottom-0">
             {footer}
           </div>
         )}
@@ -114,6 +115,7 @@ export function Workspace({ children }: { children: ReactNode }) {
       id="main"
       className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_400px]"
     >
+      <AmbientBackground />
       {children}
     </main>
   );
