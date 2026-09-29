@@ -2,6 +2,7 @@
 
 import { ViewTransition, type ReactNode } from "react";
 
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // The right-hand pane of every screen of the flow: the compilation itself. The
@@ -43,14 +44,15 @@ export function CompilationPane({
               {eyebrow}
             </h2>
             {onTitleChange ? (
-              // The book's name, in the book's voice.
-              <input
+              // The book's name, in the book's voice, in the same field as
+              // every other input.
+              <Input
                 value={title}
                 onChange={(e) => onTitleChange(e.target.value)}
                 placeholder="Untitled compilation"
                 aria-label="Compilation title"
                 maxLength={100}
-                className="font-display placeholder:text-muted-foreground/60 focus-visible:ring-ring -mx-1 rounded-sm bg-transparent px-1 text-2xl tracking-tight focus-visible:ring-2 focus-visible:outline-none"
+                className="font-display h-12 text-xl md:text-xl"
               />
             ) : (
               <p className="font-display text-2xl tracking-tight text-balance">

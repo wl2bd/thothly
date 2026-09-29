@@ -108,7 +108,8 @@
   --info: oklch(0.52 0.13 255);
   --info-foreground: oklch(0.98 0 0);
   --border: oklch(0.9 0 0);
-  --input: var(--border);
+  /* Fields need a firmer edge than dividers, or they melt into the white. */
+  --input: oklch(0.82 0 0);
   --ring: var(--primary-strong);
   --radius: 0.625rem;
   /* A recessed surface, one step below the page: source chips, the hero

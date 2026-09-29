@@ -369,7 +369,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             <div className="relative">
               <SearchIcon
                 aria-hidden="true"
-                className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2"
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
               />
               <Input
                 ref={inputRef}
@@ -386,7 +386,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                 }}
                 placeholder="Search or paste a link…"
                 className={cn(
-                  "bg-card dark:bg-card h-12 rounded-xl pl-10 shadow-sm",
+                  "pl-10",
                   // Right: room for the in-field Add (pasted link) or the
                   // clear × (search term), nothing when empty.
                   queryIsUrl ? "pr-28" : query !== "" ? "pr-12" : "pr-4",
@@ -403,7 +403,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                   aria-label="Add to sources"
                   // An inset, not -translate-y-1/2: Button's press affordance
                   // writes the same translate and would drop the pill.
-                  className="absolute top-1.5 right-1.5 h-9"
+                  className="absolute top-1 right-1 h-9"
                 >
                   <PlusIcon />
                   Add
@@ -416,7 +416,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                     size="icon-sm"
                     onClick={clearQuery}
                     aria-label="Clear search"
-                    className="absolute top-2 right-2"
+                    className="absolute top-1.5 right-1.5"
                   >
                     <XIcon className="size-4" />
                   </Button>
