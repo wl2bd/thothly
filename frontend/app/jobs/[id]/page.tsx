@@ -75,6 +75,7 @@ import { recordCompilation } from "@/lib/history";
 import { toVisitorEndpoint, withBrowserModels, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 import { cn } from "@/lib/utils";
+import { tokenizeInline, type InlineToken } from "@/lib/inline-md";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   ApiError,
@@ -1915,42 +1916,31 @@ function MarkdownPreview({ md }: { md: string }) {
   );
 }
 
-const INLINE = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`/g;
-
 function renderInline(text: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  let match: RegExpExecArray | null;
-  INLINE.lastIndex = 0;
-  while ((match = INLINE.exec(text)) !== null) {
-    if (match.index > last) nodes.push(text.slice(last, match.index));
-    if (match[1] != null) {
-      nodes.push(<strong key={key++}>{match[1]}</strong>);
-    } else if (match[2] != null) {
-      nodes.push(
-        <a
-          key={key++}
-          // A Markdown link may carry a title after its URL: `(url "Title")`.
-          href={match[3].replace(/\s+"[^"]*"$/, "")}
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          {match[2]}
-        </a>,
+  return tokenizeInline(text).map(renderToken);
+}
+
+function renderToken(token: InlineToken, key: number): React.ReactNode {
+  switch (token.t) {
+    case "text":
+      return token.text;
+    case "strong":
+      return <strong key={key}>{token.text}</strong>;
+    case "em":
+      return <em key={key}>{token.children.map(renderToken)}</em>;
+    case "link":
+      return (
+        <a key={key} href={token.href} target="_blank" rel="noreferrer" className="underline">
+          {token.text}
+        </a>
       );
-    } else if (match[4] != null) {
-      nodes.push(
-        <code key={key++} className="bg-muted rounded px-1 text-[0.85em]">
-          {match[4]}
-        </code>,
+    case "code":
+      return (
+        <code key={key} className="bg-muted rounded px-1 text-[0.85em]">
+          {token.text}
+        </code>
       );
-    }
-    last = INLINE.lastIndex;
   }
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
 }
 
 interface RoleSelectorProps {
