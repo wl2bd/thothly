@@ -75,8 +75,9 @@
 :root {
   /* Native controls (scrollbars, select popups, date pickers) follow the theme. */
   color-scheme: light;
-  /* Light = pure white, dominant, with tan for everything recessed (panels,
-     chips, borders) and the gold for actions. Wael's call, 2026-09-28. */
+  /* Light = pure white with plain neutral greys for everything recessed
+     (panels, chips, borders); the gold is kept for actions only. The tan read
+     as too much colour (Wael, 2026-09-28). */
   --background: oklch(1 0 0);
   --foreground: oklch(0.16 0.015 68);
   /* Cards lift a step above the page. */
@@ -91,10 +92,10 @@
      read on the off-white, so this is a deeper gold (4.0:1, clears the 3:1 of
      icons and focus indicators). It is also the focus ring. */
   --primary-strong: oklch(0.6 0.15 75);
-  --secondary: oklch(0.92 0.02 85);
+  --secondary: oklch(0.955 0 0);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.955 0.014 85);
-  --muted-foreground: oklch(0.48 0.02 70);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.5 0 0);
   --accent: var(--muted);
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.52 0.21 27);
@@ -106,13 +107,13 @@
   --warning-foreground: oklch(0.98 0 0);
   --info: oklch(0.52 0.13 255);
   --info-foreground: oklch(0.98 0 0);
-  --border: oklch(0.87 0.022 85);
+  --border: oklch(0.9 0 0);
   --input: var(--border);
   --ring: var(--primary-strong);
   --radius: 0.625rem;
   /* A recessed surface, one step below the page: source chips, the hero
      search panel. */
-  --surface-sunken: oklch(0.96 0.014 85);
+  --surface-sunken: oklch(0.98 0 0);
   /* The flow card's lift: one token for the surface that carries the whole
      journey (the landing's field, the tool's card, the job's card), so the
      three never drift apart. An ambient glow with no offset: the card sits ON
