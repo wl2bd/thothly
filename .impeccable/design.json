@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-23T12:00:00Z",
+  "generatedAt": "2026-09-29T12:00:00Z",
   "title": "Design System: Thothly",
   "extensions": {
     "colorMeta": {
@@ -12,19 +12,17 @@
       },
       "neutral": {
         "role": "neutral",
-        "displayName": "Quiet Grounds (warm light, chroma-0 dark)",
+        "displayName": "Quiet Grounds (chroma 0 in both modes)",
         "canonical": "oklch(0.16 0.015 68)",
-        "tonalRamp": ["oklch(0.13 0 0)", "oklch(0.17 0 0)", "oklch(0.22 0 0)", "oklch(0.48 0.02 70)", "oklch(0.87 0.018 78)", "oklch(0.915 0.018 80)", "oklch(0.955 0.014 80)", "oklch(0.977 0.011 80)", "oklch(0.995 0.008 80)"]
+        "tonalRamp": ["oklch(0.13 0 0)", "oklch(0.17 0 0)", "oklch(0.22 0 0)", "oklch(0.5 0 0)", "oklch(0.7 0 0)", "oklch(0.905 0 0)", "oklch(0.945 0 0)", "oklch(0.965 0 0)", "oklch(0.975 0 0)", "oklch(1 0 0)"]
       }
     },
     "typographyMeta": {
       "display": { "displayName": "Display (Prociono)", "purpose": "Roman serif, Regular only. Titles only: the hero line, section headings, app page titles, the reader's chapter title. Never body, buttons, labels, controls or data." },
       "body": { "displayName": "Body / UI (Host Grotesk)", "purpose": "The warm grotesk that runs the whole tool: UI copy (text-sm), titles (500), labels (text-xs 500)." },
-      "mono": { "displayName": "Mono (Geist Mono)", "purpose": "Durations, counts, the Markdown twin." },
-      "edition": { "displayName": "Edition (Literata)", "purpose": "Only on the drawn book surfaces (the output tablets). The edition's voice, not the tool's." }
+      "mono": { "displayName": "Mono (Geist Mono)", "purpose": "Durations, counts, the Markdown twin." }
     },
     "shadows": [
-      { "name": "flow-card-lift", "value": "0 0 32px rgb(0 0 0 / 0.07)", "purpose": "The flow card only (search, review, done). Ambient, no offset. Dark: 0 0 40px rgb(0 0 0 / 0.3)." },
       { "name": "overlay", "value": "Tailwind shadow-md to shadow-xl", "purpose": "Tooltips, select popups, dialogs. Everything else is flat at rest." }
     ],
     "motion": [

@@ -2,15 +2,14 @@
 name: Thothly
 description: Read anything like a book. Near-neutral grounds carrying one strong color, desert gold.
 colors:
-  background: "oklch(0.977 0.011 80)"
+  background: "oklch(0.975 0 0)"
   foreground: "oklch(0.16 0.015 68)"
-  card: "oklch(0.995 0.008 80)"
-  secondary: "oklch(0.915 0.018 80)"
-  muted: "oklch(0.955 0.014 80)"
-  muted-foreground: "oklch(0.48 0.02 70)"
-  surface-sunken: "oklch(0.957 0.014 80)"
-  border: "oklch(0.87 0.018 78)"
-  hero-ground: "oklch(0.94 0.026 78)"
+  card: "oklch(1 0 0)"
+  secondary: "oklch(0.955 0 0)"
+  muted: "oklch(0.965 0 0)"
+  muted-foreground: "oklch(0.5 0 0)"
+  border: "oklch(0.945 0 0)"
+  input: "oklch(0.905 0 0)"
   primary: "oklch(0.82 0.145 80)"
   primary-strong: "oklch(0.6 0.15 75)"
   destructive: "oklch(0.52 0.21 27)"
@@ -22,7 +21,8 @@ colors:
   card-dark: "oklch(0.17 0 0)"
   muted-dark: "oklch(0.22 0 0)"
   muted-foreground-dark: "oklch(0.7 0 0)"
-  surface-sunken-dark: "oklch(0.15 0 0)"
+  border-dark: "oklch(1 0 0 / 6%)"
+  input-dark: "oklch(1 0 0 / 8%)"
   primary-dark: "oklch(0.71 0.135 78)"
   primary-foreground-dark: "oklch(0.16 0 0)"
 typography:
@@ -57,11 +57,6 @@ typography:
     fontFamily: "Geist Mono, ui-monospace, monospace"
     fontSize: "0.75rem"
     fontWeight: 400
-  edition:
-    fontFamily: "Literata, Georgia, serif"
-    fontSize: "0.625rem"
-    fontWeight: 400
-    lineHeight: 1.625
 rounded:
   xs: "0.125rem"
   sm: "0.375rem"
@@ -82,8 +77,8 @@ components:
     rounded: "{rounded.lg}"
     height: "2.5rem"
     padding: "0 1rem"
-  button-secondary:
-    backgroundColor: "{colors.secondary}"
+  button-outline:
+    backgroundColor: "{colors.card}"
     textColor: "{colors.foreground}"
     rounded: "{rounded.lg}"
     height: "2.5rem"
@@ -107,36 +102,38 @@ components:
 
 # Design System: Thothly
 
-> **Status (2026-09-23).** This file is derived from the shipped code
-> (`frontend/app/globals.css` is the source of truth for every value). The
-> identity itself is due for a review; until then, this records what ships, not
-> an aspiration. Where the two disagree, the code wins and this file is stale.
+> **Status (2026-09-29).** Re-derived from the shipped code on the
+> `design-rework` branch (`frontend/app/globals.css` is the source of truth for
+> every value). This records what ships, not an aspiration. Where the two
+> disagree, the code wins and this file is stale.
 
 ## Overview
 
 **Creative North Star: "Gold Leaf."**
 
-One precious metal on a quiet ground. By day the ground is pure white, dominant,
-with tan for what is recessed (panels, chips, borders); by night a true
-near-black (chroma 0). (Light mode was a warm off-white until 2026-09-28.) Against them, one strong color does the talking: **desert
-gold**, the brand's action color. It is the heir of the name (Thoth, writing,
-the gilt of an illuminated page), executed as a flat, bold, modern color rather
-than a texture. It is at its most alive on the night ground.
+One precious metal on a quiet ground. By day a light neutral grey page with
+pure white surfaces on it; by night a true near-black (chroma 0) with a step
+lighter for surfaces. No tint in the grounds, borders or recessed fills: the tan
+of 2026-09-28 was dropped the next day ("too much colour"). Against them, one
+strong color does the talking: **desert gold**, the brand's action color. It is
+the heir of the name (Thoth, writing, the gilt of an illuminated page), executed
+as a flat, bold, modern color rather than a texture.
 
-Two halves, one system. The app (search, review, compile, read) is calm and
-task-first; the landing (hero, "How it works", "Yours, on your machine", FAQ) is
-more expressive. The expressive layer is carried by a few earned signatures: the
-hieroglyph rain behind the hero, the rotating gold frame around the search field,
-the carved stone tablets, and the grain on the wordmark. Everything else is plain
-shadcn / base-ui primitives on the token layer.
+The product is one workspace, not a landing followed by a tool: the home page is
+the tool (search on the left, the compilation pane on the right), and About is a
+plain text page. The expressive layer is small: a still two-tone glow rising
+from the bottom of the page, a faint grain over it, the serif on titles. Gold
+appears on the one primary action per screen, the active tab, the paid-path cue
+and the mark. Everything else is plain shadcn / base-ui primitives on the token
+layer.
 
 Light and dark are both first-class. The theme is set before paint.
 
 **Key Characteristics:**
-- One brand color, desert gold, on primary actions, focus, current/active, the mark.
-- Grounds: pure white with tan surfaces (light), chroma-0 near-black (dark).
-- A serif display voice (Prociono) over a warm grotesk UI (Host Grotesk).
-- Flat surfaces; depth from tonal steps, with one ambient lift on the flow card.
+- One brand color, desert gold: the primary action, the active tab, keyboard focus, the mark.
+- Grounds: light grey page with white surfaces (light), chroma-0 near-black (dark).
+- A serif voice (Prociono) on titles over a grotesk UI (Host Grotesk).
+- Flat surfaces; depth from tonal steps and one hairline (`shadow-surface`).
 - One role-named token layer re-skins both modes.
 
 ## Colors
@@ -157,17 +154,16 @@ raw values. Names describe a role, never a value (`--primary`, not `--gold`).
 | `secondary` | Secondary buttons, quiet badges. |
 | `muted`, `accent` | Hover fills and quiet chips (accent = muted). |
 | `muted-foreground` | Secondary text, metadata, placeholders. |
-| `surface-sunken` | Recessed surfaces: source chips, the hero search panel. |
 | `border`, `input` | Hairlines and field strokes. |
 | `primary` / `primary-foreground` | Desert gold fill and the ink on it. |
 | `primary-strong` | Gold as text or icon on a neutral surface; also `ring`. |
 | `destructive`, `success`, `warning`, `info` | Status, data only. |
-| `hero-ground`, `hero-scrim` | The hero fold's ground and headline scrim. |
-| `flow-card-lift` | The flow card's ambient shadow (`shadow-flow-card`). |
-| `rule`, `rain-lead/body/tail/halo` | The inscription lines and glyph-rain tones (read by the canvas). |
+| `surface-lift` | The one hairline shadow under a surface (`shadow-surface`). |
+| `glow` | The page glow: two radial gradients, gold left, muted tan right. |
 
-Component-scoped tokens live on their component: the gold frame's
-`--frame-trough` / `--frame-glint` ramp is declared on `.gold-frame`.
+Tokens still declared in `globals.css` but read by no screen: `surface-sunken`,
+`hero-ground`, `hero-scrim`, `flow-card-lift`, `rule`, `rain-*`, and the
+`.gold-frame` / `.stone-frame` ramps (see Signatures).
 
 ### Primary
 - **Desert Gold** (`--primary`, `oklch(0.82 0.145 80)` light, `oklch(0.71 0.135 78)`
@@ -179,16 +175,17 @@ Component-scoped tokens live on their component: the gold frame's
   (4.0:1 on the page). On the night ground the fill gold already reads.
 
 ### Neutral
-- **Page** (`--background`, `oklch(0.977 0.011 80)` / `oklch(0.13 0 0)`).
+Chroma 0 everywhere except the ink, which keeps a faint warm pull.
+- **Page** (`--background`, `oklch(0.975 0 0)` / `oklch(0.13 0 0)`).
 - **Ink** (`--foreground`, `oklch(0.16 0.015 68)` / `oklch(0.97 0 0)`).
-- **Card** (`--card`, `oklch(0.995 0.008 80)` / `oklch(0.17 0 0)`).
-- **Secondary** (`oklch(0.915 0.018 80)` / `oklch(0.22 0 0)`).
-- **Muted** (`oklch(0.955 0.014 80)` / `oklch(0.22 0 0)`) with **Muted Ink**
-  (`oklch(0.48 0.02 70)` / `oklch(0.7 0 0)`).
-- **Sunken** (`oklch(0.957 0.014 80)` / `oklch(0.15 0 0)`).
-- **Hairline** (`--border`, `oklch(0.87 0.018 78)` / white at 12%; inputs 16%).
-- **Hero Ground** (`oklch(0.94 0.026 78)` light, transparent on dark): the warm
-  taupe the light glyph rain sits on. Hero only; fades into the page.
+- **Card** (`--card`, `oklch(1 0 0)` / `oklch(0.17 0 0)`): pure white surfaces
+  on the grey page; popovers share it.
+- **Secondary** (`oklch(0.955 0 0)` / `oklch(0.22 0 0)`).
+- **Muted** (`oklch(0.965 0 0)` / `oklch(0.22 0 0)`) with **Muted Ink**
+  (`oklch(0.5 0 0)` / `oklch(0.7 0 0)`).
+- **Hairline** (`--border`, `oklch(0.945 0 0)` / white at 6%).
+- **Field edge** (`--input`, `oklch(0.905 0 0)` / white at 8%): firmer than a
+  divider so a field doesn't melt into the white.
 
 ### Status
 - **Success** `oklch(0.5 0.12 150)`, **Warning** `oklch(0.53 0.16 45)`, **Info**
@@ -201,10 +198,9 @@ Component-scoped tokens live on their component: the gold frame's
 **The One Color Rule.** Desert gold is the only brand hue. The four status
 colors are data, not decoration. No second accent.
 
-**The Quiet Ground Rule.** Grounds stay near-neutral. On light they carry a faint
-pull toward the gold's hue (chroma ≤ 0.018), never cream, sand or parchment; on
-dark they are chroma 0. The one visible tint is the light hero ground. Open
-question for the identity review: whether the dark neutrals should warm to match.
+**The Quiet Ground Rule.** Grounds, surfaces, borders and recessed fills are
+chroma 0 in both modes. No cream, sand, tan or parchment. The only warm tone
+outside the gold is the right half of the page glow.
 
 **The Gold-Holds-Ink Rule.** Text on a gold fill is always the ink, never white.
 Gold as text on a neutral uses `primary-strong`, never the fill gold.
@@ -216,77 +212,77 @@ self-hosted.
 **Body / UI Font:** Host Grotesk (with system-ui, sans-serif). Variable, runs the
 whole tool.
 **Mono Font:** Geist Mono (with ui-monospace). Durations, counts, the Markdown twin.
-**Edition Font:** Literata (with Georgia, serif). Only where Thothly shows a book.
-**Rain fonts:** Noto Sans Egyptian Hieroglyphs and Noto Serif Display Thin (100),
-only inside the hero glyph rain.
 
-**Character:** A literary serif voice for the big moments over a warm, readable
-grotesk for the work. The display face gives the product its "edition" feel; the
-grotesk keeps the tool from reading as either corporate or costume.
+Still loaded in `app/layout.tsx` but set by no screen: Literata (the old output
+tablets), Noto Sans Egyptian Hieroglyphs and Noto Serif Display Thin (the old
+glyph rain).
+
+**Character:** A literary serif voice for titles over a warm, readable grotesk
+for the work. The display face gives the product its "edition" feel; the grotesk
+keeps the tool from reading as either corporate or costume. A switch to more
+premium faces is under discussion (2026-09-29).
 
 ### Hierarchy
 - **Display** (Prociono 400, `text-display` 2.75rem rising to 3.75rem at `sm`,
-  `leading-display` 1.1, `tracking-tight`): the hero line.
-- **Headline** (Prociono 400, `text-2xl` to `text-3xl`, `tracking-tight`): landing
-  section headings, app page titles (Settings, the finished compilation), the
-  reader's chapter title (`text-xl`).
+  `leading-display` 1.1, `tracking-tight`): the home catchline ("Make anything
+  readable"), folded away once results show.
+- **Headline** (Prociono 400): `text-3xl` page titles (AI models, About, the
+  reader's chapter title); `text-xl` pane titles (the compilation's name).
 - **Title** (Host Grotesk 500, 1rem): item titles, card and dialog headers.
-- **Body** (Host Grotesk 400, `text-sm` 0.875rem; landing prose adds
-  `leading-relaxed`; the hero subtitle is `text-lg`/`text-xl`, `leading-snug`).
+- **Body** (Host Grotesk 400, `text-sm` 0.875rem; About prose adds
+  `leading-relaxed`; the catchline's subtitle is `text-lg`, `leading-snug`).
 - **Label** (Host Grotesk 500, `text-xs` 0.75rem): badges, metadata, buttons `sm`.
 - **Mono** (Geist Mono, `text-xs`): durations, counts, technical detail.
-- **Miniature** (`text-2xs` 0.625rem, `text-3xs` 0.55rem): only inside the drawn
-  tablets and the funnel figure, a book page at thumbnail scale; `text-2xs`
-  also sets keyboard-key hints (mono, tracked capitals). Never other UI text.
+- **Miniature** (`text-2xs` 0.625rem): the `eyebrow` labels and keyboard-key
+  hints (mono, tracked capitals). Never other UI text.
 
 ### Named Rules
-**The Display Restraint Rule.** Prociono sets titles only: the hero, section
-headings, page titles, a chapter title. Never body, buttons, labels, form
+**The Display Restraint Rule.** Prociono sets titles only: the catchline, page
+titles, pane titles, a chapter title. Never body, buttons, labels, form
 controls or data, and never a bolder weight (it ships Regular; the browser would
 fake-bold it).
 
-**The Edition Serif Rule.** Literata appears only where Thothly is showing a book:
-the output tablets. It is the edition's voice, not the tool's.
-
-**The Quiet Caps Rule.** Uppercase tracked labels are a named device (source group
-headers, the tablet's "CHAPTER 2"), never a reflex eyebrow above every section.
+**The Quiet Caps Rule.** Uppercase tracked labels are the one `eyebrow` utility
+(see Control scale), for small section labels inside a pane or a menu, never as
+a kicker above a page heading.
 
 ## Layout
 
-Content sits in a centered `max-w-5xl` column with `px-6` gutters; the landing's
-two-column sections switch on at `lg` (`grid-cols-2`, `gap-10`). Prose and the
-hero subtitle cap at `max-w-xl`. The flow card (search, review, done) is the one
-surface that carries the whole journey and morphs between phases through a shared
-view transition (`flow-card`). Spacing follows Tailwind's 0.25rem scale; the
-common rhythm is `gap-1` to `gap-4` inside components and `--spacing(7)` (1.75rem)
-card padding. Breakpoints are Tailwind's defaults (`sm` 640, `md` 768, `lg` 1024).
+Every screen is the same workspace under the app header (`Workspace` in
+`components/compilation-pane.tsx`): a work pane on the left and the compilation
+pane on the right, `lg:grid-cols-[minmax(0,1fr)_400px]`, each scrolling on its
+own at full viewport height. The work pane centres its content in `max-w-3xl`
+with `p-4` / `sm:p-8`; the compilation pane pads `px-6 py-6` and pins its action
+footer (Compile, Download) at its bottom. Below `lg` the panes stack and the
+footer is fixed to the bottom of the screen, within reach of the thumb. Text
+pages (AI models, About) are a single centred column. The pane carries the
+`flow-card` view-transition name, so it morphs across the flow instead of
+hard-cutting. Spacing follows Tailwind's 0.25rem scale. Breakpoints are
+Tailwind's defaults (`sm` 640, `md` 768, `lg` 1024).
 
 ## Elevation & Depth
 
-Flat by default. Depth comes from tonal steps: the card is a step lighter than
-the page in light, a step lighter than the near-black in dark, plus a 1px
-hairline.
+Flat by default. Depth comes from tonal steps: white surfaces on the grey page
+in light, a step lighter than the near-black in dark, plus a 1px border.
 
 ### Shadow Vocabulary
-- **Flow card lift** (`--flow-card-lift`: `0 0 32px rgb(0 0 0 / 0.07)` light,
-  `0 0 40px rgb(0 0 0 / 0.3)` dark): the flow card only. An ambient glow with no
-  offset: the card sits on the ground, it does not hover.
+- **Surface hairline** (`--surface-lift`, `shadow-surface`: `0 1px 1px rgb(0 0 0 / 0.03)`
+  in light; a faint top highlight plus a 1px shadow in dark): fields, chips and
+  small surfaces.
 - **Overlay** (Tailwind `shadow-md` to `shadow-xl`): tooltips, select popups,
-  dialogs. Standard shadcn values.
-- **Stone cast shadow**: the tablets' carved edge (see Components).
+  menus, dialogs. Standard shadcn values.
 
 ### Named Rules
-**The Flat-By-Default Rule.** A shadow at rest is allowed only on the flow card
-and the stone tablets. Everything else is flat until it floats (popups, dialogs).
+**The Flat-By-Default Rule.** At rest, a surface gets the hairline at most. Panes
+carry a border, never a cast shadow. Real shadows only on what floats (popups,
+menus, dialogs).
 
 ## Shapes
 
 One radius base, `--radius: 0.625rem`, with the shadcn scale derived from it
 (`sm` 0.375, `md` 0.5, `lg` 0.625, `xl` 0.875 … `4xl` 1.625rem). Buttons, inputs
 and cards use `rounded-lg`; badges are pills (`rounded-4xl`); tiny marks (the
-search highlight, favicons, the duration chip) use `rounded-xs`. The stone tablets
-break the geometry on purpose: an SVG displacement filter erodes their edge into
-a hand-hewn silhouette.
+search highlight, favicons, the duration chip) use `rounded-xs`.
 
 ## Components
 
@@ -295,8 +291,9 @@ Leave their internals conventional; brand lives in the tokens and the signatures
 
 ### Buttons
 - **Primary:** gold fill, ink text, `h-10`, `rounded-lg`, `text-sm` medium.
-  The committing action on each screen (Search, Compile, Download EPUB).
-- **Secondary:** secondary fill, ink text. **Ghost / Outline / Link:** shadcn.
+  The one committing action on each screen (Compile, Download).
+- **Outline** for secondary actions (Copy, Connect a model), **Ghost** for
+  tertiary ones (New compilation). No grey `secondary` button.
 - **Focus:** `ring-3` in `ring/50` (deep gold on light, gold on dark). Fields differ, see below.
 
 ### Badges
@@ -307,7 +304,7 @@ Leave their internals conventional; brand lives in the tokens and the signatures
 - **Status:** success / warning / info / destructive at 10% alpha.
 
 ### Cards, inputs, controls
-- **Card:** `bg-card`, 1px hairline, `rounded-lg`, 1.75rem padding. Never nested.
+- **Card / panel:** `bg-card`, 1px solid border, `rounded-lg`. Never nested, never dashed.
 - **Input:** card ground, hairline stroke, placeholder in muted ink (≥ 4.5:1).
 - **Field focus:** fields (Input, Select trigger) focus in neutral ink, not gold:
   `border-foreground/45` + `ring-3 ring-foreground/6`, also while a Select is open.
@@ -320,24 +317,26 @@ Leave their internals conventional; brand lives in the tokens and the signatures
   Checkboxes everywhere else.
 
 ### Signatures
-- **Gold frame** (`.gold-frame`, `components/ui/animated-gold-border.tsx`): a 2px
-  conic gold ring (trough, gold, glint) that spins slowly and blooms a soft gold
-  glow on focus. Around the search field only. Static under reduced motion.
-- **Hieroglyph rain** (`components/hieroglyph-rain.tsx`): a canvas of falling gold
-  glyph columns between eroded inscription rules, behind the hero. Tones come from
-  `--rain-*` and `--rule`, inverted per theme. One still frame under reduced motion.
-- **Stone tablet** (`.stone-frame`, `components/ui/stone-border.tsx`): the output
-  illustrations (EPUB, Markdown) as carved slabs with a `--rule` rim.
-- **Grain** (`components/grain.tsx`): fractal noise on the wordmark and, faintly,
-  the page and hero. Decorative, `aria-hidden`, never lowers text contrast.
-- **Completion seal:** the mark lands on the finished compilation with a single
-  gold bloom (`ease-out-expo`), then rests.
+- **Page glow** (`--glow`, `.glow-layer` in `app/layout.tsx`): a still two-tone
+  glow rising from the bottom of the page, desert gold on the left and a muted
+  tan on the right. Full strength on the home page at rest, a 15% trace
+  everywhere else, eased between the two. No animation: animated decorative
+  backgrounds were tried and rejected on 2026-09-29.
+- **Grain** (`components/grain.tsx`): fractal noise over the whole page at 5%,
+  and on the wordmark. Decorative, `aria-hidden`, never lowers text contrast.
+
+Retired from the screens but still in the code: the hieroglyph rain
+(`components/hieroglyph-rain.tsx`), the rotating gold frame (`.gold-frame`,
+`components/ui/animated-gold-border.tsx`) and the stone tablets (`.stone-frame`,
+`components/ui/stone-border.tsx`, `components/output-tablet.tsx`; their SVG
+filter is still mounted in the layout).
 
 ### Motion
 One house curve, `ease-out-quint` (`cubic-bezier(0.22, 1, 0.36, 1)`), for every
 transition and the flow-card morph (300ms group, 220ms cross-fade; slower when
-returning home). `ease-out-expo` is reserved for the one-shot completion reveal.
-Every animation has a `prefers-reduced-motion` alternative.
+returning home). `ease-out-expo` is reserved for one-shot reveals. Loading reads
+as a progress bar with a counter and a sheen on the row in progress, never
+stacked spinners. Every animation has a `prefers-reduced-motion` alternative.
 
 ## Control scale (2026-09-29)
 
@@ -354,19 +353,19 @@ Every animation has a `prefers-reduced-motion` alternative.
 ### Do:
 - **Do** use role tokens through their utilities; add a token (by role) before
   hard-coding a value, and extend a scale rather than making an exception.
-- **Do** make desert gold the one brand color: primary CTAs, focus, active, the mark.
+- **Do** make desert gold the one brand color: the primary action, the active tab, keyboard focus, the mark.
 - **Do** use `primary-strong` for gold text or icons on a neutral surface.
 - **Do** keep the ink on every gold fill, and body and placeholder text ≥ 4.5:1.
-- **Do** keep Prociono to titles and Literata to the drawn book surfaces.
+- **Do** keep Prociono to titles.
 - **Do** ship a reduced-motion alternative for every animation.
 
 ### Don't:
 - **Don't** build a cold enterprise dashboard or a generic AI SaaS page: no
   gradient hero, glassy cards, hero-metric grid, fluorescent accents, gradient text.
-- **Don't** wear the costume: no papyrus, sepia or parchment. The hieroglyphs are
-  one earned motif (the rain), flat and token-driven, not a theme.
+- **Don't** wear the costume: no papyrus, sepia or parchment, and no animated
+  decorative background.
 - **Don't** introduce a second brand color, or use gold where a status belongs.
 - **Don't** put white text on gold, or the fill gold as text on the light page.
 - **Don't** fork the shadcn primitives' internals to restyle them; change tokens.
-- **Don't** add resting shadows, side-stripe borders, or a tracked eyebrow above
-  every section.
+- **Don't** add resting shadows, side-stripe borders, dashed panels, or a tracked
+  eyebrow above a page heading.
