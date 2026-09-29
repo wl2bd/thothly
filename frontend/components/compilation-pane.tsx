@@ -52,10 +52,10 @@ export function CompilationPane({
                 placeholder="Untitled compilation"
                 aria-label="Compilation title"
                 maxLength={100}
-                className="font-display h-12 text-xl md:text-xl"
+                className="font-display text-xl md:text-xl"
               />
             ) : (
-              <p className="font-display text-2xl tracking-tight text-balance">
+              <p className="font-display text-xl tracking-tight text-balance">
                 {title || "Untitled compilation"}
               </p>
             )}

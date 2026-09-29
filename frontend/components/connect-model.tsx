@@ -90,7 +90,7 @@ export function ModelEndpointSettings({
           </span>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setReplacing(true)}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setReplacing(true)}>
             Replace
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => save(null)}>

@@ -413,7 +413,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                   aria-label="Add to sources"
                   // An inset, not -translate-y-1/2: Button's press affordance
                   // writes the same translate and would drop the pill.
-                  className="absolute top-1 right-1 h-9"
+                  className="absolute top-1 right-1 h-8"
                 >
                   <PlusIcon />
                   Add
@@ -426,7 +426,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
                     size="icon-sm"
                     onClick={clearQuery}
                     aria-label="Clear search"
-                    className="absolute top-1.5 right-1.5"
+                    className="absolute top-1 right-1"
                   >
                     <XIcon className="size-4" />
                   </Button>

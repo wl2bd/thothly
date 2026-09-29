@@ -919,7 +919,7 @@ function CompletedView({
             )}
             <Link
               href="/"
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-muted-foreground mt-1 self-center")}
+              className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground w-full")}
             >
               New compilation
             </Link>
@@ -1515,9 +1515,9 @@ function ReviewList({
               size="icon-xs"
               onClick={() => setQuery("")}
               aria-label="Clear search"
-              // An inset (top-2 centres 28px in the 44px field), not
+              // An inset (top-1.5 centres 28px in the 40px field), not
               // -translate-y-1/2: Button's press translate would replace it.
-              className="absolute top-2 right-2"
+              className="absolute top-1.5 right-1.5"
             >
               <X className="size-4" />
             </Button>
@@ -1603,7 +1603,6 @@ function ReviewList({
             {/* The button says what's blocking it (no item / no title), so
                 the message is where the click is. */}
             <Button
-              size="lg"
               onClick={onConfirm}
               disabled={confirming || selected.size === 0 || title.trim() === ""}
               className="w-full"
@@ -2017,7 +2016,7 @@ function RoleSelector({
               : "Tidy wording with your own OpenAI, Mistral or other key."}
           </span>
         </span>
-        <Button type="button" variant="secondary" size="sm" onClick={onConnect} className="shrink-0">
+        <Button type="button" variant="outline" size="sm" onClick={onConnect} className="shrink-0">
           Connect a model
         </Button>
       </div>
