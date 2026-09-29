@@ -34,6 +34,7 @@
   --color-ring: var(--ring);
   --color-surface-sunken: var(--surface-sunken);
   --shadow-flow-card: var(--flow-card-lift);
+  --shadow-surface: var(--surface-lift);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -78,7 +79,9 @@
   /* Light = pure white with plain neutral greys for everything recessed
      (panels, chips, borders); the gold is kept for actions only. The tan read
      as too much colour (Wael, 2026-09-28). */
-  --background: oklch(1 0 0);
+  /* The ground sits a step below white so the surfaces on it (fields,
+     cards, the compilation) read as laid on top, not printed flat. */
+  --background: oklch(0.975 0 0);
   --foreground: oklch(0.16 0.015 68);
   /* Cards lift a step above the page. */
   --card: oklch(1 0 0);
@@ -114,7 +117,9 @@
   --radius: 0.625rem;
   /* A recessed surface, one step below the page: source chips, the hero
      search panel. */
-  --surface-sunken: oklch(0.98 0 0);
+  --surface-sunken: oklch(0.955 0 0);
+  /* A surface's edge: a hairline shadow under a white card. */
+  --surface-lift: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 1px rgb(0 0 0 / 0.03);
   /* The flow card's lift: one token for the surface that carries the whole
      journey (the landing's field, the tool's card, the job's card), so the
      three never drift apart. An ambient glow with no offset: the card sits ON
@@ -170,6 +175,8 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --surface-sunken: oklch(0.15 0 0);
+  /* At night a surface is lit from above: a faint top highlight. */
+  --surface-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.5);
   /* Black on near-black reads as a pool rather than a shadow, so the night
      ground needs more of it to separate the card at all. */
   --flow-card-lift: 0 0 40px rgb(0 0 0 / 0.3);

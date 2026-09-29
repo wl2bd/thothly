@@ -77,7 +77,7 @@ export function ModelEndpointSettings({
         : (config.providers.find((p) => p.id === current.provider)?.label ?? current.provider);
     return (
       <div className="flex flex-col gap-3">
-        <div className="bg-background flex items-center gap-3 rounded-lg border px-4 py-3">
+        <div className="bg-card shadow-surface flex items-center gap-3 rounded-lg border px-4 py-3">
           <ProviderIcon provider={current.provider} className="size-5 shrink-0" />
           <span className="flex min-w-0 flex-col gap-1">
             <span className="truncate text-sm font-medium">

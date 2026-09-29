@@ -596,7 +596,7 @@ function StagedRow({
   return (
     // Slides in from the search side when picked, so the eye follows the
     // result into the compilation. @starting-style: no JS, no library.
-    <li className="bg-background flex items-center gap-3 rounded-lg border px-3 py-3 transition-[opacity,translate] duration-300 ease-out-quint motion-reduce:transition-none starting:-translate-x-3 starting:opacity-0">
+    <li className="bg-card shadow-surface flex items-center gap-3 rounded-lg border px-3 py-3 transition-[opacity,translate] duration-300 ease-out-quint motion-reduce:transition-none starting:-translate-x-3 starting:opacity-0">
       <SourceMedia
         kind={kind}
         url={s.url}
@@ -746,7 +746,7 @@ function SearchResults({
               onPointerDown={onPointerPick}
               // No fill when picked: the checkbox says it, the row doesn't
               // say it twice.
-              className="hover:bg-muted/60 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
+              className="hover:bg-card hover:shadow-surface flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-[background-color,box-shadow]"
             >
               <Checkbox
                 checked={checked}

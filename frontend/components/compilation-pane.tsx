@@ -34,7 +34,7 @@ export function CompilationPane({
       <aside
         aria-label="Your compilation"
         className={cn(
-          "bg-surface-sunken flex min-h-0 flex-col border-t max-lg:flex-1 lg:border-t-0 lg:border-l",
+          "bg-card flex min-h-0 flex-col border-t lg:shadow-[-1px_0_0_var(--border),-16px_0_40px_-32px_rgb(0_0_0/0.25)] max-lg:flex-1 lg:border-t-0 lg:border-l",
           className,
         )}
       >
@@ -74,7 +74,7 @@ export function CompilationPane({
         {footer && (
           // On a phone the pane sits under a long list, so its action stays
           // pinned within reach of the thumb.
-          <div className="bg-surface-sunken flex flex-col gap-3 border-t px-6 py-5 max-lg:sticky max-lg:bottom-0">
+          <div className="bg-card flex flex-col gap-3 border-t px-6 py-5 max-lg:sticky max-lg:bottom-0">
             {footer}
           </div>
         )}
