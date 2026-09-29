@@ -356,7 +356,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
     ? "Starting…"
     : staged.length > 0
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
-      : "Review";
+      : "Add a source to start";
 
   return (
     <>
