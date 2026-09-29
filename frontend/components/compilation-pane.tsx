@@ -1,6 +1,6 @@
 "use client";
 
-import { ViewTransition, type ReactNode } from "react";
+import { ViewTransition, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -29,12 +29,25 @@ export function CompilationPane({
   footer?: ReactNode;
   className?: string;
 }) {
+  // On a phone the footer is fixed to the screen's bottom edge, out of the
+  // flow, so the pane reserves its height to keep the last content visible.
+  const footerRef = useRef<HTMLDivElement>(null);
+  const [footerHeight, setFooterHeight] = useState(0);
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setFooterHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [footer]);
+
   return (
     <ViewTransition name="flow-card">
       <aside
         aria-label="Your compilation"
+        style={{ "--footer-h": `${footer ? footerHeight : 0}px` } as React.CSSProperties}
         className={cn(
-          "bg-card flex min-h-0 flex-col border-t max-lg:flex-1 lg:border-t-0 lg:border-l",
+          "bg-card flex min-h-0 flex-col border-t max-lg:flex-1 max-lg:pb-(--footer-h) lg:border-t-0 lg:border-l",
           className,
         )}
       >
@@ -73,8 +86,11 @@ export function CompilationPane({
 
         {footer && (
           // On a phone the pane sits under a long list, so its action stays
-          // pinned within reach of the thumb.
-          <div className="bg-card flex flex-col gap-3 border-t px-6 py-5 max-lg:sticky max-lg:bottom-0">
+          // pinned to the bottom of the screen, within reach of the thumb.
+          <div
+            ref={footerRef}
+            className="bg-card flex flex-col gap-3 border-t px-6 py-5 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          >
             {footer}
           </div>
         )}
