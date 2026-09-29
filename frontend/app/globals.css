@@ -460,31 +460,6 @@
   mask-size: 100% 100%;
 }
 
-/* ── Funnel wires ─────────────────────────────────────────────────────────────
-   The "how it works" wires: sources → compilation node → two formats. They read
-   as a static diagram (direction carried by a gold gradient along each wire, not
-   by motion), and WIPE IN ONCE when the figure scrolls into view — top → bottom,
-   tracing source → node → formats — then rest, no perpetual pulse. The reveal is
-   a clip-path wipe on the svg (a stroke-dashoffset "draw" is unreliable on a
-   non-scaling stroke under preserveAspectRatio="none"). Fully shown by default
-   (the server / no-JS / reduced-motion state); the figure's [data-reveal="hidden"]
-   arms it clipped until the entrance. */
-.funnel-svg {
-  clip-path: inset(0 0 0 0);
-  transition: clip-path 900ms var(--ease-out-quint) 200ms;
-}
-
-[data-reveal="hidden"] .funnel-svg {
-  clip-path: inset(0 0 100% 0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .funnel-svg {
-    transition: none;
-    clip-path: none;
-  }
-}
-
 /* View Transitions — the home search card and the job card share the
    `flow-card` name, so the card morphs (size + position) across every phase: the
    home→job navigation, the results↔sources face swap, search settling, and the

@@ -111,7 +111,7 @@ export function CompilationHistory() {
           playlist or blog. It lands here, ready to review.
         </p>
         <Link
-          href="/about#how-it-works"
+          href="/about"
           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring w-fit rounded-sm text-sm underline underline-offset-4 transition-colors focus-visible:ring-2 focus-visible:outline-none"
         >
           See how it works
