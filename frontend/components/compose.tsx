@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -39,10 +40,18 @@ import {
   MAX_SOURCES,
   search,
   type ProviderError,
-  type ResultType,
   type SearchResult,
 } from "@/lib/api";
 import { recordCompilation } from "@/lib/history";
+import {
+  loadDraft,
+  normalizeUrl,
+  saveDraft,
+  saveJobDraft,
+  stagedFromUrl,
+  type Draft,
+  type StagedSource,
+} from "@/lib/workspace-draft";
 import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -58,19 +67,6 @@ import {
 
 // A source the user has staged for compilation. Built either from a picked
 // search result or from a directly-pasted link.
-interface StagedSource {
-  url: string;
-  title: string;
-  type: ResultType;
-  source: string;
-  thumbnail: string | null;
-  durationS: number | null;
-  // For a podcast episode this is the show name; for other kinds it's the
-  // author/channel. Kept so the Sources recap can show it (an episode's title
-  // alone reads like a show name without it).
-  author: string | null;
-}
-
 // Every settled query is a paid search (ScrapeCreators + triage), so wait for a
 // real pause in typing rather than every short hesitation.
 const SEARCH_DEBOUNCE_MS = 800;
@@ -79,6 +75,31 @@ const SEARCH_DEBOUNCE_MS = 800;
 // right. Picking a result puts it in the compilation, which stays on screen
 // while the search goes on — the two used to take turns inside one card.
 export function Compose({ initialQuery }: { initialQuery?: string }) {
+  // The server has no sessionStorage, so the workspace renders empty there and
+  // remounts once on the client with the tab's saved list (browser Back, or
+  // "← Sources" from a compilation, find their sources again).
+  const onClient = useSyncExternalStore(noSubscribe, () => true, () => false);
+  return (
+    <ComposeWorkspace
+      key={onClient ? "client" : "server"}
+      initialQuery={initialQuery}
+      initialDraft={onClient ? loadDraft() : null}
+      persist={onClient}
+    />
+  );
+}
+
+const noSubscribe = () => () => {};
+
+function ComposeWorkspace({
+  initialQuery,
+  initialDraft,
+  persist,
+}: {
+  initialQuery?: string;
+  initialDraft: Draft | null;
+  persist: boolean;
+}) {
   const router = useRouter();
   // Held so the clear (×) button and Escape can wipe the bar and hand focus
   // straight back, keeping the search → pick → clear → re-search loop on the
@@ -105,13 +126,20 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("relevance");
 
-  const [staged, setStaged] = useState<StagedSource[]>([]);
+  const [staged, setStaged] = useState<StagedSource[]>(initialDraft?.staged ?? []);
   // The compilation's name. Suggested from the search that brought in its
   // first source, until the user types their own; a pasted link suggests
   // nothing, so the title never freezes on a URL.
-  const [suggestedTitle, setSuggestedTitle] = useState("");
-  const [typedTitle, setTypedTitle] = useState<string | null>(null);
+  const [suggestedTitle, setSuggestedTitle] = useState(initialDraft?.suggestedTitle ?? "");
+  const [typedTitle, setTypedTitle] = useState<string | null>(initialDraft?.typedTitle ?? null);
   const title = typedTitle ?? suggestedTitle;
+
+  // Kept for the tab's session, so going back finds the list again. Only the
+  // client-side mount writes: the hydration pass starts empty and must not
+  // wipe what the remount is about to read.
+  useEffect(() => {
+    if (persist) saveDraft({ staged, suggestedTitle, typedTitle });
+  }, [persist, staged, suggestedTitle, typedTitle]);
   const [submitting, setSubmitting] = useState(false);
   // Two error slots, one per pane: a failed search is said where the search
   // is, a failed Review where the Review button is.
@@ -249,17 +277,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
         return;
       }
       const url = normalizeUrl(trimmed);
-      stageSources([
-        {
-          url,
-          title: prettyUrl(url),
-          type: detectType(url),
-          source: detectSource(url),
-          thumbnail: null,
-          durationS: null,
-          author: null,
-        },
-      ]);
+      stageSources([stagedFromUrl(url)]);
       setQuery("");
     }
   }
@@ -327,6 +345,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       // when the tab is closed is already in this browser's list to come back
       // to. The response carries everything the snapshot needs.
       recordCompilation(job);
+      saveJobDraft(job.id, { staged, suggestedTitle, typedTitle });
       router.push(`/jobs/${job.id}`);
     } catch (err) {
       setCompileError(err instanceof Error ? err.message : String(err));
@@ -962,36 +981,4 @@ function formatDuration(s: number | null): string | null {
 function looksLikeUrl(s: string): boolean {
   if (s === "" || /\s/.test(s)) return false;
   return /^https?:\/\//i.test(s) || /^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(s);
-}
-
-function normalizeUrl(raw: string): string {
-  const t = raw.trim();
-  if (t === "") return "";
-  if (/^https?:\/\//i.test(t)) return t;
-  return `https://${t.replace(/^\/+/, "")}`;
-}
-
-// Client-side type/source detection mirrors the backend's detect_kind so a
-// pasted link gets a sensible badge before discovery re-derives it server-side.
-function detectType(url: string): ResultType {
-  const u = url.toLowerCase();
-  if (u.includes("youtube.com/watch") || u.includes("youtu.be/")) return "video";
-  if (u.includes("list=") || u.includes("youtube.com/playlist")) return "playlist";
-  if (/youtube\.com\/(@|channel\/|c\/|user\/)/.test(u)) return "channel";
-  return "web";
-}
-
-function detectSource(url: string): string {
-  const u = url.toLowerCase();
-  return u.includes("youtube.com") || u.includes("youtu.be") ? "youtube" : "web";
-}
-
-function prettyUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.replace(/\/$/, "");
-    return `${u.hostname.replace(/^www\./, "")}${path}`;
-  } catch {
-    return url;
-  }
 }
