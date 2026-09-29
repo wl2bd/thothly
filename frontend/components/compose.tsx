@@ -358,6 +358,14 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
       : "Add a source to start";
 
+  // The layout's glow is in full colour only here, at rest; a search (or
+  // leaving the page) lets it ease down to its light trace.
+  useEffect(() => {
+    const html = document.documentElement;
+    html.toggleAttribute("data-glow-full", !showResults);
+    return () => html.removeAttribute("data-glow-full");
+  }, [showResults]);
+
   return (
     <>
       <WorkPane
