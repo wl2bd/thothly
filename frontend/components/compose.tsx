@@ -772,7 +772,7 @@ function SearchResults({
               onPointerDown={onPointerPick}
               // No fill when picked: the checkbox says it, the row doesn't
               // say it twice.
-              className="hover:bg-card hover:shadow-surface flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-[background-color,box-shadow]"
+              className="hover:bg-foreground/5 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
             >
               <Checkbox
                 checked={checked}
@@ -913,7 +913,7 @@ function SortSelect({
         <SelectTrigger
           size="sm"
           aria-label="Sort results"
-          className="hover:bg-muted/60 border-transparent bg-transparent px-2 dark:bg-transparent"
+          className="hover:bg-foreground/5 border-transparent bg-transparent px-2 dark:bg-transparent"
         >
           <SelectValue />
         </SelectTrigger>

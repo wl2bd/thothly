@@ -1025,7 +1025,7 @@ function BookContents({
               onClick={() => onGo(i)}
               aria-current={i === at ? "true" : undefined}
               className={cn(
-                "hover:bg-muted focus-visible:ring-ring flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                "hover:bg-foreground/5 focus-visible:ring-ring flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
                 i === at ? "text-foreground font-medium" : "text-muted-foreground",
               )}
             >

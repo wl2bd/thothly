@@ -133,7 +133,7 @@ export function CompilationHistory() {
           >
             <Link
               href={`/jobs/${entry.id}`}
-              className="focus-visible:ring-ring -mx-2 flex min-w-0 flex-1 flex-col gap-1 rounded-md px-2 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="hover:bg-foreground/5 focus-visible:ring-ring -mx-2 flex min-w-0 flex-1 flex-col gap-1 rounded-md px-2 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               {/* Titles run to 100 characters, so the row truncates rather than
                   wrapping to three lines and breaking the list's rhythm. */}
