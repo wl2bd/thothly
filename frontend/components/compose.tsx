@@ -426,6 +426,30 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             {!queryIsUrl && <SearchSourcesHint />}
           </form>
 
+          {/* First visit: something to press instead of a blank pane. A real
+              search, so it shows the tool at work, and never a dead link. */}
+          {trimmed === "" && staged.length === 0 && (
+            <div className="flex flex-col items-center gap-3 pt-6">
+              <span className="text-muted-foreground text-xs">Try a search</span>
+              <div className="flex flex-wrap justify-center gap-2">
+                {EXAMPLE_SEARCHES.map((q) => (
+                  <Button
+                    key={q}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setQuery(q);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    {q}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && <Notice variant="error">{error}</Notice>}
 
           {showResults &&
@@ -918,6 +942,13 @@ function SearchSourcesHint() {
     </p>
   );
 }
+
+const EXAMPLE_SEARCHES = [
+  "Stoicism",
+  "How transformers work",
+  "The fall of Rome",
+  "The science of sleep",
+];
 
 const SOURCES_FULL = `${MAX_SOURCES} sources is the limit for one compilation. Remove one to add another.`;
 
