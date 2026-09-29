@@ -39,6 +39,29 @@ export default function AboutPage() {
           </ol>
         </section>
 
+        {/* Only what is true of the hosted demo (checked 2026-09-29): no
+            analytics in the code, history and keys in localStorage, queries
+            in the URL and so in the host's request logs, no volume on Fly. */}
+        <section id="privacy" className="flex scroll-mt-20 flex-col gap-3">
+          <h2 className="font-medium">Privacy</h2>
+          <ul className="text-muted-foreground marker:text-muted-foreground/60 flex list-disc flex-col gap-2 pl-5 leading-relaxed">
+            <li>No account, no analytics, no tracking.</li>
+            <li>
+              Your compilation history and your AI key stay in this browser.
+            </li>
+            <li>
+              Searching and compiling run on our server. Your searches go to
+              the search providers (Brave, YouTube, Apple Podcasts) and to a
+              model that sorts the results.
+            </li>
+            <li>
+              Finished files wait on the server for you to download them, and
+              are wiped whenever it restarts. The host keeps short technical
+              logs of requests.
+            </li>
+          </ul>
+        </section>
+
         <section className="flex flex-col gap-1">
           <h2 className="font-medium">Questions</h2>
           <Accordion>

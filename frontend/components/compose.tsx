@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -939,6 +940,13 @@ function SearchSourcesHint() {
             Brave
           </a>
         </span>
+        {" · "}
+        <Link
+          href="/about#privacy"
+          className="hover:text-foreground underline-offset-4 hover:underline"
+        >
+          No account, no tracking
+        </Link>
       </span>
     </p>
   );
