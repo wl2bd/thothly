@@ -341,6 +341,14 @@ stacked spinners. Every animation has a `prefers-reduced-motion` alternative.
 - Small section labels use the `eyebrow` utility only (2xs, medium, wide tracking, uppercase, muted): Contents, menu groups, Recent compilations, Try a search, the pane's status. Interface weight is `font-medium`; `semibold` only inside content.
 - Shadows: one hairline (`shadow-surface`) on surfaces; panes carry a border, no cast shadow.
 
+## Interaction (2026-09-29)
+
+- **Links:** every inline text link and link-button uses the `text-link` utility: an underline at 35% of the text color, full on hover. The color comes from the context (ink, or muted brightening to ink). Header links are the exception: no underline, muted to ink.
+- **Rows:** every clickable row (search results, review items, AI roles, the reader's contents, recent compilations, the sort trigger) hovers with one 5% ink wash, `hover:bg-foreground/5`. Not `bg-muted`: in dark it equals `secondary`.
+- **Fields** (Input, Select trigger) don't react to hover; they answer focus only.
+- **Buttons:** shadcn hovers (gold deepens, outline and ghost take `muted`). Icon-only buttons in the header, rows and fields are `nav` variant, `icon-sm` (32px), and shift from muted to ink.
+- **Icons:** Lucide only, one stroke. A bin deletes (history, a staged source), a cross clears (a search field, a dialog), + / − expand and collapse a source group, an eye opens a preview, an external-link mark sits on menu items that leave the site.
+
 ## Do's and Don'ts
 
 ### Do:
