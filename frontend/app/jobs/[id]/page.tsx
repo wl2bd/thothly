@@ -1862,7 +1862,7 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
       <div
         ref={excerptRef}
         style={fade}
-        className="border-border/60 bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l-2 py-2 pr-3 pl-4"
+        className="border-border bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l py-2 pr-3 pl-4"
       >
         <MarkdownPreview md={preview.content_md ?? ""} />
       </div>
