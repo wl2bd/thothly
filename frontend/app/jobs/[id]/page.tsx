@@ -1939,7 +1939,13 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
       return <em key={key}>{token.children.map(renderToken)}</em>;
     case "link":
       return (
-        <a key={key} href={token.href} target="_blank" rel="noreferrer" className="underline">
+        <a
+          key={key}
+          href={token.href}
+          target="_blank"
+          rel="noreferrer"
+          className="decoration-current/35 hover:decoration-current underline underline-offset-3 transition-colors"
+        >
           {token.text}
         </a>
       );
