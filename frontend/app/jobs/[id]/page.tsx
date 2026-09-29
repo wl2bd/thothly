@@ -18,8 +18,6 @@ import {
   Check,
   Coins,
   Copy,
-  ChevronDown,
-  Download,
   Eye,
   EyeOff,
   GripVertical,
@@ -51,13 +49,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
-import { SendToReader } from "@/components/send-to-reader";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { BookActions } from "@/components/book-actions";
 import { Progress } from "@/components/ui/progress";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -890,46 +882,22 @@ function CompletedView({
         // action; the Markdown copy is for an AI; starting over is the quietest.
         footer={
           <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
-            {/* Three quick actions: Download (pick the format), Copy (the
-                Markdown, for an AI), Send (to an e-reader). */}
+            {/* Two actions: the gold menu (download a format, or send to an
+                e-reader) and Copy (the Markdown, for an AI). */}
             <div className="flex w-full gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button className="flex-1" />}>
-                  <Download />
-                  Download
-                  <ChevronDown />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-60">
-                  <DropdownMenuItem
-                    className="py-2"
-                    render={<a href={getDownloadUrl(jobId)} download />}
-                  >
-                    <span className="flex flex-col">
-                      <span>EPUB</span>
-                      <span className="text-muted-foreground text-xs">
-                        {epubBytes != null
-                          ? `For your e-reader · ${formatBytes(epubBytes)}`
-                          : "For your e-reader"}
-                      </span>
-                    </span>
-                  </DropdownMenuItem>
-                  {hasMarkdown && (
-                    <DropdownMenuItem
-                      className="py-2"
-                      render={<a href={getDownloadUrl(jobId, "md")} download />}
-                    >
-                      <span className="flex flex-col">
-                        <span>Markdown</span>
-                        <span className="text-muted-foreground text-xs">
-                          {tokens != null
-                            ? `For an AI · ~${formatTokens(tokens)} tokens`
-                            : "For an AI"}
-                        </span>
-                      </span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <BookActions
+                epubUrl={getDownloadUrl(jobId)}
+                mdUrl={hasMarkdown ? getDownloadUrl(jobId, "md") : undefined}
+                title={job.book_title ?? ""}
+                epubNote={
+                  epubBytes != null
+                    ? `For your e-reader · ${formatBytes(epubBytes)}`
+                    : "For your e-reader"
+                }
+                mdNote={
+                  tokens != null ? `For an AI · ~${formatTokens(tokens)} tokens` : "For an AI"
+                }
+              />
               {hasMarkdown && (
                 <Tooltip content="Copy the Markdown, to paste into an AI">
                   <Button type="button" variant="outline" onClick={copy} disabled={!md}>
@@ -938,7 +906,6 @@ function CompletedView({
                   </Button>
                 </Tooltip>
               )}
-              <SendToReader epubUrl={getDownloadUrl(jobId)} title={job.book_title ?? ""} />
             </div>
             {tokens != null && tokens > 200000 && (
               <p className="text-muted-foreground text-xs">

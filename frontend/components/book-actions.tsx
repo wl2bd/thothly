@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { ChevronDownIcon, ExternalLinkIcon, SendIcon, Share2Icon } from "lucide-react";
+import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon, Share2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +14,16 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// There is no one standard for getting a book onto an e-reader, so this offers
+// The finished book's one primary action: a menu that downloads it (EPUB or
+// Markdown) or sends it to an e-reader. There is no one standard for that last
+// step, so it offers
 // the paths that exist: the device's own share sheet (phones and tablets:
 // Kindle, Apple Books, Kobo, Play Books apps…), Amazon's official Send to
 // Kindle page, and plain instructions for everything else.
@@ -39,7 +43,20 @@ function canShareFiles() {
 }
 const noSubscribe = () => () => {};
 
-export function SendToReader({ epubUrl, title }: { epubUrl: string; title: string }) {
+export function BookActions({
+  epubUrl,
+  mdUrl,
+  title,
+  epubNote,
+  mdNote,
+}: {
+  epubUrl: string;
+  // Absent: the job has no Markdown (older compilations).
+  mdUrl?: string;
+  title: string;
+  epubNote: string;
+  mdNote: string;
+}) {
   const shareable = useSyncExternalStore(noSubscribe, canShareFiles, () => false);
   const [help, setHelp] = useState(false);
 
@@ -59,31 +76,49 @@ export function SendToReader({ epubUrl, title }: { epubUrl: string; title: strin
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="outline" />}>
-          <SendIcon />
-          Send
-          <ChevronDownIcon className="text-muted-foreground" />
+        <DropdownMenuTrigger render={<Button className="flex-1" />}>
+          <DownloadIcon />
+          Download
+          <ChevronDownIcon />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
-          {shareable && (
-            <>
+        <DropdownMenuContent align="start" className="w-(--anchor-width) min-w-60">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Download</DropdownMenuLabel>
+            <DropdownMenuItem className="py-2" render={<a href={epubUrl} download />}>
+              <span className="flex flex-col">
+                <span>EPUB</span>
+                <span className="text-muted-foreground text-xs">{epubNote}</span>
+              </span>
+            </DropdownMenuItem>
+            {mdUrl && (
+              <DropdownMenuItem className="py-2" render={<a href={mdUrl} download />}>
+                <span className="flex flex-col">
+                  <span>Markdown</span>
+                  <span className="text-muted-foreground text-xs">{mdNote}</span>
+                </span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Send to an e-reader</DropdownMenuLabel>
+            {shareable && (
               <DropdownMenuItem onClick={share} className="py-2">
                 <Share2Icon />
                 Share…
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
-          <DropdownMenuItem
-            className="py-2"
-            render={<a href={KINDLE_URL} target="_blank" rel="noreferrer" />}
-          >
-            Kindle
-            <ExternalLinkIcon className="text-muted-foreground ml-auto" />
-          </DropdownMenuItem>
-          <DropdownMenuItem className="py-2" onClick={() => setHelp(true)}>
-            Kobo and other e-readers
-          </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              className="py-2"
+              render={<a href={KINDLE_URL} target="_blank" rel="noreferrer" />}
+            >
+              Kindle
+              <ExternalLinkIcon className="text-muted-foreground ml-auto" />
+            </DropdownMenuItem>
+            <DropdownMenuItem className="py-2" onClick={() => setHelp(true)}>
+              Kobo and other e-readers
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
