@@ -382,7 +382,7 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
             <div className="overflow-hidden">
               <div className="flex flex-col items-center gap-3 pt-10 pb-8 text-center">
                 <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
-                  Make anything readable.
+                  Make anything readable
                 </h1>
                 <p className="text-muted-foreground max-w-md text-balance">
                   Turn videos, podcasts and articles into a book for your
