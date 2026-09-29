@@ -360,14 +360,14 @@ export function Compose({ initialQuery }: { initialQuery?: string }) {
 
   return (
     <>
-      {/* A still glow rising from the bottom of the search column. It dresses
+      {/* A still glow falling from the top of the search column. It dresses
           the empty column, then eases down to a trace behind the results
           rather than vanishing. Fixed to the column (the viewport minus the
           400px compilation pane), so it stays put while results scroll. */}
       <div
         aria-hidden="true"
         className={cn(
-          "bg-(image:--glow-bottom) pointer-events-none fixed inset-y-0 right-[400px] left-0 -z-10 hidden bg-no-repeat transition-opacity duration-700 ease-out-quint lg:block",
+          "bg-(image:--glow-top) pointer-events-none fixed top-14 bottom-0 right-[400px] left-0 -z-10 hidden bg-no-repeat transition-opacity duration-700 ease-out-quint lg:block",
           showResults ? "opacity-25" : "opacity-100",
         )}
       />
