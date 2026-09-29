@@ -400,7 +400,7 @@ function ComposeWorkspace({
             aria-hidden={showResults}
           >
             <div className="overflow-hidden">
-              <div className="flex flex-col items-center gap-3 pt-10 pb-8 text-center">
+              <div className="flex flex-col items-center gap-3 pt-10 pb-6 text-center">
                 <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
                   Make anything readable
                 </h1>
@@ -408,6 +408,12 @@ function ComposeWorkspace({
                   Turn videos, podcasts and articles into a book for your
                   e-reader, or a clean file for your AI.
                 </p>
+                {/* What it does, drawn, folding away with the catchline. Not on
+                    a phone: three columns don't fit and it would push the
+                    field down. */}
+                <div className="hidden w-full pt-8 sm:block">
+                  <ToolSketch />
+                </div>
               </div>
             </div>
           </div>
@@ -492,11 +498,6 @@ function ComposeWorkspace({
                     {q}
                   </Button>
                 ))}
-              </div>
-              {/* What it does, drawn: only on a wide screen, where the column
-                  has the room; a phone keeps the compilation under the field. */}
-              <div className="hidden w-full pt-14 lg:block">
-                <ToolSketch />
               </div>
             </div>
           )}

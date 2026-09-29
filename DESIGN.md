@@ -325,6 +325,10 @@ Leave their internals conventional; brand lives in the tokens and the signatures
   tan on the right. Full strength on the home page at rest, a 15% trace
   everywhere else, eased between the two. No animation: animated decorative
   backgrounds were tried and rejected on 2026-09-29.
+- **Tool sketch** (`components/tool-sketch.tsx`): between the catchline and the search
+  field, from `sm`: three real sources (their artwork copied into `/public/sketch`)
+  threaded down into one book whose bottom fades toward the field. Outlines and
+  muted ink so it reads as an illustration; folds away with the catchline.
 - **Grain** (`components/grain.tsx`): fractal noise over the whole page at 5%,
   and on the wordmark. Decorative, `aria-hidden`, never lowers text contrast.
 
