@@ -339,6 +339,7 @@ Every animation has a `prefers-reduced-motion` alternative.
 - A disabled primary button is plain grey, never faded gold. Hover deepens the gold.
 - A button whose label changes (Copy / Copied) keeps one width: both labels share one grid cell.
 - Type sizes: `2xs` eyebrows, `xs` meta, `sm` interface, `base` reading, `xl` pane titles, `3xl` page titles. Serif (`font-display`) names content (titles, headings), never small list rows.
+- Small section labels use the `eyebrow` utility only (2xs, medium, wide tracking, uppercase, muted): Contents, menu groups, Recent compilations, Try a search, the pane's status. Interface weight is `font-medium`; `semibold` only inside content.
 - Shadows: one hairline (`shadow-surface`) on surfaces; panes carry a border, no cast shadow.
 
 ## Do's and Don'ts
