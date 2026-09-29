@@ -691,13 +691,15 @@ function SearchResults({
       <ul
         aria-busy="true"
         aria-label="Searching"
-        className="-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+        className="-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden"
       >
-        {[80, 66, 88, 58, 72].map((w, i) => (
+        {/* Enough rows to reach the bottom of any screen; the list clips
+            what doesn't fit. */}
+        {Array.from({ length: 16 }, (_, i) => [80, 66, 88, 58, 72][i % 5]).map((w, i) => (
           <li
             key={i}
             className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
-            style={{ animationDelay: `${i * 110}ms` }}
+            style={{ animationDelay: `${(i % 8) * 110}ms` }}
           >
             <span className="bg-foreground/10 size-5 shrink-0 rounded-[5px]" />
             <span className="bg-foreground/10 h-12 w-20 shrink-0 rounded" />
