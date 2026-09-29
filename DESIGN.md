@@ -297,7 +297,7 @@ Leave their internals conventional; brand lives in the tokens and the signatures
 - **Primary:** gold fill, ink text, `h-10`, `rounded-lg`, `text-sm` medium.
   The committing action on each screen (Search, Compile, Download EPUB).
 - **Secondary:** secondary fill, ink text. **Ghost / Outline / Link:** shadcn.
-- **Focus:** `ring-3` in `ring/50` (deep gold on light, gold on dark).
+- **Focus:** `ring-3` in `ring/50` (deep gold on light, gold on dark). Fields differ, see below.
 
 ### Badges
 - **Content tag** (review rows): `secondary` pill naming what was retrieved
@@ -309,6 +309,10 @@ Leave their internals conventional; brand lives in the tokens and the signatures
 ### Cards, inputs, controls
 - **Card:** `bg-card`, 1px hairline, `rounded-lg`, 1.75rem padding. Never nested.
 - **Input:** card ground, hairline stroke, placeholder in muted ink (≥ 4.5:1).
+- **Field focus:** fields (Input, Select trigger) focus in neutral ink, not gold:
+  `border-foreground/45` + `ring-3 ring-foreground/6`, also while a Select is open.
+  A field takes focus on every click, so a gold halo there reads as an alarm.
+  The gold ring stays for keyboard focus on buttons and links.
 - **Switch:** gold track when on; used only for the "AI polish" master toggle.
   Checkboxes everywhere else.
 
