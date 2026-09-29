@@ -582,7 +582,12 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
                 ) : s.resolved ? (
                   <Check className="text-foreground/60 size-3.5" />
                 ) : (
-                  <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      isActive ? "bg-foreground" : "bg-muted-foreground/30",
+                    )}
+                  />
                 )}
               </span>
               <span
@@ -604,7 +609,7 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
                   {count} item{count !== 1 ? "s" : ""}
                 </span>
               ) : isActive ? (
-                <span className="text-muted-foreground shrink-0">Listing items</span>
+                <span className="text-muted-foreground shrink-0">Opening</span>
               ) : null}
             </li>
           );
