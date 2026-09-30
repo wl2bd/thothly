@@ -470,13 +470,19 @@
     animation-delay: 0s !important;
   }
 }
-/* The home ground: the two-tone glow plus three quieter pools of the same
-   golds, so it never reads as one plain gradient. (The title's own pool lives
-   with the title, in compose.tsx, so it follows it.) */
+/* The home ground: a wide U of the page's own tone (dark at night, light by
+   day) holding the title, the field and the sketch, with the golds rising
+   around it, sides and bottom. Centred on the work column: when the
+   compilation pane is open on the right, the U follows the column. */
 .glow-layer {
+  --pool-x: 50%;
   background-image:
-    radial-gradient(45% 35% at 85% 20%, oklch(0.7 0.11 80 / 0.22), transparent),
+    radial-gradient(ellipse 46% 78% at var(--pool-x) 0%, var(--background) 55%, transparent),
     radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
-    radial-gradient(60% 45% at 50% 105%, oklch(0.75 0.13 80 / 0.25), transparent),
     var(--glow);
+}
+@media (min-width: 64rem) {
+  :root:has(#main > aside) .glow-layer {
+    --pool-x: calc((100% - 400px) / 2);
+  }
 }

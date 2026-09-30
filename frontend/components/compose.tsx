@@ -435,10 +435,7 @@ function ComposeWorkspace({
             aria-hidden={showResults}
           >
             <div className="overflow-hidden">
-              {/* A pool of the page's own tone (dark at night, light by day)
-                  behind the title keeps it crisp over the glow; it fades out
-                  inside this block, so the fold's clip never shows. */}
-              <div className="relative flex flex-col items-center gap-3 pt-2 pb-8 text-center before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(closest-side,var(--background)_35%,transparent)]">
+              <div className="flex flex-col items-center gap-3 pt-2 pb-8 text-center">
                 {/* Said plainly while the product is being built. */}
                 <Badge variant="outline" className="border-foreground/15 text-muted-foreground mb-1 font-normal">
                   Early preview
