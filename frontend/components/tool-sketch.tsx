@@ -96,14 +96,14 @@ export function ToolSketch() {
         ))}
       </svg>
 
-      {/* The book: its top only, fading out into the page. */}
-      <div className="sketch-book border-foreground/15 text-muted-foreground flex h-36 w-64 flex-col rounded-t-lg border border-b-0 px-5 pt-4 text-left [mask-image:linear-gradient(to_bottom,#000_45%,transparent)]">
+      {/* The book, whole, with the three ways out of it along its foot. */}
+      <div className="sketch-book border-foreground/15 text-muted-foreground flex w-72 flex-col rounded-lg border px-5 pt-4 pb-4 text-left">
         <span className="eyebrow text-inherit">Compilation</span>
         <span className="font-display text-foreground/75 mt-1.5 text-lg tracking-tight">
           Stoicism
         </span>
         <span className="text-muted-foreground/70 text-xs tabular-nums">
-          3 chapters · EPUB · Markdown
+          3 chapters
         </span>
         <ol className="mt-3 flex flex-col gap-1 text-xs">
           {SOURCES.map(({ title }, i) => (
@@ -113,6 +113,16 @@ export function ToolSketch() {
             </li>
           ))}
         </ol>
+        <ul className="border-foreground/10 mt-4 flex gap-1.5 border-t pt-3">
+          {["EPUB", "Markdown", "Send to e-reader"].map((out) => (
+            <li
+              key={out}
+              className="border-foreground/10 rounded-sm border px-1.5 py-0.5 text-[0.65rem] whitespace-nowrap"
+            >
+              {out}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
