@@ -1,4 +1,3 @@
-import { BgDemo } from "@/components/bg-demo";
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
@@ -113,10 +112,9 @@ export default function RootLayout({
             over it. */}
         <div
           aria-hidden="true"
-          className="glow-layer bg-(image:--glow) pointer-events-none fixed inset-x-0 top-14 bottom-0 -z-10 bg-no-repeat"
+          className="glow-layer pointer-events-none fixed inset-x-0 top-14 bottom-0 -z-10 bg-no-repeat"
         />
         {children}
-        <BgDemo />
         <Toaster position="bottom-center" />
       </body>
     </html>

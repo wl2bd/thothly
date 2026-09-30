@@ -470,35 +470,13 @@
     animation-delay: 0s !important;
   }
 }
-/* Background demo (temporary, see components/bg-demo.tsx): a texture over the
-   glow, strongest at the bottom and gone by the upper third, so the search
-   field and the text above it sit on a plain ground. */
-.glow-layer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  mask-image: linear-gradient(to top, black 10%, transparent 75%);
-}
-[data-bg="dots"] .glow-layer::after {
-  background-image: radial-gradient(circle, oklch(from var(--foreground) l c h / 0.14) 1px, transparent 1.3px);
-  background-size: 22px 22px;
-}
-[data-bg="rules"] .glow-layer::after {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0 27px,
-    oklch(0.7 0.1 80 / 0.16) 27px 28px
-  );
-}
-[data-bg="rings"] .glow-layer::after {
-  background-image: repeating-radial-gradient(
-    circle at 50% 110%,
-    transparent 0 39px,
-    oklch(0.7 0.1 80 / 0.14) 39px 40px
-  );
-}
-[data-bg="mesh"] .glow-layer {
+/* The home ground: the two-tone glow plus three quieter pools of the same
+   golds, so it never reads as one plain gradient, and a pool of the page's own
+   ground (dark at night, light by day) behind the title, which keeps it
+   crisp over the colour. */
+.glow-layer {
   background-image:
+    radial-gradient(40% 28% at 50% 18%, var(--background), transparent),
     radial-gradient(45% 35% at 85% 20%, oklch(0.7 0.1 80 / 0.12), transparent),
     radial-gradient(40% 40% at 8% 55%, oklch(0.6 0.05 60 / 0.14), transparent),
     radial-gradient(60% 45% at 50% 105%, oklch(0.75 0.13 80 / 0.25), transparent),
