@@ -395,7 +395,7 @@ function ComposeWorkspace({
     ? "Starting…"
     : staged.length > 0
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
-      : "Build book";
+      : "Review sources";
 
   // The layout's glow is in full colour only here, at rest; a search (or
   // leaving the page) lets it ease down to its light trace.
