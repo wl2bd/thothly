@@ -569,6 +569,20 @@ function ComposeWorkspace({
                   <section key={use.eyebrow} className="flex flex-col gap-2">
                     <span className="eyebrow">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
+                    {use.marks && (
+                      // Works with any AI: a few marks and a +, quieter than
+                      // the title above them.
+                      <span
+                        role="img"
+                        aria-label="Works with Claude, ChatGPT, Gemini and any other AI"
+                        className="text-muted-foreground flex items-center gap-2.5"
+                      >
+                        {use.marks.map((m) => (
+                          <ProviderIcon key={m} provider={m} className="size-4" />
+                        ))}
+                        <PlusIcon className="size-4" />
+                      </span>
+                    )}
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
                         // Suggestions, not buttons: no fill, a faint edge,
@@ -1061,7 +1075,7 @@ function SortSelect({
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
-const USES = [
+const USES: { eyebrow: string; title: string; marks?: string[]; topics: string[] }[] = [
   {
     eyebrow: "For reading",
     title: "Your backlog, as one book.",
@@ -1070,6 +1084,7 @@ const USES = [
   {
     eyebrow: "For AI context",
     title: "Clean context for your AI.",
+    marks: ["claude", "openai", "gemini"],
     topics: ["Next.js App Router", "How transformers work"],
   },
 ];
