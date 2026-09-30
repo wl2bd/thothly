@@ -156,16 +156,16 @@ export function CompilationHistory() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="eyebrow">
-        Your books
-      </h2>
+      {/* The pane's title, in the same voice as "Nothing compiled yet"; the
+          groups under it keep the small label. */}
+      <h2 className="font-display text-xl tracking-tight">Your compilations</h2>
       {[
         { label: "To review", books: toReview },
         { label: "Ready", books: ready },
       ].map(
         ({ label, books }) =>
           books.length > 0 && (
-            <section key={label} aria-label={label} className="-mt-3 flex flex-col gap-1">
+            <section key={label} aria-label={label} className="flex flex-col gap-1">
               <h3 className="eyebrow">{label}</h3>
               <ul className="flex flex-col">
                 {books.map((entry) => (
