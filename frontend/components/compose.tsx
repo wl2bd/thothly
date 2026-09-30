@@ -395,7 +395,7 @@ function ComposeWorkspace({
     ? "Starting…"
     : staged.length > 0
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
-      : "Add a source to start";
+      : "Build book";
 
   // The layout's glow is in full colour only here, at rest; a search (or
   // leaving the page) lets it ease down to its light trace.
@@ -696,8 +696,9 @@ function ComposeWorkspace({
                     Clear all
                   </Button>
                 ) : (
-                  <span className="text-muted-foreground text-xs">
-                    Up to {MAX_SOURCES} sources per book
+                  // The book being built, before its first source.
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    New book · 0/{MAX_SOURCES} sources
                   </span>
                 )}
                 <Button
