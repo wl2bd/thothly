@@ -477,7 +477,7 @@
 .glow-layer {
   --pool-x: 50%;
   background-image:
-    radial-gradient(ellipse 46% 78% at var(--pool-x) 0%, var(--background) 55%, transparent),
+    radial-gradient(ellipse 36% 95% at var(--pool-x) 0%, var(--background) 60%, transparent),
     radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
     var(--glow);
 }
