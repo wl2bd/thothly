@@ -23,14 +23,14 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
-import { maskKey, writeModels, type StoredEndpoint } from "@/lib/model-keys";
+import { maskKey, parseModels, readModelsRaw, writeModels, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 
 export type ModelKind = "llm" | "stt";
 
 const KIND_COPY: Record<ModelKind, { name: string; title: string; purpose: string }> = {
   llm: {
-    name: "AI polish model",
+    name: "Cleanup",
     title: "Connect a model",
     purpose: "Punctuates and tidies transcripts and articles.",
   },
@@ -115,6 +115,57 @@ function orderModels(ids: string[], kind: ModelKind): string[] {
   return [...ids.filter((m) => TRANSCRIPTION_MODEL.test(m)), ...ids.filter((m) => !TRANSCRIPTION_MODEL.test(m))];
 }
 
+function providerOptions(config: LlmConfig, kind: ModelKind) {
+  return [
+    ...config.providers
+      .filter((p) => kind === "llm" || p.stt_per_minute != null)
+      .map((p) => ({ value: p.id, label: p.label })),
+    ...(config.custom_base_url_allowed ? [{ value: "custom", label: "Your own server" }] : []),
+  ].map((o) => ({ ...o, icon: <ProviderIcon provider={o.value} className="size-4" /> }));
+}
+
+function ProviderSelect({
+  id,
+  options,
+  value,
+  onChange,
+}: {
+  id: string;
+  options: ReturnType<typeof providerOptions>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      items={options.map(({ value, label }) => ({ value, label }))}
+      value={value}
+      onValueChange={(v) => typeof v === "string" && onChange(v)}
+    >
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue>
+          {(v: string) => {
+            const o = options.find((x) => x.value === v);
+            return o ? (
+              <>
+                {o.icon}
+                {o.label}
+              </>
+            ) : null;
+          }}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.icon}
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function EndpointForm({
   kind,
   config,
@@ -129,12 +180,7 @@ function EndpointForm({
   onCancel?: () => void;
 }) {
   const id = useId();
-  const options = [
-    ...config.providers
-      .filter((p) => kind === "llm" || p.stt_per_minute != null)
-      .map((p) => ({ value: p.id, label: p.label })),
-    ...(config.custom_base_url_allowed ? [{ value: "custom", label: "Your own server" }] : []),
-  ].map((o) => ({ ...o, icon: <ProviderIcon provider={o.value} className="size-4" /> }));
+  const options = providerOptions(config, kind);
   const [provider, setProvider] = useState(initial?.provider ?? options[0]?.value ?? "");
   const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? "");
   const [apiKey, setApiKey] = useState("");
@@ -185,33 +231,12 @@ function EndpointForm({
         <label htmlFor={`${id}-provider`} className="text-sm font-medium">
           Provider
         </label>
-        <Select
-          items={options.map(({ value, label }) => ({ value, label }))}
+        <ProviderSelect
+          id={`${id}-provider`}
+          options={options}
           value={provider}
-          onValueChange={(v) => typeof v === "string" && edit(setProvider)(v)}
-        >
-          <SelectTrigger id={`${id}-provider`} className="w-full">
-            <SelectValue>
-              {(v: string) => {
-                const o = options.find((x) => x.value === v);
-                return o ? (
-                  <>
-                    {o.icon}
-                    {o.label}
-                  </>
-                ) : null;
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.icon}
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={edit(setProvider)}
+        />
       </div>
 
       {isCustom && (
@@ -348,21 +373,298 @@ export function ConnectModelStep({
   );
 }
 
+// ponytail: name match only. A list whose names say nothing of the task (a
+// local server, say) is shown whole rather than emptied.
+const NOT_TEXT_MODEL = /whisper|voxtral|transcri|tts|speech|audio|realtime|embed|moderation|image|dall-e/i;
+
+function modelsFor(ids: string[], kind: ModelKind): string[] {
+  const fit = ids.filter((m) =>
+    kind === "stt" ? TRANSCRIPTION_MODEL.test(m) : !NOT_TEXT_MODEL.test(m),
+  );
+  return fit.length > 0 ? fit : ids;
+}
+
+// What runs when this browser holds no key: the server's own models if it has
+// them, otherwise the free path.
+function withoutKeyLine(config: LlmConfig): string {
+  if (config.available && config.stt_available) return "Without a key, Thothly uses its default models.";
+  if (config.available) return "Without a key, Thothly uses its default cleanup model. Podcast episodes need a transcription key.";
+  if (config.stt_available) return "Without a key, Thothly uses its default transcription model. Cleanup needs a key.";
+  return "Without a key, compilations are free: transcripts and articles are not cleaned up, and podcast episodes need a transcription key.";
+}
+
+type KeyStatus = "idle" | "checking" | "valid" | "invalid";
+
+interface ProviderKey {
+  apiKey: string;
+  baseUrl: string;
+  status: KeyStatus;
+  models: string[];
+}
+
+const KINDS = ["llm", "stt"] as const;
+const signature = (k: { apiKey: string; baseUrl: string }) => `${k.apiKey.trim()}\n${k.baseUrl.trim()}`;
+
+// Settings: a key belongs to a provider and is entered once; each task picks a
+// provider and one of its models. Storage keeps one full endpoint per task
+// (lib/model-keys.ts), so the backend sees the same shape as before.
 export function ModelSettingsSections({ config }: { config: LlmConfig }) {
+  const id = useId();
+  const stored = useStoredModels();
+  const [providers, setProviders] = useState<Record<ModelKind, string>>(() => ({
+    llm: stored.llm?.provider ?? providerOptions(config, "llm")[0]?.value ?? "",
+    stt: stored.stt?.provider ?? providerOptions(config, "stt")[0]?.value ?? "",
+  }));
+  const [keys, setKeys] = useState<Record<string, ProviderKey>>(() => {
+    const init: Record<string, ProviderKey> = {};
+    for (const e of [stored.llm, stored.stt]) {
+      if (e) init[e.provider] = { apiKey: e.apiKey, baseUrl: e.baseUrl ?? "", status: "checking", models: [] };
+    }
+    return init;
+  });
+  // Per provider, the key + address the current status is about. Written only
+  // in handlers, so a check started from an edit sees it at once.
+  const checked = useRef<Record<string, string | null>>({});
+
+  const keyOf = (provider: string): ProviderKey =>
+    keys[provider] ?? { apiKey: "", baseUrl: "", status: "idle", models: [] };
+
+  function patch(provider: string, change: Partial<ProviderKey>) {
+    setKeys((prev) => ({ ...prev, [provider]: { ...keyOf(provider), ...prev[provider], ...change } }));
+  }
+
+  async function check(provider: string, value: { apiKey: string; baseUrl: string }) {
+    const sig = signature(value);
+    const apiKey = value.apiKey.trim();
+    const baseUrl = value.baseUrl.trim();
+    if (provider === "custom" ? !baseUrl : !apiKey) {
+      checked.current[provider] = null;
+      return patch(provider, { status: "idle" });
+    }
+    if (checked.current[provider] === sig) return;
+    checked.current[provider] = sig;
+    patch(provider, { status: "checking" });
+    await verify(provider, value);
+  }
+
+  async function verify(provider: string, value: { apiKey: string; baseUrl: string }) {
+    const sig = signature(value);
+    const apiKey = value.apiKey.trim();
+    const baseUrl = value.baseUrl.trim();
+    let models: string[] | null = null;
+    try {
+      models = await verifyKey(provider, apiKey, provider === "custom" ? baseUrl : undefined);
+    } catch {
+      models = null;
+    }
+    // A later edit has its own check under way: this answer is stale.
+    if (checked.current[provider] !== sig) return;
+    patch(provider, { status: models ? "valid" : "invalid", models: models ?? [] });
+    if (!models) return;
+    // A new valid key replaces the old one on every task that uses the provider.
+    const now = parseModels(readModelsRaw());
+    const next = { ...now };
+    let changed = false;
+    for (const kind of KINDS) {
+      const e = now[kind];
+      if (e?.provider === provider && (e.apiKey !== apiKey || (e.baseUrl ?? "") !== baseUrl)) {
+        next[kind] = { ...e, apiKey, ...(provider === "custom" ? { baseUrl } : {}) };
+        changed = true;
+      }
+    }
+    if (changed) writeModels(next);
+  }
+
+  // Stored keys are checked when Settings opens: it lists their models and
+  // flags one that has expired.
+  useEffect(() => {
+    for (const [provider, k] of Object.entries(keys)) {
+      checked.current[provider] = signature(k);
+      void verify(provider, k);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function edit(provider: string, change: Partial<ProviderKey>, pasted: boolean) {
+    const value = { ...keyOf(provider), ...change };
+    checked.current[provider] = null;
+    patch(provider, { ...change, status: "idle" });
+    if (pasted) void check(provider, value);
+  }
+
+  function remove(provider: string) {
+    checked.current[provider] = null;
+    patch(provider, { apiKey: "", baseUrl: "", status: "idle", models: [] });
+    const now = parseModels(readModelsRaw());
+    writeModels({
+      llm: now.llm?.provider === provider ? null : now.llm,
+      stt: now.stt?.provider === provider ? null : now.stt,
+    });
+  }
+
+  function chooseProvider(kind: ModelKind, provider: string) {
+    setProviders((prev) => ({ ...prev, [kind]: provider }));
+    // The task no longer runs on the old provider until a model is chosen.
+    if (stored[kind] && stored[kind].provider !== provider) writeModels({ ...stored, [kind]: null });
+  }
+
+  function chooseModel(kind: ModelKind, model: string) {
+    const provider = providers[kind];
+    const k = keyOf(provider);
+    writeModels({
+      ...stored,
+      [kind]: {
+        provider,
+        apiKey: k.apiKey.trim(),
+        model,
+        ...(provider === "custom" ? { baseUrl: k.baseUrl.trim() } : {}),
+      },
+    });
+  }
+
+  const usedProviders = [...new Set(KINDS.map((kind) => providers[kind]).filter(Boolean))];
+  const labelOf = (provider: string) =>
+    provider === "custom"
+      ? "Your own server"
+      : (config.providers.find((p) => p.id === provider)?.label ?? provider);
+
   return (
     <div className="flex flex-col gap-8">
-      <p className="text-muted-foreground text-sm">{PRIVACY}</p>
-      {(["llm", "stt"] as const).map((kind) => (
-        <section key={kind} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-0.5">
-            <h2 className="font-display text-xl tracking-tight">{KIND_COPY[kind].name}</h2>
-            <p className="text-muted-foreground text-xs">{KIND_COPY[kind].purpose}</p>
-          </div>
-          <ModelEndpointSettings kind={kind} config={config} />
-          {kind === "llm" && <ModelInstructions config={config} />}
-        </section>
-      ))}
+      <p className="text-muted-foreground text-sm">{withoutKeyLine(config)}</p>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-base font-medium">API keys</h2>
+        {usedProviders.map((provider) => {
+          const k = keyOf(provider);
+          const isCustom = provider === "custom";
+          const isStored = KINDS.some((kind) => stored[kind]?.provider === provider);
+          const blur = () => void check(provider, keyOf(provider));
+          const pasted = (e: FormEvent<HTMLInputElement>) =>
+            (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
+          return (
+            <div key={provider} className="flex flex-col gap-3">
+              {isCustom && (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`${id}-${provider}-url`} className="text-sm font-medium">
+                    Server address
+                  </label>
+                  <Input
+                    id={`${id}-${provider}-url`}
+                    type="url"
+                    value={k.baseUrl}
+                    onChange={(e) => edit(provider, { baseUrl: e.target.value }, pasted(e))}
+                    onBlur={blur}
+                    placeholder="http://localhost:11434/v1"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <label htmlFor={`${id}-${provider}-key`} className="flex items-center gap-2 text-sm font-medium">
+                    <ProviderIcon provider={provider} className="size-4 shrink-0" />
+                    {labelOf(provider)}
+                    {isCustom && <span className="text-muted-foreground font-normal">(key if needed)</span>}
+                  </label>
+                  <KeyStatusText status={k.status} />
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id={`${id}-${provider}-key`}
+                    type="password"
+                    value={k.apiKey}
+                    onChange={(e) => edit(provider, { apiKey: e.target.value }, pasted(e))}
+                    onBlur={blur}
+                    placeholder="Paste your key"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {isStored && (
+                    <Button type="button" variant="ghost" onClick={() => remove(provider)}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      {KINDS.map((kind) => {
+        const options = providerOptions(config, kind);
+        const provider = providers[kind];
+        const k = keyOf(provider);
+        const current = stored[kind]?.provider === provider ? stored[kind].model : "";
+        const models = modelsFor(k.models, kind);
+        if (current && !models.includes(current)) models.unshift(current);
+        return (
+          <section key={kind} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-base font-medium">{KIND_COPY[kind].name}</h2>
+              <p className="text-muted-foreground text-xs">{KIND_COPY[kind].purpose}</p>
+            </div>
+            {options.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No provider offers this here yet.</p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`${id}-${kind}-provider`} className="text-sm font-medium">
+                    Provider
+                  </label>
+                  <ProviderSelect
+                    id={`${id}-${kind}-provider`}
+                    options={options}
+                    value={provider}
+                    onChange={(v) => chooseProvider(kind, v)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`${id}-${kind}-model`} className="text-sm font-medium">
+                    Model
+                  </label>
+                  <Select
+                    value={current || null}
+                    onValueChange={(v) => typeof v === "string" && chooseModel(kind, v)}
+                    disabled={models.length === 0}
+                  >
+                    <SelectTrigger id={`${id}-${kind}-model`} className="w-full">
+                      <SelectValue
+                        placeholder={k.status === "valid" ? "Choose a model" : "Add your key above"}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+            {kind === "llm" && <ModelInstructions config={config} />}
+          </section>
+        );
+      })}
     </div>
+  );
+}
+
+// Discreet, helper-text sized, announced to screen readers as it changes.
+function KeyStatusText({ status }: { status: KeyStatus }) {
+  return (
+    <span
+      aria-live="polite"
+      className={cn(
+        "text-xs",
+        status === "invalid" ? "text-destructive" : "text-muted-foreground",
+      )}
+    >
+      {status === "checking" ? "Checking…" : status === "valid" ? "Valid" : status === "invalid" ? "Invalid key" : ""}
+    </span>
   );
 }
 

@@ -27,16 +27,22 @@ export function SettingsSheet({ triggerClassName }: { triggerClassName?: string 
           <SheetTitle className="font-display text-xl font-normal tracking-tight">
             Settings
           </SheetTitle>
-          <SheetDescription>Saved in this browser.</SheetDescription>
+          <SheetDescription>Optional. Your keys stay in this browser.</SheetDescription>
+          <details className="text-muted-foreground text-xs">
+            <summary className="hover:text-foreground w-fit cursor-pointer underline decoration-current/35 underline-offset-3">
+              How keys are used
+            </summary>
+            <p className="mt-1.5">
+              Thothly sends your key to your provider only to check it and to run a compilation
+              you start. It never stores it.
+            </p>
+          </details>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto px-6 py-6">
           <section aria-labelledby="settings-ai" className="flex flex-col gap-3">
             <h3 id="settings-ai" className="eyebrow">
               AI models
             </h3>
-            <p className="text-muted-foreground text-sm">
-              Optional. Your own models, one to polish text and one to transcribe podcasts.
-            </p>
             <ModelSettingsPanel />
           </section>
         </div>
