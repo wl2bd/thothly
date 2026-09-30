@@ -110,7 +110,7 @@ const faq = [
   },
   {
     q: "A video has no subtitles?",
-    a: "It's flagged before you compile, and left out of the book.",
+    a: "It's flagged before you compile, and left out of the compilation.",
   },
 ];
 

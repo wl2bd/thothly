@@ -54,7 +54,7 @@ export function CompilationHistory() {
     const commit = () => {
       if (!undone) forgetCompilation(entry.id);
     };
-    toast("Book deleted", {
+    toast("Compilation deleted", {
       description: entry.title ?? undefined,
       duration: UNDO_MS,
       action: {
@@ -220,7 +220,7 @@ function BookRow({ entry, onDelete }: { entry: CompilationSnapshot; onDelete: ()
         variant="nav"
         size="icon-sm"
         onClick={onDelete}
-        aria-label="Delete this book"
+        aria-label="Delete this compilation"
         className="[@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
       >
         <Trash2Icon />

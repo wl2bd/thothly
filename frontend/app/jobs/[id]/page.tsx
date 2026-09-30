@@ -489,7 +489,7 @@ export default function JobPage() {
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
             This can take a few minutes. It keeps going if you leave, and waits
-            for you in Your books.
+            for you in Your compilations.
           </p>
         </CompilationPane>
       </>
@@ -880,11 +880,11 @@ function CompletedView({
     <>
       {/* The book itself, open on the left: the thing just made, to check
           before it goes to an e-reader or an AI. */}
-      <WorkPane label="Your book">
+      <WorkPane label="Your compilation">
         {md ? (
           <BookReader chapters={chapters} at={at} onGo={setAt} />
         ) : hasMarkdown ? (
-          <StatusMessage label="Opening the book…" />
+          <StatusMessage label="Opening the compilation…" />
         ) : (
           <p className="text-muted-foreground text-sm">
             Download the EPUB to read it.
@@ -1531,7 +1531,7 @@ function ReviewList({
           <p className="text-muted-foreground text-sm leading-relaxed">
             Pick what goes in on the left.
             {sourceOrder.length > 1 &&
-              " Drag a source to change its place in the book."}
+              " Drag a source to change its place in the compilation."}
           </p>
         )}
       </CompilationPane>

@@ -698,7 +698,7 @@ function ComposeWorkspace({
                 ) : (
                   // The book being built, before its first source.
                   <span className="text-muted-foreground text-xs tabular-nums">
-                    New book · 0/{MAX_SOURCES} sources
+                    New compilation · 0/{MAX_SOURCES} sources
                   </span>
                 )}
                 <Button
