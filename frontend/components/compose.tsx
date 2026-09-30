@@ -424,8 +424,9 @@ function ComposeWorkspace({
                 <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
                   Make anything readable
                 </h1>
-                <p className="text-muted-foreground max-w-md text-balance">
-                  Turn videos, podcasts and articles into one book.
+                <p className="text-muted-foreground max-w-lg text-balance">
+                  Turn videos, podcasts and articles into one clean document. Read
+                  it, send it to your e-reader, or give it to your AI.
                 </p>
               </div>
             </div>
@@ -450,7 +451,7 @@ function ComposeWorkspace({
                     clearQuery();
                   }
                 }}
-                placeholder="Search or paste a link…"
+                placeholder="Type a topic or paste a link…"
                 className={cn(
                   "pl-10",
                   // Right: room for the in-field Add (pasted link) or the
@@ -520,7 +521,7 @@ function ComposeWorkspace({
               search, so it shows the tool at work, and never a dead link. */}
           {trimmed === "" && staged.length === 0 && (
             <div className="flex flex-col items-center gap-3 pt-6">
-              <span className="eyebrow">Try a search</span>
+              <span className="eyebrow">Try a topic</span>
               <div className="flex flex-wrap justify-center gap-2">
                 {EXAMPLE_SEARCHES.map((q) => (
                   <Button
@@ -543,6 +544,33 @@ function ComposeWorkspace({
                   the field there. */}
               <div className="hidden w-full pt-12 sm:block">
                 <ToolSketch />
+              </div>
+              {/* The two uses, each with topics to try: a book to read, or
+                  context for an AI. */}
+              <div className="grid w-full gap-8 pt-14 text-left sm:grid-cols-2">
+                {USES.map((use) => (
+                  <section key={use.eyebrow} className="flex flex-col gap-2">
+                    <span className="eyebrow">{use.eyebrow}</span>
+                    <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
+                    <p className="text-muted-foreground text-sm">{use.text}</p>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {use.topics.map((q) => (
+                        <Button
+                          key={q}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setQuery(q);
+                            inputRef.current?.focus();
+                          }}
+                        >
+                          {q}
+                        </Button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
             </div>
           )}
@@ -1012,11 +1040,27 @@ function SortSelect({
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
+// The last one bridges to the AI-context use.
 const EXAMPLE_SEARCHES = [
   "Stoicism",
-  "How transformers work",
   "The fall of Rome",
   "The science of sleep",
+  "Next.js App Router",
+];
+
+const USES = [
+  {
+    eyebrow: "For reading",
+    title: "Your reading list, as one book.",
+    text: "Gather the articles, talks and episodes on a subject. Get a clean EPUB, or send it straight to your e-reader.",
+    topics: ["Stoicism", "The fall of Rome", "The science of sleep"],
+  },
+  {
+    eyebrow: "For AI context",
+    title: "Clean context for your AI.",
+    text: "Turn docs, videos and posts into one structured Markdown file. Drop it into Claude, ChatGPT or your agent.",
+    topics: ["Next.js App Router", "How transformers work", "Pricing for SaaS"],
+  },
 ];
 
 const SOURCES_FULL = `${MAX_SOURCES} sources is the limit for one compilation. Remove one to add another.`;
