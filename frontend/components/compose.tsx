@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -587,6 +588,10 @@ function ComposeWorkspace({
                         </Button>
                       ))}
                     </div>
+                    {/* A real one, made by the app, to see what you'd get. */}
+                    <Link href={use.example} className="text-link text-muted-foreground self-start pt-1 text-sm">
+                      See example
+                    </Link>
                   </section>
                 ))}
               </div>
@@ -1066,6 +1071,7 @@ const USES: {
   marks: React.ReactNode;
   marksLabel: string;
   topics: string[];
+  example: string;
 }[] = [
   {
     eyebrow: "For reading",
@@ -1082,6 +1088,7 @@ const USES: {
     ),
     marksLabel: "From YouTube, podcasts, Wikipedia, Substack and more",
     topics: ["Stoicism", "The fall of Rome"],
+    example: "/examples/stoicism",
   },
   {
     eyebrow: "For AI context",
@@ -1096,6 +1103,7 @@ const USES: {
     ),
     marksLabel: "Works with Claude, ChatGPT, Gemini, Grok and other AIs",
     topics: ["Next.js App Router", "How transformers work"],
+    example: "/examples/how-transformers-work",
   },
 ];
 
