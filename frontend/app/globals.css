@@ -398,6 +398,28 @@
   animation-duration: 300ms;
 }
 
+/* Theme switch (theme-toggle.tsx): no cross-fade, the new theme is revealed
+   in a circle widening from the toggle, over the old one held still. */
+[data-theme-switch]::view-transition-old(root),
+[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+[data-theme-switch]::view-transition-new(root) {
+  animation: theme-reveal 520ms var(--ease-out-quint);
+}
+[data-theme-switch]::view-transition-group(*) {
+  animation-duration: 0s;
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-x) var(--theme-y));
+  }
+  to {
+    clip-path: circle(var(--theme-r) at var(--theme-x) var(--theme-y));
+  }
+}
+
 /* Positional view-transition motion is the top motion-sensitivity trigger, so
    collapse every transition's duration — content then swaps instantly, the
    browser's default without animation. */

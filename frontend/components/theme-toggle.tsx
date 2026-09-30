@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { MoonIcon, SunIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,36 @@ export function ThemeToggle() {
     setDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  function toggle() {
-    const next = !document.documentElement.classList.contains("dark");
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("theme", next ? "dark" : "light");
-    } catch {
-      /* private mode / storage blocked: the in-page toggle still works */
+  function toggle(event: MouseEvent<HTMLButtonElement>) {
+    const root = document.documentElement;
+    const next = !root.classList.contains("dark");
+    const apply = () => {
+      root.classList.toggle("dark", next);
+      try {
+        localStorage.setItem("theme", next ? "dark" : "light");
+      } catch {
+        /* private mode / storage blocked: the in-page toggle still works */
+      }
+      setDark(next);
+    };
+    // The new theme spreads from the button in a widening circle (styled in
+    // globals.css under [data-theme-switch]); a plain swap where View
+    // Transitions or motion aren't available.
+    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      apply();
+      return;
     }
-    setDark(next);
+    const { left, top, width, height } = event.currentTarget.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
+    root.style.setProperty("--theme-x", `${x}px`);
+    root.style.setProperty("--theme-y", `${y}px`);
+    root.style.setProperty(
+      "--theme-r",
+      `${Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))}px`,
+    );
+    root.dataset.themeSwitch = "";
+    document.startViewTransition(apply).finished.finally(() => delete root.dataset.themeSwitch);
   }
 
   const label = dark ? "Switch to light theme" : "Switch to dark theme";
