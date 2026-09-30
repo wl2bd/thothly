@@ -419,7 +419,7 @@ function ComposeWorkspace({
               <div className="flex flex-col items-center gap-3 pt-10 pb-8 text-center">
                 {/* Said plainly while the product is being built. */}
                 <Badge variant="outline" className="border-foreground/15 text-muted-foreground mb-1 font-normal">
-                  Work in progress
+                  Early preview
                 </Badge>
                 <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
                   Make anything readable
