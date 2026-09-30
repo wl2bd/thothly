@@ -3,13 +3,21 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+// Sizes follow the control heights (28, 32, 40, 48 px on buttons): `lg` is the
+// next step, 56px, for the one field a page is built around.
+function Input({
+  className,
+  type,
+  size = "default",
+  ...props
+}: Omit<React.ComponentProps<"input">, "size"> & { size?: "default" | "lg" }) {
   return (
     <InputPrimitive
       type={type}
       data-slot="input"
       className={cn(
         "h-10 w-full min-w-0 rounded-lg border border-input bg-field shadow-surface px-3.5 py-2 text-base transition-colors outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/45 focus-visible:ring-3 focus-visible:ring-foreground/6 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        size === "lg" && "h-14 px-4 md:text-base",
         className
       )}
       {...props}

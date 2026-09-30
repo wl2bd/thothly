@@ -52,8 +52,9 @@
   --font-sans: var(--font-host-grotesk);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-prociono);
-  /* The hero headline. */
-  --text-display: 2.75rem;
+  /* The hero headline: fluid between two steps of the type scale, 4xl
+     (2.25rem) and 6xl (3.75rem). */
+  --text-display: clamp(2.25rem, 5vw, 3.75rem);
   --leading-display: 1.1;
   /* Miniature type, only inside the illustrated tablets and the funnel figure
      (a book page drawn at thumbnail scale), never for interface text. */

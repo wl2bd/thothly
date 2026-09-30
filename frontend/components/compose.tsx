@@ -113,6 +113,11 @@ function ComposeWorkspace({
   // straight back, keeping the search → pick → clear → re-search loop on the
   // keyboard without a detour to the mouse.
   const inputRef = useRef<HTMLInputElement>(null);
+  // Ready to type on arrival, where there is a keyboard: on a touch screen,
+  // focus would throw the keyboard over the page.
+  useEffect(() => {
+    if (matchMedia("(pointer: fine)").matches) inputRef.current?.focus();
+  }, []);
   // True only between a pointer press on a result and its toggle. Lets a click
   // pick hand focus back to the search bar (keeping search → pick → search
   // fluid) WITHOUT stealing it from a keyboard user tabbing the checkboxes.
@@ -412,7 +417,9 @@ function ComposeWorkspace({
             aria-hidden="true"
             className={cn(
               "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
-              showResults ? "grow-0" : "grow",
+              // Half the bottom spacer's share: the block sits a little high,
+              // so the sketch comes up into the first screen.
+              showResults ? "grow-0" : "grow-[1]",
             )}
           />
           {/* The catchline, only while the page is at rest: it folds away
@@ -425,17 +432,20 @@ function ComposeWorkspace({
             aria-hidden={showResults}
           >
             <div className="overflow-hidden">
-              <div className="flex flex-col items-center gap-3 pt-10 pb-8 text-center">
+              <div className="flex flex-col items-center gap-3 pt-2 pb-8 text-center">
                 {/* Said plainly while the product is being built. */}
                 <Badge variant="outline" className="border-foreground/15 text-muted-foreground mb-1 font-normal">
                   Early preview
                 </Badge>
-                <h1 className="font-display text-3xl tracking-tight text-balance sm:text-5xl">
-                  Make anything readable
-                </h1>
-                <p className="text-muted-foreground max-w-lg text-balance">
-                  Turn videos, podcasts and articles into one clean document.
-                </p>
+                {/* Title and subtitle read as one group. */}
+                <div className="flex flex-col items-center gap-1">
+                  <h1 className="font-display text-display leading-display tracking-tight text-balance">
+                    Make anything readable
+                  </h1>
+                  <p className="text-muted-foreground max-w-lg text-lg text-balance">
+                    Turn videos, podcasts and articles into one clean document.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -444,7 +454,7 @@ function ComposeWorkspace({
             <div className="relative">
               <SearchIcon
                 aria-hidden="true"
-                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2"
               />
               <Input
                 ref={inputRef}
@@ -460,11 +470,14 @@ function ComposeWorkspace({
                   }
                 }}
                 placeholder="Type a topic or paste a link…"
+                size="lg"
+                // The page's first stop after the title: a step lighter than
+                // the ground, a firmer edge, a placeholder that reads.
                 className={cn(
-                  "pl-10",
+                  "bg-card border-foreground/15 placeholder:text-foreground/60 pl-12",
                   // Right: room for the in-field Add (pasted link) or the
                   // clear × (search term), nothing when empty.
-                  queryIsUrl ? "pr-28" : query !== "" ? "pr-12" : "pr-4",
+                  queryIsUrl ? "pr-28" : query !== "" ? "pr-14" : "pr-4",
                 )}
                 autoComplete="off"
               />
@@ -478,7 +491,7 @@ function ComposeWorkspace({
                   aria-label="Add to sources"
                   // An inset, not -translate-y-1/2: Button's press affordance
                   // writes the same translate and would drop the pill.
-                  className="absolute top-1 right-1 h-8"
+                  className="absolute top-2 right-2"
                 >
                   <PlusIcon />
                   Add
@@ -491,7 +504,7 @@ function ComposeWorkspace({
                     size="icon-sm"
                     onClick={clearQuery}
                     aria-label="Clear search"
-                    className="absolute top-1 right-1"
+                    className="absolute top-3 right-3"
                   >
                     <XIcon className="size-4" />
                   </Button>
@@ -545,11 +558,14 @@ function ComposeWorkspace({
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
+                        // Suggestions, not buttons: no fill, a faint edge,
+                        // quieter ink than the search field above.
                         <Button
                           key={q}
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="border-foreground/10 text-foreground/75 dark:border-foreground/10 bg-transparent shadow-none"
                           onClick={() => {
                             setQuery(q);
                             inputRef.current?.focus();
@@ -628,7 +644,7 @@ function ComposeWorkspace({
             aria-hidden="true"
             className={cn(
               "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
-              showResults ? "grow-0" : "grow",
+              showResults ? "grow-0" : "grow-[2]",
             )}
           />
       </WorkPane>
