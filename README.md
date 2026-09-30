@@ -5,14 +5,16 @@
   </picture>
 </p>
 
-<p align="center"><em>Compile whatever you want to read, no matter where it comes from.</em></p>
+<p align="center"><em>Make anything readable. Turn video, podcast and article links into one clean document.</em></p>
+
+<p align="center"><a href="https://thothly.vercel.app"><strong>Try the demo</strong></a></p>
 
 <p align="center">
   <a href="https://github.com/wl2bd/thothly/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/wl2bd/thothly/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
-  <img alt="The Thothly home screen: search or paste a link to compile videos, podcasts, and articles into one clean read." src="docs/assets/thothly-hero.png" width="820">
+  <img alt="The Thothly home screen: the headline Make anything readable, a search field, and a sketch of three sources threaded into one compilation." src="docs/assets/thothly-hero.png" width="820">
 </p>
 
 <p align="center">══════ ☥ ══════</p>
@@ -36,6 +38,9 @@ dump.
   no dropdowns. Filter results by type (video, episode, article) and sort by
   relevance, duration, or title. Titles show in the source's own language, never
   an auto-translation.
+- **Build it in one workspace.** Search and your sources on the left, the
+  compilation on the right, from the first link to the finished book. Up to five
+  sources per compilation, each one named and removable (with undo).
 - **Review before you compile.** Discovery tags every item with what was actually
   retrieved (a clean transcript, raw captions, web text, or nothing usable), plus
   a no-LLM preview of exactly what each item would contribute. You tick what makes
@@ -44,11 +49,25 @@ dump.
   index, per-chapter attribution, YouTube chapters as sub-headings, an editorial
   cover, Instapaper-grade typography) and a standalone Markdown twin of the same
   content. Read the EPUB on an e-reader, or copy the Markdown straight into an AI.
+- **Read it, send it, or hand it to an AI.** The finished book opens in a reader
+  with its contents beside it. Download the EPUB in one click, get the Markdown,
+  copy the Markdown to paste into a chat, or send the book to an e-reader (the
+  device's share sheet, Send to Kindle, or instructions for Kobo and others).
 - **Zero-LLM by default.** Native subtitles and article text, never rewritten,
-  and kept in the source's original language (titles, chapters, and body) —
+  and kept in the source's original language (titles, chapters, and body),
   never auto-translated.
-- **Optional LLM cleanup.** Re-punctuate raw captions, copyedit, infer section
-  headings, or generate a preface. Entirely opt-in (see below).
+- **Optional AI polish.** Re-punctuate raw captions, copyedit, infer section
+  headings, or generate a preface. Entirely opt-in, with the server's model or
+  your own key (see below).
+- **Your compilations, in your browser.** Past books are listed by status (To
+  review, Ready) and reopen in one click. History and keys are stored only in
+  the browser; deleting a book can be undone for a few seconds.
+- **Keyboard first.** `/` to search, `Mod+Enter` for the next step, `A` to select
+  every item, `D` to download, `C` to copy, arrows to turn chapters, `,` for
+  Settings. Press `?` for the full list.
+- **Examples to start from.** Two ready-made compilations on the home page (a
+  book about Stoicism, and the Markdown an AI gets for "How transformers work"),
+  both downloadable.
 - **Optional podcast transcription.** Turn audio episodes into chapters via any
   OpenAI-compatible speech-to-text endpoint, with diarized speaker labels.
 - **Self-hosted, single-user.** No accounts, no telemetry, runs on your machine.
@@ -88,7 +107,7 @@ link), and follow discovery → review → compile. The backend API is published
 `:8000` (interactive docs at <http://localhost:8000/docs>) for direct
 exploration. Generated files and the SQLite database persist in `./data`.
 
-## ▸ Optional LLM cleanup
+## ▸ Optional AI polish
 
 By default Thothly is **zero-LLM**: punctuated captions are split into clean
 paragraphs for free, and raw (unpunctuated) captions fall back to a simple
@@ -108,6 +127,13 @@ is rejected in favour of the original text, so the LLM can never silently rewrit
 your book. Results are cached per (content, role-set, model), so re-compiling is
 free, and any failure falls back to the zero-LLM path, so it never breaks a
 compile. Leave the variables empty to keep Thothly fully free.
+
+Visitors can also bring their own model: **Settings** (the `,` key) takes one key
+per provider and a provider and model per task (cleanup, podcast transcription).
+Keys are checked when pasted, kept only in the browser, and sent with a job only
+to run it. By default only the listed providers are allowed; set
+`BYOK_ALLOW_CUSTOM_BASE_URL=true` to accept any server address on an instance
+whose users you trust.
 
 ## ▸ Optional podcast transcription
 
@@ -150,9 +176,9 @@ pluggable so you can self-host with whatever fits your use and licence:
 
 | Backend | Key? | Commercial use | Notes |
 | --- | --- | --- | --- |
-| **`marginalia`** (default) | keyless | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Independent "small web" — blogs, docs, long-form; downranks SEO/commercial pages. Not rate-limited to death like scraping DuckDuckGo. `public` key shares a tight limit — email `contact@marginalia-search.com` for a free personal key. |
+| **`marginalia`** (default) | keyless | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Independent "small web": blogs, docs, long-form; downranks SEO/commercial pages. Not rate-limited to death like scraping DuckDuckGo. `public` key shares a tight limit; email `contact@marginalia-search.com` for a free personal key. |
 | **`brave`** | `BRAVE_API_KEY` | yes (metered) | Broad general-web index. Card on file required even on the free credits. The commercial path for a hosted deployment. |
-| **`ddg`** | keyless | — | Legacy DuckDuckGo HTML scrape. Rate-limited hard (a couple of queries, then nothing). Last-resort fallback only. |
+| **`ddg`** | keyless | n/a | Legacy DuckDuckGo HTML scrape. Rate-limited hard (a couple of queries, then nothing). Last-resort fallback only. |
 
 Selecting `brave` without a key falls back to Marginalia rather than breaking
 search.
@@ -221,7 +247,7 @@ thothly/
 ├── data/                       # persistent volume (SQLite DB, generated files)
 ├── frontend/                   # Next.js 16 + Tailwind v4 + shadcn/base-ui
 │   ├── app/                    # App Router pages + /api proxy routes
-│   ├── components/             # ui/ primitives + theme toggle
+│   ├── components/             # workspace, panes, book reader, ui/ primitives
 │   └── lib/                    # api client + backend proxy helpers
 └── backend/                    # FastAPI + uv
     ├── app/
