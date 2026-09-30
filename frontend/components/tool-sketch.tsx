@@ -126,9 +126,11 @@ function BookSheet({ className }: { className?: string }) {
 // The three outputs fanned out, the book in front.
 function Outputs() {
   return (
-    <div className={cn("relative h-96 w-[36rem]", ANGLE)}>
-      <MarkdownSheet className="left-2 w-60 -rotate-6 translate-y-10" />
-      <RawSheet className="right-2 w-60 rotate-6 translate-y-10" />
+    // Wider than the sheets: the fade clips at its own edge, and the tilted
+    // outer corners must stay inside it.
+    <div className={cn("relative -mx-12 h-96 w-[42rem]", ANGLE)}>
+      <MarkdownSheet className="left-14 w-60 -rotate-6 translate-y-10" />
+      <RawSheet className="right-14 w-60 rotate-6 translate-y-10" />
       <BookSheet className={cn("left-1/2 w-64 -translate-x-1/2", FRONT)} />
     </div>
   );
