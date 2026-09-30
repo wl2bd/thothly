@@ -1,5 +1,6 @@
 "use client";
 
+import { useShortcut } from "@/lib/shortcuts";
 import {
   startTransition,
   useDeferredValue,
@@ -397,6 +398,11 @@ function ComposeWorkspace({
       ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
       : "Review sources";
 
+  // "/" to the search, like most sites with one; Mod+Enter runs the pane's
+  // primary action, even from the title field.
+  useShortcut("/", () => inputRef.current?.focus());
+  useShortcut("mod+enter", () => void onCompile(), staged.length > 0 && !submitting);
+
   // The layout's glow is in full colour only here, at rest; a search (or
   // leaving the page) lets it ease down to its light trace.
   useEffect(() => {
@@ -700,6 +706,7 @@ function ComposeWorkspace({
                 <Button
                   onClick={onCompile}
                   disabled={submitting || staged.length === 0}
+                  aria-keyshortcuts="Control+Enter Meta+Enter"
                   className="flex-1"
                 >
                   {reviewLabel}

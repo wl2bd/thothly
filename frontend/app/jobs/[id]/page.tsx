@@ -1,5 +1,6 @@
 "use client";
 
+import { useShortcut } from "@/lib/shortcuts";
 import {
   Fragment,
   startTransition,
@@ -13,7 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Check,
   Coins,
@@ -156,6 +157,12 @@ function autoTitleForSelection(
 }
 
 export default function JobPage() {
+  const router = useRouter();
+  // N starts a new compilation from any step, like the New compilation button.
+  useShortcut("n", () => {
+    clearDraft();
+    router.push("/");
+  });
   const params = useParams<{ id: string }>();
   const id = params.id;
 
@@ -870,6 +877,17 @@ function CompletedView({
     transitionDelay: revealed ? `${ms}ms` : "0ms",
   });
 
+  // D downloads the EPUB, C copies the Markdown, ← → turn the chapters.
+  useShortcut("d", () => {
+    const a = document.createElement("a");
+    a.href = getDownloadUrl(jobId);
+    a.download = "";
+    a.click();
+  });
+  useShortcut("c", () => void copy(), !!md);
+  useShortcut("arrowleft", () => setAt((i) => Math.max(0, i - 1)), chapters.length > 1);
+  useShortcut("arrowright", () => setAt((i) => Math.min(chapters.length - 1, i + 1)), chapters.length > 1);
+
   async function copy() {
     if (!md) return;
     try {
@@ -937,7 +955,7 @@ function CompletedView({
                 <Tooltip content="Copy the Markdown, to paste into an AI">
                   {/* Both labels share one grid cell, the idle one hidden, so
                       "Copied" never widens the button or shifts its row. */}
-                  <Button type="button" variant="outline" onClick={copy} disabled={!md}>
+                  <Button type="button" variant="outline" onClick={copy} disabled={!md} aria-keyshortcuts="C">
                     {copied ? <Check /> : <Copy />}
                     <span className="grid">
                       <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
@@ -1095,6 +1113,9 @@ function ReviewList({
 }: ReviewListProps) {
   const [query, setQuery] = useState("");
   const [connecting, setConnecting] = useState<ModelKind | null>(null);
+  // Mod+Enter compiles (from the title field too); A selects or clears all.
+  useShortcut("mod+enter", () => void onConfirm(), !confirming && selected.size > 0 && title.trim() !== "");
+  useShortcut("a", () => (selected.size === items.length ? onSelectNone() : onSelectAll()), items.length > 0);
   const storedModels = useStoredModels();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
 
@@ -1513,6 +1534,7 @@ function ReviewList({
             <Button
               onClick={onConfirm}
               disabled={confirming || selected.size === 0 || title.trim() === ""}
+              aria-keyshortcuts="Control+Enter Meta+Enter"
               className="w-full"
             >
               {confirming

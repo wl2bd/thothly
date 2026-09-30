@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SettingsLink } from "@/components/settings-pane";
+import { ShortcutsHelp } from "@/components/shortcuts-help";
 import { Logotype } from "@/components/brand";
 import { version } from "@/package.json";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -27,6 +28,7 @@ export function AppHeader() {
         </Link>
         <ThemeToggle />
       </div>
+      <ShortcutsHelp />
     </header>
   );
 }

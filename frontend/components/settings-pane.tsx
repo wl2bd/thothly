@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { ModelSettingsPanel } from "@/components/connect-model";
 import { PaneFrame } from "@/components/pane-frame";
 import { setSettingsOpen, usePaneCount, useSettingsOpen, useWide } from "@/lib/settings-open";
+import { useShortcut } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 
 const close = () => setSettingsOpen(false);
@@ -59,6 +60,7 @@ export function SettingsLink({ className }: { className?: string }) {
 
   // Settings belongs to the screen it was opened on.
   useEffect(close, [pathname]);
+  useShortcut(",", () => setSettingsOpen(!open));
 
   const standalone = open && (panes === 0 || !wide);
   return (
@@ -66,6 +68,7 @@ export function SettingsLink({ className }: { className?: string }) {
       <button
         type="button"
         aria-expanded={open}
+        aria-keyshortcuts=","
         onClick={() => setSettingsOpen(!open)}
         className={cn(className, open && "text-foreground")}
       >
