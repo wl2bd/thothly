@@ -1,7 +1,9 @@
 "use client";
 
 import type { ReactNode, Ref } from "react";
+import { ArrowLeftIcon } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +21,11 @@ export function PaneFrame({
   children,
   footer,
   footerRef,
+  onBack,
 }: {
+  // Present: a Back link above the header, for a view that saves as it goes
+  // and so has nothing to confirm (Settings).
+  onBack?: () => void;
   eyebrow: ReactNode;
   title: string;
   // Present: the title is editable in place.
@@ -34,6 +40,18 @@ export function PaneFrame({
   return (
     <>
       <div className="flex flex-col gap-2 border-b px-6 py-6">
+        {onBack && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="text-muted-foreground -mt-2 -ml-2.5 self-start"
+          >
+            <ArrowLeftIcon />
+            Back
+          </Button>
+        )}
         <h2 className="eyebrow flex items-center gap-2">{eyebrow}</h2>
         {onTitleChange ? (
           // The compilation's name, in its own voice, in the same field as
