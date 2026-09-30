@@ -106,14 +106,8 @@ export function ModelEndpointSettings({
   );
 }
 
-// ponytail: name match only, so a transcription model the pattern misses sits
-// further down the list rather than being hidden. Widen the pattern if one does.
 const TRANSCRIPTION_MODEL = /whisper|voxtral|transcri/i;
 
-function orderModels(ids: string[], kind: ModelKind): string[] {
-  if (kind === "llm") return ids;
-  return [...ids.filter((m) => TRANSCRIPTION_MODEL.test(m)), ...ids.filter((m) => !TRANSCRIPTION_MODEL.test(m))];
-}
 
 function providerOptions(config: LlmConfig, kind: ModelKind) {
   return [
@@ -186,11 +180,11 @@ function EndpointForm({
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<string[] | null>(null);
   const [model, setModel] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<KeyStatus>("idle");
+  // The key + address the status is about, so a stale answer is dropped.
+  const checked = useRef<string | null>(null);
 
   const isCustom = provider === "custom";
-  const canCheck = !checking && (isCustom ? baseUrl.trim() !== "" : apiKey.trim() !== "");
 
   // Any change to what was checked invalidates the check.
   function edit<T>(set: (v: T) => void) {
@@ -198,35 +192,47 @@ function EndpointForm({
       set(v);
       setModels(null);
       setModel("");
-      setError(null);
+      setStatus("idle");
+      checked.current = null;
     };
   }
 
-  async function check(event: FormEvent) {
-    event.preventDefault();
-    if (!canCheck) return;
-    setChecking(true);
-    setError(null);
+  // Runs on paste and on blur, with the field's value at that moment.
+  async function check(value: { apiKey: string; baseUrl: string }) {
+    const sig = signature(value);
+    if (isCustom ? !value.baseUrl.trim() : !value.apiKey.trim()) return;
+    if (checked.current === sig) return;
+    checked.current = sig;
+    setStatus("checking");
+    let list: string[] | null = null;
     try {
-      const list = orderModels(
-        await verifyKey(provider, apiKey.trim(), isCustom ? baseUrl.trim() : undefined),
+      list = modelsFor(
+        await verifyKey(provider, value.apiKey.trim(), isCustom ? value.baseUrl.trim() : undefined),
         kind,
       );
-      setModels(list);
-      if (list.length === 0) setError("That key works, but it doesn't grant any model.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setChecking(false);
+    } catch {
+      list = null;
     }
+    if (checked.current !== sig) return;
+    setStatus(list ? "valid" : "invalid");
+    setModels(list);
   }
+
+  const pasted = (e: FormEvent<HTMLInputElement>) =>
+    (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
 
   if (options.length === 0) {
     return <p className="text-muted-foreground text-sm">No provider offers this here yet.</p>;
   }
 
   return (
-    <form onSubmit={check} className="flex flex-col gap-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void check({ apiKey, baseUrl });
+      }}
+      className="flex flex-col gap-4"
+    >
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${id}-provider`} className="text-sm font-medium">
           Provider
@@ -248,7 +254,11 @@ function EndpointForm({
             id={`${id}-url`}
             type="url"
             value={baseUrl}
-            onChange={(e) => edit(setBaseUrl)(e.target.value)}
+            onChange={(e) => {
+              edit(setBaseUrl)(e.target.value);
+              if (pasted(e)) void check({ apiKey, baseUrl: e.target.value });
+            }}
+            onBlur={() => void check({ apiKey, baseUrl })}
             placeholder="http://localhost:11434/v1"
             autoComplete="off"
             spellCheck={false}
@@ -257,21 +267,30 @@ function EndpointForm({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={`${id}-key`} className="text-sm font-medium">
-          API key{isCustom && <span className="text-muted-foreground font-normal"> (if your server needs one)</span>}
-        </label>
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor={`${id}-key`} className="text-sm font-medium">
+            API key{isCustom && <span className="text-muted-foreground font-normal"> (if your server needs one)</span>}
+          </label>
+          <KeyStatusText status={status} />
+        </div>
         <Input
           id={`${id}-key`}
           type="password"
           value={apiKey}
-          onChange={(e) => edit(setApiKey)(e.target.value)}
+          onChange={(e) => {
+            edit(setApiKey)(e.target.value);
+            if (pasted(e)) void check({ apiKey: e.target.value, baseUrl });
+          }}
+          onBlur={() => void check({ apiKey, baseUrl })}
           placeholder={initial ? `Replacing ${maskKey(initial.apiKey)}` : "Paste your key"}
           autoComplete="off"
           spellCheck={false}
         />
       </div>
 
-      {error && <Notice variant="error">{error}</Notice>}
+      {models && models.length === 0 && (
+        <Notice variant="error">That key works, but it doesn&apos;t grant any model.</Notice>
+      )}
 
       {models && models.length > 0 ? (
         <>
@@ -318,21 +337,11 @@ function EndpointForm({
           </div>
         </>
       ) : (
-        <div className="flex gap-2">
-          <Button type="submit" variant="outline" disabled={!canCheck}>
-            {checking && <Spinner className="size-4" />}
-            {/* Both labels in one cell so the button keeps its width. */}
-            <span className="grid">
-              <span className={cn("col-start-1 row-start-1", checking && "invisible")}>Check key</span>
-              <span className={cn("col-start-1 row-start-1", !checking && "invisible")}>Checking…</span>
-            </span>
+        onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel} className="self-start">
+            Cancel
           </Button>
-          {onCancel && (
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
-        </div>
+        )
       )}
     </form>
   );
