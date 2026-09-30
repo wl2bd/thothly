@@ -75,12 +75,13 @@
 :root {
   /* Native controls (scrollbars, select popups, date pickers) follow the theme. */
   color-scheme: light;
-  /* Light = pure white with plain neutral greys for everything recessed
+  /* Light = pure white with barely warm greys (chroma 0.004 at the gold's hue,
+     night included) for everything recessed
      (panels, chips, borders); the gold is kept for actions only. The tan read
      as too much colour (Wael, 2026-09-28). */
   /* The ground sits a step below white so the surfaces on it (fields,
      cards, the compilation) read as laid on top, not printed flat. */
-  --background: oklch(0.993 0 0);
+  --background: oklch(0.993 0.004 80);
   --foreground: oklch(0.16 0.015 68);
   /* Cards lift a step above the page. */
   --card: oklch(1 0 0);
@@ -94,28 +95,28 @@
      read on the off-white, so this is a deeper gold (4.0:1, clears the 3:1 of
      icons and focus indicators). It is also the focus ring. */
   --primary-strong: oklch(0.6 0.15 75);
-  --secondary: oklch(0.955 0 0);
+  --secondary: oklch(0.955 0.004 80);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.965 0 0);
-  --muted-foreground: oklch(0.5 0 0);
+  --muted: oklch(0.965 0.004 80);
+  --muted-foreground: oklch(0.5 0.004 80);
   --accent: var(--muted);
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.52 0.21 27);
   /* Status colors are informational only, kept apart from the brand gold
      (warning is pushed to orange, hue 45, so it never reads as the gold). */
   --success: oklch(0.5 0.12 150);
-  --success-foreground: oklch(0.98 0 0);
+  --success-foreground: oklch(0.98 0.004 80);
   --warning: oklch(0.53 0.16 45);
-  --warning-foreground: oklch(0.98 0 0);
+  --warning-foreground: oklch(0.98 0.004 80);
   --info: oklch(0.52 0.13 255);
-  --info-foreground: oklch(0.98 0 0);
-  --border: oklch(0.945 0 0);
+  --info-foreground: oklch(0.98 0.004 80);
+  --border: oklch(0.945 0.004 80);
   /* Fields need a firmer edge than dividers, or they melt into the white. */
-  --input: oklch(0.905 0 0);
+  --input: oklch(0.905 0.004 80);
   /* Fields and outline buttons sit a step below the near-white page and the
      white pane, so they read as controls without a heavy edge. */
-  --field: oklch(0.967 0 0);
-  --field-hover: oklch(0.945 0 0);
+  --field: oklch(0.967 0.004 80);
+  --field-hover: oklch(0.945 0.004 80);
   --ring: var(--primary-strong);
   --radius: 0.625rem;
   /* A broad still glow rising from the bottom of the page,
@@ -132,28 +133,28 @@
    glows against it; this is where the brand is at its boldest. */
 .dark {
   color-scheme: dark;
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.17 0 0);
+  --background: oklch(0.13 0.004 80);
+  --foreground: oklch(0.97 0.004 80);
+  --card: oklch(0.17 0.004 80);
   --primary: oklch(0.71 0.135 78);
-  --primary-foreground: oklch(0.16 0 0);
+  --primary-foreground: oklch(0.16 0.004 80);
   /* On the night ground the fill gold already reads as text. */
   --primary-strong: var(--primary);
-  --secondary: oklch(0.22 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.7 0 0);
+  --secondary: oklch(0.22 0.004 80);
+  --muted: oklch(0.22 0.004 80);
+  --muted-foreground: oklch(0.7 0.004 80);
   --destructive: oklch(0.68 0.2 25);
   --success: oklch(0.72 0.14 150);
-  --success-foreground: oklch(0.16 0 0);
+  --success-foreground: oklch(0.16 0.004 80);
   --warning: oklch(0.78 0.15 55);
-  --warning-foreground: oklch(0.16 0 0);
+  --warning-foreground: oklch(0.16 0.004 80);
   --info: oklch(0.7 0.14 255);
-  --info-foreground: oklch(0.16 0 0);
+  --info-foreground: oklch(0.16 0.004 80);
   --border: oklch(1 0 0 / 6%);
   --input: oklch(1 0 0 / 8%);
   /* At night a control is a step above both the page and the pane. */
-  --field: oklch(0.2 0 0);
-  --field-hover: oklch(0.24 0 0);
+  --field: oklch(0.2 0.004 80);
+  --field-hover: oklch(0.24 0.004 80);
   --glow:
     radial-gradient(70% 55% at 22% 100%, oklch(0.55 0.12 80 / 0.42), transparent),
     radial-gradient(75% 60% at 82% 100%, oklch(0.45 0.04 60 / 0.5), transparent);
