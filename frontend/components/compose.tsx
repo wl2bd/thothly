@@ -554,7 +554,7 @@ function ComposeWorkspace({
               </div>
               {/* The two uses, each with topics to try: a book to read, or
                   context for an AI. */}
-              <div className="grid w-full gap-8 pt-14 text-left sm:grid-cols-2">
+              <div className="grid w-full gap-8 pt-4 text-left sm:grid-cols-2">
                 {USES.map((use) => (
                   <section key={use.eyebrow} className="flex flex-col gap-2">
                     <span className="eyebrow">{use.eyebrow}</span>

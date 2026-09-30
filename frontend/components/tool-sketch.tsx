@@ -47,7 +47,90 @@ const SOURCES = [
 // viewBox, y following each card's drop), all meeting on top of the book.
 const STARTS = [50, 150, 250];
 
-export function ToolSketch({ book }: { book?: React.ReactNode } = {}) {
+const SHEET =
+  "border-foreground/15 bg-card text-muted-foreground absolute top-0 flex h-[28rem] flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-sm dark:shadow-none";
+
+// The sheets lie on the table, seen at an angle.
+// The fade sits on the whole group, so a sheet in front hides the ones behind.
+const ANGLE =
+  "[transform:perspective(900px)_rotateX(24deg)_rotate(-1.5deg)] origin-top [mask-image:linear-gradient(to_bottom,black_35%,transparent_85%)]";
+
+const P1 =
+  "Stoicism began in Athens, where Zeno of Citium taught from a painted porch. Its promise was plain: we do not choose what happens to us, only how we answer it.";
+const P2 =
+  "The first principle is to sort what is up to us from what is not. Opinion, intention and desire are ours; the body, reputation and fortune are not.";
+const P3 =
+  "Epictetus, born a slave, made this the heart of his teaching. Marcus Aurelius wrote it down again, night after night, as a note to himself.";
+
+function RawSheet({ className }: { className?: string }) {
+  return (
+    <div className={cn(SHEET, "font-sans", className)}>
+      <span className="text-foreground/80 text-sm">Stoicism</span>
+      <span className="mt-3 text-xs">Stoicism, TED-Ed</span>
+      <p className="mt-1.5 text-xs leading-relaxed">{P1}</p>
+      <span className="mt-3 text-xs">10 Stoic principles</span>
+      <p className="mt-1.5 text-xs leading-relaxed">{P2}</p>
+      <p className="mt-1.5 text-xs leading-relaxed">{P3}</p>
+    </div>
+  );
+}
+
+function MarkdownSheet({ className }: { className?: string }) {
+  return (
+    <div className={cn(SHEET, "font-mono text-2xs leading-relaxed", className)}>
+      <span className="text-foreground/80"># Stoicism</span>
+      <span className="mt-3 text-foreground/70">## 1. Stoicism, TED-Ed</span>
+      <span className="text-muted-foreground/60">&gt; source: youtube.com/watch?v=…</span>
+      <p className="mt-2">{P1}</p>
+      <span className="mt-3 text-foreground/70">## 2. 10 Stoic principles</span>
+      <p className="mt-2">
+        - **Dichotomy of control**: sort what is up to us from what is not.
+      </p>
+      <p className="mt-1">- **Premeditatio malorum**: rehearse the worst, calmly.</p>
+    </div>
+  );
+}
+
+function BookSheet({ className }: { className?: string }) {
+  return (
+    <div className={cn(SHEET, "px-6 pt-5", className)}>
+      <span className="eyebrow text-inherit">Chapter 1</span>
+      <span className="font-display text-foreground/80 mt-1 text-lg tracking-tight">
+        The painted porch
+      </span>
+      <p className="mt-3 text-xs leading-relaxed">
+        <span className="font-display text-primary float-left mt-0.5 mr-1.5 text-4xl leading-[0.8]">
+          S
+        </span>
+        {P1.slice(1)} The idea returns in every source of this book{" "}
+        <span className="text-primary-strong underline decoration-current/40 underline-offset-2">
+          (see ch. 3)
+        </span>
+        .
+      </p>
+      <p className="mt-2 indent-4 text-xs leading-relaxed">
+        {P3}{" "}
+        <span className="text-primary-strong underline decoration-current/40 underline-offset-2">
+          Meditations, ch. 2
+        </span>
+        .
+      </p>
+    </div>
+  );
+}
+
+// The three outputs fanned out, the book in front.
+function Outputs() {
+  return (
+    <div className={cn("relative h-96 w-[36rem]", ANGLE)}>
+      <MarkdownSheet className="left-2 w-60 -rotate-6 translate-y-10" />
+      <RawSheet className="right-2 w-60 rotate-6 translate-y-10" />
+      <BookSheet className="left-1/2 w-64 -translate-x-1/2" />
+    </div>
+  );
+}
+
+export function ToolSketch() {
   return (
     <div aria-hidden className="mx-auto flex w-full max-w-xl flex-col items-center">
       <ul className="grid w-full grid-cols-3 gap-3">
@@ -97,34 +180,11 @@ export function ToolSketch({ book }: { book?: React.ReactNode } = {}) {
         ))}
       </svg>
 
-      {/* The book, whole, with the three ways out of it along its foot. */}
-      {book ?? (<div className="sketch-book border-foreground/15 bg-card/90 shadow-sm dark:bg-transparent dark:shadow-none text-muted-foreground flex w-72 flex-col rounded-lg border px-5 pt-4 pb-4 text-left">
-        <span className="eyebrow text-inherit">Compilation</span>
-        <span className="font-display text-foreground/75 mt-1.5 text-lg tracking-tight">
-          Stoicism
-        </span>
-        <span className="text-muted-foreground/70 text-xs tabular-nums">
-          3 chapters
-        </span>
-        <ol className="mt-3 flex flex-col gap-1 text-xs">
-          {SOURCES.map(({ title }, i) => (
-            <li key={title} className="flex gap-2">
-              <span className="text-muted-foreground/60 w-3 shrink-0 tabular-nums">{i + 1}</span>
-              <span className="truncate">{title}</span>
-            </li>
-          ))}
-        </ol>
-        <ul className="border-foreground/10 mt-4 flex gap-1.5 border-t pt-3">
-          {["EPUB", "Markdown", "Send to e-reader"].map((out) => (
-            <li
-              key={out}
-              className="border-foreground/15 text-foreground/75 rounded-sm border px-1.5 py-0.5 text-xs whitespace-nowrap"
-            >
-              {out}
-            </li>
-          ))}
-        </ul>
-      </div>)}
+      {/* The compilation's three outputs, running off the bottom of the
+          picture: an illustration, never a document to read to the end. */}
+      <div className="sketch-book">
+        <Outputs />
+      </div>
     </div>
   );
 }
