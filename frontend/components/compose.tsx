@@ -1051,7 +1051,7 @@ function SortSelect({
 const USES = [
   {
     eyebrow: "For reading",
-    title: "Your reading list, as one book.",
+    title: "Your backlog, as one book.",
     topics: ["Stoicism", "The fall of Rome"],
   },
   {
