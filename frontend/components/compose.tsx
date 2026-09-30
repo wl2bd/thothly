@@ -675,10 +675,11 @@ function ComposeWorkspace({
       {showPane && (
         <CompilationPane
           // The compilation being built, named from its first source; before
-          // that, its body is the history.
+          // that there is nothing to name, and its body is the history.
           eyebrow="New compilation"
-          title={title}
-          onTitleChange={setTypedTitle}
+          title={staged.length > 0 ? title : "No sources yet"}
+          titleClassName={staged.length > 0 ? undefined : "text-muted-foreground"}
+          onTitleChange={staged.length > 0 ? setTypedTitle : undefined}
           meta={`${staged.length} of ${MAX_SOURCES} sources`}
           className={cn(showResults && "max-lg:hidden")}
           footer={
