@@ -478,7 +478,12 @@
 .glow-layer {
   --pool-x: 50%;
   background-image:
-    radial-gradient(620px 900px at var(--pool-x) 0, var(--background) 60%, transparent),
+    radial-gradient(
+      760px 920px at var(--pool-x) 0,
+      var(--background) 35%,
+      color-mix(in oklab, var(--background) 55%, transparent) 68%,
+      transparent
+    ),
     radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
     var(--glow);
 }
