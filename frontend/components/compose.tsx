@@ -487,7 +487,7 @@ function ComposeWorkspace({
                   "bg-card border-foreground/15 placeholder:text-foreground/60 pl-12",
                   // Right: room for the in-field Add (pasted link) or the
                   // clear × (search term), nothing when empty.
-                  queryIsUrl ? "pr-28" : query !== "" ? "pr-14" : "pr-4",
+                  queryIsUrl ? "pr-36" : query !== "" ? "pr-24" : "pr-12",
                 )}
                 autoComplete="off"
               />
@@ -505,6 +505,7 @@ function ComposeWorkspace({
                 >
                   <PlusIcon />
                   Add
+                  <Kbd>↵</Kbd>
                 </Button>
               ) : query === "" ? (
                 // An empty bar says how to reach it from anywhere on the page.
@@ -513,16 +514,20 @@ function ComposeWorkspace({
                 </Kbd>
               ) : (
                 query !== "" && (
-                  <Button
-                    type="button"
-                    variant="nav"
-                    size="icon-sm"
-                    onClick={clearQuery}
-                    aria-label="Clear search"
-                    className="absolute top-3 right-3"
-                  >
-                    <XIcon className="size-4" />
-                  </Button>
+                  // Esc does what the × does, so it is written beside it.
+                  <div className="absolute top-3 right-3 flex items-center gap-1">
+                    <Kbd className="text-muted-foreground pointer-events-none">Esc</Kbd>
+                    <Button
+                      type="button"
+                      variant="nav"
+                      size="icon-sm"
+                      onClick={clearQuery}
+                      aria-label="Clear search"
+                      aria-keyshortcuts="Escape"
+                    >
+                      <XIcon className="size-4" />
+                    </Button>
+                  </div>
                 )
               )}
             </div>

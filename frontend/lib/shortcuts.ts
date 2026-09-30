@@ -11,6 +11,7 @@ import { useEffect, useRef } from "react";
 // so a new one is listed where it is declared.
 export const SHORTCUTS: { keys: string[]; label: string; where: string }[] = [
   { keys: ["/"], label: "Search", where: "Home" },
+  { keys: ["Enter"], label: "Add a pasted link", where: "Home" },
   { keys: ["Mod", "Enter"], label: "Review sources, or Compile", where: "Home, Review" },
   { keys: ["A"], label: "Select or deselect every item", where: "Review" },
   { keys: ["D"], label: "Download the EPUB", where: "Ready" },
@@ -19,7 +20,7 @@ export const SHORTCUTS: { keys: string[]; label: string; where: string }[] = [
   { keys: ["N"], label: "New compilation", where: "Any compilation" },
   { keys: [","], label: "Settings", where: "Everywhere" },
   { keys: ["?"], label: "This list", where: "Everywhere" },
-  { keys: ["Esc"], label: "Close, or clear the search", where: "Everywhere" },
+  { keys: ["Esc"], label: "Clear the search, or close Settings and dialogs", where: "Everywhere" },
 ];
 
 export const isMac = () =>

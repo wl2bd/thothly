@@ -1,5 +1,6 @@
 "use client";
 
+import { Kbd } from "@/components/ui/kbd";
 import type { ReactNode, Ref } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 
@@ -46,10 +47,12 @@ export function PaneFrame({
             variant="ghost"
             size="sm"
             onClick={onBack}
+            aria-keyshortcuts="Escape"
             className="text-muted-foreground -mt-2 -ml-2.5 self-start"
           >
             <ArrowLeftIcon />
             Back
+            <Kbd>Esc</Kbd>
           </Button>
         )}
         <h2 className="eyebrow flex items-center gap-2">{eyebrow}</h2>
