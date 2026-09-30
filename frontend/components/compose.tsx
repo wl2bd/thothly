@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  HistoryIcon,
   PlusIcon,
   SearchIcon,
   SearchXIcon,
@@ -135,13 +136,14 @@ function ComposeWorkspace({
   const [suggestedTitle, setSuggestedTitle] = useState(initialDraft?.suggestedTitle ?? "");
   const [typedTitle, setTypedTitle] = useState<string | null>(initialDraft?.typedTitle ?? null);
   const title = typedTitle ?? suggestedTitle;
+  const [queries, setQueries] = useState<string[]>(initialDraft?.queries ?? []);
 
   // Kept for the tab's session, so going back finds the list again. Only the
   // client-side mount writes: the hydration pass starts empty and must not
   // wipe what the remount is about to read.
   useEffect(() => {
-    if (persist) saveDraft({ staged, suggestedTitle, typedTitle });
-  }, [persist, staged, suggestedTitle, typedTitle]);
+    if (persist) saveDraft({ staged, suggestedTitle, typedTitle, queries });
+  }, [persist, staged, suggestedTitle, typedTitle, queries]);
   const [submitting, setSubmitting] = useState(false);
   // Two error slots, one per pane: a failed search is said where the search
   // is, a failed Review where the Review button is.
@@ -229,6 +231,8 @@ function ComposeWorkspace({
   // agree, and a selection survives moving from one search to the next.
   function toggleResultStaged(r: SearchResult) {
     if (staged.length === 0) setSuggestedTitle(sentenceCase(trimmed));
+    if (trimmed !== "" && !staged.some((s) => s.url === r.url))
+      setQueries((prev) => [trimmed, ...prev.filter((q) => q !== trimmed)].slice(0, 5));
     setStaged((prev) =>
       prev.some((s) => s.url === r.url)
         ? prev.filter((s) => s.url !== r.url)
@@ -311,6 +315,7 @@ function ComposeWorkspace({
     setStaged([]);
     setSuggestedTitle("");
     setTypedTitle(null);
+    setQueries([]);
   }
 
   // Empty the bar and hand focus back — the shared "start a fresh search"
@@ -475,6 +480,31 @@ function ComposeWorkspace({
               )}
             </div>
           </form>
+
+          {/* Once sources are in: the searches that brought them, to go back
+              to one, instead of a pane gone blank. */}
+          {trimmed === "" && staged.length > 0 && queries.length > 0 && (
+            <div className="flex flex-col items-center gap-3 pt-6">
+              <span className="eyebrow">Search again</span>
+              <div className="flex flex-wrap justify-center gap-2">
+                {queries.map((q) => (
+                  <Button
+                    key={q}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setQuery(q);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <HistoryIcon />
+                    {q}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* First visit: something to press instead of a blank pane. A real
               search, so it shows the tool at work, and never a dead link. */}

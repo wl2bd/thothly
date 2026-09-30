@@ -20,6 +20,8 @@ export interface Draft {
   staged: StagedSource[];
   suggestedTitle: string;
   typedTitle: string | null;
+  // The searches that brought sources in, newest first, to go back to one.
+  queries?: string[];
 }
 
 const KEY = "thothly:draft";
