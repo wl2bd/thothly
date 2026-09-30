@@ -396,6 +396,16 @@ function ComposeWorkspace({
         // under it.
         className={cn(!showResults && "max-lg:flex-none")}
       >
+          {/* Wide screens at rest: two growing spacers centre the whole block
+              in the pane; a search shrinks them to nothing, sliding the field
+              up to where the results need it. */}
+          <div
+            aria-hidden="true"
+            className={cn(
+              "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
+              showResults ? "grow-0" : "grow",
+            )}
+          />
           {/* The catchline, only while the page is at rest: it folds away
               (height and fade together) as soon as results need the room. */}
           <div
@@ -596,6 +606,13 @@ function ComposeWorkspace({
               onPointerPick={() => (pickedByPointer.current = true)}
             />
           )}
+          <div
+            aria-hidden="true"
+            className={cn(
+              "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
+              showResults ? "grow-0" : "grow",
+            )}
+          />
       </WorkPane>
 
       {/* The compilation. On a phone it gives way to the search while one
