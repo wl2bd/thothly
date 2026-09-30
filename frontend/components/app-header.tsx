@@ -8,7 +8,7 @@ import { version } from "@/package.json";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const navLink =
-  "text-muted-foreground hover:text-foreground px-2 text-sm transition-colors";
+  "text-muted-foreground hover:text-foreground px-2 py-2 text-sm transition-colors";
 
 // The one header of every page: the workspace, the model and About. Full width, because the
 // workspace under it is: the logotype sits over the search pane's edge, the
@@ -19,12 +19,12 @@ export function AppHeader() {
       <Link href="/" className="flex items-end gap-1.5">
         <Logotype className="h-7 w-auto" title="Thothly" />
         {/* The build's version, from package.json: bumped there, shown here. */}
-        <span className="text-muted-foreground mb-0.5 text-xs tabular-nums">v{version}</span>
+        <span className="text-muted-foreground mb-0.5 text-xs tabular-nums max-sm:hidden">v{version}</span>
       </Link>
       <div className="flex items-center gap-1 sm:gap-2">
         {/* The way back to the work from anywhere, beside the logo that does
             the same for those who know it. */}
-        <NavLink href="/" alsoUnder="/jobs/" className={navLink}>
+        <NavLink href="/" alsoUnder="/jobs/" className={`${navLink} max-sm:hidden`}>
           Compile
         </NavLink>
         {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}

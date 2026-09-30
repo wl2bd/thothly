@@ -28,7 +28,7 @@ export function ShortcutsHelp() {
       onClick={() => setOpen(true)}
       aria-label="Keyboard shortcuts"
       aria-keyshortcuts="?"
-      className="text-muted-foreground hover:text-foreground px-1 transition-colors [@media(hover:none)]:hidden"
+      className="text-muted-foreground hover:text-foreground px-1 py-2 transition-colors max-sm:hidden [@media(hover:none)]:hidden"
     >
       <Kbd>?</Kbd>
     </button>

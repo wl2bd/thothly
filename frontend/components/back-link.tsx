@@ -7,7 +7,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const style =
-  "text-muted-foreground hover:text-foreground focus-visible:ring-ring -ml-0.5 inline-flex w-fit items-center gap-1.5 rounded-xs text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none";
+  "text-muted-foreground hover:text-foreground focus-visible:ring-ring -ml-0.5 inline-flex min-h-6 w-fit items-center gap-1.5 rounded-xs text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none";
 
 // The one way back, the same everywhere: an arrow and a word, above the
 // content it leaves. With `href` it goes there; without, it steps back in the
