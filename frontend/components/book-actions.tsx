@@ -4,7 +4,8 @@ import { Kbd } from "@/components/ui/kbd";
 import { useState, useSyncExternalStore } from "react";
 import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -76,37 +77,46 @@ export function BookActions({
 
   return (
     <>
-      <DropdownMenu>
-        {/* Label on the left, the menu's chevron at the far end. */}
-        <DropdownMenuTrigger render={<Button className="flex-1 justify-between" />}>
-          <span className="flex items-center gap-2">
-            <DownloadIcon />
-            Download
-          </span>
-          <span className="flex items-center gap-2">
-            <Kbd>D</Kbd>
+      {/* A split button: the common case, the EPUB, in one click (as D does);
+          the chevron holds the Markdown and the e-reader paths. */}
+      <div className="flex flex-1">
+        <a
+          href={epubUrl}
+          download
+          title={epubNote}
+          className={cn(buttonVariants(), "flex-1 gap-2 rounded-r-none")}
+        >
+          <DownloadIcon />
+          Download EPUB
+          <Kbd>D</Kbd>
+        </a>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="icon"
+                aria-label="More ways to get it"
+                className="border-l-primary-foreground/15 rounded-l-none"
+              />
+            }
+          >
             <ChevronDownIcon />
-          </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-(--anchor-width) min-w-60">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Download</DropdownMenuLabel>
-            <DropdownMenuItem className="py-2" render={<a href={epubUrl} download />}>
-              <span className="flex flex-col">
-                <span>EPUB</span>
-                <span className="text-muted-foreground text-xs">{epubNote}</span>
-              </span>
-            </DropdownMenuItem>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-60">
             {mdUrl && (
-              <DropdownMenuItem className="py-2" render={<a href={mdUrl} download />}>
-                <span className="flex flex-col">
-                  <span>Markdown</span>
-                  <span className="text-muted-foreground text-xs">{mdNote}</span>
-                </span>
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Download</DropdownMenuLabel>
+                  <DropdownMenuItem className="py-2" render={<a href={mdUrl} download />}>
+                    <span className="flex flex-col">
+                      <span>Markdown</span>
+                      <span className="text-muted-foreground text-xs">{mdNote}</span>
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
             )}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel>Send to an e-reader</DropdownMenuLabel>
             {shareable && (
@@ -125,8 +135,9 @@ export function BookActions({
               Kobo and other e-readers
             </DropdownMenuItem>
           </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <Dialog open={help} onOpenChange={setHelp}>
         <DialogContent className="gap-5 p-6 sm:max-w-md">
