@@ -545,16 +545,6 @@ function ComposeWorkspace({
               search, so it shows the tool at work, and never a dead link. */}
           {trimmed === "" && staged.length === 0 && (
             <div className="flex flex-col items-center gap-3">
-              {/* Reassurance, right under the field: what it costs, and what
-                  it reads (only what search really covers). */}
-              <p className="text-muted-foreground flex items-center gap-2 text-xs">
-                Free · No account ·
-                <span role="img" aria-label="YouTube, podcasts and the web" className="flex items-center gap-2">
-                  <ProviderIcon provider="youtube" className="size-3.5" />
-                  <PodcastIcon className="size-3.5" />
-                  <GlobeIcon className="size-3.5" />
-                </span>
-              </p>
               {/* What a search gives, drawn in reading order: the sources it
                   finds, threaded down into one book. Not on a phone: three
                   columns don't fit, and the compilation belongs right under
@@ -569,20 +559,15 @@ function ComposeWorkspace({
                   <section key={use.eyebrow} className="flex flex-col gap-2">
                     <span className="eyebrow">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
-                    {use.marks && (
-                      // Works with any AI: a few marks and a +, quieter than
-                      // the title above them.
-                      <span
-                        role="img"
-                        aria-label="Works with Claude, ChatGPT, Gemini and any other AI"
-                        className="text-muted-foreground flex items-center gap-2.5"
-                      >
-                        {use.marks.map((m) => (
-                          <ProviderIcon key={m} provider={m} className="size-4" />
-                        ))}
-                        <PlusIcon className="size-4" />
-                      </span>
-                    )}
+                    {/* What goes in, or where it goes: a few marks, quieter
+                        than the title above them. */}
+                    <span
+                      role="img"
+                      aria-label={use.marksLabel}
+                      className="text-muted-foreground flex items-center gap-2.5 [&_svg]:size-4"
+                    >
+                      {use.marks}
+                    </span>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
                         // Suggestions, not buttons: no fill, a faint edge,
@@ -1075,16 +1060,39 @@ function SortSelect({
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
-const USES: { eyebrow: string; title: string; marks?: string[]; topics: string[] }[] = [
+const USES: {
+  eyebrow: string;
+  title: string;
+  marks: React.ReactNode;
+  marksLabel: string;
+  topics: string[];
+}[] = [
   {
     eyebrow: "For reading",
     title: "Your backlog, as one book.",
+    // Only what search really reads: YouTube, podcasts, the web.
+    marks: (
+      <>
+        <ProviderIcon provider="youtube" />
+        <PodcastIcon />
+        <GlobeIcon />
+      </>
+    ),
+    marksLabel: "From YouTube, podcasts and the web",
     topics: ["Stoicism", "The fall of Rome"],
   },
   {
     eyebrow: "For AI context",
     title: "Clean context for your AI.",
-    marks: ["claude", "openai", "gemini"],
+    marks: (
+      <>
+        <ProviderIcon provider="claude" />
+        <ProviderIcon provider="openai" />
+        <ProviderIcon provider="gemini" />
+        <PlusIcon />
+      </>
+    ),
+    marksLabel: "Works with Claude, ChatGPT, Gemini and any other AI",
     topics: ["Next.js App Router", "How transformers work"],
   },
 ];
