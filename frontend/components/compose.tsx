@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
-  GlobeIcon,
   HistoryIcon,
   PlusIcon,
   PodcastIcon,
@@ -559,12 +558,13 @@ function ComposeWorkspace({
                   <section key={use.eyebrow} className="flex flex-col gap-2">
                     <span className="eyebrow">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
-                    {/* What goes in, or where it goes: a few marks, quieter
-                        than the title above them. */}
+                    {/* What goes in, or where it goes: the four most used,
+                        quieter than the title, fading out to say there are
+                        more. */}
                     <span
                       role="img"
                       aria-label={use.marksLabel}
-                      className="text-muted-foreground flex items-center gap-2.5 [&_svg]:size-4"
+                      className="text-muted-foreground flex items-center gap-2.5 self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
                     >
                       {use.marks}
                     </span>
@@ -1070,15 +1070,17 @@ const USES: {
   {
     eyebrow: "For reading",
     title: "Your backlog, as one book.",
-    // Only what search really reads: YouTube, podcasts, the web.
+    // Only what the app really reads, most used first: YouTube, podcasts
+    // (any show, through its feed), Wikipedia, blogs such as Substack.
     marks: (
       <>
         <ProviderIcon provider="youtube" />
         <PodcastIcon />
-        <GlobeIcon />
+        <ProviderIcon provider="wikipedia" />
+        <ProviderIcon provider="substack" />
       </>
     ),
-    marksLabel: "From YouTube, podcasts and the web",
+    marksLabel: "From YouTube, podcasts, Wikipedia, Substack and more",
     topics: ["Stoicism", "The fall of Rome"],
   },
   {
@@ -1090,10 +1092,9 @@ const USES: {
         <ProviderIcon provider="openai" />
         <ProviderIcon provider="gemini" />
         <ProviderIcon provider="xai" />
-        <ProviderIcon provider="mistral" />
       </>
     ),
-    marksLabel: "Works with Claude, ChatGPT, Gemini, Grok, Mistral and other AIs",
+    marksLabel: "Works with Claude, ChatGPT, Gemini, Grok and other AIs",
     topics: ["Next.js App Router", "How transformers work"],
   },
 ];
