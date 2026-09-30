@@ -259,6 +259,44 @@
   }
 }
 
+/* The finished book arrives in type, not icons: its title is written in from
+   the left (an ink stroke uncovering it, sharpening as it goes), then the
+   contents set line by line (each line's --i staggers it). Once, on arrival. */
+.ink-in {
+  animation: ink-in 1100ms var(--ease-out-quint) 150ms backwards;
+}
+
+@keyframes ink-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    filter: blur(4px);
+    opacity: 0.3;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.line-in {
+  animation: line-in 600ms var(--ease-out-quint) backwards;
+  animation-delay: calc(500ms + min(var(--i, 0), 16) * 60ms);
+}
+
+@keyframes line-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-in,
+  .line-in {
+    animation: none;
+  }
+}
+
 /* The home sketch: the sources fall into their tilted places, the book rises
    under them, then the threads draw down. Once, on arrival. */
 .sketch-card {

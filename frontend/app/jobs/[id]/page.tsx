@@ -871,8 +871,9 @@ function CompletedView({
     }
   }
 
+  const shownWords = useCountUp(words);
   const meta = `${sourceCount} source${sourceCount !== 1 ? "s" : ""}${
-    words != null ? ` · ~${words.toLocaleString("en-US")} words` : ""
+    shownWords != null ? ` · ~${shownWords.toLocaleString("en-US")} words` : ""
   }`;
 
   return (
@@ -899,6 +900,7 @@ function CompletedView({
           </>
         }
         title={job.book_title ?? ""}
+        titleClassName="ink-in"
         meta={meta}
         // What you do with the book, pinned under its contents so a long
         // table never pushes the downloads off screen. EPUB is the one gold
@@ -950,9 +952,7 @@ function CompletedView({
           </div>
         }
       >
-        <div className={cn(rise, riseIn)} style={delay(200)}>
-          <BookContents chapters={chapters} at={at} onGo={setAt} />
-        </div>
+        <BookContents chapters={chapters} at={at} onGo={setAt} />
 
         <LeftOutNotice
           items={job.discovered_items}
@@ -1042,7 +1042,7 @@ function BookContents({
       </h3>
       <ol className="-mx-2 flex flex-col">
         {chapters.map((c, i) => (
-          <li key={i}>
+          <li key={i} className="line-in" style={{ "--i": i } as React.CSSProperties}>
             <button
               type="button"
               onClick={() => onGo(i)}
@@ -1065,6 +1065,27 @@ function BookContents({
       </ol>
     </nav>
   );
+}
+
+// A number that runs up to its value once, when it first arrives (the finished
+// book's word count), easing out like the rest of the arrival.
+function useCountUp(target: number | null, ms = 1200): number | null {
+  const [shown, setShown] = useState<number | null>(null);
+  useEffect(() => {
+    if (target == null) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(target);
+      return;
+    }
+    const start = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      const t = Math.min((now - start) / ms, 1);
+      setShown(Math.round(target * (1 - (1 - t) ** 4)));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [target, ms]);
+  return shown;
 }
 
 type Chapter = { title: string; body: string };

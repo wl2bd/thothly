@@ -18,6 +18,7 @@ export function CompilationPane({
   children,
   footer,
   className,
+  titleClassName,
 }: {
   // Absent: no header at all (the empty workspace shows its history instead).
   title?: string;
@@ -28,6 +29,7 @@ export function CompilationPane({
   children?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  titleClassName?: string;
 }) {
   // On a phone the footer is fixed to the screen's bottom edge, out of the
   // flow, so the pane reserves its height to keep the last content visible.
@@ -68,7 +70,7 @@ export function CompilationPane({
                 className="font-display text-xl md:text-xl"
               />
             ) : (
-              <p className="font-display text-xl tracking-tight text-balance">
+              <p className={cn("font-display text-xl tracking-tight text-balance", titleClassName)}>
                 {title || "Untitled compilation"}
               </p>
             )}
