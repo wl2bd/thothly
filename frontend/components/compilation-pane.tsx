@@ -130,7 +130,8 @@ export function Workspace({ children }: { children: ReactNode }) {
   return (
     <main
       id="main"
-      className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_400px]"
+      // One column until a compilation pane is there to sit beside the work.
+      className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-1 lg:has-[>aside]:grid-cols-[minmax(0,1fr)_400px]"
     >
       {children}
     </main>

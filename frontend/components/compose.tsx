@@ -45,7 +45,12 @@ import {
   type ProviderError,
   type SearchResult,
 } from "@/lib/api";
-import { recordCompilation } from "@/lib/history";
+import {
+  getHistoryServerSnapshot,
+  getHistorySnapshot,
+  recordCompilation,
+  subscribeHistory,
+} from "@/lib/history";
 import {
   loadDraft,
   normalizeUrl,
@@ -137,6 +142,10 @@ function ComposeWorkspace({
   const [typedTitle, setTypedTitle] = useState<string | null>(initialDraft?.typedTitle ?? null);
   const title = typedTitle ?? suggestedTitle;
   const [queries, setQueries] = useState<string[]>(initialDraft?.queries ?? []);
+  // No pane until there is something to put in it: a staged source, or a
+  // compilation this browser remembers. The search takes the full width.
+  const history = useSyncExternalStore(subscribeHistory, getHistorySnapshot, getHistoryServerSnapshot);
+  const showPane = staged.length > 0 || (history?.length ?? 0) > 0;
 
   // Kept for the tab's session, so going back finds the list again. Only the
   // client-side mount writes: the hydration pass starts empty and must not
@@ -626,57 +635,59 @@ function ComposeWorkspace({
 
       {/* The compilation. On a phone it gives way to the search while one
           runs, and a compact bar (below) keeps Review within thumb's reach. */}
-      <CompilationPane
-        // No header until there is a compilation to name; before that, the
-        // pane is the history, with its own heading.
-        title={staged.length > 0 ? title : undefined}
-        onTitleChange={setTypedTitle}
-        meta={`${staged.length} of ${MAX_SOURCES} sources`}
-        className={cn(showResults && "max-lg:hidden")}
-        footer={
-          <>
-            {compileError && <Notice variant="error">{compileError}</Notice>}
-            <div className="flex items-center justify-between gap-3">
-              {staged.length > 0 ? (
+      {showPane && (
+        <CompilationPane
+          // No header until there is a compilation to name; before that, the
+          // pane is the history, with its own heading.
+          title={staged.length > 0 ? title : undefined}
+          onTitleChange={setTypedTitle}
+          meta={`${staged.length} of ${MAX_SOURCES} sources`}
+          className={cn(showResults && "max-lg:hidden")}
+          footer={
+            <>
+              {compileError && <Notice variant="error">{compileError}</Notice>}
+              <div className="flex items-center justify-between gap-3">
+                {staged.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetStaged}
+                    disabled={submitting}
+                    className="text-muted-foreground -ml-2.5"
+                  >
+                    Clear all
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground text-xs">
+                    Up to {MAX_SOURCES} sources per book
+                  </span>
+                )}
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetStaged}
-                  disabled={submitting}
-                  className="text-muted-foreground -ml-2.5"
+                  onClick={onCompile}
+                  disabled={submitting || staged.length === 0}
                 >
-                  Clear all
+                  {reviewLabel}
                 </Button>
-              ) : (
-                <span className="text-muted-foreground text-xs">
-                  Up to {MAX_SOURCES} sources per book
-                </span>
-              )}
-              <Button
-                onClick={onCompile}
-                disabled={submitting || staged.length === 0}
-              >
-                {reviewLabel}
-              </Button>
-            </div>
-          </>
-        }
-      >
-        {staged.length === 0 ? (
-          <CompilationHistory />
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {staged.map((s) => (
-              <StagedRow
-                key={s.url}
-                source={s}
-                onRemove={() => removeStaged(s.url)}
-              />
-            ))}
-          </ul>
-        )}
-      </CompilationPane>
+              </div>
+            </>
+          }
+        >
+          {staged.length === 0 ? (
+            <CompilationHistory />
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {staged.map((s) => (
+                <StagedRow
+                  key={s.url}
+                  source={s}
+                  onRemove={() => removeStaged(s.url)}
+                />
+              ))}
+            </ul>
+          )}
+        </CompilationPane>
+      )}
 
       {/* Phone only, while a search runs: the compilation shrinks to its count
           and its action, pinned at the bottom of the screen. */}
