@@ -32,9 +32,9 @@ export function AppHeader() {
         <NavLink href="/about" className={navLink}>
           About
         </NavLink>
+        <ShortcutsHelp />
         <ThemeToggle />
       </div>
-      <ShortcutsHelp />
     </header>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Kbd } from "@/components/ui/kbd";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
@@ -70,9 +71,10 @@ export function SettingsLink({ className }: { className?: string }) {
         aria-expanded={open}
         aria-keyshortcuts=","
         onClick={() => setSettingsOpen(!open)}
-        className={cn(className, open && "text-foreground")}
+        className={cn(className, "flex items-center gap-1.5", open && "text-foreground")}
       >
         Settings
+        <Kbd>,</Kbd>
       </button>
       {/* Portalled to the body: the header's backdrop blur would otherwise
           trap a fixed panel inside its 56px. */}

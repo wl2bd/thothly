@@ -1,5 +1,6 @@
 "use client";
 
+import { Kbd, ModKey } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
 import {
   startTransition,
@@ -505,6 +506,11 @@ function ComposeWorkspace({
                   <PlusIcon />
                   Add
                 </Button>
+              ) : query === "" ? (
+                // An empty bar says how to reach it from anywhere on the page.
+                <Kbd className="text-muted-foreground pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
+                  /
+                </Kbd>
               ) : (
                 query !== "" && (
                   <Button
@@ -710,6 +716,11 @@ function ComposeWorkspace({
                   className="flex-1"
                 >
                   {reviewLabel}
+                  {staged.length > 0 && !submitting && (
+                    <Kbd>
+                      <ModKey /> ↵
+                    </Kbd>
+                  )}
                 </Button>
               </div>
             </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Kbd } from "@/components/ui/kbd";
 import { useState, useSyncExternalStore } from "react";
 
 import {
@@ -19,6 +20,18 @@ export function ShortcutsHelp() {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
   useShortcut("?", () => setOpen(true));
   return (
+    <>
+    {/* The list's own door, in the header: the key that opens it, as a
+        button. Only where there is a keyboard. */}
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      aria-label="Keyboard shortcuts"
+      aria-keyshortcuts="?"
+      className="text-muted-foreground hover:text-foreground px-1 transition-colors [@media(hover:none)]:hidden"
+    >
+      <Kbd>?</Kbd>
+    </button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
@@ -34,12 +47,9 @@ export function ShortcutsHelp() {
               </dt>
               <dd className="flex shrink-0 gap-1">
                 {s.keys.map((k) => (
-                  <kbd
-                    key={k}
-                    className="bg-muted text-muted-foreground min-w-6 rounded-sm border px-1.5 py-0.5 text-center font-sans text-xs"
-                  >
+                  <Kbd key={k} className="text-muted-foreground">
                     {k === "Mod" ? (mac ? "⌘" : "Ctrl") : k}
-                  </kbd>
+                  </Kbd>
                 ))}
               </dd>
             </div>
@@ -47,5 +57,6 @@ export function ShortcutsHelp() {
         </dl>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

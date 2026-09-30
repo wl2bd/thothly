@@ -1,5 +1,6 @@
 "use client";
 
+import { Kbd } from "@/components/ui/kbd";
 import { useState, useSyncExternalStore } from "react";
 import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
@@ -82,7 +83,10 @@ export function BookActions({
             <DownloadIcon />
             Download
           </span>
-          <ChevronDownIcon />
+          <span className="flex items-center gap-2">
+            <Kbd>D</Kbd>
+            <ChevronDownIcon />
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-(--anchor-width) min-w-60">
           <DropdownMenuGroup>

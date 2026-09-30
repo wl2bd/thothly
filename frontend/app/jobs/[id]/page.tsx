@@ -1,5 +1,6 @@
 "use client";
 
+import { Kbd, ModKey } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
 import {
   Fragment,
@@ -417,6 +418,7 @@ export default function JobPage() {
       className={cn(buttonVariants({ variant: "outline" }), "w-full")}
     >
       New compilation
+      <Kbd>N</Kbd>
     </Link>
   );
 
@@ -961,6 +963,7 @@ function CompletedView({
                       <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
                       <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Copied</span>
                     </span>
+                    <Kbd>C</Kbd>
                   </Button>
                 </Tooltip>
               )}
@@ -976,6 +979,7 @@ function CompletedView({
               className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground w-full")}
             >
               New compilation
+              <Kbd>N</Kbd>
             </Link>
           </div>
         }
@@ -1423,6 +1427,7 @@ function ReviewList({
           }
         />
         <span className="text-muted-foreground">Select all</span>
+        <Kbd className="text-muted-foreground">A</Kbd>
       </label>
 
       {items.length > 8 && (
@@ -1544,6 +1549,11 @@ function ReviewList({
                   : title.trim() === ""
                     ? "Add a title"
                     : "Compile"}
+              {!confirming && selected.size > 0 && title.trim() !== "" && (
+                <Kbd>
+                  <ModKey /> ↵
+                </Kbd>
+              )}
             </Button>
           </>
         }
