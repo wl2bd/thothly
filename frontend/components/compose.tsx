@@ -12,8 +12,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  GlobeIcon,
   HistoryIcon,
   PlusIcon,
+  PodcastIcon,
   SearchIcon,
   SearchXIcon,
   Trash2Icon,
@@ -36,6 +38,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
+import { ProviderIcon } from "@/components/provider-icon";
 import { ToolSketch } from "@/components/tool-sketch";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
 import {
@@ -541,12 +544,22 @@ function ComposeWorkspace({
           {/* First visit: something to press instead of a blank pane. A real
               search, so it shows the tool at work, and never a dead link. */}
           {trimmed === "" && staged.length === 0 && (
-            <div className="flex flex-col items-center gap-3 pt-6">
+            <div className="flex flex-col items-center gap-3">
+              {/* Reassurance, right under the field: what it costs, and what
+                  it reads (only what search really covers). */}
+              <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                Free · No account ·
+                <span role="img" aria-label="YouTube, podcasts and the web" className="flex items-center gap-2">
+                  <ProviderIcon provider="youtube" className="size-3.5" />
+                  <PodcastIcon className="size-3.5" />
+                  <GlobeIcon className="size-3.5" />
+                </span>
+              </p>
               {/* What a search gives, drawn in reading order: the sources it
                   finds, threaded down into one book. Not on a phone: three
                   columns don't fit, and the compilation belongs right under
                   the field there. */}
-              <div className="hidden w-full pt-12 sm:block">
+              <div className="hidden w-full pt-8 sm:block">
                 <ToolSketch />
               </div>
               {/* The two uses, each with topics to try: a book to read, or
