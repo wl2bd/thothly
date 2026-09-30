@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { ArrowLeftIcon } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -320,33 +314,37 @@ function EndpointForm({
 }
 
 // The in-flow entry from the review screen: one kind at a time, the one the
-// visitor just reached for. Closes itself once a checked key is saved. Changing
-// or removing a key later lives in the AI models panel too.
-export function ConnectModelDialog({
+// visitor just reached for, shown in the compilation pane in place of what it
+// held (no pop-in over the page). Back once a checked key is saved. Changing or
+// removing a key later lives in the AI models panel too.
+export function ConnectModelStep({
   kind,
   config,
-  onOpenChange,
+  onDone,
 }: {
-  kind: ModelKind | null;
+  kind: ModelKind;
   config: LlmConfig;
-  onOpenChange: (open: boolean) => void;
+  onDone: () => void;
 }) {
-  const copy = KIND_COPY[kind ?? "llm"];
+  const copy = KIND_COPY[kind];
+  // On a phone the pane sits under the list: bring the step into view.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), []);
   return (
-    <Dialog open={kind !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] gap-5 overflow-y-auto p-6 sm:max-w-md">
-        <DialogHeader className="pr-8">
-          <DialogTitle>{copy.title}</DialogTitle>
-          <DialogDescription>
-            {copy.purpose} {PRIVACY}
-          </DialogDescription>
-        </DialogHeader>
-        {kind && (
-          <ModelEndpointSettings kind={kind} config={config} onSaved={() => onOpenChange(false)} />
-        )}
-        {kind === "llm" && <ModelInstructions config={config} />}
-      </DialogContent>
-    </Dialog>
+    <div ref={ref} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onDone} className="text-muted-foreground -ml-2.5 self-start">
+          <ArrowLeftIcon />
+          Back
+        </Button>
+        <h3 className="font-display text-xl tracking-tight">{copy.title}</h3>
+        <p className="text-muted-foreground text-sm">
+          {copy.purpose} {PRIVACY}
+        </p>
+      </div>
+      <ModelEndpointSettings kind={kind} config={config} onSaved={onDone} />
+      {kind === "llm" && <ModelInstructions config={config} />}
+    </div>
   );
 }
 

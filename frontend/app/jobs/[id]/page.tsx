@@ -71,7 +71,7 @@ import {
   hostOf,
   kindFromItemType,
 } from "@/components/source-kind";
-import { ConnectModelDialog, type ModelKind } from "@/components/connect-model";
+import { ConnectModelStep, type ModelKind } from "@/components/connect-model";
 import { recordCompilation } from "@/lib/history";
 import { clearDraft, restoreJobDraft } from "@/lib/workspace-draft";
 import { toVisitorEndpoint, withBrowserModels, type StoredEndpoint } from "@/lib/model-keys";
@@ -1646,7 +1646,9 @@ function ReviewList({
           </>
         }
       >
-        {llm && llm.roles.length > 0 && polishableSelected > 0 ? (
+        {llm && connecting ? (
+          <ConnectModelStep kind={connecting} config={llm} onDone={() => setConnecting(null)} />
+        ) : llm && llm.roles.length > 0 && polishableSelected > 0 ? (
           <RoleSelector
             onConnect={() => setConnecting("llm")}
             browserModel={storedModels.llm}
@@ -1665,13 +1667,6 @@ function ReviewList({
         )}
       </CompilationPane>
 
-      {llm && (
-        <ConnectModelDialog
-          kind={connecting}
-          config={llm}
-          onOpenChange={(open) => !open && setConnecting(null)}
-        />
-      )}
     </>
   );
 }
