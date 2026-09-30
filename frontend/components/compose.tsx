@@ -443,7 +443,7 @@ function ComposeWorkspace({
                     Make anything readable
                   </h1>
                   <p className="text-muted-foreground max-w-lg text-lg text-balance">
-                    Turn videos, podcasts and articles into one clean document.
+                    Turn video, podcast and article links into one clean document.
                   </p>
                 </div>
               </div>
