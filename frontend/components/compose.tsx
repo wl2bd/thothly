@@ -36,7 +36,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
-import { ToolSketch } from "@/components/tool-sketch";
+import { SKETCH_TOPICS, ToolSketch } from "@/components/tool-sketch";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
 import {
   createJob,
@@ -142,6 +142,8 @@ function ComposeWorkspace({
   const [typedTitle, setTypedTitle] = useState<string | null>(initialDraft?.typedTitle ?? null);
   const title = typedTitle ?? suggestedTitle;
   const [queries, setQueries] = useState<string[]>(initialDraft?.queries ?? []);
+  // The topic the home sketch draws; the use blocks' chips switch it.
+  const [sketchTopic, setSketchTopic] = useState("Stoicism");
   // No pane until there is something to put in it: a staged source, or a
   // compilation this browser remembers. The search takes the full width.
   const history = useSyncExternalStore(subscribeHistory, getHistorySnapshot, getHistoryServerSnapshot);
@@ -534,7 +536,14 @@ function ComposeWorkspace({
                   columns don't fit, and the compilation belongs right under
                   the field there. */}
               <div className="hidden w-full pt-12 sm:block">
-                <ToolSketch />
+                <ToolSketch
+                  key={sketchTopic}
+                  example={SKETCH_TOPICS[sketchTopic]}
+                  onBuild={(q) => {
+                    setQuery(q);
+                    inputRef.current?.focus();
+                  }}
+                />
               </div>
               {/* The two uses, each with topics to try: a book to read, or
                   context for an AI. */}
@@ -550,9 +559,18 @@ function ComposeWorkspace({
                           type="button"
                           variant="outline"
                           size="sm"
+                          aria-pressed={q === sketchTopic}
+                          className="aria-pressed:border-foreground/40 aria-pressed:bg-foreground/5"
                           onClick={() => {
-                            setQuery(q);
-                            inputRef.current?.focus();
+                            // Where the sketch shows, a topic redraws it (its
+                            // Build this book runs the search); on a phone,
+                            // with no sketch, it searches straight away.
+                            if (matchMedia("(min-width: 640px)").matches) {
+                              setSketchTopic(q);
+                            } else {
+                              setQuery(q);
+                              inputRef.current?.focus();
+                            }
                           }}
                         >
                           {q}
