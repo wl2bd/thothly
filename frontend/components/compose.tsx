@@ -559,7 +559,9 @@ function ComposeWorkspace({
               <div className="grid w-full gap-8 pt-4 text-left sm:grid-cols-2">
                 {USES.map((use) => (
                   <section key={use.eyebrow} className="flex flex-col gap-2">
-                    <span className="eyebrow">{use.eyebrow}</span>
+                    {/* Firmer ink than the usual muted: these sit on the
+                        densest gold. */}
+                    <span className="eyebrow text-foreground/70">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
                     {/* What goes in, or where it goes: the four most used,
                         quieter than the title, fading out to say there are
@@ -567,7 +569,7 @@ function ComposeWorkspace({
                     <span
                       role="img"
                       aria-label={use.marksLabel}
-                      className="text-muted-foreground flex items-center gap-2.5 self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
+                      className="text-foreground/70 flex items-center gap-2.5 self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
                     >
                       {use.marks}
                     </span>
@@ -580,7 +582,7 @@ function ComposeWorkspace({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="border-foreground/10 text-foreground/75 dark:border-foreground/10 bg-transparent shadow-none"
+                          className="border-foreground/15 text-foreground/85 dark:border-foreground/15 bg-transparent shadow-none"
                           onClick={() => {
                             setQuery(q);
                             inputRef.current?.focus();
@@ -591,7 +593,7 @@ function ComposeWorkspace({
                       ))}
                     </div>
                     {/* A real one, made by the app, to see what you'd get. */}
-                    <Link href={use.example} className="text-link text-muted-foreground self-start pt-1 text-sm">
+                    <Link href={use.example} className="text-link text-foreground/75 self-start pt-1 text-sm">
                       See example
                     </Link>
                   </section>
