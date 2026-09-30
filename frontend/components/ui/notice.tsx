@@ -11,7 +11,8 @@ const tone = {
   error: "text-destructive *:data-[slot=alert-description]:text-destructive/90",
   // News, not an alarm: the kit's neutral Alert, no orange (Wael, 2026-09-28).
   warning: "",
-  info: "text-info *:data-[slot=alert-description]:text-info/90",
+  // Neutral too: the palette is ink and gold, no blue.
+  info: "",
 } as const
 
 const icon = {
