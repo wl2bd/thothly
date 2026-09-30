@@ -1089,10 +1089,11 @@ const USES: {
         <ProviderIcon provider="claude" />
         <ProviderIcon provider="openai" />
         <ProviderIcon provider="gemini" />
-        <PlusIcon />
+        <ProviderIcon provider="xai" />
+        <ProviderIcon provider="mistral" />
       </>
     ),
-    marksLabel: "Works with Claude, ChatGPT, Gemini and any other AI",
+    marksLabel: "Works with Claude, ChatGPT, Gemini, Grok, Mistral and other AIs",
     topics: ["Next.js App Router", "How transformers work"],
   },
 ];
