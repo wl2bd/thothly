@@ -16,14 +16,14 @@ import {
   type CompilationSnapshot,
 } from "@/lib/history";
 
-// What a row says about a compilation that is not simply ready. `completed` is
-// absent on purpose: a finished compilation needs no state, and labelling every
-// row would turn the list into a status board instead of a way back in.
+// What a row says about a compilation: still being built, ready for you to
+// pick what goes in, ready to read, or stopped.
 const STATUS_LABEL: Partial<Record<JobStatus, string>> = {
-  pending: "Queued",
-  discovering: "Finding sources",
-  reviewing: "Waiting for you",
-  processing: "Compiling",
+  pending: "Building…",
+  discovering: "Building…",
+  reviewing: "Ready to review",
+  processing: "Building…",
+  completed: "Ready",
   failed: "Did not finish",
 };
 
@@ -122,7 +122,7 @@ export function CompilationHistory() {
   return (
     <div className="flex flex-col gap-3">
       <h2 className="eyebrow">
-        Recent compilations
+        Your books
       </h2>
       <ul className="flex flex-col">
         {entries.map((entry) => (

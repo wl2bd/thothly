@@ -641,7 +641,7 @@ function ComposeWorkspace({
                 </Button>
               ) : (
                 <span className="text-muted-foreground text-xs">
-                  Up to {MAX_SOURCES} sources
+                  Up to {MAX_SOURCES} sources per book
                 </span>
               )}
               <Button

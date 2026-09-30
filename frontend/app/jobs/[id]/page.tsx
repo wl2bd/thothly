@@ -489,7 +489,7 @@ export default function JobPage() {
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
             This can take a few minutes. It keeps going if you leave, and waits
-            for you in Recent compilations.
+            for you in Your books.
           </p>
         </CompilationPane>
       </>
@@ -523,7 +523,7 @@ export default function JobPage() {
 
 // Back to the workspace while the list can still change: the same sources and
 // title come back there, and launching again starts a new compilation (this
-// one stays in Recent compilations).
+// one stays in Your books).
 function BackToSources({
   jobId,
   sources,
