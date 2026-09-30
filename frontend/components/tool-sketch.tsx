@@ -61,7 +61,8 @@ export function ToolSketch() {
                 animationDelay: `${i * 110}ms`,
               } as React.CSSProperties
             }
-            className="sketch-card border-foreground/10 bg-background/60 text-muted-foreground flex min-w-0 items-center gap-2.5 rounded-lg border p-2 text-left"
+            // Light: an opaque card lifted off the glow, which swallowed it.
+            className="sketch-card border-foreground/10 bg-card/90 shadow-sm dark:bg-background/60 dark:shadow-none text-muted-foreground flex min-w-0 items-center gap-2.5 rounded-lg border p-2 text-left"
           >
             <span
               className={cn(
@@ -97,7 +98,7 @@ export function ToolSketch() {
       </svg>
 
       {/* The book, whole, with the three ways out of it along its foot. */}
-      <div className="sketch-book border-foreground/15 text-muted-foreground flex w-72 flex-col rounded-lg border px-5 pt-4 pb-4 text-left">
+      <div className="sketch-book border-foreground/15 bg-card/90 shadow-sm dark:bg-transparent dark:shadow-none text-muted-foreground flex w-72 flex-col rounded-lg border px-5 pt-4 pb-4 text-left">
         <span className="eyebrow text-inherit">Compilation</span>
         <span className="font-display text-foreground/75 mt-1.5 text-lg tracking-tight">
           Stoicism
@@ -117,7 +118,7 @@ export function ToolSketch() {
           {["EPUB", "Markdown", "Send to e-reader"].map((out) => (
             <li
               key={out}
-              className="border-foreground/10 rounded-sm border px-1.5 py-0.5 text-[0.65rem] whitespace-nowrap"
+              className="border-foreground/15 text-foreground/75 rounded-sm border px-1.5 py-0.5 text-xs whitespace-nowrap"
             >
               {out}
             </li>
