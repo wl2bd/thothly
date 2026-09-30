@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -103,6 +103,32 @@ export function ModelEndpointSettings({
       onSave={save}
       onCancel={current ? () => setReplacing(false) : undefined}
     />
+  );
+}
+
+// Where each provider hands out keys. A provider missing here (or your own
+// server) just gets no link.
+const KEY_PAGES: Record<string, string> = {
+  openai: "https://platform.openai.com/api-keys",
+  mistral: "https://console.mistral.ai/api-keys",
+  openrouter: "https://openrouter.ai/settings/keys",
+  groq: "https://console.groq.com/keys",
+  together: "https://api.together.ai/settings/api-keys",
+};
+
+function GetKeyLink({ provider, label }: { provider: string; label: string }) {
+  const href = KEY_PAGES[provider];
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-xs underline decoration-current/35 underline-offset-3"
+    >
+      Get a key from {label}
+      <ExternalLinkIcon className="size-3" aria-hidden />
+    </a>
   );
 }
 
@@ -285,6 +311,10 @@ function EndpointForm({
           placeholder={initial ? `Replacing ${maskKey(initial.apiKey)}` : "Paste your key"}
           autoComplete="off"
           spellCheck={false}
+        />
+        <GetKeyLink
+          provider={provider}
+          label={options.find((o) => o.value === provider)?.label ?? provider}
         />
       </div>
 
@@ -595,6 +625,7 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
                     </Button>
                   )}
                 </div>
+                <GetKeyLink provider={provider} label={labelOf(provider)} />
               </div>
             </div>
           );
