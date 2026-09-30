@@ -138,7 +138,7 @@ export function CompilationHistory() {
   if (visible.length === 0) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="font-display text-xl tracking-tight">Nothing compiled yet</h2>
+        <h3 className="text-base font-medium">Nothing compiled yet</h3>
         <p className="text-muted-foreground text-sm leading-relaxed text-balance">
           Your sources land here, ready to review.
         </p>
@@ -156,9 +156,9 @@ export function CompilationHistory() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* The pane's title, in the same voice as "Nothing compiled yet"; the
-          groups under it keep the small label. */}
-      <h2 className="font-display text-xl tracking-tight">Your compilations</h2>
+      {/* A section of the pane, under its title: a step below it, a step
+          above the To review and Ready labels. */}
+      <h3 className="text-base font-medium">Your compilations</h3>
       {[
         { label: "To review", books: toReview },
         { label: "Ready", books: ready },
@@ -166,7 +166,7 @@ export function CompilationHistory() {
         ({ label, books }) =>
           books.length > 0 && (
             <section key={label} aria-label={label} className="flex flex-col gap-1">
-              <h3 className="eyebrow">{label}</h3>
+              <h4 className="eyebrow">{label}</h4>
               <ul className="flex flex-col">
                 {books.map((entry) => (
                   <BookRow key={entry.id} entry={entry} onDelete={() => remove(entry)} />

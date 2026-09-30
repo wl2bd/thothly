@@ -427,7 +427,12 @@ export default function JobPage() {
             <StatusMessage label="Loading…" />
           )}
         </WorkPane>
-        <CompilationPane title="" footer={error ? newCompilation : undefined} />
+        <CompilationPane
+          eyebrow="Opening"
+          title="Loading…"
+          titleClassName="text-muted-foreground"
+          footer={error ? newCompilation : <WaitingButton label="Loading…" />}
+        />
       </>
     );
   } else if (job.status === "pending" || job.status === "discovering") {
@@ -439,8 +444,10 @@ export default function JobPage() {
           <DiscoveringView sources={job.sources} />
         </WorkPane>
         <CompilationPane
+          eyebrow="Finding sources"
           title={job.book_title ?? ""}
           meta={`${n} source${n !== 1 ? "s" : ""}`}
+          footer={<WaitingButton label="Finding sources…" />}
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
             Listing what each source contains. You pick what goes in next.
@@ -484,8 +491,10 @@ export default function JobPage() {
           <CompilingView items={job.discovered_items} />
         </WorkPane>
         <CompilationPane
+          eyebrow="Compiling"
           title={job.book_title ?? ""}
           meta={`${built} of ${job.discovered_items.length} ready`}
+          footer={<WaitingButton label="Compiling…" />}
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
             This can take a few minutes. It keeps going if you leave, and waits
@@ -505,8 +514,9 @@ export default function JobPage() {
           <FailedView job={job} />
         </WorkPane>
         <CompilationPane
+          eyebrow="Did not finish"
           title={job.book_title ?? ""}
-          meta="Did not finish"
+          meta={`${job.sources.length} source${job.sources.length !== 1 ? "s" : ""}`}
           footer={newCompilation}
         />
       </>
@@ -1490,6 +1500,7 @@ function ReviewList({
           action. Polish and price sit here, against Compile, once we know what
           was found. */}
       <CompilationPane
+        eyebrow="Review"
         title={title}
         onTitleChange={onTitleChange}
         meta={`${selected.size} of ${items.length} item${items.length !== 1 ? "s" : ""} selected`}
@@ -2067,5 +2078,15 @@ function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
         {parts.length > 1 && <span className="ml-1">({parts.join(" · ")})</span>}
       </span>
     </div>
+  );
+}
+
+// The footer of a step that is working on its own: the primary action's place,
+// saying what is happening.
+function WaitingButton({ label }: { label: string }) {
+  return (
+    <Button type="button" disabled className="w-full">
+      {label}
+    </Button>
   );
 }

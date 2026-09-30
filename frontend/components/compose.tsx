@@ -674,36 +674,32 @@ function ComposeWorkspace({
           runs, and a compact bar (below) keeps Review within thumb's reach. */}
       {showPane && (
         <CompilationPane
-          // No header until there is a compilation to name; before that, the
-          // pane is the history, with its own heading.
-          title={staged.length > 0 ? title : undefined}
+          // The compilation being built, named from its first source; before
+          // that, its body is the history.
+          eyebrow="New compilation"
+          title={title}
           onTitleChange={setTypedTitle}
           meta={`${staged.length} of ${MAX_SOURCES} sources`}
           className={cn(showResults && "max-lg:hidden")}
           footer={
             <>
               {compileError && <Notice variant="error">{compileError}</Notice>}
-              <div className="flex items-center justify-between gap-3">
-                {staged.length > 0 ? (
+              <div className="flex gap-2">
+                {staged.length > 0 && (
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     onClick={resetStaged}
                     disabled={submitting}
-                    className="text-muted-foreground -ml-2.5"
+                    className="text-muted-foreground"
                   >
                     Clear all
                   </Button>
-                ) : (
-                  // The book being built, before its first source.
-                  <span className="text-muted-foreground text-xs tabular-nums">
-                    New compilation · 0/{MAX_SOURCES} sources
-                  </span>
                 )}
                 <Button
                   onClick={onCompile}
                   disabled={submitting || staged.length === 0}
+                  className="flex-1"
                 >
                   {reviewLabel}
                 </Button>

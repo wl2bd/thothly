@@ -1,0 +1,91 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
+
+import { ModelSettingsPanel } from "@/components/connect-model";
+import { PaneFrame } from "@/components/pane-frame";
+import { Button } from "@/components/ui/button";
+import { setSettingsOpen, usePaneCount, useSettingsOpen, useWide } from "@/lib/settings-open";
+import { cn } from "@/lib/utils";
+
+const close = () => setSettingsOpen(false);
+
+// Settings, in the pane's own shape. Set once and rarely touched again, so it
+// takes the compilation pane's place instead of a page of its own: Done, and
+// the work is where it was.
+export function SettingsPaneContent() {
+  const titleRef = useRef<HTMLParagraphElement>(null);
+  // Focus lands on the pane's title, so a keyboard or screen reader follows
+  // the swap; Escape closes, like any panel.
+  useEffect(() => {
+    titleRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <PaneFrame
+      eyebrow="Settings"
+      title="AI models"
+      titleRef={titleRef}
+      meta="Optional. Your keys stay in this browser."
+      footer={
+        <Button type="button" className="w-full" onClick={close}>
+          Done
+        </Button>
+      }
+    >
+      <details className="text-muted-foreground -mt-2 text-xs">
+        <summary className="hover:text-foreground w-fit cursor-pointer underline decoration-current/35 underline-offset-3">
+          How keys are used
+        </summary>
+        <p className="mt-1.5">
+          Thothly sends your key to your provider only to check it and to run a compilation you
+          start. It never stores it.
+        </p>
+      </details>
+      <ModelSettingsPanel />
+    </PaneFrame>
+  );
+}
+
+// The header's Settings link, and the stand-alone pane for when there is no
+// compilation pane to turn over (a page without one, or a phone, where the
+// pane sits out of sight under the work).
+export function SettingsLink({ className }: { className?: string }) {
+  const open = useSettingsOpen();
+  const panes = usePaneCount();
+  const wide = useWide();
+  const pathname = usePathname();
+
+  // Settings belongs to the screen it was opened on.
+  useEffect(close, [pathname]);
+
+  const standalone = open && (panes === 0 || !wide);
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setSettingsOpen(!open)}
+        className={cn(className, open && "text-foreground")}
+      >
+        Settings
+      </button>
+      {/* Portalled to the body: the header's backdrop blur would otherwise
+          trap a fixed panel inside its 56px. */}
+      {standalone &&
+        createPortal(
+        <aside
+          aria-label="Settings"
+          className="bg-card fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col border-t lg:left-auto lg:w-[400px] lg:border-t-0 lg:border-l"
+        >
+          <SettingsPaneContent />
+        </aside>,
+        document.body,
+      )}
+    </>
+  );
+}

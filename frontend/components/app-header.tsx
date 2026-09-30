@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { SettingsSheet } from "@/components/settings-sheet";
+import { SettingsLink } from "@/components/settings-pane";
 import { Logotype } from "@/components/brand";
 import { version } from "@/package.json";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -21,7 +21,7 @@ export function AppHeader() {
       </Link>
       <div className="flex items-center gap-1 sm:gap-2">
         {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}
-        <SettingsSheet triggerClassName={navLink} />
+        <SettingsLink className={navLink} />
         <Link href="/about" className={navLink}>
           About
         </Link>
