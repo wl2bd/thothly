@@ -45,7 +45,7 @@ export function BookReader({
         <span className="text-muted-foreground text-xs tabular-nums">
           Chapter {at + 1} of {chapters.length}
         </span>
-        <article className="flex max-w-prose flex-col gap-4">
+        <article className="flex max-w-prose flex-col gap-4 wrap-break-word">
           <h2 className="font-display text-3xl tracking-tight text-balance">
             {chapter.title}
           </h2>
