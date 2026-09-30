@@ -17,7 +17,7 @@ const close = () => setSettingsOpen(false);
 // takes the compilation pane's place instead of a page of its own: Back, and
 // the work is where it was.
 export function SettingsPaneContent() {
-  const titleRef = useRef<HTMLParagraphElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   // Focus lands on the pane's title, so a keyboard or screen reader follows
   // the swap; Escape closes, like any panel.
   useEffect(() => {
@@ -74,7 +74,7 @@ export function SettingsLink({ className }: { className?: string }) {
         className={cn(className, "flex items-center gap-1.5", open && "text-foreground")}
       >
         Settings
-        <Kbd>,</Kbd>
+        <Kbd className="max-sm:hidden">,</Kbd>
       </button>
       {/* Portalled to the body: the header's backdrop blur would otherwise
           trap a fixed panel inside its 56px. */}

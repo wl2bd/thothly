@@ -32,7 +32,7 @@ export function PaneFrame({
   // Present: the title is editable in place.
   onTitleChange?: (value: string) => void;
   titleClassName?: string;
-  titleRef?: Ref<HTMLParagraphElement>;
+  titleRef?: Ref<HTMLHeadingElement>;
   meta?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
@@ -55,7 +55,7 @@ export function PaneFrame({
             <Kbd>Esc</Kbd>
           </Button>
         )}
-        <h2 className="eyebrow flex items-center gap-2">{eyebrow}</h2>
+        <p className="eyebrow flex items-center gap-2">{eyebrow}</p>
         {onTitleChange ? (
           // The compilation's name, in its own voice, in the same field as
           // every other input.
@@ -68,13 +68,13 @@ export function PaneFrame({
             className="font-display text-xl md:text-xl"
           />
         ) : (
-          <p
+          <h2
             ref={titleRef}
             tabIndex={titleRef ? -1 : undefined}
             className={cn("font-display text-xl tracking-tight text-balance outline-none", titleClassName)}
           >
             {title || "Untitled compilation"}
-          </p>
+          </h2>
         )}
         {meta && <span className="text-muted-foreground text-xs tabular-nums">{meta}</span>}
       </div>
