@@ -47,7 +47,7 @@ const SOURCES = [
 // viewBox, y following each card's drop), all meeting on top of the book.
 const STARTS = [50, 150, 250];
 
-export function ToolSketch() {
+export function ToolSketch({ book }: { book?: React.ReactNode } = {}) {
   return (
     <div aria-hidden className="mx-auto flex w-full max-w-xl flex-col items-center">
       <ul className="grid w-full grid-cols-3 gap-3">
@@ -98,7 +98,7 @@ export function ToolSketch() {
       </svg>
 
       {/* The book, whole, with the three ways out of it along its foot. */}
-      <div className="sketch-book border-foreground/15 bg-card/90 shadow-sm dark:bg-transparent dark:shadow-none text-muted-foreground flex w-72 flex-col rounded-lg border px-5 pt-4 pb-4 text-left">
+      {book ?? (<div className="sketch-book border-foreground/15 bg-card/90 shadow-sm dark:bg-transparent dark:shadow-none text-muted-foreground flex w-72 flex-col rounded-lg border px-5 pt-4 pb-4 text-left">
         <span className="eyebrow text-inherit">Compilation</span>
         <span className="font-display text-foreground/75 mt-1.5 text-lg tracking-tight">
           Stoicism
@@ -124,7 +124,7 @@ export function ToolSketch() {
             </li>
           ))}
         </ul>
-      </div>
+      </div>)}
     </div>
   );
 }
