@@ -438,7 +438,7 @@ function ComposeWorkspace({
                   Early preview
                 </Badge>
                 {/* Title and subtitle read as one group. */}
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-2">
                   <h1 className="font-display text-display leading-display tracking-tight text-balance">
                     Make anything readable
                   </h1>
