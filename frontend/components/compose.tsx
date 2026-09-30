@@ -425,8 +425,7 @@ function ComposeWorkspace({
                   Make anything readable
                 </h1>
                 <p className="text-muted-foreground max-w-lg text-balance">
-                  Turn videos, podcasts and articles into one clean document. Read
-                  it, send it to your e-reader, or give it to your AI.
+                  Turn videos, podcasts and articles into one clean document.
                 </p>
               </div>
             </div>
@@ -521,23 +520,6 @@ function ComposeWorkspace({
               search, so it shows the tool at work, and never a dead link. */}
           {trimmed === "" && staged.length === 0 && (
             <div className="flex flex-col items-center gap-3 pt-6">
-              <span className="eyebrow">Try a topic</span>
-              <div className="flex flex-wrap justify-center gap-2">
-                {EXAMPLE_SEARCHES.map((q) => (
-                  <Button
-                    key={q}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setQuery(q);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    {q}
-                  </Button>
-                ))}
-              </div>
               {/* What a search gives, drawn in reading order: the sources it
                   finds, threaded down into one book. Not on a phone: three
                   columns don't fit, and the compilation belongs right under
@@ -552,7 +534,6 @@ function ComposeWorkspace({
                   <section key={use.eyebrow} className="flex flex-col gap-2">
                     <span className="eyebrow">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
-                    <p className="text-muted-foreground text-sm">{use.text}</p>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
                         <Button
@@ -1040,26 +1021,16 @@ function SortSelect({
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
-// The last one bridges to the AI-context use.
-const EXAMPLE_SEARCHES = [
-  "Stoicism",
-  "The fall of Rome",
-  "The science of sleep",
-  "Next.js App Router",
-];
-
 const USES = [
   {
     eyebrow: "For reading",
     title: "Your reading list, as one book.",
-    text: "Gather the articles, talks and episodes on a subject. Get a clean EPUB, or send it straight to your e-reader.",
-    topics: ["Stoicism", "The fall of Rome", "The science of sleep"],
+    topics: ["Stoicism", "The fall of Rome"],
   },
   {
     eyebrow: "For AI context",
     title: "Clean context for your AI.",
-    text: "Turn docs, videos and posts into one structured Markdown file. Drop it into Claude, ChatGPT or your agent.",
-    topics: ["Next.js App Router", "How transformers work", "Pricing for SaaS"],
+    topics: ["Next.js App Router", "How transformers work"],
   },
 ];
 
