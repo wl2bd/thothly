@@ -435,7 +435,10 @@ function ComposeWorkspace({
             aria-hidden={showResults}
           >
             <div className="overflow-hidden">
-              <div className="flex flex-col items-center gap-3 pt-2 pb-8 text-center">
+              {/* A pool of the page's own tone (dark at night, light by day)
+                  behind the title keeps it crisp over the glow; it fades out
+                  inside this block, so the fold's clip never shows. */}
+              <div className="relative flex flex-col items-center gap-3 pt-2 pb-8 text-center before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(closest-side,var(--background)_35%,transparent)]">
                 {/* Said plainly while the product is being built. */}
                 <Badge variant="outline" className="border-foreground/15 text-muted-foreground mb-1 font-normal">
                   Early preview
@@ -544,7 +547,9 @@ function ComposeWorkspace({
           {/* First visit: something to press instead of a blank pane. A real
               search, so it shows the tool at work, and never a dead link. */}
           {trimmed === "" && staged.length === 0 && (
-            <div className="flex flex-col items-center gap-3">
+            // Bottom padding here, not only on the pane: content that
+            // overflows the pane's box scrolls past the pane's own padding.
+            <div className="flex flex-col items-center gap-3 lg:pb-8">
               {/* What a search gives, drawn in reading order: the sources it
                   finds, threaded down into one book. Not on a phone: three
                   columns don't fit, and the compilation belongs right under
