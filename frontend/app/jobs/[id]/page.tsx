@@ -25,7 +25,6 @@ import {
   Minus,
   Plus,
   Search,
-  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -2026,104 +2025,70 @@ function RoleSelector({
 
   const plural = unpunctuatedSelected !== 1 ? "s" : "";
 
-  if (!llm.available) {
-    return (
-      <div className="flex items-center gap-3 rounded-lg border px-4 py-3">
-        <Sparkles aria-hidden className="text-muted-foreground size-4 shrink-0" />
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-sm font-medium">AI polish</span>
-          <span className="text-muted-foreground text-xs">
-            {unpunctuatedSelected > 0
-              ? `${unpunctuatedSelected} raw transcript${plural} would read rough. Connect your own model to punctuate them.`
-              : "Tidy wording with your own OpenAI, Mistral or other key."}
-          </span>
-        </span>
-        <Button type="button" variant="outline" size="sm" onClick={onConnect} className="shrink-0">
-          Connect a model
-        </Button>
-      </div>
-    );
-  }
-
   const providerLabel = browserModel
     ? (llm.providers.find((p) => p.id === browserModel.provider)?.label ?? "your own server")
     : null;
-  const subtext = masterOn
-    ? "Punctuation where it's missing, plus a light copyedit."
-    : unpunctuatedSelected > 0
-      ? `${unpunctuatedSelected} raw transcript${plural} would read rough. Turn on to punctuate them.`
-      : "Tidy wording and fix small transcription slips.";
+  const rough =
+    unpunctuatedSelected > 0
+      ? `${unpunctuatedSelected} raw transcript${plural} ${unpunctuatedSelected === 1 ? "has" : "have"} no punctuation. `
+      : "";
+  // One sentence for what the switch changes, from where it stands now.
+  const what = !llm.available
+    ? `${rough}Your own AI model can punctuate and lightly copyedit the text. Without one, it stays exactly as retrieved.`
+    : masterOn
+      ? "Adds missing punctuation and a light copyedit."
+      : `${rough}Off: the text stays exactly as retrieved.`;
 
+  // A section of the pane like the others, not a card: a name and its switch,
+  // one sentence, then the extras and whose model it runs on.
   return (
-    <div
-      className={cn(
-        "rounded-lg border transition-colors",
-        // A faint fill once engaged; the switch itself carries the gold.
-        masterOn && "bg-foreground/2",
-      )}
-    >
-      <div className="flex items-center gap-3 px-4 py-3">
-        <Sparkles aria-hidden className="text-muted-foreground size-4 shrink-0" />
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-sm font-medium">AI polish</span>
-          <span className="text-muted-foreground text-xs">{subtext}</span>
-          {/* Always a way to bring (or change) your own key from here, even
-              when the server has a model of its own and the switch shows. */}
-          <span className="text-muted-foreground text-xs">
-            {providerLabel ? `Runs on your ${providerLabel} key. ` : ""}
-            <button
-              type="button"
-              onClick={onConnect}
-              className="text-foreground text-link font-medium"
-            >
-              {providerLabel ? "Change" : "Use your own key"}
-            </button>
-          </span>
-        </span>
-        <Switch
-          checked={masterOn}
-          onCheckedChange={setMaster}
-          aria-label="AI polish"
-          className="shrink-0"
-        />
+    <section aria-labelledby="ai-polish" className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <h3 id="ai-polish" className="text-sm font-medium">
+          AI polish
+        </h3>
+        {llm.available && (
+          <Switch checked={masterOn} onCheckedChange={setMaster} aria-labelledby="ai-polish" />
+        )}
       </div>
+      <p className="text-muted-foreground text-sm">{what}</p>
 
-      {masterOn && extraRoles.length > 0 && (
-        <div className="px-4 pb-4">
-          <ul className="border-border/70 flex flex-col gap-1 border-t pt-3">
-            {extraRoles.map((role) => {
-              const checked = selectedRoles.has(role.id);
-              return (
+      {!llm.available ? (
+        <Button type="button" variant="outline" size="sm" onClick={onConnect} className="self-start">
+          Connect a model
+        </Button>
+      ) : (
+        <>
+          {masterOn && extraRoles.length > 0 && (
+            <ul className="flex flex-col">
+              {extraRoles.map((role) => (
                 <li key={role.id}>
-                  <label
-                    className={cn(
-                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors",
-                      // A faint gold wash marks an active extra; idle rows only
-                      // light up on hover.
-                      checked ? "bg-foreground/5" : "hover:bg-foreground/5",
-                    )}
-                  >
+                  <label className="hover:bg-foreground/5 -mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 transition-colors">
                     <Checkbox
-                      checked={checked}
+                      checked={selectedRoles.has(role.id)}
                       onCheckedChange={() => onToggleRole(role.id)}
                       className="mt-0.5"
                     />
                     <span className="flex flex-col gap-0.5">
-                      <span className="text-sm leading-none font-medium">
-                        {role.label}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {role.description}
-                      </span>
+                      <span className="text-sm leading-none font-medium">{role.label}</span>
+                      <span className="text-muted-foreground text-xs">{role.description}</span>
                     </span>
                   </label>
                 </li>
-              );
-            })}
-          </ul>
-        </div>
+              ))}
+            </ul>
+          )}
+          {/* Always a way to bring (or change) your own key from here, even
+              when the server has a model of its own. */}
+          <p className="text-muted-foreground text-xs">
+            {providerLabel ? `Runs on your ${providerLabel} key. ` : ""}
+            <button type="button" onClick={onConnect} className="text-foreground text-link font-medium">
+              {providerLabel ? "Change" : "Use your own key"}
+            </button>
+          </p>
+        </>
       )}
-    </div>
+    </section>
   );
 }
 
