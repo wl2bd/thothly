@@ -48,7 +48,7 @@ const SOURCES = [
 const STARTS = [50, 150, 250];
 
 const SHEET =
-  "border-foreground/15 bg-card text-muted-foreground absolute top-0 flex h-[28rem] flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-[0_1px_2px_rgb(0_0_0/0.06),0_10px_24px_-14px_rgb(0_0_0/0.25)] dark:shadow-[0_10px_24px_-14px_rgb(0_0_0/0.8)]";
+  "border-foreground/15 bg-card text-muted-foreground absolute top-0 flex h-80 flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-[0_1px_2px_rgb(0_0_0/0.06),0_10px_24px_-14px_rgb(0_0_0/0.25)] dark:shadow-[0_10px_24px_-14px_rgb(0_0_0/0.8)]";
 
 // The sheet in front casts its shadow sideways onto the two behind it.
 const FRONT =
@@ -57,7 +57,7 @@ const FRONT =
 // The sheets lie on the table, seen at an angle.
 // The fade sits on the whole group, so a sheet in front hides the ones behind.
 const ANGLE =
-  "[transform:perspective(900px)_rotateX(24deg)_rotate(-1.5deg)] origin-top [mask-image:linear-gradient(to_bottom,black_35%,transparent_85%)]";
+  "[transform:perspective(900px)_rotateX(24deg)_rotate(-1.5deg)] origin-top [mask-image:linear-gradient(to_bottom,black_15%,transparent_70%)]";
 
 const P1 =
   "Stoicism began in Athens, where Zeno of Citium taught from a painted porch. Its promise was plain: we do not choose what happens to us, only how we answer it.";
@@ -107,14 +107,14 @@ function BookSheet({ className }: { className?: string }) {
           S
         </span>
         {P1.slice(1)} The idea returns in every source of this book{" "}
-        <span className="text-primary-strong underline decoration-current/40 underline-offset-2">
+        <span className="text-foreground/80 underline decoration-current/40 underline-offset-2">
           (see ch. 3)
         </span>
         .
       </p>
       <p className="mt-2 indent-4 text-xs leading-relaxed">
         {P3}{" "}
-        <span className="text-primary-strong underline decoration-current/40 underline-offset-2">
+        <span className="text-foreground/80 underline decoration-current/40 underline-offset-2">
           Meditations, ch. 2
         </span>
         .
@@ -128,7 +128,7 @@ function Outputs() {
   return (
     // Wider than the sheets: the fade clips at its own edge, and the tilted
     // outer corners must stay inside it.
-    <div className={cn("relative -mx-12 h-96 w-[42rem]", ANGLE)}>
+    <div className={cn("relative -mx-12 h-72 w-[42rem]", ANGLE)}>
       <MarkdownSheet className="left-14 w-60 -rotate-6 translate-y-10" />
       <RawSheet className="right-14 w-60 rotate-6 translate-y-10" />
       <BookSheet className={cn("left-1/2 w-64 -translate-x-1/2", FRONT)} />
