@@ -17,8 +17,6 @@
   <img alt="The Thothly home screen: the headline Make anything readable, a search field, and a sketch of three sources threaded into one compilation." src="docs/assets/thothly-hero.png" width="820">
 </p>
 
-<p align="center">══════ ☥ ══════</p>
-
 Thothly is a self-hostable, open-source tool that turns content from across the
 web (YouTube videos, playlists and channels, blogs, and podcasts) into one
 polished **compilation** you can actually read: a clean EPUB for your e-reader,
