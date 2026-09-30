@@ -58,11 +58,11 @@ def test_pick_language_takes_original_asr_over_foreign_human_track():
 
 # A single pasted video: yt-dlp is bot-walled on Fly (2026-09-29), so its title
 # and duration come from the detail call.
-@patch("app.sources.scrapecreators._call", return_value={"id": "KAcTCHamXvQ", "title": "Le Journal de Minuit", "durationMs": 12212000})
+@patch("app.sources.scrapecreators._call", return_value={"id": "dQw0example", "title": "A Long Evening Talk", "durationMs": 12212000})
 def test_fetch_video_meta_maps_detail(_):
-    v = fetch_video_meta("https://www.youtube.com/watch?v=KAcTCHamXvQ")
-    assert (v.id, v.title, v.duration_s) == ("KAcTCHamXvQ", "Le Journal de Minuit", 12212)
-    assert v.url == "https://www.youtube.com/watch?v=KAcTCHamXvQ"
+    v = fetch_video_meta("https://www.youtube.com/watch?v=dQw0example")
+    assert (v.id, v.title, v.duration_s) == ("dQw0example", "A Long Evening Talk", 12212)
+    assert v.url == "https://www.youtube.com/watch?v=dQw0example"
 
 
 @patch("app.sources.scrapecreators._call", return_value={})
