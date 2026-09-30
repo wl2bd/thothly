@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Trash2Icon } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,22 +11,25 @@ import { ApiError, fetchJob, type JobStatus } from "@/lib/api";
 import {
   forgetCompilation,
   getHistorySnapshot,
+  groupBooks,
   getHistoryServerSnapshot,
   replaceHistory,
   subscribeHistory,
   type CompilationSnapshot,
 } from "@/lib/history";
 
-// What a row says about a compilation: still being built, ready for you to
-// pick what goes in, ready to read, or stopped.
+// The group label says "To review" or "Ready"; a row only adds the states the
+// label doesn't cover: still being built, or stopped.
 const STATUS_LABEL: Partial<Record<JobStatus, string>> = {
   pending: "Building…",
   discovering: "Building…",
-  reviewing: "Ready to review",
   processing: "Building…",
-  completed: "Ready",
   failed: "Did not finish",
 };
+
+// A deleted row goes at once; storage forgets it only when the Undo toast
+// runs out, so a slip costs nothing.
+const UNDO_MS = 5000;
 
 // The compilations this browser remembers, shown in the compilation pane while
 // nothing is staged: start a new compilation, or return to one you made.
@@ -42,6 +46,32 @@ export function CompilationHistory() {
   // The refresh could not reach the server, so what is on screen is whatever the
   // browser last stored. Said once, quietly, rather than per row.
   const [stale, setStale] = useState(false);
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+
+  function remove(entry: CompilationSnapshot) {
+    setHidden((prev) => new Set(prev).add(entry.id));
+    let undone = false;
+    const commit = () => {
+      if (!undone) forgetCompilation(entry.id);
+    };
+    toast("Book deleted", {
+      description: entry.title ?? undefined,
+      duration: UNDO_MS,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undone = true;
+          setHidden((prev) => {
+            const next = new Set(prev);
+            next.delete(entry.id);
+            return next;
+          });
+        },
+      },
+      onAutoClose: commit,
+      onDismiss: commit,
+    });
+  }
 
   useEffect(() => {
     const stored = getHistorySnapshot();
@@ -66,6 +96,7 @@ export function CompilationHistory() {
             title: result.value.book_title,
             createdAt: result.value.created_at,
             status: result.value.status,
+            sources: result.value.sources.length,
           });
           return;
         }
@@ -102,7 +133,9 @@ export function CompilationHistory() {
   // arriving late moves nothing the reader is already using.
   if (entries === null) return null;
 
-  if (entries.length === 0) {
+  const visible = entries.filter((e) => !hidden.has(e.id));
+
+  if (visible.length === 0) {
     return (
       <div className="flex flex-col gap-2">
         <h2 className="font-display text-xl tracking-tight">Nothing compiled yet</h2>
@@ -119,56 +152,80 @@ export function CompilationHistory() {
     );
   }
 
+  const { toReview, ready } = groupBooks(visible);
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       <h2 className="eyebrow">
         Your books
       </h2>
-      <ul className="flex flex-col">
-        {entries.map((entry) => (
-          <li
-            key={entry.id}
-            className="flex items-center gap-2 border-b last:border-b-0"
-          >
-            <Link
-              href={`/jobs/${entry.id}`}
-              className="hover:bg-foreground/5 focus-visible:ring-ring -mx-2 flex min-w-0 flex-1 flex-col gap-1 rounded-md px-2 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none"
-            >
-              {/* Titles run to 100 characters, so the row truncates rather than
-                  wrapping to three lines and breaking the list's rhythm. */}
-              <span className="truncate text-sm">
-                {entry.title ?? "Untitled compilation"}
-              </span>
-              <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                <span>{relativeDate(entry.createdAt)}</span>
-                {STATUS_LABEL[entry.status] && (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <span>{STATUS_LABEL[entry.status]}</span>
-                  </>
-                )}
-              </span>
-            </Link>
-            {/* Browser-local and cheap to redo, so it goes on the press with
-                no confirmation. A bin, not a cross: this deletes. */}
-            <Button
-              type="button"
-              variant="nav"
-              size="icon-sm"
-              onClick={() => forgetCompilation(entry.id)}
-              aria-label="Delete this compilation"
-            >
-              <Trash2Icon />
-            </Button>
-          </li>
-        ))}
-      </ul>
+      {[
+        { label: "To review", books: toReview },
+        { label: "Ready", books: ready },
+      ].map(
+        ({ label, books }) =>
+          books.length > 0 && (
+            <section key={label} aria-label={label} className="-mt-3 flex flex-col gap-1">
+              <h3 className="eyebrow">{label}</h3>
+              <ul className="flex flex-col">
+                {books.map((entry) => (
+                  <BookRow key={entry.id} entry={entry} onDelete={() => remove(entry)} />
+                ))}
+              </ul>
+            </section>
+          ),
+      )}
       {stale && (
         <p className="text-muted-foreground text-xs">
           This list may be out of date.
         </p>
       )}
     </div>
+  );
+}
+
+function BookRow({ entry, onDelete }: { entry: CompilationSnapshot; onDelete: () => void }) {
+  // "3 sources · 3 hours ago". No format: every book comes out as both EPUB and
+  // Markdown, so it would read the same on every row.
+  const meta = [
+    entry.sources !== undefined && `${entry.sources} ${entry.sources === 1 ? "source" : "sources"}`,
+    STATUS_LABEL[entry.status],
+    relativeDate(entry.createdAt),
+  ].filter(Boolean);
+  return (
+    <li className="group flex items-center gap-2 border-b last:border-b-0">
+      <Link
+        href={`/jobs/${entry.id}`}
+        className="hover:bg-foreground/5 focus-visible:ring-ring -mx-2 flex min-w-0 flex-1 flex-col gap-1 rounded-md px-2 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      >
+        {/* Titles run to 100 characters, so the row truncates rather than
+            wrapping to three lines and breaking the list's rhythm. */}
+        <span className="truncate text-sm">
+          {entry.title ?? "Untitled compilation"}
+        </span>
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          {meta.map((m, i) => (
+            <span key={i} className="contents">
+              {i > 0 && <span aria-hidden="true">·</span>}
+              <span>{m}</span>
+            </span>
+          ))}
+        </span>
+      </Link>
+      {/* A bin, not a cross: this deletes (undoable for a few seconds). Shown
+          on hover or keyboard focus where there is a pointer to hover with;
+          always there on touch, where nothing hovers. */}
+      <Button
+        type="button"
+        variant="nav"
+        size="icon-sm"
+        onClick={onDelete}
+        aria-label="Delete this book"
+        className="[@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+      >
+        <Trash2Icon />
+      </Button>
+    </li>
   );
 }
 

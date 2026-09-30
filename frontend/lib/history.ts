@@ -10,6 +10,9 @@ export interface CompilationSnapshot {
   title: string | null;
   createdAt: string;
   status: JobStatus;
+  // How many sources went in. Absent on entries stored before it was kept;
+  // the next refresh fills it in.
+  sources?: number;
 }
 
 // Versioned so a later schema change degrades to an empty list instead of
@@ -43,25 +46,53 @@ function isSnapshot(value: unknown): value is CompilationSnapshot {
   );
 }
 
+// A count that isn't a whole number is dropped, not the book: it is a detail
+// the next refresh restores.
+function withValidSources(e: CompilationSnapshot): CompilationSnapshot {
+  if (e.sources === undefined || (Number.isInteger(e.sources) && e.sources >= 0)) return e;
+  return { id: e.id, title: e.title, createdAt: e.createdAt, status: e.status };
+}
+
+export function parseHistory(raw: string | null): CompilationSnapshot[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isSnapshot).map(withValidSources);
+  } catch {
+    return [];
+  }
+}
+
+// Still being found or waiting for you to pick what goes in, versus past
+// review (compiling, done or stopped). Newest first in each.
+const TO_REVIEW: readonly JobStatus[] = ["pending", "discovering", "reviewing"];
+
+export function groupBooks(entries: CompilationSnapshot[]): {
+  toReview: CompilationSnapshot[];
+  ready: CompilationSnapshot[];
+} {
+  const time = (e: CompilationSnapshot) => {
+    const t = new Date(e.createdAt).getTime();
+    return Number.isNaN(t) ? -Infinity : t;
+  };
+  const sorted = [...entries].sort((a, b) => time(b) - time(a));
+  return {
+    toReview: sorted.filter((e) => TO_REVIEW.includes(e.status)),
+    ready: sorted.filter((e) => !TO_REVIEW.includes(e.status)),
+  };
+}
+
 export function readHistory(): CompilationSnapshot[] {
   // Server-rendered passes have no storage; callers render a skeleton until
   // mount rather than branching on this.
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
     // This is the boundary where storage the user could have hand-edited, or an
-    // older build could have written, meets code that treats the result as typed.
-    // Every field must be validated: id string, title string or null, createdAt
-    // string, status one of the known literals. A predicate that asserts the whole
-    // shape while checking one field is worse than no predicate, because consumers
-    // stop defending themselves. If the backend ever adds a new status literal,
-    // entries carrying it would be dropped by a build that predates it — that is
-    // accepted, and it is what the versioned key exists to handle: a schema change
-    // bumps KEY to .v2.
-    return parsed.filter(isSnapshot);
+    // older build could have written, meets code that treats the result as typed
+    // (see parseHistory). A status literal this build predates drops its entry;
+    // a schema change bumps KEY to .v2.
+    return parseHistory(window.localStorage.getItem(KEY));
   } catch {
     // Storage can throw outright (Safari private mode, a disabled setting).
     // History is a convenience; losing it must never break the page.
@@ -127,13 +158,14 @@ export function getHistoryServerSnapshot(): CompilationSnapshot[] | null {
 // screen loads, so a link someone shared with you joins your history the way a
 // browser would treat a page you visited.
 export function recordCompilation(
-  job: Pick<JobResponse, "id" | "book_title" | "created_at" | "status">,
+  job: Pick<JobResponse, "id" | "book_title" | "created_at" | "status" | "sources">,
 ): void {
   const entry: CompilationSnapshot = {
     id: job.id,
     title: job.book_title,
     createdAt: job.created_at,
     status: job.status,
+    sources: job.sources.length,
   };
   write([entry, ...readHistory().filter((e) => e.id !== job.id)]);
 }
