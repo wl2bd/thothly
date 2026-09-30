@@ -471,14 +471,12 @@
   }
 }
 /* The home ground: the two-tone glow plus three quieter pools of the same
-   golds, so it never reads as one plain gradient, and a pool of the page's own
-   ground (dark at night, light by day) behind the title, which keeps it
-   crisp over the colour. */
+   golds, so it never reads as one plain gradient. (The title's own pool lives
+   with the title, in compose.tsx, so it follows it.) */
 .glow-layer {
   background-image:
-    radial-gradient(40% 28% at 50% 18%, var(--background), transparent),
-    radial-gradient(45% 35% at 85% 20%, oklch(0.7 0.1 80 / 0.12), transparent),
-    radial-gradient(40% 40% at 8% 55%, oklch(0.6 0.05 60 / 0.14), transparent),
+    radial-gradient(45% 35% at 85% 20%, oklch(0.7 0.11 80 / 0.22), transparent),
+    radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
     radial-gradient(60% 45% at 50% 105%, oklch(0.75 0.13 80 / 0.25), transparent),
     var(--glow);
 }
