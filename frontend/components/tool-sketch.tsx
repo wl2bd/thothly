@@ -48,7 +48,11 @@ const SOURCES = [
 const STARTS = [50, 150, 250];
 
 const SHEET =
-  "border-foreground/15 bg-card text-muted-foreground absolute top-0 flex h-[28rem] flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-sm dark:shadow-none";
+  "border-foreground/15 bg-card text-muted-foreground absolute top-0 flex h-[28rem] flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-[0_1px_2px_rgb(0_0_0/0.06),0_10px_24px_-14px_rgb(0_0_0/0.25)] dark:shadow-[0_10px_24px_-14px_rgb(0_0_0/0.8)]";
+
+// The sheet in front casts its shadow sideways onto the two behind it.
+const FRONT =
+  "shadow-[-16px_0_26px_-12px_rgb(0_0_0/0.3),16px_0_26px_-12px_rgb(0_0_0/0.3)] dark:shadow-[-18px_0_28px_-10px_rgb(0_0_0/0.85),18px_0_28px_-10px_rgb(0_0_0/0.85)]";
 
 // The sheets lie on the table, seen at an angle.
 // The fade sits on the whole group, so a sheet in front hides the ones behind.
@@ -99,7 +103,7 @@ function BookSheet({ className }: { className?: string }) {
         The painted porch
       </span>
       <p className="mt-3 text-xs leading-relaxed">
-        <span className="font-display text-primary float-left mt-0.5 mr-1.5 text-4xl leading-[0.8]">
+        <span className="font-display text-foreground/80 float-left mt-0.5 mr-1.5 text-4xl leading-[0.8]">
           S
         </span>
         {P1.slice(1)} The idea returns in every source of this book{" "}
@@ -125,7 +129,7 @@ function Outputs() {
     <div className={cn("relative h-96 w-[36rem]", ANGLE)}>
       <MarkdownSheet className="left-2 w-60 -rotate-6 translate-y-10" />
       <RawSheet className="right-2 w-60 rotate-6 translate-y-10" />
-      <BookSheet className="left-1/2 w-64 -translate-x-1/2" />
+      <BookSheet className={cn("left-1/2 w-64 -translate-x-1/2", FRONT)} />
     </div>
   );
 }
