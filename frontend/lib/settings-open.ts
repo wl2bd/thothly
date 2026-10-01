@@ -22,13 +22,15 @@ function subscribe(onChange: () => void) {
 }
 
 // An external store can't ride a React transition, so the swap asks the
-// browser for its cross-fade directly (the root one, 200ms). `animate: false`
+// browser for its transition directly (the `pane` one in globals.css). `animate: false`
 // when a navigation already runs its own transition, which a second one would cut.
 export function setSettingsOpen(value: boolean, animate = true) {
   if (open === value) return;
   open = value;
   if (!animate || !document.startViewTransition) return emit();
-  document.startViewTransition(() => flushSync(emit));
+  const root = document.documentElement;
+  root.dataset.paneSwitch = "";
+  document.startViewTransition(() => flushSync(emit)).finished.finally(() => delete root.dataset.paneSwitch);
 }
 
 export function useSettingsOpen(): boolean {

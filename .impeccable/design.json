@@ -124,6 +124,11 @@
         "name": "durations",
         "value": "150 / 200 / 300 / 500 / 700 / 1000ms",
         "purpose": "Tailwind steps: controls, cross-fades, morphs, theme reveal, arrivals."
+      },
+      {
+        "name": "duration-view-out / duration-view-in",
+        "value": "300ms / 700ms",
+        "purpose": "A change of view (page, compilation step, Settings): old fades out, then new rises in. Slow on purpose."
       }
     ],
     "breakpoints": [

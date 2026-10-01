@@ -52,6 +52,8 @@
           "spacing-header": "3.5rem",
           "ease-out-quint": "cubic-bezier(0.22, 1, 0.36, 1)",
           "ease-out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+          "duration-view-out": "300ms",
+          "duration-view-in": "700ms",
           "shadow-surface": "var(--surface-lift)"
         },
         "light": {

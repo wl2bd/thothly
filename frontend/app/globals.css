@@ -70,6 +70,10 @@
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   /* The one-shot payoff reveal on the finished compilation (easeOutExpo). */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* A change of view (page, compilation step, Settings): the old one leaves,
+     then the new one arrives, slowly on purpose. */
+  --duration-view-out: 300ms;
+  --duration-view-in: 700ms;
 }
 
 /* ── Gold Leaf ───────────────────────────────────────────────────────────────
@@ -422,9 +426,7 @@
 /* The page chrome (everything outside the card) cross-fades on navigation —
    align it to the same curve/timing so nothing in the frame eases differently. */
 ::view-transition-old(root),
-::view-transition-new(root),
-::view-transition-old(.page),
-::view-transition-new(.page) {
+::view-transition-new(root) {
   animation-duration: 200ms;
   animation-timing-function: var(--ease-out-quint);
 }
@@ -435,9 +437,7 @@
    speed reads as abrupt. Let the chrome AND the card settle in over a longer,
    still-decelerating beat so the home page eases back rather than slamming in. */
 :active-view-transition-type(to-home)::view-transition-old(root),
-:active-view-transition-type(to-home)::view-transition-new(root),
-:active-view-transition-type(to-home)::view-transition-old(.page),
-:active-view-transition-type(to-home)::view-transition-new(.page) {
+:active-view-transition-type(to-home)::view-transition-new(root) {
   animation-duration: 300ms;
 }
 :active-view-transition-type(to-home)::view-transition-group(flow-card) {
@@ -446,6 +446,45 @@
 :active-view-transition-type(to-home)::view-transition-old(flow-card),
 :active-view-transition-type(to-home)::view-transition-new(flow-card) {
   animation-duration: 300ms;
+}
+
+/* A new page, a new step of a compilation, Settings opening: the old view
+   leaves fast, then the new one settles in with a short rise. Sequenced rather
+   than cross-faded, so the change reads as one even on the same ground. */
+::view-transition-old(.page),
+::view-transition-old(pane) {
+  animation: page-out var(--duration-view-out) var(--ease-out-quint) both;
+}
+::view-transition-new(.page),
+::view-transition-new(pane) {
+  animation: page-in var(--duration-view-in) var(--ease-out-expo) 150ms both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 0.75rem;
+  }
+}
+/* The header is the same on every page: it holds still while the page moves. */
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 1;
+}
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(site-header) {
+  animation: none;
+}
+/* Settings swaps outside React (settings-open.ts), so its panel is named only
+   for the length of that swap. */
+:root[data-pane-switch] [data-pane] {
+  view-transition-name: pane;
 }
 
 /* Theme switch (theme-toggle.tsx): no cross-fade, the new theme is revealed

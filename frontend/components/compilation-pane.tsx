@@ -55,6 +55,7 @@ export function CompilationPane({
   return (
     <ViewTransition name="flow-card">
       <aside
+        data-pane
         aria-label={settings ? "Settings" : "Your compilation"}
         style={{ "--footer-h": `${footer ? footerHeight : 0}px` } as React.CSSProperties}
         className={cn(

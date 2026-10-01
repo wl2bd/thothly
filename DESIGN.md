@@ -289,7 +289,11 @@ structure stays upstream; the few deliberate departures are listed here.
 One house curve, `ease-out-quint`, for transitions and the flow-card morph;
 `ease-out-expo` for one-shot reveals. Durations are Tailwind's steps: 150ms for
 controls, 200ms cross-fades, 300ms morphs, 500ms for the theme reveal, 700 to
-1000ms for one-shot arrivals. Every animation has a `prefers-reduced-motion`
+1000ms for one-shot arrivals. A change of view (a page, a compilation step,
+Settings) is sequenced, not cross-faded: the old view fades out over
+`--duration-view-out` (300ms), then the new one rises 0.75rem into place over
+`--duration-view-in` (700ms, `ease-out-expo`). Slow on purpose; the header holds
+still. Every animation has a `prefers-reduced-motion`
 alternative.
 
 ## Do's and Don'ts

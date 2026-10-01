@@ -81,6 +81,7 @@ export function SettingsLink({ className }: { className?: string }) {
       {standalone &&
         createPortal(
         <aside
+          data-pane
           aria-label="Settings"
           className="bg-card fixed inset-x-0 top-header bottom-0 z-30 flex flex-col border-t lg:left-auto lg:w-pane lg:border-t-0 lg:border-l"
         >

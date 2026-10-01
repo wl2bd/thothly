@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import Link from "next/link";
 
 import { SettingsLink } from "@/components/settings-pane";
@@ -15,6 +16,8 @@ const navLink =
 // controls over the compilation's.
 export function AppHeader() {
   return (
+    // Named so a page change leaves it in place (globals.css, site-header).
+    <ViewTransition name="site-header">
     <header className="bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 flex h-header shrink-0 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
       <Link href="/" className="flex items-end gap-1.5">
         <Logotype className="h-7 w-auto" title="Thothly" />
@@ -31,5 +34,6 @@ export function AppHeader() {
         <ThemeToggle />
       </div>
     </header>
+    </ViewTransition>
   );
 }

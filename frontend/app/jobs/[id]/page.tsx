@@ -4,6 +4,7 @@ import { Kbd, ModKey } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
 import {
   Fragment,
+  ViewTransition,
   startTransition,
   useCallback,
   useEffect,
@@ -535,7 +536,12 @@ export default function JobPage() {
   return (
     <div className="flex min-h-svh flex-col lg:h-svh">
       <AppHeader />
-      <Workspace>{panes}</Workspace>
+      <Workspace>
+        {/* Each step arrives like a new page; the card itself morphs (flow-card). */}
+        <ViewTransition key={job?.status ?? "opening"} enter="page" exit="page" default="none">
+          {panes}
+        </ViewTransition>
+      </Workspace>
     </div>
   );
 }
