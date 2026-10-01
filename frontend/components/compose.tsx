@@ -1099,8 +1099,8 @@ const USES: {
   example: string;
 }[] = [
   {
-    eyebrow: "For reading",
-    title: "Your backlog, as one book.",
+    eyebrow: "EPUB",
+    title: "Your backlog, on your e-reader.",
     // Only what the app really reads, most used first: YouTube, podcasts
     // (any show, through its feed), Wikipedia, blogs such as Substack.
     marks: (
@@ -1116,8 +1116,8 @@ const USES: {
     example: "/examples/stoicism",
   },
   {
-    eyebrow: "For AI context",
-    title: "Clean context for your AI.",
+    eyebrow: "Markdown",
+    title: "Every source in one clean file for your AI.",
     marks: (
       <>
         <ProviderIcon provider="claude" />
