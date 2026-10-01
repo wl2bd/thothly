@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { MoonIcon, SunIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export function ThemeToggle() {
     setDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  function toggle(event: MouseEvent<HTMLButtonElement>) {
+  function toggle() {
     const root = document.documentElement;
     const next = !root.classList.contains("dark");
     const apply = () => {
@@ -32,22 +32,13 @@ export function ThemeToggle() {
       }
       setDark(next);
     };
-    // The new theme spreads from the button in a widening circle (styled in
-    // globals.css under [data-theme-switch]); a plain swap where View
-    // Transitions or motion aren't available.
+    // The new theme fades in over the old one (styled in globals.css under
+    // [data-theme-switch]); a plain swap where View Transitions or motion
+    // aren't available.
     if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       apply();
       return;
     }
-    const { left, top, width, height } = event.currentTarget.getBoundingClientRect();
-    const x = left + width / 2;
-    const y = top + height / 2;
-    root.style.setProperty("--theme-x", `${x}px`);
-    root.style.setProperty("--theme-y", `${y}px`);
-    root.style.setProperty(
-      "--theme-r",
-      `${Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))}px`,
-    );
     root.dataset.themeSwitch = "";
     document.startViewTransition(apply).finished.finally(() => delete root.dataset.themeSwitch);
   }

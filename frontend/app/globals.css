@@ -489,25 +489,24 @@
   view-transition-name: pane;
 }
 
-/* Theme switch (theme-toggle.tsx): no cross-fade, the new theme is revealed
-   in a circle widening from the toggle, over the old one held still. */
-[data-theme-switch]::view-transition-old(root),
-[data-theme-switch]::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-[data-theme-switch]::view-transition-new(root) {
-  animation: theme-reveal 500ms var(--ease-out-quint);
-}
+/* Theme switch (theme-toggle.tsx): the new theme fades in over the old one
+   held still, at the pace of the other view changes. Nothing moves, so every
+   named part (the header included) fades with the page. */
 [data-theme-switch]::view-transition-group(*) {
   animation-duration: 0s;
 }
-@keyframes theme-reveal {
+[data-theme-switch]::view-transition-old(*) {
+  display: block;
+  animation: none;
+  mix-blend-mode: normal;
+}
+[data-theme-switch]::view-transition-new(*) {
+  animation: theme-in var(--duration-view-in) var(--ease-out-quint) both;
+  mix-blend-mode: normal;
+}
+@keyframes theme-in {
   from {
-    clip-path: circle(0 at var(--theme-x) var(--theme-y));
-  }
-  to {
-    clip-path: circle(var(--theme-r) at var(--theme-x) var(--theme-y));
+    opacity: 0;
   }
 }
 
