@@ -179,9 +179,9 @@ export function ToolSketch() {
             threads meet so their point doesn't stab the book. */}
         <defs>
           <linearGradient id="sketch-thread-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="48">
-            <stop offset="0" style={{ stopColor: "var(--muted-foreground)", stopOpacity: 0.2 }} />
-            <stop offset="0.55" style={{ stopColor: "var(--muted-foreground)", stopOpacity: 0.8 }} />
-            <stop offset="1" style={{ stopColor: "var(--muted-foreground)", stopOpacity: 0.1 }} />
+            <stop offset="0" style={{ stopColor: "var(--primary-strong)", stopOpacity: 0.15 }} />
+            <stop offset="0.55" style={{ stopColor: "var(--primary-strong)", stopOpacity: 0.55 }} />
+            <stop offset="1" style={{ stopColor: "var(--primary-strong)", stopOpacity: 0.05 }} />
           </linearGradient>
         </defs>
         {STARTS.map((x, i) => (
