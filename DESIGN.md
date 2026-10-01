@@ -282,7 +282,7 @@ structure stays upstream; the few deliberate departures are listed here.
 - **Grain** (`components/grain.tsx`): fractal noise over the page at 5%.
   Decorative, `aria-hidden`, never lowers text contrast.
 - **Tool sketch** (`components/tool-sketch.tsx`): the home illustration, three
-  sources threaded into one book. Illustration values (its shadows, its tilt)
+  sources threaded into one compilation. Illustration values (its shadows, its tilt)
   stay inside the component.
 
 ### Motion

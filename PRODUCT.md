@@ -3,7 +3,7 @@
 ## Surfaces
 
 Thothly is one workspace: the home page is the tool. Its surfaces (search and
-stage, review, compile, the finished book) are **Operate**: design serves the
+stage, review, compile, the finished compilation) are **Operate**: design serves the
 task and stays calm, and brand lives in precise details. The only expressive
 moment is the home page at rest (the catchline, the sketch, the glow, the two
 usage examples), which leans **Persuade**. About is plain **Read**. All of it
@@ -17,7 +17,7 @@ brief, not here. This section only records which surface is which.
 Privacy-minded, technically comfortable people who self-host (Docker, no accounts,
 AGPL): tinkerers, indie hackers, researchers, lifelong learners. Two moments:
 - **Composing** (in-app, focused): at their desk, gathering videos/podcasts/
-  articles/playlists and deciding what makes the book.
+  articles/playlists and deciding what makes the compilation.
 - **Reading** (the payoff, away from the app): the finished compilation is read
   calmly on an e-reader, or handed to their own AI as Markdown.
 The audience skews technical, but the deliverable is for any reader.
@@ -61,7 +61,7 @@ soul — never sterile.
    must make that trustworthiness visible (review-before-compile, per-item
    preview, local-only). Practice the fidelity we promise.
 2. **The tool is the scribe; the compilation is the hero.** The interface serves
-   the act of binding sources into a book and gets out of the way — but as a
+   the act of binding sources into one compilation and gets out of the way — but as a
    characterful scribe, not a blank form.
 3. **Character without costume.** Personality comes from earned craft (ink, type,
    grain, motion, voice), never from kitsch or decoration.
@@ -77,6 +77,6 @@ soul — never sterile.
 - **Light and dark** both first-class (set pre-paint to avoid flash).
 - Any motion ships with a `prefers-reduced-motion` alternative.
 - Keyboard-operable throughout; visible focus states.
-- The interface is in **English**. The book (its chrome, preface and EPUB
+- The interface is in **English**. The compilation (its chrome, preface and EPUB
   language) follows the language of its content, chapter by chapter; sources
   are never translated.
