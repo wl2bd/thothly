@@ -393,7 +393,11 @@ export function ConnectModelStep({
   const copy = KIND_COPY[kind];
   // On a phone the pane sits under the list: bring the step into view.
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), []);
+  // Braces: recent Chrome returns a Promise from scrollIntoView, which React
+  // would take for the effect's cleanup and call on unmount.
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
   return (
     <div ref={ref} className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">

@@ -60,7 +60,9 @@ export function SettingsLink({ className }: { className?: string }) {
   const pathname = usePathname();
 
   // Settings belongs to the screen it was opened on.
-  useEffect(() => setSettingsOpen(false, false), [pathname]);
+  useEffect(() => {
+    setSettingsOpen(false, false);
+  }, [pathname]);
   useShortcut(",", () => setSettingsOpen(!open));
 
   const standalone = open && (panes === 0 || !wide);
