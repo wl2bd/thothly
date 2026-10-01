@@ -2,11 +2,12 @@
 
 ## Surfaces
 
-Thothly is balanced, and its two halves are not designed the same way. The app
-surfaces (search/stage, review → compile → download) are **Operate**: design serves
-the task and stays calm, and brand lives in precise details. The landing sections
-(hero, "How it works", "Yours, on your machine", FAQ) are **Persuade**: more
-expressive, earning attention and action. Both must still read as one Thothly.
+Thothly is one workspace: the home page is the tool. Its surfaces (search and
+stage, review, compile, the finished book) are **Operate**: design serves the
+task and stays calm, and brand lives in precise details. The only expressive
+moment is the home page at rest (the catchline, the sketch, the glow, the two
+usage examples), which leans **Persuade**. About is plain **Read**. All of it
+must read as one Thothly.
 
 The mode itself is chosen per surface at work time and persisted in that surface's
 brief, not here. This section only records which surface is which.
@@ -50,16 +51,9 @@ soul — never sterile.
 - **Generic interchangeable AI SaaS**: gradient hero, glassy cards, hero-metric
   grid, fluo accents.
 - **Mythological costume**: papyrus, sepia, skeuomorphic old-book / parchment. No
-  faux-aged paper, no relics. (Deliberate exception, 2026-06-24: hieroglyphs are
-  allowed as ONE earned motif — the desert-gold glyph rain behind the hero,
-  rendered flat, token-driven and reduced-motion-safe, never as papyrus / sepia /
-  parchment chrome. Updated 2026-06-24: the rain runs in BOTH modes, tone
-  inverted per ground — warm white-hot fading to desert gold on the night ground,
-  a deep-gold lead fading up into the off-white on the light page — so light is a
-  true peer of dark, not a costume. The glyphs stay flat gold on a near-neutral
-  ground; deep gold is not sepia.) Otherwise the Thoth heritage is evoked through
-  ink, type, grain and voice. Not a return to the previously-retired
-  editorial/paper identity; character is carried by the token system.
+  faux-aged paper, no relics, no hieroglyph motif (the glyph rain was retired on
+  2026-09-29). The Thoth heritage is evoked through ink, type, grain and voice,
+  and character is carried by the token system.
 
 ## Design Principles
 
@@ -73,8 +67,8 @@ soul — never sterile.
    grain, motion, voice), never from kitsch or decoration.
 4. **Warm, never corporate.** If a screen could pass for an enterprise admin
    panel, it's wrong.
-5. **One Thothly, one system.** The expressive landing and the sober app are the
-   same identity, carried by a single re-skinnable token layer.
+5. **One Thothly, one system.** The expressive home and the sober tool are the
+   same identity, carried by a single token layer (see DESIGN.md).
 
 ## Accessibility & Inclusion
 
@@ -83,5 +77,6 @@ soul — never sterile.
 - **Light and dark** both first-class (set pre-paint to avoid flash).
 - Any motion ships with a `prefers-reduced-motion` alternative.
 - Keyboard-operable throughout; visible focus states.
-- **English** is the default across UI, EPUB chrome and preface; ingested
-  transcripts/articles stay faithful to their source language.
+- The interface is in **English**. The book (its chrome, preface and EPUB
+  language) follows the language of its content, chapter by chapter; sources
+  are never translated.
