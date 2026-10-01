@@ -615,13 +615,13 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
                 {s.resolved && s.error ? (
                   <X className="text-muted-foreground size-3.5" />
                 ) : s.resolved ? (
-                  <Check className="text-foreground/60 size-3.5" />
+                  <Check className="text-muted-foreground size-3.5" />
                 ) : null}
               </span>
               <span
                 className={cn(
                   "min-w-0 flex-1 truncate",
-                  s.resolved ? "text-foreground/80" : "text-muted-foreground",
+                  s.resolved ? "text-foreground" : "text-muted-foreground",
                   isActive && "text-shimmer",
                   !s.resolved && !isActive && "opacity-50",
                 )}
@@ -718,7 +718,7 @@ function CompileStep({
     <li className="flex items-start gap-3 py-3.5 text-sm">
       <span className="flex size-3.5 shrink-0 items-center justify-center pt-0.5">
         {done ? (
-          <Check className="text-foreground/60 size-3.5" />
+          <Check className="text-muted-foreground size-3.5" />
         ) : state === "failed" ? (
           <X className="text-destructive size-3.5" />
         ) : state === "skipped" ? (
@@ -729,7 +729,7 @@ function CompileStep({
         <span
           className={cn(
             "truncate",
-            done ? "text-foreground/80" : "text-muted-foreground",
+            done ? "text-foreground" : "text-muted-foreground",
             active && "text-shimmer",
             state === "pending" && "opacity-50",
           )}
@@ -737,7 +737,7 @@ function CompileStep({
           {label}
         </span>
         {out && note && (
-          <span className="text-muted-foreground/80">{note}</span>
+          <span className="text-muted-foreground">{note}</span>
         )}
       </span>
       {/* While an item is running, its note carries the stage it's in — a long
@@ -1301,7 +1301,7 @@ function ReviewList({
               <button
                 type="button"
                 aria-label="Drag to reorder source"
-                className="text-muted-foreground/50 hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
+                className="text-muted-foreground hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
                 {...(handleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
               >
                 <GripVertical className="size-4" />
@@ -1697,7 +1697,7 @@ function ReviewItem({
         // secondary Preview button — in dark, --muted and --secondary share the
         // same value, which made the button melt into the hovered row.
         // No fill when picked: the checkbox says it once.
-        "hover:bg-foreground/5",
+        "hover:bg-muted",
       )}
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
@@ -1708,7 +1708,7 @@ function ReviewItem({
           <button
             type="button"
             aria-label="Drag to reorder source"
-            className="text-muted-foreground/50 hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
+            className="text-muted-foreground hover:text-foreground inline-grid h-10 w-6 shrink-0 cursor-grab place-items-center touch-none transition-colors active:cursor-grabbing"
             {...(dragHandleProps as ButtonHTMLAttributes<HTMLButtonElement>)}
           >
             <GripVertical className="size-4" />
@@ -1893,7 +1893,7 @@ function RoleSelector({
             <ul className="flex flex-col">
               {extraRoles.map((role) => (
                 <li key={role.id}>
-                  <label className="hover:bg-foreground/5 -mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 transition-colors">
+                  <label className="hover:bg-muted -mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 transition-colors">
                     <Checkbox
                       checked={selectedRoles.has(role.id)}
                       onCheckedChange={() => onToggleRole(role.id)}

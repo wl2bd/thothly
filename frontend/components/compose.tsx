@@ -444,7 +444,7 @@ function ComposeWorkspace({
             <div className="overflow-hidden">
               <div className="flex flex-col items-center gap-3 pt-2 pb-8 text-center">
                 {/* Said plainly while the product is being built. */}
-                <Badge variant="outline" className="border-foreground/15 text-muted-foreground mb-1 font-normal">
+                <Badge variant="outline" className="border-input text-muted-foreground mb-1 font-normal">
                   Early preview
                 </Badge>
                 {/* Title and subtitle read as one group. */}
@@ -484,7 +484,7 @@ function ComposeWorkspace({
                 // The page's first stop after the title: a step lighter than
                 // the ground, a firmer edge, a placeholder that reads.
                 className={cn(
-                  "bg-card border-foreground/15 placeholder:text-foreground/60 pl-12",
+                  "bg-card border-input pl-12",
                   // Right: room for the in-field Add (pasted link) or the
                   // clear × (search term), nothing when empty.
                   queryIsUrl ? "pr-36" : query !== "" ? "pr-24" : "pr-12",
@@ -578,7 +578,7 @@ function ComposeWorkspace({
                   <section key={use.eyebrow} className="flex flex-col gap-2">
                     {/* Firmer ink than the usual muted: these sit on the
                         densest gold. */}
-                    <span className="eyebrow text-foreground/70">{use.eyebrow}</span>
+                    <span className="eyebrow text-foreground">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
                     {/* What goes in, or where it goes: the four most used,
                         quieter than the title, fading out to say there are
@@ -586,7 +586,7 @@ function ComposeWorkspace({
                     <span
                       role="img"
                       aria-label={use.marksLabel}
-                      className="text-foreground/70 flex items-center gap-2.5 self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
+                      className="text-foreground flex items-center gap-2.5 self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
                     >
                       {use.marks}
                     </span>
@@ -599,7 +599,7 @@ function ComposeWorkspace({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="border-foreground/15 text-foreground/85 dark:border-foreground/15 bg-transparent shadow-none"
+                          className="border-input text-foreground bg-transparent shadow-none"
                           onClick={() => {
                             setQuery(q);
                             inputRef.current?.focus();
@@ -610,7 +610,7 @@ function ComposeWorkspace({
                       ))}
                     </div>
                     {/* A real one, made by the app, to see what you'd get. */}
-                    <Link href={use.example} className="text-link text-foreground/75 self-start pt-1 text-sm">
+                    <Link href={use.example} className="text-link text-foreground self-start pt-1 text-sm">
                       See example
                     </Link>
                   </section>
@@ -870,14 +870,14 @@ function SearchResults({
             className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
             style={{ animationDelay: `${(i % 8) * 110}ms` }}
           >
-            <span className="bg-foreground/10 size-5 shrink-0 rounded-sm" />
-            <span className="bg-foreground/10 h-12 w-20 shrink-0 rounded" />
+            <span className="bg-muted size-5 shrink-0 rounded-sm" />
+            <span className="bg-muted h-12 w-20 shrink-0 rounded" />
             <span className="flex min-w-0 flex-1 flex-col gap-2">
               <span
-                className="bg-foreground/10 h-3.5 rounded-full"
+                className="bg-muted h-3.5 rounded-full"
                 style={{ width: `${w}%` }}
               />
-              <span className="bg-foreground/10 h-3 w-2/5 rounded-full" />
+              <span className="bg-muted h-3 w-2/5 rounded-full" />
             </span>
           </li>
         ))}
@@ -892,7 +892,7 @@ function SearchResults({
     return (
       <div className="text-muted-foreground flex flex-col items-center gap-3 px-6 py-10 text-center">
         <SearchXIcon
-          className="text-muted-foreground/40 size-7"
+          className="text-muted-foreground size-7"
           aria-hidden="true"
         />
         <div className="flex flex-col gap-1">
@@ -928,7 +928,7 @@ function SearchResults({
               onPointerDown={onPointerPick}
               // No fill when picked: the checkbox says it, the row doesn't
               // say it twice.
-              className="hover:bg-foreground/5 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
+              className="hover:bg-muted flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
             >
               <Checkbox
                 checked={checked}
@@ -1069,7 +1069,7 @@ function SortSelect({
         <SelectTrigger
           size="sm"
           aria-label="Sort results"
-          className="hover:bg-foreground/5 border-transparent bg-transparent px-2 dark:bg-transparent"
+          className="hover:bg-muted border-transparent bg-transparent px-2 dark:bg-transparent"
         >
           <SelectValue />
         </SelectTrigger>

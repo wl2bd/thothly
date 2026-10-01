@@ -48,7 +48,7 @@ const SOURCES = [
 const STARTS = [50, 150, 250];
 
 const SHEET =
-  "border-foreground/15 bg-card text-muted-foreground absolute top-0 flex h-80 flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-[0_1px_2px_rgb(0_0_0/0.06),0_10px_24px_-14px_rgb(0_0_0/0.25)] dark:shadow-[0_10px_24px_-14px_rgb(0_0_0/0.8)]";
+  "border-input bg-card text-muted-foreground absolute top-0 flex h-80 flex-col overflow-hidden rounded-t-lg border-x border-t px-5 pt-4 text-left shadow-[0_1px_2px_rgb(0_0_0/0.06),0_10px_24px_-14px_rgb(0_0_0/0.25)] dark:shadow-[0_10px_24px_-14px_rgb(0_0_0/0.8)]";
 
 // The sheet in front casts its shadow sideways onto the two behind it.
 const FRONT =
@@ -69,7 +69,7 @@ const P3 =
 function RawSheet({ className }: { className?: string }) {
   return (
     <div className={cn(SHEET, "font-sans", className)}>
-      <span className="text-foreground/80 text-sm">Stoicism</span>
+      <span className="text-foreground text-sm">Stoicism</span>
       <span className="mt-3 text-xs">Stoicism, TED-Ed</span>
       <p className="mt-1.5 text-xs leading-relaxed">{P1}</p>
       <span className="mt-3 text-xs">10 Stoic principles</span>
@@ -82,11 +82,11 @@ function RawSheet({ className }: { className?: string }) {
 function MarkdownSheet({ className }: { className?: string }) {
   return (
     <div className={cn(SHEET, "font-mono text-3xs leading-relaxed", className)}>
-      <span className="text-foreground/80"># Stoicism</span>
-      <span className="mt-3 text-foreground/70">## 1. Stoicism, TED-Ed</span>
-      <span className="text-muted-foreground/60">&gt; source: youtube.com/watch?v=…</span>
+      <span className="text-foreground"># Stoicism</span>
+      <span className="mt-3 text-foreground">## 1. Stoicism, TED-Ed</span>
+      <span className="text-muted-foreground">&gt; source: youtube.com/watch?v=…</span>
       <p className="mt-2">{P1}</p>
-      <span className="mt-3 text-foreground/70">## 2. 10 Stoic principles</span>
+      <span className="mt-3 text-foreground">## 2. 10 Stoic principles</span>
       <p className="mt-2">
         - **Dichotomy of control**: sort what is up to us from what is not.
       </p>
@@ -99,22 +99,22 @@ function BookSheet({ className }: { className?: string }) {
   return (
     <div className={cn(SHEET, "px-6 pt-5", className)}>
       <span className="eyebrow text-3xs! text-inherit">Chapter 1</span>
-      <span className="font-display text-foreground/80 mt-1 text-lg tracking-tight">
+      <span className="font-display text-foreground mt-1 text-lg tracking-tight">
         The painted porch
       </span>
       <p className="mt-3 text-xs leading-relaxed">
-        <span className="font-display text-foreground/80 float-left mt-0.5 mr-1.5 text-4xl leading-[0.8]">
+        <span className="font-display text-foreground float-left mt-0.5 mr-1.5 text-4xl leading-[0.8]">
           S
         </span>
         {P1.slice(1)} The idea returns in every source of this book{" "}
-        <span className="text-foreground/80 underline decoration-current/40 underline-offset-2">
+        <span className="text-foreground underline decoration-current/40 underline-offset-2">
           (see ch. 3)
         </span>
         .
       </p>
       <p className="mt-2 indent-4 text-xs leading-relaxed">
         {P3}{" "}
-        <span className="text-foreground/80 underline decoration-current/40 underline-offset-2">
+        <span className="text-foreground underline decoration-current/40 underline-offset-2">
           Meditations, ch. 2
         </span>
         .
@@ -151,7 +151,7 @@ export function ToolSketch() {
               } as React.CSSProperties
             }
             // Light: an opaque card lifted off the glow, which swallowed it.
-            className="sketch-card border-foreground/10 bg-card/90 shadow-sm dark:bg-background/60 dark:shadow-none text-muted-foreground flex min-w-0 items-center gap-2.5 rounded-lg border p-2 text-left"
+            className="sketch-card border-border bg-card/90 shadow-sm dark:bg-background/60 dark:shadow-none text-muted-foreground flex min-w-0 items-center gap-2.5 rounded-lg border p-2 text-left"
           >
             <span
               className={cn(
@@ -163,7 +163,7 @@ export function ToolSketch() {
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-xs">{title}</span>
-              <span className="text-muted-foreground/70 flex items-center gap-1.5 text-xs tabular-nums">
+              <span className="text-muted-foreground flex items-center gap-1.5 text-xs tabular-nums">
                 <span className="eyebrow text-3xs! text-inherit">{kind}</span>
                 <MetaSep />
                 {meta}
@@ -180,7 +180,7 @@ export function ToolSketch() {
             key={x}
             d={`M${x} ${SOURCES[i].drop} C ${x} 30, 150 22, 150 48`}
             pathLength={1}
-            className="sketch-thread stroke-foreground/15 fill-none"
+            className="sketch-thread stroke-input fill-none"
             style={{ animationDelay: `${520 + i * 110}ms` }}
           />
         ))}

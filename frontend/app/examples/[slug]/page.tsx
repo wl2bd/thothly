@@ -62,7 +62,7 @@ export default function ExamplePage() {
             <BookReader chapters={chapters} at={at} onGo={setAt} />
           ) : (
             md && (
-              <pre className="text-foreground/80 min-w-0 font-mono text-xs leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
+              <pre className="text-foreground min-w-0 font-mono text-xs leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
                 {md}
               </pre>
             )

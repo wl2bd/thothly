@@ -195,7 +195,7 @@ export function SourceMedia({
         />
       ) : (
         <span
-          className="text-muted-foreground/60 flex size-full items-center justify-center"
+          className="text-muted-foreground flex size-full items-center justify-center"
           aria-hidden="true"
         >
           {text ? (

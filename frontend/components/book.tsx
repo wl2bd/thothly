@@ -97,15 +97,15 @@ export function BookContents({
               onClick={() => onGo(i)}
               aria-current={i === at ? "true" : undefined}
               className={cn(
-                "hover:bg-foreground/5 focus-visible:ring-ring flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                "hover:bg-muted focus-visible:ring-ring flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
                 i === at ? "text-foreground font-medium" : "text-muted-foreground",
               )}
             >
-              <span className="text-muted-foreground/70 w-5 shrink-0 text-xs tabular-nums">
+              <span className="text-muted-foreground w-5 shrink-0 text-xs tabular-nums">
                 {i + 1}
               </span>
               <span className="line-clamp-2 min-w-0 flex-1">{c.title}</span>
-              <span className="text-muted-foreground/70 shrink-0 text-xs tabular-nums">
+              <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
                 {countWords(c.body).toLocaleString("en-US")}
               </span>
             </button>

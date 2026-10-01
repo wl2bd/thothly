@@ -34,7 +34,7 @@ export default function AboutPage() {
 
         <section id="how-it-works" className="flex scroll-mt-20 flex-col gap-3">
           <h2 className="font-display text-xl tracking-tight">How it works</h2>
-          <ol className="text-muted-foreground marker:text-muted-foreground/60 flex list-decimal flex-col gap-2 pl-5 leading-relaxed">
+          <ol className="text-muted-foreground flex list-decimal flex-col gap-2 pl-5 leading-relaxed">
             <li>Search, or paste a link. Add up to 5 sources.</li>
             <li>Pick the items you want from each source.</li>
             <li>Compile, then read it here or download it.</li>
@@ -46,7 +46,7 @@ export default function AboutPage() {
             in the URL and so in the host's request logs, no volume on Fly. */}
         <section id="privacy" className="flex scroll-mt-20 flex-col gap-3">
           <h2 className="font-display text-xl tracking-tight">Privacy</h2>
-          <ul className="text-muted-foreground marker:text-muted-foreground/60 flex list-disc flex-col gap-2 pl-5 leading-relaxed">
+          <ul className="text-muted-foreground flex list-disc flex-col gap-2 pl-5 leading-relaxed">
             <li>No account, no analytics, no tracking.</li>
             <li>
               Your compilation history and your AI key stay in this browser.
