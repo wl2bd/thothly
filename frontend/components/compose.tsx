@@ -571,11 +571,12 @@ function ComposeWorkspace({
               <div className="hidden w-full pt-8 sm:block">
                 <ToolSketch />
               </div>
-              {/* The two uses, each with topics to try: a book to read, or
-                  context for an AI. */}
+              {/* The two uses, each with topics to try: an ebook to read, or
+                  context for an AI. Their rows line up across the columns
+                  (subgrid), whatever wraps. */}
               <div className="grid w-full gap-8 pt-4 text-left sm:grid-cols-2">
                 {USES.map((use) => (
-                  <section key={use.eyebrow} className="flex flex-col gap-2">
+                  <section key={use.eyebrow} className="row-span-5 grid grid-rows-subgrid gap-2">
                     {/* Firmer ink than the usual muted: these sit on the
                         densest gold. */}
                     <span className="eyebrow text-foreground">{use.eyebrow}</span>
@@ -586,7 +587,7 @@ function ComposeWorkspace({
                     <span
                       role="img"
                       aria-label={use.marksLabel}
-                      className="text-foreground flex items-center gap-2.5 self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
+                      className="text-foreground flex items-center gap-2.5 justify-self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
                     >
                       {use.marks}
                     </span>
@@ -610,7 +611,7 @@ function ComposeWorkspace({
                       ))}
                     </div>
                     {/* A real one, made by the app, to see what you'd get. */}
-                    <Link href={use.example} className="text-link text-foreground self-start pt-1 text-sm">
+                    <Link href={use.example} className="text-link text-foreground justify-self-start pt-1 text-sm">
                       See example
                     </Link>
                   </section>
