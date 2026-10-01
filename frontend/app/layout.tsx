@@ -112,7 +112,7 @@ export default function RootLayout({
             over it. */}
         <div
           aria-hidden="true"
-          className="glow-layer pointer-events-none fixed inset-x-0 top-14 bottom-0 -z-10 bg-no-repeat"
+          className="glow-layer pointer-events-none fixed inset-x-0 top-header bottom-0 -z-10 bg-no-repeat"
         />
         {children}
         <Toaster position="bottom-center" />

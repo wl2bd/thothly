@@ -15,7 +15,7 @@ const navLink =
 // controls over the compilation's.
 export function AppHeader() {
   return (
-    <header className="bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
+    <header className="bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 flex h-header shrink-0 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
       <Link href="/" className="flex items-end gap-1.5">
         <Logotype className="h-7 w-auto" title="Thothly" />
         {/* The build's version, from package.json: bumped there, shown here. */}

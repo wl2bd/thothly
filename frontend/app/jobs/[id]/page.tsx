@@ -1289,7 +1289,7 @@ function ReviewList({
             fade below anchors to this header. Opaque (not /95) so rows vanish
             cleanly under it instead of ghosting through. Same px/gap as the item
             rows so the checkbox column lines up across header and items. */}
-        <div className="bg-background sticky top-14 z-10 lg:top-0">
+        <div className="bg-background sticky top-header z-10 lg:top-0">
           <div className="flex items-center gap-3.5 px-3.5 py-2.5">
             {handleProps && (
               /* The grip stays a 16px mark but sits in a 24x40 box: a bare button
