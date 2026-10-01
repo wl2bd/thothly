@@ -1101,7 +1101,7 @@ const USES: {
 }[] = [
   {
     eyebrow: "EPUB",
-    title: "Videos and podcasts, read on your e-reader.",
+    title: "No ads, no feed, just reading.",
     // Only what the app really reads, most used first: YouTube, podcasts
     // (any show, through its feed), Wikipedia, blogs such as Substack.
     marks: (
@@ -1118,7 +1118,7 @@ const USES: {
   },
   {
     eyebrow: "Markdown",
-    title: "The full text, ready to paste into your AI.",
+    title: "Your AI answers from the source.",
     marks: (
       <>
         <ProviderIcon provider="claude" />
