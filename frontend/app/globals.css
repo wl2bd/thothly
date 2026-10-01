@@ -269,7 +269,7 @@
    the left (an ink stroke uncovering it, sharpening as it goes), then the
    contents set line by line (each line's --i staggers it). Once, on arrival. */
 .ink-in {
-  animation: ink-in 1100ms var(--ease-out-quint) 150ms backwards;
+  animation: ink-in 1000ms var(--ease-out-quint) 150ms backwards;
 }
 
 @keyframes ink-in {
@@ -284,7 +284,7 @@
 }
 
 .line-in {
-  animation: line-in 600ms var(--ease-out-quint) backwards;
+  animation: line-in 700ms var(--ease-out-quint) backwards;
   animation-delay: calc(500ms + min(var(--i, 0), 16) * 60ms);
 }
 
@@ -319,7 +319,7 @@
 
 .sketch-book {
   transform: rotate(-1deg);
-  animation: sketch-book-in 800ms var(--ease-out-quint) 300ms backwards;
+  animation: sketch-book-in 700ms var(--ease-out-quint) 300ms backwards;
 }
 
 @keyframes sketch-book-in {
@@ -334,7 +334,7 @@
   stroke-width: 1px;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: sketch-draw 900ms var(--ease-out-quint) forwards;
+  animation: sketch-draw 1000ms var(--ease-out-quint) forwards;
 }
 
 @keyframes sketch-draw {
@@ -392,7 +392,7 @@
    eases both ways, including across navigation, since the layer persists. */
 .glow-layer {
   opacity: 0.15;
-  transition: opacity 900ms var(--ease-out-quint);
+  transition: opacity 1000ms var(--ease-out-quint);
 }
 
 [data-glow-full] .glow-layer {
@@ -414,14 +414,14 @@
 }
 ::view-transition-old(flow-card),
 ::view-transition-new(flow-card) {
-  animation-duration: 220ms;
+  animation-duration: 200ms;
   animation-timing-function: var(--ease-out-quint);
 }
 /* The page chrome (everything outside the card) cross-fades on navigation —
    align it to the same curve/timing so nothing in the frame eases differently. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 220ms;
+  animation-duration: 200ms;
   animation-timing-function: var(--ease-out-quint);
 }
 
@@ -432,10 +432,10 @@
    still-decelerating beat so the home page eases back rather than slamming in. */
 :active-view-transition-type(to-home)::view-transition-old(root),
 :active-view-transition-type(to-home)::view-transition-new(root) {
-  animation-duration: 380ms;
+  animation-duration: 300ms;
 }
 :active-view-transition-type(to-home)::view-transition-group(flow-card) {
-  animation-duration: 400ms;
+  animation-duration: 500ms;
 }
 :active-view-transition-type(to-home)::view-transition-old(flow-card),
 :active-view-transition-type(to-home)::view-transition-new(flow-card) {
@@ -450,7 +450,7 @@
   mix-blend-mode: normal;
 }
 [data-theme-switch]::view-transition-new(root) {
-  animation: theme-reveal 520ms var(--ease-out-quint);
+  animation: theme-reveal 500ms var(--ease-out-quint);
 }
 [data-theme-switch]::view-transition-group(*) {
   animation-duration: 0s;
