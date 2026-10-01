@@ -175,12 +175,22 @@ export function ToolSketch() {
 
       {/* The binding, drawn once on arrival; still under reduced motion. */}
       <svg viewBox="0 0 300 48" preserveAspectRatio="none" className="h-12 w-full overflow-visible">
+        {/* Faint under the sources, firmest midway, fading again where the
+            threads meet so their point doesn't stab the book. */}
+        <defs>
+          <linearGradient id="sketch-thread-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="48">
+            <stop offset="0" style={{ stopColor: "var(--muted-foreground)", stopOpacity: 0.2 }} />
+            <stop offset="0.55" style={{ stopColor: "var(--muted-foreground)", stopOpacity: 0.8 }} />
+            <stop offset="1" style={{ stopColor: "var(--muted-foreground)", stopOpacity: 0.1 }} />
+          </linearGradient>
+        </defs>
         {STARTS.map((x, i) => (
           <path
             key={x}
             d={`M${x} ${SOURCES[i].drop} C ${x} 30, 150 22, 150 48`}
             pathLength={1}
-            className="sketch-thread stroke-input fill-none"
+            stroke="url(#sketch-thread-ink)"
+            className="sketch-thread fill-none"
             style={{ animationDelay: `${520 + i * 110}ms` }}
           />
         ))}
