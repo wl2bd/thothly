@@ -206,7 +206,7 @@ export function SourceMedia({
         </span>
       )}
       {duration && (
-        <span className="absolute right-1 bottom-1 rounded-xs bg-black/72 px-1 py-px text-2xs leading-tight font-medium text-white tabular-nums">
+        <span className="absolute right-1 bottom-1 rounded-xs bg-black/72 px-1 py-px text-3xs leading-tight font-medium text-white tabular-nums">
           {duration}
         </span>
       )}

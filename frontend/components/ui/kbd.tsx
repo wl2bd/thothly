@@ -15,7 +15,7 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
     <kbd
       aria-hidden="true"
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-current/25 px-1 font-sans text-2xs font-medium opacity-70 [@media(hover:none)]:hidden",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-current/25 px-1 font-sans text-3xs font-medium opacity-70 [@media(hover:none)]:hidden",
         className,
       )}
     >

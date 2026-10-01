@@ -56,10 +56,13 @@
      (2.25rem) and 6xl (3.75rem). */
   --text-display: clamp(2.25rem, 5vw, 3.75rem);
   --leading-display: 1.1;
-  /* Miniature type, only inside the illustrated tablets and the funnel figure
-     (a book page drawn at thumbnail scale), never for interface text. */
-  --text-2xs: 0.625rem;
-  --text-3xs: 0.55rem;
+  /* Two steps below Tailwind's xs (0.75rem): 2xs for the small uppercase
+     labels (`eyebrow`), 3xs for key caps, source glyphs and the home sketch's
+     miniature labels. */
+  --text-2xs: 0.6875rem;
+  --text-3xs: 0.625rem;
+  /* The right-hand pane (compilation, Settings) on large screens. */
+  --container-pane: 400px;
   /* The house curve: a fast start that settles softly (easeOutQuint). Every
      transition and the card morph use it. */
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
@@ -124,6 +127,7 @@
      about half its height, two tones: desert gold on the left, a muted tan on
      the right, so it never reads as one flat yellow. */
   --glow:
+    radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
     radial-gradient(70% 55% at 22% 100%, oklch(0.87 0.12 85 / 0.7), transparent),
     radial-gradient(75% 60% at 82% 100%, oklch(0.84 0.045 65 / 0.75), transparent);
   /* A surface's edge: a hairline shadow under a white card. */
@@ -157,6 +161,7 @@
   --field: oklch(0.2 0.004 80);
   --field-hover: oklch(0.24 0.004 80);
   --glow:
+    radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
     radial-gradient(70% 55% at 22% 100%, oklch(0.55 0.12 80 / 0.42), transparent),
     radial-gradient(75% 60% at 82% 100%, oklch(0.45 0.04 60 / 0.5), transparent);
   /* At night a surface is lit from above: a faint top highlight. */
@@ -172,7 +177,7 @@
 /* The one small label style: section names (Contents, Recent compilations,
    the menu's Download / Send groups, the pane's Ready). */
 @utility eyebrow {
-  @apply text-muted-foreground text-[0.6875rem] font-medium tracking-wider uppercase;
+  @apply text-muted-foreground text-2xs font-medium tracking-wider uppercase;
 }
 
 @layer base {
@@ -422,7 +427,7 @@
 
 /* Returning to the home page (the "New compilation" / logo links carry the
    `to-home` transition type): the home view is far richer than the job view (the
-   full hero — headline, glyph rain, subtitle), so snapping it in at the forward
+   headline, the field and the sketch), so snapping it in at the forward
    speed reads as abrupt. Let the chrome AND the card settle in over a longer,
    still-decelerating beat so the home page eases back rather than slamming in. */
 :active-view-transition-type(to-home)::view-transition-old(root),
@@ -484,11 +489,10 @@
       color-mix(in oklab, var(--background) 55%, transparent) 68%,
       transparent
     ),
-    radial-gradient(40% 40% at 8% 55%, oklch(0.62 0.06 60 / 0.24), transparent),
     var(--glow);
 }
 @media (min-width: 64rem) {
   :root:has(#main > aside) .glow-layer {
-    --pool-x: calc((100% - 400px) / 2);
+    --pool-x: calc((100% - var(--container-pane)) / 2);
   }
 }

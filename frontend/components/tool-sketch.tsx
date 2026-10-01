@@ -81,7 +81,7 @@ function RawSheet({ className }: { className?: string }) {
 
 function MarkdownSheet({ className }: { className?: string }) {
   return (
-    <div className={cn(SHEET, "font-mono text-2xs leading-relaxed", className)}>
+    <div className={cn(SHEET, "font-mono text-3xs leading-relaxed", className)}>
       <span className="text-foreground/80"># Stoicism</span>
       <span className="mt-3 text-foreground/70">## 1. Stoicism, TED-Ed</span>
       <span className="text-muted-foreground/60">&gt; source: youtube.com/watch?v=…</span>
@@ -98,7 +98,7 @@ function MarkdownSheet({ className }: { className?: string }) {
 function BookSheet({ className }: { className?: string }) {
   return (
     <div className={cn(SHEET, "px-6 pt-5", className)}>
-      <span className="eyebrow text-2xs! text-inherit">Chapter 1</span>
+      <span className="eyebrow text-3xs! text-inherit">Chapter 1</span>
       <span className="font-display text-foreground/80 mt-1 text-lg tracking-tight">
         The painted porch
       </span>
@@ -164,7 +164,7 @@ export function ToolSketch() {
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-xs">{title}</span>
               <span className="text-muted-foreground/70 flex items-center gap-1.5 text-xs tabular-nums">
-                <span className="eyebrow text-2xs! text-inherit">{kind}</span>
+                <span className="eyebrow text-3xs! text-inherit">{kind}</span>
                 <MetaSep />
                 {meta}
               </span>

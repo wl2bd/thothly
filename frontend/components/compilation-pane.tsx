@@ -111,7 +111,7 @@ export function Workspace({ children }: { children: ReactNode }) {
     <main
       id="main"
       // One column until a compilation pane is there to sit beside the work.
-      className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-1 lg:has-[>aside]:grid-cols-[minmax(0,1fr)_400px]"
+      className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-1 lg:has-[>aside]:grid-cols-[minmax(0,1fr)_var(--container-pane)]"
     >
       {children}
     </main>
