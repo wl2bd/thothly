@@ -892,7 +892,7 @@ function SearchResults({
     return (
       <div className="text-muted-foreground flex flex-col items-center gap-3 px-6 py-10 text-center">
         <SearchXIcon
-          className="text-muted-foreground size-7"
+          className="size-6"
           aria-hidden="true"
         />
         <div className="flex flex-col gap-1">
