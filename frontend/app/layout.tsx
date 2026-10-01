@@ -3,6 +3,7 @@ import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Grain } from "@/components/grain";
+import { PageTransition } from "@/components/page-transition";
 import { Toaster } from "@/components/ui/sonner";
 
 // Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
@@ -114,7 +115,7 @@ export default function RootLayout({
           aria-hidden="true"
           className="glow-layer pointer-events-none fixed inset-x-0 top-header bottom-0 -z-10 bg-no-repeat"
         />
-        {children}
+        <PageTransition>{children}</PageTransition>
         <Toaster position="bottom-center" />
       </body>
     </html>

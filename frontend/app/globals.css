@@ -422,7 +422,9 @@
 /* The page chrome (everything outside the card) cross-fades on navigation —
    align it to the same curve/timing so nothing in the frame eases differently. */
 ::view-transition-old(root),
-::view-transition-new(root) {
+::view-transition-new(root),
+::view-transition-old(.page),
+::view-transition-new(.page) {
   animation-duration: 200ms;
   animation-timing-function: var(--ease-out-quint);
 }
@@ -433,7 +435,9 @@
    speed reads as abrupt. Let the chrome AND the card settle in over a longer,
    still-decelerating beat so the home page eases back rather than slamming in. */
 :active-view-transition-type(to-home)::view-transition-old(root),
-:active-view-transition-type(to-home)::view-transition-new(root) {
+:active-view-transition-type(to-home)::view-transition-new(root),
+:active-view-transition-type(to-home)::view-transition-old(.page),
+:active-view-transition-type(to-home)::view-transition-new(.page) {
   animation-duration: 300ms;
 }
 :active-view-transition-type(to-home)::view-transition-group(flow-card) {
