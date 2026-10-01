@@ -74,25 +74,25 @@ export default function ExamplePage() {
           meta={`3 Wikipedia articles${words != null ? ` · ~${words.toLocaleString("en-US")} words` : ""}`}
           footer={
             <div className="flex flex-col gap-2">
+              <BookActions
+                epubUrl={epubUrl}
+                mdUrl={mdUrl}
+                title={example.title}
+                epubNote="For your e-reader"
+                mdNote="For an AI"
+              />
               <div className="flex w-full gap-2">
-                <BookActions
-                  epubUrl={epubUrl}
-                  mdUrl={mdUrl}
-                  title={example.title}
-                  epubNote="For your e-reader"
-                  mdNote="For an AI"
-                />
-                <Button type="button" variant="outline" onClick={copy} disabled={!md}>
+                <Button type="button" variant="outline" onClick={copy} disabled={!md} className="flex-1">
                   {copied ? <Check /> : <Copy />}
                   <span className="grid">
                     <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
                     <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Copied</span>
                   </span>
                 </Button>
+                <Link href="/" className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground flex-1")}>
+                  Make your own
+                </Link>
               </div>
-              <Link href="/" className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground w-full")}>
-                Make your own
-              </Link>
             </div>
           }
         >

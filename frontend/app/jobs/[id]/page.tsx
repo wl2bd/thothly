@@ -937,27 +937,27 @@ function CompletedView({
         // action; the Markdown copy is for an AI; starting over is the quietest.
         footer={
           <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
-            {/* Two actions: the gold menu (download a format, or send to an
-                e-reader) and Copy (the Markdown, for an AI). */}
+            {/* The gold menu on its own line (download a format, or send to an
+                e-reader), the two quieter actions side by side under it. */}
+            <BookActions
+              epubUrl={getDownloadUrl(jobId)}
+              mdUrl={hasMarkdown ? getDownloadUrl(jobId, "md") : undefined}
+              title={job.book_title ?? ""}
+              epubNote={
+                epubBytes != null
+                  ? `For your e-reader · ${formatBytes(epubBytes)}`
+                  : "For your e-reader"
+              }
+              mdNote={
+                tokens != null ? `For an AI · ~${formatTokens(tokens)} tokens` : "For an AI"
+              }
+            />
             <div className="flex w-full gap-2">
-              <BookActions
-                epubUrl={getDownloadUrl(jobId)}
-                mdUrl={hasMarkdown ? getDownloadUrl(jobId, "md") : undefined}
-                title={job.book_title ?? ""}
-                epubNote={
-                  epubBytes != null
-                    ? `For your e-reader · ${formatBytes(epubBytes)}`
-                    : "For your e-reader"
-                }
-                mdNote={
-                  tokens != null ? `For an AI · ~${formatTokens(tokens)} tokens` : "For an AI"
-                }
-              />
               {hasMarkdown && (
                 <Tooltip content="Copy the Markdown, to paste into an AI">
                   {/* Both labels share one grid cell, the idle one hidden, so
                       "Copied" never widens the button or shifts its row. */}
-                  <Button type="button" variant="outline" onClick={copy} disabled={!md} aria-keyshortcuts="C">
+                  <Button type="button" variant="outline" onClick={copy} disabled={!md} aria-keyshortcuts="C" className="flex-1">
                     {copied ? <Check /> : <Copy />}
                     <span className="grid">
                       <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
@@ -967,20 +967,20 @@ function CompletedView({
                   </Button>
                 </Tooltip>
               )}
+              <Link
+                href="/"
+                onClick={clearDraft}
+                className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground flex-1")}
+              >
+                New compilation
+                <Kbd>N</Kbd>
+              </Link>
             </div>
             {tokens != null && tokens > 200000 && (
               <p className="text-muted-foreground text-xs">
                 Large for some AIs: attaching the Markdown file may work better than pasting it.
               </p>
             )}
-            <Link
-              href="/"
-              onClick={clearDraft}
-              className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground w-full")}
-            >
-              New compilation
-              <Kbd>N</Kbd>
-            </Link>
           </div>
         }
       >
