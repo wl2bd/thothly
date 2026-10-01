@@ -6,22 +6,18 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 // A header link that knows it is the current page: firmer ink, and
-// aria-current for assistive tech. The compile flow counts every job page as
-// its own, since that is where a compilation continues.
+// aria-current for assistive tech.
 export function NavLink({
   href,
-  alsoUnder,
   className,
   children,
 }: {
   href: string;
-  // Path prefixes that count as this page too ("/jobs/" for Compile).
-  alsoUnder?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const current = pathname === href || (!!alsoUnder && pathname.startsWith(alsoUnder));
+  const current = pathname === href;
   return (
     <Link
       href={href}

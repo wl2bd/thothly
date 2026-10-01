@@ -22,11 +22,6 @@ export function AppHeader() {
         <span className="text-muted-foreground mb-0.5 text-xs tabular-nums max-sm:hidden">v{version}</span>
       </Link>
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* The way back to the work from anywhere, beside the logo that does
-            the same for those who know it. */}
-        <NavLink href="/" alsoUnder="/jobs/" className={`${navLink} max-sm:hidden`}>
-          Compile
-        </NavLink>
         {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}
         <SettingsLink className={navLink} />
         <NavLink href="/about" className={navLink}>
