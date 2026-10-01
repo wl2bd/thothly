@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 
 // Whether Settings is showing, and whether a compilation pane is on screen to
 // show it in. Settings takes that pane's place rather than opening a second
@@ -20,10 +21,14 @@ function subscribe(onChange: () => void) {
   return () => listeners.delete(onChange);
 }
 
-export function setSettingsOpen(value: boolean) {
+// An external store can't ride a React transition, so the swap asks the
+// browser for its cross-fade directly (the root one, 200ms). `animate: false`
+// when a navigation already runs its own transition, which a second one would cut.
+export function setSettingsOpen(value: boolean, animate = true) {
   if (open === value) return;
   open = value;
-  emit();
+  if (!animate || !document.startViewTransition) return emit();
+  document.startViewTransition(() => flushSync(emit));
 }
 
 export function useSettingsOpen(): boolean {
