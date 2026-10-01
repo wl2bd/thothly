@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "progress",
+  "dependencies": [
+    "@base-ui/react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/progress.tsx",
+      "content": "\"use client\"\r\n\r\nimport { Progress as ProgressPrimitive } from \"@base-ui/react/progress\"\r\nimport { cn } from \"@/lib/utils\"\r\n\r\nfunction Progress({\r\n  className,\r\n  children,\r\n  value,\r\n  ...props\r\n}: ProgressPrimitive.Root.Props) {\r\n  return (\r\n    <ProgressPrimitive.Root\r\n      value={value}\r\n      data-slot=\"progress\"\r\n      className={cn(\"flex flex-wrap gap-3\", className)}\r\n      {...props}\r\n    >\r\n      {children}\r\n      <ProgressTrack>\r\n        <ProgressIndicator />\r\n      </ProgressTrack>\r\n    </ProgressPrimitive.Root>\r\n  )\r\n}\r\n\r\nfunction ProgressTrack({ className, ...props }: ProgressPrimitive.Track.Props) {\r\n  return (\r\n    <ProgressPrimitive.Track\r\n      className={cn(\r\n        \"relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted\",\r\n        className\r\n      )}\r\n      data-slot=\"progress-track\"\r\n      {...props}\r\n    />\r\n  )\r\n}\r\n\r\nfunction ProgressIndicator({\r\n  className,\r\n  ...props\r\n}: ProgressPrimitive.Indicator.Props) {\r\n  return (\r\n    <ProgressPrimitive.Indicator\r\n      data-slot=\"progress-indicator\"\r\n      className={cn(\"h-full bg-primary transition-[width] duration-700 ease-out-quint\", className)}\r\n      {...props}\r\n    />\r\n  )\r\n}\r\n\r\nfunction ProgressLabel({ className, ...props }: ProgressPrimitive.Label.Props) {\r\n  return (\r\n    <ProgressPrimitive.Label\r\n      className={cn(\"text-sm font-medium\", className)}\r\n      data-slot=\"progress-label\"\r\n      {...props}\r\n    />\r\n  )\r\n}\r\n\r\nfunction ProgressValue({ className, ...props }: ProgressPrimitive.Value.Props) {\r\n  return (\r\n    <ProgressPrimitive.Value\r\n      className={cn(\r\n        \"ml-auto text-sm text-muted-foreground tabular-nums\",\r\n        className\r\n      )}\r\n      data-slot=\"progress-value\"\r\n      {...props}\r\n    />\r\n  )\r\n}\r\n\r\nexport {\r\n  Progress,\r\n  ProgressTrack,\r\n  ProgressIndicator,\r\n  ProgressLabel,\r\n  ProgressValue,\r\n}\r\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

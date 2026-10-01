@@ -1,0 +1,106 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "gold-leaf-theme",
+  "title": "Gold Leaf theme",
+  "description": "Warm near-neutral grounds with one desert gold for actions and focus.",
+  "cssVars": {
+    "theme": {
+      "text-display": "clamp(2.25rem, 5vw, 3.75rem)",
+      "leading-display": "1.1",
+      "text-2xs": "0.6875rem",
+      "text-3xs": "0.625rem",
+      "container-pane": "400px",
+      "spacing-header": "3.5rem",
+      "ease-out-quint": "cubic-bezier(0.22, 1, 0.36, 1)",
+      "ease-out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "shadow-surface": "var(--surface-lift)"
+    },
+    "light": {
+      "background": "oklch(0.993 0.004 80)",
+      "foreground": "oklch(0.16 0.015 68)",
+      "card": "oklch(1 0 0)",
+      "card-foreground": "var(--foreground)",
+      "popover": "var(--card)",
+      "popover-foreground": "var(--foreground)",
+      "primary": "oklch(0.82 0.145 80)",
+      "primary-foreground": "var(--foreground)",
+      "primary-strong": "oklch(0.6 0.15 75)",
+      "secondary": "oklch(0.955 0.004 80)",
+      "secondary-foreground": "var(--foreground)",
+      "muted": "oklch(0.965 0.004 80)",
+      "muted-foreground": "oklch(0.5 0.004 80)",
+      "accent": "var(--muted)",
+      "accent-foreground": "var(--foreground)",
+      "destructive": "oklch(0.52 0.21 27)",
+      "success": "oklch(0.5 0.12 150)",
+      "success-foreground": "oklch(0.98 0.004 80)",
+      "warning": "oklch(0.53 0.16 45)",
+      "warning-foreground": "oklch(0.98 0.004 80)",
+      "info": "oklch(0.52 0.13 255)",
+      "info-foreground": "oklch(0.98 0.004 80)",
+      "border": "oklch(0.16 0.015 68 / 7%)",
+      "input": "oklch(0.16 0.015 68 / 12%)",
+      "field": "oklch(0.967 0.004 80)",
+      "field-hover": "oklch(0.945 0.004 80)",
+      "ring": "var(--primary-strong)",
+      "radius": "0.625rem",
+      "surface-lift": "0 1px 1px rgb(0 0 0 / 0.03)"
+    },
+    "dark": {
+      "background": "oklch(0.13 0.004 80)",
+      "foreground": "oklch(0.97 0.004 80)",
+      "card": "oklch(0.17 0.004 80)",
+      "card-foreground": "var(--foreground)",
+      "popover": "var(--card)",
+      "popover-foreground": "var(--foreground)",
+      "primary": "oklch(0.71 0.135 78)",
+      "primary-foreground": "oklch(0.16 0.004 80)",
+      "primary-strong": "var(--primary)",
+      "secondary": "oklch(0.22 0.004 80)",
+      "secondary-foreground": "var(--foreground)",
+      "muted": "oklch(0.22 0.004 80)",
+      "muted-foreground": "oklch(0.7 0.004 80)",
+      "accent": "var(--muted)",
+      "accent-foreground": "var(--foreground)",
+      "destructive": "oklch(0.68 0.2 25)",
+      "success": "oklch(0.72 0.14 150)",
+      "success-foreground": "oklch(0.16 0.004 80)",
+      "warning": "oklch(0.78 0.15 55)",
+      "warning-foreground": "oklch(0.16 0.004 80)",
+      "info": "oklch(0.7 0.14 255)",
+      "info-foreground": "oklch(0.16 0.004 80)",
+      "border": "oklch(1 0 0 / 6%)",
+      "input": "oklch(1 0 0 / 8%)",
+      "field": "oklch(0.2 0.004 80)",
+      "field-hover": "oklch(0.24 0.004 80)",
+      "ring": "var(--primary-strong)",
+      "surface-lift": "inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 1px rgb(0 0 0 / 0.3)"
+    }
+  },
+  "css": {
+    "@utility text-link": {
+      "@apply decoration-current/35 hover:decoration-current focus-visible:ring-ring rounded-xs underline underline-offset-3 transition-colors focus-visible:ring-2 focus-visible:outline-none": {}
+    },
+    "@utility eyebrow": {
+      "@apply text-muted-foreground text-2xs font-medium tracking-wider uppercase": {}
+    },
+    "@layer base": {
+      "body": {
+        "font-weight": "350"
+      },
+      "b, strong": {
+        "font-weight": "600"
+      },
+      "button:not(:disabled), [role=\"button\"]:not(:disabled)": {
+        "cursor": "pointer"
+      },
+      "h1, h2, h3, h4, h5, h6": {
+        "text-wrap": "balance"
+      },
+      "p": {
+        "text-wrap": "pretty"
+      }
+    }
+  },
+  "type": "registry:theme"
+}

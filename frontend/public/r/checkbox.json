@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "checkbox",
+  "dependencies": [
+    "@base-ui/react",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/checkbox.tsx",
+      "content": "\"use client\"\n\nimport { Checkbox as CheckboxPrimitive } from \"@base-ui/react/checkbox\"\n\nimport { cn } from \"@/lib/utils\"\nimport { CheckIcon, MinusIcon } from \"lucide-react\"\n\nfunction Checkbox({\n  className,\n  indeterminate,\n  ...props\n}: CheckboxPrimitive.Root.Props) {\n  return (\n    <CheckboxPrimitive.Root\n      data-slot=\"checkbox\"\n      indeterminate={indeterminate}\n      className={cn(\n        \"peer relative flex size-5 shrink-0 items-center justify-center rounded-sm border border-foreground/35 transition-colors outline-none group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-foreground dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-foreground data-checked:bg-foreground data-checked:text-background data-indeterminate:border-foreground data-indeterminate:bg-foreground data-indeterminate:text-background dark:data-checked:bg-foreground dark:data-indeterminate:bg-foreground\",\n        className\n      )}\n      {...props}\n    >\n      <CheckboxPrimitive.Indicator\n        data-slot=\"checkbox-indicator\"\n        className=\"grid place-content-center text-current transition-none [&>svg]:size-4\"\n      >\n        {/* A dash for the \"some selected\" (indeterminate) group state, a tick for\n            fully checked. */}\n        {indeterminate ? <MinusIcon /> : <CheckIcon />}\n      </CheckboxPrimitive.Indicator>\n    </CheckboxPrimitive.Root>\n  )\n}\n\nexport { Checkbox }\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

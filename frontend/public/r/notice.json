@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "notice",
+  "dependencies": [
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json",
+    "https://thothly.vercel.app/r/alert.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/notice.tsx",
+      "content": "import type { ComponentProps } from \"react\"\r\nimport { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from \"lucide-react\"\r\n\r\nimport { Alert, AlertDescription } from \"@/components/ui/alert\"\r\nimport { cn } from \"@/lib/utils\"\r\n\r\n// Our three banner severities, drawn with shadcn's Alert so every message box\r\n// is the kit's own. The colour carries the nature; the icon makes it readable\r\n// at a glance. Per-item micro-notes stay plain coloured text.\r\nconst tone = {\r\n  error: \"text-destructive *:data-[slot=alert-description]:text-destructive/90\",\r\n  // News, not an alarm: the kit's neutral Alert, no orange (Wael, 2026-09-28).\r\n  warning: \"\",\r\n  // Neutral too: the palette is ink and gold, no blue.\r\n  info: \"\",\r\n} as const\r\n\r\nconst icon = {\r\n  error: CircleAlertIcon,\r\n  warning: TriangleAlertIcon,\r\n  info: InfoIcon,\r\n} as const\r\n\r\nfunction Notice({\r\n  className,\r\n  variant = \"error\",\r\n  children,\r\n  ...props\r\n}: ComponentProps<\"div\"> & { variant?: keyof typeof tone }) {\r\n  const Icon = icon[variant]\r\n  return (\r\n    <Alert\r\n      // Errors interrupt (assertive); softer notices announce politely.\r\n      role={variant === \"error\" ? \"alert\" : \"status\"}\r\n      className={cn(\"px-4 py-3\", tone[variant], className)}\r\n      {...props}\r\n    >\r\n      <Icon aria-hidden=\"true\" />\r\n      <AlertDescription className=\"text-pretty\">{children}</AlertDescription>\r\n    </Alert>\r\n  )\r\n}\r\n\r\nexport { Notice }\r\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

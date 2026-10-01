@@ -1,0 +1,35 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "gold-leaf",
+  "title": "Gold Leaf",
+  "description": "Thothly's design system: the Gold Leaf theme, its two typefaces and every UI component.",
+  "dependencies": [
+    "tw-animate-css"
+  ],
+  "registryDependencies": [
+    "https://thothly.vercel.app/r/gold-leaf-theme.json",
+    "https://thothly.vercel.app/r/font-host-grotesk.json",
+    "https://thothly.vercel.app/r/font-prociono.json",
+    "https://thothly.vercel.app/r/accordion.json",
+    "https://thothly.vercel.app/r/alert.json",
+    "https://thothly.vercel.app/r/badge.json",
+    "https://thothly.vercel.app/r/button.json",
+    "https://thothly.vercel.app/r/card.json",
+    "https://thothly.vercel.app/r/checkbox.json",
+    "https://thothly.vercel.app/r/dialog.json",
+    "https://thothly.vercel.app/r/dropdown-menu.json",
+    "https://thothly.vercel.app/r/input.json",
+    "https://thothly.vercel.app/r/kbd.json",
+    "https://thothly.vercel.app/r/label.json",
+    "https://thothly.vercel.app/r/notice.json",
+    "https://thothly.vercel.app/r/progress.json",
+    "https://thothly.vercel.app/r/select.json",
+    "https://thothly.vercel.app/r/sheet.json",
+    "https://thothly.vercel.app/r/sonner.json",
+    "https://thothly.vercel.app/r/spinner.json",
+    "https://thothly.vercel.app/r/switch.json",
+    "https://thothly.vercel.app/r/tabs.json",
+    "https://thothly.vercel.app/r/tooltip.json"
+  ],
+  "type": "registry:style"
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "switch",
+  "dependencies": [
+    "@base-ui/react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/switch.tsx",
+      "content": "\"use client\"\r\n\r\nimport { Switch as SwitchPrimitive } from \"@base-ui/react/switch\"\r\n\r\nimport { cn } from \"@/lib/utils\"\r\n\r\n// A track + thumb toggle. Checked = the brand gold (--primary), the same accent\r\n// every primary affordance carries; off is the neutral input fill. Built on\r\n// base-ui to match the Checkbox primitive (same data-checked styling hooks).\r\nfunction Switch({ className, ...props }: SwitchPrimitive.Root.Props) {\r\n  return (\r\n    <SwitchPrimitive.Root\r\n      data-slot=\"switch\"\r\n      className={cn(\r\n        \"peer relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full px-0.5 transition-colors outline-none\",\r\n        \"bg-input dark:bg-input/60 data-checked:bg-primary dark:data-checked:bg-primary\",\r\n        \"focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50\",\r\n        \"disabled:cursor-not-allowed disabled:opacity-50\",\r\n        className,\r\n      )}\r\n      {...props}\r\n    >\r\n      <SwitchPrimitive.Thumb\r\n        data-slot=\"switch-thumb\"\r\n        className={cn(\r\n          \"pointer-events-none block size-4 rounded-full bg-white shadow-sm transition-transform\",\r\n          \"translate-x-0 data-checked:translate-x-4\",\r\n        )}\r\n      />\r\n    </SwitchPrimitive.Root>\r\n  )\r\n}\r\n\r\nexport { Switch }\r\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

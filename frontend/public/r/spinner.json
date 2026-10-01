@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "spinner",
+  "dependencies": [
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/spinner.tsx",
+      "content": "import * as React from \"react\"\r\n\r\nimport { cn } from \"@/lib/utils\"\r\nimport { Loader2Icon } from \"lucide-react\"\r\n\r\nfunction Spinner({ className, ...props }: React.ComponentProps<\"svg\">) {\r\n  return (\r\n    <Loader2Icon role=\"status\" aria-label=\"Loading\" className={cn(\"size-4 animate-spin\", className)} {...props} />\r\n  )\r\n}\r\n\r\nexport { Spinner }\r\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

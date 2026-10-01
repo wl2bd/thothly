@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "registry:build": "shadcn build",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/*.test.mts"
   },
   "dependencies": {

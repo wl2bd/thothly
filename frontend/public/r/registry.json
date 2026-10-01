@@ -1,0 +1,522 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "thothly",
+  "homepage": "https://thothly.vercel.app",
+  "items": [
+    {
+      "name": "gold-leaf",
+      "type": "registry:style",
+      "title": "Gold Leaf",
+      "description": "Thothly's design system: the Gold Leaf theme, its two typefaces and every UI component.",
+      "dependencies": [
+        "tw-animate-css"
+      ],
+      "registryDependencies": [
+        "https://thothly.vercel.app/r/gold-leaf-theme.json",
+        "https://thothly.vercel.app/r/font-host-grotesk.json",
+        "https://thothly.vercel.app/r/font-prociono.json",
+        "https://thothly.vercel.app/r/accordion.json",
+        "https://thothly.vercel.app/r/alert.json",
+        "https://thothly.vercel.app/r/badge.json",
+        "https://thothly.vercel.app/r/button.json",
+        "https://thothly.vercel.app/r/card.json",
+        "https://thothly.vercel.app/r/checkbox.json",
+        "https://thothly.vercel.app/r/dialog.json",
+        "https://thothly.vercel.app/r/dropdown-menu.json",
+        "https://thothly.vercel.app/r/input.json",
+        "https://thothly.vercel.app/r/kbd.json",
+        "https://thothly.vercel.app/r/label.json",
+        "https://thothly.vercel.app/r/notice.json",
+        "https://thothly.vercel.app/r/progress.json",
+        "https://thothly.vercel.app/r/select.json",
+        "https://thothly.vercel.app/r/sheet.json",
+        "https://thothly.vercel.app/r/sonner.json",
+        "https://thothly.vercel.app/r/spinner.json",
+        "https://thothly.vercel.app/r/switch.json",
+        "https://thothly.vercel.app/r/tabs.json",
+        "https://thothly.vercel.app/r/tooltip.json"
+      ]
+    },
+    {
+      "name": "gold-leaf-theme",
+      "type": "registry:theme",
+      "title": "Gold Leaf theme",
+      "description": "Warm near-neutral grounds with one desert gold for actions and focus.",
+      "cssVars": {
+        "theme": {
+          "text-display": "clamp(2.25rem, 5vw, 3.75rem)",
+          "leading-display": "1.1",
+          "text-2xs": "0.6875rem",
+          "text-3xs": "0.625rem",
+          "container-pane": "400px",
+          "spacing-header": "3.5rem",
+          "ease-out-quint": "cubic-bezier(0.22, 1, 0.36, 1)",
+          "ease-out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+          "shadow-surface": "var(--surface-lift)"
+        },
+        "light": {
+          "background": "oklch(0.993 0.004 80)",
+          "foreground": "oklch(0.16 0.015 68)",
+          "card": "oklch(1 0 0)",
+          "card-foreground": "var(--foreground)",
+          "popover": "var(--card)",
+          "popover-foreground": "var(--foreground)",
+          "primary": "oklch(0.82 0.145 80)",
+          "primary-foreground": "var(--foreground)",
+          "primary-strong": "oklch(0.6 0.15 75)",
+          "secondary": "oklch(0.955 0.004 80)",
+          "secondary-foreground": "var(--foreground)",
+          "muted": "oklch(0.965 0.004 80)",
+          "muted-foreground": "oklch(0.5 0.004 80)",
+          "accent": "var(--muted)",
+          "accent-foreground": "var(--foreground)",
+          "destructive": "oklch(0.52 0.21 27)",
+          "success": "oklch(0.5 0.12 150)",
+          "success-foreground": "oklch(0.98 0.004 80)",
+          "warning": "oklch(0.53 0.16 45)",
+          "warning-foreground": "oklch(0.98 0.004 80)",
+          "info": "oklch(0.52 0.13 255)",
+          "info-foreground": "oklch(0.98 0.004 80)",
+          "border": "oklch(0.16 0.015 68 / 7%)",
+          "input": "oklch(0.16 0.015 68 / 12%)",
+          "field": "oklch(0.967 0.004 80)",
+          "field-hover": "oklch(0.945 0.004 80)",
+          "ring": "var(--primary-strong)",
+          "radius": "0.625rem",
+          "surface-lift": "0 1px 1px rgb(0 0 0 / 0.03)"
+        },
+        "dark": {
+          "background": "oklch(0.13 0.004 80)",
+          "foreground": "oklch(0.97 0.004 80)",
+          "card": "oklch(0.17 0.004 80)",
+          "card-foreground": "var(--foreground)",
+          "popover": "var(--card)",
+          "popover-foreground": "var(--foreground)",
+          "primary": "oklch(0.71 0.135 78)",
+          "primary-foreground": "oklch(0.16 0.004 80)",
+          "primary-strong": "var(--primary)",
+          "secondary": "oklch(0.22 0.004 80)",
+          "secondary-foreground": "var(--foreground)",
+          "muted": "oklch(0.22 0.004 80)",
+          "muted-foreground": "oklch(0.7 0.004 80)",
+          "accent": "var(--muted)",
+          "accent-foreground": "var(--foreground)",
+          "destructive": "oklch(0.68 0.2 25)",
+          "success": "oklch(0.72 0.14 150)",
+          "success-foreground": "oklch(0.16 0.004 80)",
+          "warning": "oklch(0.78 0.15 55)",
+          "warning-foreground": "oklch(0.16 0.004 80)",
+          "info": "oklch(0.7 0.14 255)",
+          "info-foreground": "oklch(0.16 0.004 80)",
+          "border": "oklch(1 0 0 / 6%)",
+          "input": "oklch(1 0 0 / 8%)",
+          "field": "oklch(0.2 0.004 80)",
+          "field-hover": "oklch(0.24 0.004 80)",
+          "ring": "var(--primary-strong)",
+          "surface-lift": "inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 1px rgb(0 0 0 / 0.3)"
+        }
+      },
+      "css": {
+        "@utility text-link": {
+          "@apply decoration-current/35 hover:decoration-current focus-visible:ring-ring rounded-xs underline underline-offset-3 transition-colors focus-visible:ring-2 focus-visible:outline-none": {}
+        },
+        "@utility eyebrow": {
+          "@apply text-muted-foreground text-2xs font-medium tracking-wider uppercase": {}
+        },
+        "@layer base": {
+          "body": {
+            "font-weight": "350"
+          },
+          "b, strong": {
+            "font-weight": "600"
+          },
+          "button:not(:disabled), [role=\"button\"]:not(:disabled)": {
+            "cursor": "pointer"
+          },
+          "h1, h2, h3, h4, h5, h6": {
+            "text-wrap": "balance"
+          },
+          "p": {
+            "text-wrap": "pretty"
+          }
+        }
+      }
+    },
+    {
+      "name": "font-host-grotesk",
+      "type": "registry:font",
+      "title": "Host Grotesk",
+      "font": {
+        "family": "'Host Grotesk', sans-serif",
+        "provider": "google",
+        "import": "Host_Grotesk",
+        "variable": "--font-sans",
+        "subsets": [
+          "latin",
+          "latin-ext"
+        ]
+      }
+    },
+    {
+      "name": "font-prociono",
+      "type": "registry:font",
+      "title": "Prociono",
+      "font": {
+        "family": "'Prociono', serif",
+        "provider": "google",
+        "import": "Prociono",
+        "variable": "--font-display",
+        "weight": [
+          "400"
+        ],
+        "subsets": [
+          "latin"
+        ]
+      }
+    },
+    {
+      "name": "accordion",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/accordion.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "alert",
+      "type": "registry:ui",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/alert.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/badge.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "card",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/card.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/checkbox.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json",
+        "https://thothly.vercel.app/r/button.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/dialog.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dropdown-menu",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/dropdown-menu.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/input.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "kbd",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/kbd.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/label.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "notice",
+      "type": "registry:ui",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json",
+        "https://thothly.vercel.app/r/alert.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/notice.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "progress",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/progress.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "select",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/select.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "sheet",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json",
+        "https://thothly.vercel.app/r/button.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/sheet.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "sonner",
+      "type": "registry:ui",
+      "dependencies": [
+        "sonner",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/sonner.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "spinner",
+      "type": "registry:ui",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/spinner.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "switch",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/switch.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react",
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/tabs.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tooltip",
+      "type": "registry:ui",
+      "dependencies": [
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://thothly.vercel.app/r/gold-leaf-theme.json"
+      ],
+      "files": [
+        {
+          "path": "components/ui/tooltip.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "tooltip",
+  "dependencies": [
+    "@base-ui/react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/tooltip.tsx",
+      "content": "\"use client\";\n\nimport * as React from \"react\";\nimport { Tooltip as TooltipPrimitive } from \"@base-ui/react/tooltip\";\n\nimport { cn } from \"@/lib/utils\";\n\n// A discreet hover/focus tooltip for icon-only controls. The single child\n// (typically a Button) becomes the trigger via base-ui's `render` prop, so the\n// real control stays focusable and the tip also shows on keyboard focus — the\n// accessible name still lives on the control's own aria-label; this is the\n// description. Portalled so it escapes the row's overflow-hidden clipping.\nfunction Tooltip({\n  content,\n  children,\n  side = \"top\",\n  sideOffset = 6,\n  delay = 350,\n  className,\n}: {\n  content: React.ReactNode;\n  children: React.ReactElement;\n  side?: \"top\" | \"right\" | \"bottom\" | \"left\";\n  sideOffset?: number;\n  delay?: number;\n  className?: string;\n}) {\n  return (\n    <TooltipPrimitive.Root>\n      <TooltipPrimitive.Trigger delay={delay} render={children} />\n      <TooltipPrimitive.Portal>\n        {/* z-index lives on the positioned element (the Positioner), not the\n            Popup: a z-auto positioner is painted under any z-indexed element\n            (e.g. the sticky \"Deselect\" bar at z-10), which clipped the tip. */}\n        <TooltipPrimitive.Positioner\n          side={side}\n          sideOffset={sideOffset}\n          className=\"z-50\"\n        >\n          <TooltipPrimitive.Popup\n            className={cn(\n              \"bg-foreground text-background max-w-56 rounded-md px-2 py-1 text-xs font-medium shadow-md select-none\",\n              \"origin-(--transform-origin) transition-[opacity,scale] duration-150 ease-out-quint data-[ending-style]:scale-97 data-[ending-style]:opacity-0 data-[starting-style]:scale-97 data-[starting-style]:opacity-0 motion-reduce:transition-opacity\",\n              className,\n            )}\n          >\n            {content}\n          </TooltipPrimitive.Popup>\n        </TooltipPrimitive.Positioner>\n      </TooltipPrimitive.Portal>\n    </TooltipPrimitive.Root>\n  );\n}\n\nexport { Tooltip };\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

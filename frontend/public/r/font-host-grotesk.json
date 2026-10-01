@@ -1,0 +1,16 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "font-host-grotesk",
+  "title": "Host Grotesk",
+  "type": "registry:font",
+  "font": {
+    "family": "'Host Grotesk', sans-serif",
+    "provider": "google",
+    "import": "Host_Grotesk",
+    "variable": "--font-sans",
+    "subsets": [
+      "latin",
+      "latin-ext"
+    ]
+  }
+}

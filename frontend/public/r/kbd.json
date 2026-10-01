@@ -1,0 +1,16 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "kbd",
+  "registryDependencies": [
+    "utils",
+    "https://thothly.vercel.app/r/gold-leaf-theme.json"
+  ],
+  "files": [
+    {
+      "path": "components/ui/kbd.tsx",
+      "content": "\"use client\";\n\nimport { useSyncExternalStore } from \"react\";\n\nimport { cn } from \"@/lib/utils\";\n\nconst noSubscribe = () => () => {};\n\nexport const isMac = () =>\n  typeof navigator !== \"undefined\" && /Mac|iPhone|iPad/.test(navigator.platform);\n\n// A key, written next to the action it triggers so shortcuts can be found by\n// looking. Takes its colour from where it sits (a gold button, a muted link);\n// hidden where there is no keyboard to press it with.\nexport function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {\n  return (\n    <kbd\n      aria-hidden=\"true\"\n      className={cn(\n        \"inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-current/25 px-1 font-sans text-3xs font-medium opacity-70 [@media(hover:none)]:hidden\",\n        className,\n      )}\n    >\n      {children}\n    </kbd>\n  );\n}\n\n// Ctrl or ⌘, whichever this machine uses.\nexport function ModKey() {\n  const mac = useSyncExternalStore(noSubscribe, isMac, () => false);\n  return <>{mac ? \"⌘\" : \"Ctrl\"}</>;\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}
