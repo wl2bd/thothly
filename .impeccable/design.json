@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-29T12:00:00Z",
+  "generatedAt": "2026-10-01T11:06:40.672Z",
   "title": "Design System: Thothly",
   "extensions": {
     "colorMeta": {
@@ -8,32 +8,137 @@
         "role": "primary",
         "displayName": "Desert Gold",
         "canonical": "oklch(0.82 0.145 80)",
-        "tonalRamp": ["oklch(0.52 0.13 72)", "oklch(0.6 0.15 75)", "oklch(0.71 0.135 78)", "oklch(0.82 0.145 80)", "oklch(0.85 0.14 82)", "oklch(0.9 0.12 86)"]
+        "tonalRamp": [
+          "oklch(0.15 0.145 80)",
+          "oklch(0.27 0.145 80)",
+          "oklch(0.39 0.145 80)",
+          "oklch(0.51 0.145 80)",
+          "oklch(0.63 0.145 80)",
+          "oklch(0.75 0.145 80)",
+          "oklch(0.87 0.145 80)",
+          "oklch(0.95 0.145 80)"
+        ]
       },
-      "neutral": {
+      "primary-strong": {
+        "role": "primary",
+        "displayName": "Deep Gold",
+        "canonical": "oklch(0.6 0.15 75)",
+        "tonalRamp": [
+          "oklch(0.15 0.15 75)",
+          "oklch(0.27 0.15 75)",
+          "oklch(0.39 0.15 75)",
+          "oklch(0.51 0.15 75)",
+          "oklch(0.63 0.15 75)",
+          "oklch(0.75 0.15 75)",
+          "oklch(0.87 0.15 75)",
+          "oklch(0.95 0.15 75)"
+        ]
+      },
+      "foreground": {
         "role": "neutral",
-        "displayName": "Quiet Grounds (chroma 0 in both modes)",
+        "displayName": "Ink",
         "canonical": "oklch(0.16 0.015 68)",
-        "tonalRamp": ["oklch(0.13 0 0)", "oklch(0.17 0 0)", "oklch(0.22 0 0)", "oklch(0.5 0 0)", "oklch(0.7 0 0)", "oklch(0.905 0 0)", "oklch(0.945 0 0)", "oklch(0.965 0 0)", "oklch(0.975 0 0)", "oklch(1 0 0)"]
+        "tonalRamp": [
+          "oklch(0.15 0.015 68)",
+          "oklch(0.27 0.015 68)",
+          "oklch(0.39 0.015 68)",
+          "oklch(0.51 0.015 68)",
+          "oklch(0.63 0.015 68)",
+          "oklch(0.75 0.015 68)",
+          "oklch(0.87 0.015 68)",
+          "oklch(0.95 0.015 68)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Warm Page",
+        "canonical": "oklch(0.993 0.004 80)",
+        "tonalRamp": [
+          "oklch(0.15 0.004 80)",
+          "oklch(0.27 0.004 80)",
+          "oklch(0.39 0.004 80)",
+          "oklch(0.51 0.004 80)",
+          "oklch(0.63 0.004 80)",
+          "oklch(0.75 0.004 80)",
+          "oklch(0.87 0.004 80)",
+          "oklch(0.95 0.004 80)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Ink Hairline",
+        "canonical": "oklch(0.16 0.015 68 / 7%)"
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Ink Field Edge",
+        "canonical": "oklch(0.16 0.015 68 / 12%)"
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display (Prociono)", "purpose": "Roman serif, Regular only. Titles only: the hero line, section headings, app page titles, the reader's chapter title. Never body, buttons, labels, controls or data." },
-      "body": { "displayName": "Body / UI (Host Grotesk)", "purpose": "The warm grotesk that runs the whole tool: UI copy (text-sm), titles (500), labels (text-xs 500)." },
-      "mono": { "displayName": "Mono (Geist Mono)", "purpose": "Durations, counts, the Markdown twin." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "The home catchline only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page and pane titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The interface, at weight 350."
+      },
+      "reading": {
+        "displayName": "Reading",
+        "purpose": "Chapter text in the reader."
+      },
+      "label": {
+        "displayName": "Eyebrow",
+        "purpose": "Small uppercase section labels inside a pane or menu."
+      }
     },
     "shadows": [
-      { "name": "overlay", "value": "Tailwind shadow-md to shadow-xl", "purpose": "Tooltips, select popups, dialogs. Everything else is flat at rest." }
+      {
+        "name": "surface",
+        "value": "0 1px 1px rgb(0 0 0 / 0.03)",
+        "purpose": "The hairline under fields, chips and small surfaces (dark: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 1px rgb(0 0 0 / 0.3))."
+      },
+      {
+        "name": "overlay",
+        "value": "shadcn shadow-md / shadow-lg",
+        "purpose": "Only what floats: tooltips, popups, menus, dialogs."
+      }
     ],
     "motion": [
-      { "name": "ease-out-quint", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "The house curve: every transition and the flow-card morph (300ms group, 220ms cross-fade)." },
-      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The one-shot completion reveal only." },
-      { "name": "reduced", "value": "instant / still frame", "purpose": "prefers-reduced-motion alternative for every animation; the rain draws one still frame." }
+      {
+        "name": "ease-out-quint",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "The house curve for every transition and the flow-card morph."
+      },
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "One-shot reveals."
+      },
+      {
+        "name": "durations",
+        "value": "150 / 200 / 300 / 500 / 700 / 1000ms",
+        "purpose": "Tailwind steps: controls, cross-fades, morphs, theme reveal, arrivals."
+      }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
     ]
   },
   "components": [
@@ -41,74 +146,106 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The committing action (Search, Compile, Download EPUB). Gold fill, ink text, both modes.",
-      "html": "<button class='ds-btn-primary'>Search</button>",
-      "css": ".ds-btn-primary{background:oklch(0.82 0.145 80);color:oklch(0.16 0.015 68);font:500 0.875rem/1 'Host Grotesk',system-ui,sans-serif;height:2.5rem;padding:0 1rem;border:1px solid transparent;border-radius:0.625rem;cursor:pointer;transition:all .2s cubic-bezier(0.22,1,0.36,1)}.ds-btn-primary:hover{background:oklch(0.82 0.145 80 / 0.8)}.ds-btn-primary:focus-visible{outline:none;border-color:oklch(0.6 0.15 75);box-shadow:0 0 0 3px oklch(0.6 0.15 75 / 0.5)}"
+      "description": "The one committing action per screen.",
+      "html": "<button class=\"ds-btn-primary\">Compile</button>",
+      "css": ".ds-btn-primary{background:var(--primary);color:var(--primary-foreground);height:2.5rem;padding:0 1rem;border:1px solid transparent;border-radius:var(--radius);font:500 0.875rem/1 var(--font-sans,system-ui);cursor:pointer;transition:filter .15s cubic-bezier(.22,1,.36,1),scale .15s cubic-bezier(.22,1,.36,1)}.ds-btn-primary:hover{filter:brightness(.95)}.ds-btn-primary:active{scale:.97}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
-      "name": "Secondary Button",
+      "name": "Outline Button",
       "kind": "button",
-      "refersTo": "button-secondary",
-      "description": "Lower-emphasis actions (Preview, Connect). Secondary fill, ink text.",
-      "html": "<button class='ds-btn-secondary'>Preview</button>",
-      "css": ".ds-btn-secondary{background:oklch(0.915 0.018 80);color:oklch(0.16 0.015 68);font:500 0.875rem/1 'Host Grotesk',system-ui,sans-serif;height:2.5rem;padding:0 1rem;border:1px solid transparent;border-radius:0.625rem;cursor:pointer}.ds-btn-secondary:focus-visible{outline:none;border-color:oklch(0.6 0.15 75);box-shadow:0 0 0 3px oklch(0.6 0.15 75 / 0.5)}"
+      "refersTo": "button-outline",
+      "description": "Secondary actions (Copy, Connect a model).",
+      "html": "<button class=\"ds-btn-outline\">Copy</button>",
+      "css": ".ds-btn-outline{background:var(--field);color:var(--foreground);height:2.5rem;padding:0 1rem;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--surface-lift);font:500 0.875rem/1 var(--font-sans,system-ui);cursor:pointer;transition:background-color .15s cubic-bezier(.22,1,.36,1)}.ds-btn-outline:hover{background:var(--field-hover)}.ds-btn-outline:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
-      "name": "Content Tag",
-      "kind": "chip",
-      "refersTo": "badge-secondary",
-      "description": "Review rows lead with what was retrieved (Transcript, Raw captions, Web text). Secondary pill.",
-      "html": "<span class='ds-badge'>Transcript</span>",
-      "css": ".ds-badge{display:inline-flex;align-items:center;height:1.25rem;padding:0.125rem 0.5rem;border-radius:1.625rem;background:oklch(0.915 0.018 80);color:oklch(0.16 0.015 68);font:500 0.75rem/1 'Host Grotesk',system-ui,sans-serif}"
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Fields focus with the standard gold ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"Type a topic or paste a link…\">",
+      "css": ".ds-input{background:var(--field);color:var(--foreground);height:2.5rem;padding:0 .875rem;border:1px solid var(--input);border-radius:var(--radius);box-shadow:var(--surface-lift);font:350 0.875rem/1 var(--font-sans,system-ui);transition:border-color .15s,box-shadow .15s}.ds-input::placeholder{color:var(--muted-foreground)}.ds-input:focus-visible{outline:none;border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+    },
+    {
+      "name": "Eyebrow",
+      "kind": "custom",
+      "refersTo": "label",
+      "description": "Section label inside a pane or menu.",
+      "html": "<span class=\"ds-eyebrow\">Contents</span>",
+      "css": ".ds-eyebrow{color:var(--muted-foreground);font:500 .6875rem/1.4 var(--font-sans,system-ui);letter-spacing:.05em;text-transform:uppercase}"
     },
     {
       "name": "Paid-path Badge",
       "kind": "chip",
-      "refersTo": "badge-paid",
-      "description": "The one cue that a step costs money: gold wash, deep-gold text, coin icon.",
-      "html": "<span class='ds-badge-paid'>Transcribed</span>",
-      "css": ".ds-badge-paid{display:inline-flex;align-items:center;gap:0.25rem;height:1.25rem;padding:0.125rem 0.5rem;border-radius:1.625rem;background:oklch(0.82 0.145 80 / 0.1);color:oklch(0.6 0.15 75);font:500 0.75rem/1 'Host Grotesk',system-ui,sans-serif}"
+      "description": "The one cue that a step costs money.",
+      "html": "<span class=\"ds-badge-paid\">From audio</span>",
+      "css": ".ds-badge-paid{display:inline-flex;align-items:center;height:1.25rem;padding:.125rem .5rem;border-radius:calc(var(--radius)*2.6);background:color-mix(in oklch,var(--primary) 10%,transparent);color:var(--primary-strong);font:500 .75rem/1 var(--font-sans,system-ui)}"
     },
     {
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "The container. Card ground a step above the page, 1px hairline, never nested.",
-      "html": "<div class='ds-card'><p class='ds-card-title'>How it works</p><p class='ds-card-body'>Any mix of sources, one compilation, two formats.</p></div>",
-      "css": ".ds-card{background:oklch(0.995 0.008 80);border:1px solid oklch(0.87 0.018 78);border-radius:0.625rem;padding:1.75rem}.ds-card-title{margin:0 0 0.5rem;font:400 1.5rem/1.33 Prociono,Georgia,serif;letter-spacing:-0.025em;color:oklch(0.16 0.015 68)}.ds-card-body{margin:0;font:400 0.875rem/1.625 'Host Grotesk',system-ui,sans-serif;color:oklch(0.48 0.02 70)}"
+      "description": "A surface a step above the page.",
+      "html": "<div class=\"ds-card\"><strong>Card</strong><p>On the card surface.</p></div>",
+      "css": ".ds-card{background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;font:350 .875rem/1.43 var(--font-sans,system-ui)}"
     }
   ],
   "narrative": {
     "northStar": "Gold Leaf",
-    "overview": "One precious metal on a quiet ground. Near-neutral grounds (a warm off-white by day, a chroma-0 near-black by night) carry one strong color, desert gold, the brand's action color. A serif display voice (Prociono) over a warm grotesk (Host Grotesk). The landing's expressive layer lives in a few signatures: the hieroglyph rain, the rotating gold frame, the stone tablets, the grain. Everything else is shadcn/base-ui on one role-named token layer. Derived from shipped code on 2026-09-23; the identity is due for a review.",
+    "overview": "One precious metal on a quiet ground. By day a warm near-white page with white\nsurfaces on it; by night a near-black with surfaces a step lighter. The greys\ncarry a barely perceptible warmth (chroma 0.004 at the gold's hue) so they sit\nwith the ink and the gold instead of reading cold. Against them, one strong\ncolor does the talking: desert gold, the heir of the name (Thoth, writing, the\ngilt of an illuminated page), executed as a flat modern color, never a texture.\n\nThe system is conventional shadcn on purpose. Every value is a role-named token,\nevery scale is Tailwind's standard scale, and the primitives are shadcn / Base UI\ncomponents re-skinned by tokens. The few additions (status colors, field fill,\npane width, header height, two small type steps, two easing curves) are declared\nonce in the theme and shipped in the registry. Brand lives in the token values\nand in three signatures: the page glow, the grain, and the serif on titles.\n\nLight and dark are both first-class and set before paint.",
     "keyCharacteristics": [
-      "One brand color, desert gold, on primary actions, focus, active, the mark.",
-      "Near-neutral grounds: warm off-white (light), chroma-0 near-black (dark).",
-      "Prociono for titles, Host Grotesk for the work, Literata only on drawn books.",
-      "Flat surfaces; one ambient lift on the flow card.",
-      "Role-named tokens (shadcn convention); no raw values in components."
+      "One brand color, desert gold: the primary action, the active item, keyboard focus, the mark.",
+      "Warm near-neutral grounds; borders are translucent ink, so edges read on any surface.",
+      "A serif voice (Prociono) on titles over a grotesk interface (Host Grotesk).",
+      "Flat surfaces; depth from tonal steps and one hairline shadow.",
+      "Standard scales only: Tailwind spacing, type, durations and z-index, shadcn radius."
     ],
     "rules": [
-      { "name": "The One Color Rule", "body": "Desert gold is the only brand hue. The four status colors are data, not decoration. No second accent.", "section": "colors" },
-      { "name": "The Quiet Ground Rule", "body": "Grounds stay near-neutral: a faint pull toward the gold's hue on light (chroma <= 0.018), chroma 0 on dark. The one visible tint is the light hero ground.", "section": "colors" },
-      { "name": "The Gold-Holds-Ink Rule", "body": "Text on a gold fill is always the ink. Gold as text on a neutral uses primary-strong, never the fill gold.", "section": "colors" },
-      { "name": "The Display Restraint Rule", "body": "Prociono sets titles only (hero, section headings, page titles, a chapter title). Never body, buttons, labels, controls or data; Regular weight only.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "A resting shadow is allowed only on the flow card and the stone tablets. Everything else is flat until it floats.", "section": "elevation" }
+      {
+        "name": "The One Color Rule",
+        "body": "Desert gold is the only brand hue. No second accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Inks Rule",
+        "body": "Text is `foreground` or `muted-foreground`. Never an opacity of either (`text-foreground/70`): if a third tone seems needed, the hierarchy is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Gold-Holds-Ink Rule",
+        "body": "Text on a gold fill is always the ink, never white. Gold as text on a neutral uses `primary-strong`, never the fill gold.",
+        "section": "colors"
+      },
+      {
+        "name": "The Display Restraint Rule",
+        "body": "Prociono sets titles only, at Regular. Never body, buttons, labels, controls or data.",
+        "section": "typography"
+      },
+      {
+        "name": "The Quiet Caps Rule",
+        "body": "Uppercase tracked labels are the `eyebrow` utility, for section labels inside a pane or a menu, never as a kicker above a page heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "At rest, a surface gets the hairline at most. Panes carry a border, never a cast shadow. Real shadows only on what floats.",
+        "section": "elevation"
+      }
     ],
     "dos": [
-      "Do use role tokens through their utilities; add a role token or extend a scale before hard-coding a value.",
-      "Do make desert gold the one brand color: primary CTAs, focus, active, the mark.",
-      "Do use primary-strong for gold text or icons on a neutral surface.",
-      "Do keep the ink on every gold fill, and body and placeholder text >= 4.5:1.",
+      "Do use role tokens through their utilities, and add a token (by role) before hard-coding a value.",
+      "Do stay on Tailwind's standard scales; extend the theme rather than writing an arbitrary value.",
+      "Do keep desert gold to the primary action, the active item, keyboard focus and the mark.",
+      "Do keep the ink on every gold fill, and text at 4.5:1 or more.",
+      "Do rebuild the registry (`pnpm registry:build`) and update `registry.json` when a token changes.",
       "Do ship a reduced-motion alternative for every animation."
     ],
     "donts": [
-      "Don't build a cold enterprise dashboard or a generic AI SaaS page.",
-      "Don't wear the costume: no papyrus, sepia or parchment; the hieroglyph rain is the one earned motif.",
+      "Don't write opacity variants of the inks (`text-foreground/70`, `bg-foreground/5`); use a role.",
       "Don't introduce a second brand color, or use gold where a status belongs.",
       "Don't put white text on gold, or the fill gold as text on the light page.",
-      "Don't fork the shadcn primitives' internals to restyle them; change tokens.",
-      "Don't add resting shadows, side-stripe borders, or a tracked eyebrow above every section."
+      "Don't add resting shadows, side-stripe borders, dashed panels, or an eyebrow above a page heading.",
+      "Don't wear a costume: no papyrus, sepia, parchment, and no animated decorative background."
     ]
   }
 }
