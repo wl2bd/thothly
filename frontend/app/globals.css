@@ -114,9 +114,9 @@
   --warning-foreground: oklch(0.98 0.004 80);
   --info: oklch(0.52 0.13 255);
   --info-foreground: oklch(0.98 0.004 80);
-  --border: oklch(0.945 0.004 80);
+  --border: oklch(0.16 0.015 68 / 7%);
   /* Fields need a firmer edge than dividers, or they melt into the white. */
-  --input: oklch(0.905 0.004 80);
+  --input: oklch(0.16 0.015 68 / 12%);
   /* Fields and outline buttons sit a step below the near-white page and the
      white pane, so they read as controls without a heavy edge. */
   --field: oklch(0.967 0.004 80);
