@@ -1697,7 +1697,7 @@ function ReviewItem({
         // secondary Preview button — in dark, --muted and --secondary share the
         // same value, which made the button melt into the hovered row.
         // No fill when picked: the checkbox says it once.
-        "hover:bg-muted",
+        "hover:bg-muted/50",
       )}
     >
       <div className="flex items-center gap-3.5 px-3.5 py-3.5">
@@ -1893,7 +1893,7 @@ function RoleSelector({
             <ul className="flex flex-col">
               {extraRoles.map((role) => (
                 <li key={role.id}>
-                  <label className="hover:bg-muted -mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 transition-colors">
+                  <label className="hover:bg-muted/50 -mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 transition-colors">
                     <Checkbox
                       checked={selectedRoles.has(role.id)}
                       onCheckedChange={() => onToggleRole(role.id)}
