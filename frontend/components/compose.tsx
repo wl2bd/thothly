@@ -429,7 +429,7 @@ function ComposeWorkspace({
               "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
               // Half the bottom spacer's share: the block sits a little high,
               // so the sketch comes up into the first screen.
-              showResults ? "grow-0" : "grow-[1]",
+              showResults ? "grow-0" : "grow",
             )}
           />
           {/* The catchline, only while the page is at rest: it folds away
@@ -682,7 +682,7 @@ function ComposeWorkspace({
             aria-hidden="true"
             className={cn(
               "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
-              showResults ? "grow-0" : "grow-[2]",
+              showResults ? "grow-0" : "grow-2",
             )}
           />
       </WorkPane>
@@ -870,7 +870,7 @@ function SearchResults({
             className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
             style={{ animationDelay: `${(i % 8) * 110}ms` }}
           >
-            <span className="bg-foreground/10 size-5 shrink-0 rounded-[5px]" />
+            <span className="bg-foreground/10 size-5 shrink-0 rounded-sm" />
             <span className="bg-foreground/10 h-12 w-20 shrink-0 rounded" />
             <span className="flex min-w-0 flex-1 flex-col gap-2">
               <span

@@ -180,7 +180,7 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
       className={cn(
         "flex flex-col",
         reading
-          ? "text-foreground gap-4 text-base leading-[1.65]"
+          ? "text-foreground gap-4 text-base leading-relaxed"
           : "text-muted-foreground gap-2 text-sm leading-relaxed",
       )}
     >

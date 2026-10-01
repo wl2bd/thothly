@@ -236,11 +236,11 @@ function SiteMark({ url }: { url: string }) {
 // from a photo thumbnail.
 function DocumentGlyph() {
   return (
-    <span className="flex w-1/2 flex-col gap-[3px]">
+    <span className="flex w-1/2 flex-col gap-0.75">
       {["100%", "72%", "92%", "58%"].map((w, i) => (
         <span
           key={i}
-          className="bg-current h-[2px] rounded-full"
+          className="bg-current h-0.5 rounded-full"
           style={{ width: w }}
         />
       ))}
