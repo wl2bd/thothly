@@ -1,6 +1,6 @@
 "use client";
 
-import { Kbd } from "@/components/ui/kbd";
+import { isMac, Kbd } from "@/components/ui/kbd";
 import { useState, useSyncExternalStore } from "react";
 
 import {
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { isMac, SHORTCUTS, useShortcut } from "@/lib/shortcuts";
+import { SHORTCUTS, useShortcut } from "@/lib/shortcuts";
 
 const noSubscribe = () => () => {};
 

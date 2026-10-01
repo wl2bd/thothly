@@ -2,10 +2,12 @@
 
 import { useSyncExternalStore } from "react";
 
-import { isMac } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 
 const noSubscribe = () => () => {};
+
+export const isMac = () =>
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 // A key, written next to the action it triggers so shortcuts can be found by
 // looking. Takes its colour from where it sits (a gold button, a muted link);

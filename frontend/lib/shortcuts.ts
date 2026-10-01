@@ -23,9 +23,6 @@ export const SHORTCUTS: { keys: string[]; label: string; where: string }[] = [
   { keys: ["Esc"], label: "Clear the search, or close Settings and dialogs", where: "Everywhere" },
 ];
 
-export const isMac = () =>
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-
 function typing(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
