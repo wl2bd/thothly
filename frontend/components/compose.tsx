@@ -444,7 +444,7 @@ function ComposeWorkspace({
             <div className="overflow-hidden">
               <div className="flex flex-col items-center gap-3 pt-2 pb-8 text-center">
                 {/* Said plainly while the product is being built. */}
-                <Badge variant="outline" className="border-input text-muted-foreground mb-1 font-normal">
+                <Badge variant="outline" className="text-muted-foreground mb-1 font-normal">
                   Early preview
                 </Badge>
                 {/* Title and subtitle read as one group. */}
