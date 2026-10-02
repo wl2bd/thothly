@@ -1,12 +1,12 @@
 /* =========================================================
-   Thothly — feuille de style de lecture (EPUB)
-   Tout en serif, lisible clair / sombre / sépia, e-ink safe.
-   Unités relatives uniquement. Le lecteur garde le contrôle de
-   ses marges et de son thème : on ne force jamais le fond.
+   Thothly reading stylesheet (EPUB)
+   All serif, readable in light / dark / sepia, e-ink safe.
+   Relative units only. The reader keeps control of margins
+   and theme.
    ========================================================= */
 
 :root {
-  /* Échelle typographique (ratio ~1.25, major third doux) */
+  /* Type scale (~1.25 ratio) */
   --fs-base:   1em;
   --fs-small:  0.85em;
   --fs-h6:     1em;
@@ -19,41 +19,37 @@
   --lh-body:   1.58;
   --lh-tight:  1.25;
 
-  /* Rythme vertical */
   --space:     1.4em;
 
-  /* Couleurs — mode clair par défaut.
-     Texte ET fond sont posés EN PAIRE : forcer l'un sans l'autre donne du
-     clair-sur-clair (ou sombre-sur-sombre) dès que `prefers-color-scheme`
-     bascule sur une surface qui ne suit pas. La liseuse qui a son propre
-     thème écrase les deux ; partout ailleurs la paire reste lisible. */
-  --paper:     #faf9f5;   /* blanc cassé chaud, jamais de #fff dur */
-  --ink:       #1c1a17;   /* presque noir, légèrement chaud */
-  --ink-soft:  #5a554d;   /* texte secondaire, légendes */
-  --rule:      #d8d2c8;   /* filets, séparateurs */
-  --link:      #7a4a2b;   /* brun encre */
+  /* Text and background are always set AS A PAIR: setting one without the
+     other gives light-on-light (or dark-on-dark) when `prefers-color-scheme`
+     flips on a surface that doesn't follow. A reader with its own theme
+     overrides both. */
+  --paper:     #faf9f5;
+  --ink:       #1c1a17;
+  --ink-soft:  #5a554d;
+  --rule:      #d8d2c8;
+  --link:      #7a4a2b;
 }
 
-/* Mode sombre : la paire fond/texte s'inverse, l'accent s'éclaircit */
 @media (prefers-color-scheme: dark) {
   :root {
     --paper:     #1a1714;
     --ink:       #e6e1d8;
     --ink-soft:  #a8a195;
     --rule:      #3a3631;
-    --link:      #c89b6a;  /* brun désaturé, éclairci */
+    --link:      #c89b6a;
   }
 }
 
-/* Le fond couvre tout le canvas (html), pas seulement la colonne de texte,
-   pour que les marges latérales de `body` ne laissent pas voir du blanc. */
+/* Paint the whole canvas so body's side margins don't show white. */
 html {
   color: var(--ink);
   background-color: var(--paper);
 }
 
 /* =========================================================
-   Corps de texte
+   Body text
    ========================================================= */
 
 body {
@@ -61,13 +57,13 @@ body {
   font-size: var(--fs-base);
   line-height: var(--lh-body);
   color: var(--ink);
-  background-color: var(--paper);   /* paire fond/texte, cf. :root */
+  background-color: var(--paper);
   margin: 0 auto;
   max-width: 38em;
   padding: 0 1.2em;
   hyphens: auto;
   -webkit-hyphens: auto;
-  text-align: left;            /* gauche assumé, pas de justif forcée */
+  text-align: left;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures;
 }
@@ -78,30 +74,28 @@ p {
   widows: 2;
 }
 
-/* Premier paragraphe après un titre : pas d'alinéa, pas de retrait */
 h1 + p, h2 + p, h3 + p, h4 + p,
 blockquote p:first-child {
   text-indent: 0;
 }
 
-/* Optionnel : retrait de première ligne, registre livre.
-   Décommente pour l'alinéa traditionnel, sinon espacement entre paras.
+/* Optional: book-style first-line indent instead of paragraph spacing.
 p + p { text-indent: 1.4em; margin-top: calc(var(--space) * -0.6); }
 */
 
 /* =========================================================
-   Titres — tout en serif, même famille, hiérarchie par taille
+   Headings
    ========================================================= */
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: inherit;        /* reste en serif */
+  font-family: inherit;
   font-weight: 600;
   line-height: var(--lh-tight);
   color: var(--ink);
   margin: calc(var(--space) * 1.6) 0 calc(var(--space) * 0.6);
-  text-wrap: balance;          /* évite les titres bancals sur moteurs récents */
+  text-wrap: balance;
   break-after: avoid;
-  page-break-after: avoid;     /* fallback vieux moteurs */
+  page-break-after: avoid;     /* legacy engines */
 }
 
 h1 { font-size: var(--fs-h1); margin-top: 0; letter-spacing: -0.01em; }
@@ -111,18 +105,17 @@ h4 { font-size: var(--fs-h4); }
 h5 { font-size: var(--fs-h5); }
 h6 { font-size: var(--fs-h6); color: var(--ink-soft); font-style: italic; font-weight: 400; }
 
-/* Chaque chapitre démarre sur une nouvelle page... */
+/* Each chapter starts on a new page... */
 h1 { break-before: page; page-break-before: always; }
-/* ...sauf le titre qui ouvre déjà un fichier (sinon page blanche en tête).
-   Avec --split-level=1 chaque chapitre EST son propre fichier, donc le saut
-   vient de la frontière de fichier ; on évite juste la page vide superflue. */
+/* ...except a heading that already opens a file: with --split-level=1 each
+   chapter IS its own file, so a forced break would add a blank page. */
 h1:first-child {
   break-before: avoid;
   page-break-before: avoid;
 }
 
 /* =========================================================
-   Liens — encrés, soulignement soigné qui saute les jambages
+   Links
    ========================================================= */
 
 a {
@@ -131,7 +124,6 @@ a {
   text-decoration-thickness: 0.06em;
   text-underline-offset: 0.15em;
   text-decoration-skip-ink: auto;
-  /* trait atténué, se densifie au survol (moteurs récents) */
   text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
 }
 
@@ -140,7 +132,7 @@ a:hover {
 }
 
 /* =========================================================
-   Citations, emphase, code
+   Quotes, emphasis, code
    ========================================================= */
 
 blockquote {
@@ -170,7 +162,7 @@ pre {
 code { padding: 0.1em 0.3em; }
 
 /* =========================================================
-   Images, figures, séparateurs
+   Images, figures, rules
    ========================================================= */
 
 img {
@@ -202,7 +194,7 @@ hr {
 }
 
 /* =========================================================
-   Listes
+   Lists
    ========================================================= */
 
 ul, ol {
@@ -212,12 +204,11 @@ ul, ol {
 li { margin-bottom: 0.4em; }
 
 /* =========================================================
-   Spécifique Thothly — page de titre, attribution, sommaire, tables
-   (classes émises par Pandoc et par to_markdown ; absentes de la
-   feuille générique, on les re-greffe ici sur les mêmes tokens)
+   Thothly-specific: title page, attribution, TOC, tables
+   (classes emitted by Pandoc and to_markdown)
    ========================================================= */
 
-/* Page de titre générée par Pandoc : <section class="titlepage"> */
+/* Pandoc title page: <section class="titlepage"> */
 .titlepage { text-align: center; }
 .titlepage h1 {
   break-before: avoid;
@@ -231,8 +222,8 @@ li { margin-bottom: 0.4em; }
   margin: 0.2em 0;
 }
 
-/* Ligne d'attribution sous chaque titre de chapitre :
-   <div class="source-attribution"> Source · Auteur · Date */
+/* Attribution line under each chapter title:
+   <div class="source-attribution"> Source · Author · Date */
 .source-attribution {
   font-size: var(--fs-small);
   color: var(--ink-soft);
@@ -243,15 +234,14 @@ li { margin-bottom: 0.4em; }
 }
 .source-attribution p { margin: 0; }
 .source-attribution a {
-  color: inherit;                       /* l'URL reste discrète, pas en accent */
+  color: inherit;
   text-decoration-color: var(--rule);
 }
 
-/* Sommaire (nav.xhtml) : ni puces ni numéros, hiérarchie par retrait.
-   On cible les ancres STABLES de Pandoc — `id="toc"` sur le <nav> et
-   `class="toc"` sur chaque <ol> — plutôt que l'attribut `epub:type`, qui
-   est namespacé et ne se sélectionne pas de façon fiable (le `\:` échappé
-   échoue dès qu'une liseuse parse le document en XML). */
+/* TOC (nav.xhtml): no bullets or numbers, hierarchy by indent.
+   Targets Pandoc's stable hooks (`id="toc"` on <nav>, `class="toc"` on each
+   <ol>) rather than `epub:type`, which is namespaced: the escaped `\:`
+   selector fails as soon as a reader parses the document as XML. */
 #toc h1 {
   break-before: avoid;
   page-break-before: avoid;
@@ -280,7 +270,7 @@ ol.toc ol.toc li {
   text-decoration: none;
 }
 
-/* Tableaux */
+/* Tables */
 table {
   border-collapse: collapse;
   margin: var(--space) 0;
