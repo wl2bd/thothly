@@ -43,6 +43,15 @@ wheels = [
 ]
 
 [[package]]
+name = "backoff"
+version = "2.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/d7/5bbeb12c44d7c4f2fb5b56abce497eb5ed9f34d85701de869acedd602619/backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba", size = 17001, upload-time = "2022-10-05T19:19:32.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/73/b6e24bd22e6720ca8ee9a85a0c4a2971af8497d8f3193fa05390cbd46e09/backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8", size = 15148, upload-time = "2022-10-05T19:19:30.546Z" },
+]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.14.3"
 source = { registry = "https://pypi.org/simple" }
@@ -664,6 +673,21 @@ wheels = [
 ]
 
 [[package]]
+name = "posthog"
+version = "7.58.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "backoff" },
+    { name = "distro" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ef/d9/6e351a6c739fec6e78c1be494f4d39512271167d3eb5905ccafa783c3234/posthog-7.58.0.tar.gz", hash = "sha256:43dcdeea3af4dbdece3322c5e37864cbdad6d0e507c20182bb33a960900bb077", size = 668207, upload-time = "2026-09-18T15:00:06.96Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/60/997629e929e96641d297f7bf67543026eeaf5f8a3de66363f1cbe366c0ee/posthog-7.58.0-py3-none-any.whl", hash = "sha256:2ac581ce52c63acb3a551c9066652c3d29e1de1ea06e70655ebe8b866e80f334", size = 781569, upload-time = "2026-09-18T15:00:04.587Z" },
+]
+
+[[package]]
 name = "pydantic"
 version = "2.13.4"
 source = { registry = "https://pypi.org/simple" }
@@ -957,6 +981,21 @@ wheels = [
 ]
 
 [[package]]
+name = "requests"
+version = "2.34.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "charset-normalizer" },
+    { name = "idna" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
+]
+
+[[package]]
 name = "sgmllib3k"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1022,6 +1061,7 @@ dependencies = [
     { name = "markdownify" },
     { name = "openai" },
     { name = "pillow" },
+    { name = "posthog" },
     { name = "pydantic-settings" },
     { name = "trafilatura" },
     { name = "typesafe-sdk" },
@@ -1043,6 +1083,7 @@ requires-dist = [
     { name = "markdownify", specifier = ">=0.13.0" },
     { name = "openai", specifier = ">=1.0" },
     { name = "pillow", specifier = ">=12.2.0" },
+    { name = "posthog", specifier = ">=7.0.0" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "trafilatura", specifier = ">=2.0.0" },
     { name = "typesafe-sdk", specifier = ">=0.7.0" },

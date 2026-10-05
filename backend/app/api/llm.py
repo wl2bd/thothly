@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, SecretStr
 
 from app.core.config import settings
+from app.core.posthog import get_posthog_client
 from app.pipeline.llm import KeyRefused, list_models, llm_available
 from app.pipeline.providers import PROVIDERS, ProviderRejected, get_provider, resolve_endpoint
 from app.pipeline.roles import ROLES
@@ -141,4 +142,13 @@ def verify_key(payload: VerifyRequest) -> VerifyResponse:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, detail=f"Couldn't reach {name}. Try again in a moment."
         ) from exc
+    posthog_client = get_posthog_client()
+    if posthog_client is not None:
+        posthog_client.capture(
+            event="llm_key_verified",
+            properties={
+                "available_model_count": len(models),
+                "uses_custom_base_url": bool(payload.base_url),
+            },
+        )
     return VerifyResponse(models=sorted(models))

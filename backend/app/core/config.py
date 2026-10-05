@@ -141,5 +141,9 @@ class Settings(BaseSettings):
     # instance whose users you trust: the server fetches whatever they type.
     byok_allow_custom_base_url: bool = False
 
+    # PostHog product analytics. Optional: unset means nothing is sent.
+    posthog_project_token: str | None = None
+    posthog_host: str | None = None
+
 
 settings = Settings()
