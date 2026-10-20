@@ -134,6 +134,11 @@ class Settings(BaseSettings):
     stt_price_per_minute: float = 0.003
     llm_price_per_mtok_in: float = 0.20
     llm_price_per_mtok_out: float = 0.60
+    # Per-call prices of the metered search and transcript providers, sent with
+    # each `paid_call` analytics event. ScrapeCreators is treg's rate card
+    # (1 credit); Brave is its Search plan ($5 per 1,000 requests).
+    scrapecreators_price_per_call: float = 0.00188
+    brave_price_per_call: float = 0.005
 
     # Bring your own LLM: visitors pick a provider from the allowlist in
     # app/pipeline/providers.py and the server calls that provider's fixed URL.

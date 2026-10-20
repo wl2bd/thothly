@@ -67,6 +67,7 @@ def test_typesafe_reads_one_batched_answer_per_result():
     from app.search import triage as t
 
     answers = SimpleNamespace(
+        usage=SimpleNamespace(input_tokens=900, output_tokens=120),
         nouls={"compilable_0": SimpleNamespace(noul=0.93), "compilable_1": SimpleNamespace(noul=0.07)},
         scores={"relevance_0": SimpleNamespace(score=2.85), "relevance_1": SimpleNamespace(score=0.02)},
         choices={
@@ -93,6 +94,7 @@ def test_typesafe_skips_a_result_the_model_left_unanswered():
     from app.search import triage as t
 
     answers = SimpleNamespace(
+        usage=SimpleNamespace(input_tokens=900, output_tokens=120),
         nouls={"compilable_1": SimpleNamespace(noul=0.9)},
         scores={"relevance_1": SimpleNamespace(score=3.0)},
         choices={

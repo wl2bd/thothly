@@ -4,6 +4,7 @@ import re
 import httpx
 
 from app.core.config import settings
+from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class BraveProvider:
                 timeout=_TIMEOUT_S,
             )
             response.raise_for_status()
+            capture_paid_call("brave", "web_search", settings.brave_price_per_call)
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
             # Surfaced by the service layer as a per-provider error.

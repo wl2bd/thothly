@@ -6,6 +6,7 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import YoutubeDLError
 
 from app.core.config import settings
+from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
 from app.search.triage import triage_enabled
 
@@ -89,6 +90,9 @@ class YouTubeProvider:
                 timeout=_SCRAPECREATORS_TIMEOUT_S,
             )
             response.raise_for_status()
+            capture_paid_call(
+                "scrapecreators", "scrapecreators.x.v1-youtube-search", settings.scrapecreators_price_per_call
+            )
             videos = response.json().get("videos") or []
         except (httpx.HTTPError, ValueError) as exc:
             raise RuntimeError(f"YouTube search failed: {exc}") from exc

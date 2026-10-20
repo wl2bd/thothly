@@ -2,9 +2,11 @@ import asyncio
 import logging
 import re
 import time
+from collections import Counter
 from urllib.parse import urlparse
 
 from app.core.config import settings
+from app.core.posthog import capture
 from app.search.base import Provider
 from app.search.brave_provider import BraveProvider
 from app.search.marginalia_provider import MarginaliaProvider
@@ -146,8 +148,19 @@ async def search_all(
             errors.append(ProviderError(provider=name, message=error))
 
     results = _rank(ranked_inputs, query)
+    found = len(results)
     if triage_enabled():
         results = await loop.run_in_executor(None, triage, query, results)
+    capture(
+        "search_completed",
+        {
+            "found_count": found,
+            "shown_count": len(results),
+            "result_types": dict(Counter(r.type for r in results)),
+            "failed_providers": [e.provider for e in errors],
+            "triaged": triage_enabled(),
+        },
+    )
     return SearchResponse(results=results, errors=errors)
 
 

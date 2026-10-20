@@ -1,7 +1,10 @@
 import logging
 import re
+import time
+from collections import Counter
 
 from app.core.config import settings
+from app.core.posthog import capture
 from app.jobs import credentials
 from app.jobs.models import DiscoveredItemResponse
 from app.jobs.repository import (
@@ -83,6 +86,9 @@ def run_compilation(job_id: str) -> None:
     held = credentials.take(job_id)
     llm = llm_endpoint(held.llm if held else None)
     stt = held.stt if held else None
+    started = time.monotonic()
+    # Filled as the compile goes, so a failure still reports how far it got.
+    stats: dict = {"uses_visitor_llm": bool(held and held.llm), "uses_visitor_stt": stt is not None}
     try:
         items = get_selected_items(job_id)
         # Active only when roles were chosen AND an LLM endpoint is available.
@@ -96,6 +102,9 @@ def run_compilation(job_id: str) -> None:
         # content genuinely wasn't there; `failed` means something broke, and the
         # "check that the videos have subtitles" message below would be wrong.
         failed_items = 0
+        skipped_items = 0
+        stats["source_types"] = dict(Counter(item.item_type for item in items))
+        stats["ai_used"] = bool(roles)
 
         for item in items:
             set_item_compile_state(job_id, item.id, "compiling")
@@ -111,6 +120,7 @@ def run_compilation(job_id: str) -> None:
                 # fatal: the reason is written against the item and shown next to
                 # it, on this screen and on the finished one.
                 logger.info("Skipped %s (job %s): %s", item.url, job_id, exc)
+                skipped_items += 1
                 set_item_compile_state(job_id, item.id, "skipped", str(exc))
                 continue
             except YouTubeUnavailable as exc:
@@ -131,6 +141,7 @@ def run_compilation(job_id: str) -> None:
                 continue
             chapters.append(chapter)
             set_item_compile_state(job_id, item.id, "done")
+        stats.update(chapter_count=len(chapters), skipped_count=skipped_items, failed_count=failed_items)
 
         # Ordered on purpose: a wholly rate-limited run is both the most specific
         # diagnosis (an external, transient cause) and the most actionable one
@@ -141,12 +152,14 @@ def run_compilation(job_id: str) -> None:
         # case where every item was genuinely `skipped` for lack of content, which
         # is exactly what compile_book's own "no usable content" message says.
         if not chapters and youtube_unavailable:
+            stats["failure"] = "youtube_rate_limited"
             raise CompilationError(
                 "YouTube is rate-limiting transcript requests (HTTP 429) from this "
                 "IP. This usually clears after a while, so try again later. For a "
                 "self-hosted server, a residential proxy avoids it."
             )
         if not chapters and failed_items > 0:
+            stats["failure"] = "nothing_built"
             raise CompilationError(NOTHING_BUILT)
 
         job = get_job(job_id)
@@ -165,12 +178,15 @@ def run_compilation(job_id: str) -> None:
             output_md_path=output_md_path,
         )
         logger.info("Compilation done for job %s: %d chapters", job_id, len(book.chapters))
+        capture("compilation_completed", {**stats, "duration_s": round(time.monotonic() - started)}, job_id)
 
     except CompilationError as exc:
         # CompilationError carries a hand-written, user-facing reason (no content,
         # YouTube rate-limited); surface it as-is.
         logger.warning("No usable content for job %s: %s", job_id, exc)
         update_job_status(job_id, "failed", error=str(exc))
+        stats.setdefault("failure", "no_content")
+        capture("compilation_failed", {**stats, "duration_s": round(time.monotonic() - started)}, job_id)
     except Exception:
         # Anything else (a Pandoc render error, a network blip) keeps its raw
         # message in the log; the user gets one calm, written line instead.
@@ -179,6 +195,11 @@ def run_compilation(job_id: str) -> None:
             job_id,
             "failed",
             error="The compilation failed to build. Try again.",
+        )
+        capture(
+            "compilation_failed",
+            {**stats, "failure": "crash", "duration_s": round(time.monotonic() - started)},
+            job_id,
         )
 
 

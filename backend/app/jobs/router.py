@@ -1,11 +1,12 @@
 import re
+from collections import Counter
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import FileResponse
 
 from app.core.config import settings
-from app.core.posthog import get_posthog_client
+from app.core.posthog import capture
 from app.jobs import credentials, repository
 from app.jobs.models import (
     ItemPreview,
@@ -27,12 +28,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 def create_job(payload: JobCreate, background_tasks: BackgroundTasks) -> JobResponse:
     job = repository.create_job(payload)
     title = payload.book_title.strip() if payload.book_title else None
-    posthog_client = get_posthog_client()
-    if posthog_client is not None:
-        posthog_client.capture(
-            event="job_created",
-            properties={"source_count": len(payload.sources)},
-        )
+    capture("job_created", {"source_count": len(payload.sources)}, job.id)
     background_tasks.add_task(run_discovery, job.id, payload.sources, title or None)
     return job
 
@@ -100,17 +96,17 @@ def confirm_job(
     repository.update_job_status(job_id, "processing", book_title=title or None)
     if llm or stt:
         credentials.put(job_id, credentials.JobCredentials(llm=llm, stt=stt))
-    posthog_client = get_posthog_client()
-    if posthog_client is not None:
-        posthog_client.capture(
-            event="job_confirmed",
-            properties={
-                "selected_item_count": len(selected),
-                "llm_role_count": len(valid_roles),
-                "uses_visitor_llm": llm is not None,
-                "uses_visitor_stt": stt is not None,
-            },
-        )
+    capture(
+        "job_confirmed",
+        {
+            "selected_item_count": len(selected),
+            "source_types": dict(Counter(item.item_type for item in selected)),
+            "llm_role_count": len(valid_roles),
+            "uses_visitor_llm": llm is not None,
+            "uses_visitor_stt": stt is not None,
+        },
+        job_id,
+    )
     background_tasks.add_task(run_compilation, job_id)
     return repository.get_job(job_id)
 
@@ -175,12 +171,7 @@ def download_job(job_id: str, format: str = "epub") -> FileResponse:
             detail=f"The {label} file is missing.",
         )
 
-    posthog_client = get_posthog_client()
-    if posthog_client is not None:
-        posthog_client.capture(
-            event="compilation_downloaded",
-            properties={"output_format": format},
-        )
+    capture("compilation_downloaded", {"output_format": format}, job_id)
 
     media_type = "text/markdown" if format == "md" else "application/epub+zip"
     return FileResponse(

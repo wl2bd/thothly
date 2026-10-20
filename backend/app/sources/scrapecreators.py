@@ -15,6 +15,7 @@ so a video is paid for once, ever.
 import httpx
 
 from app.core.config import settings
+from app.core.posthog import capture_paid_call
 from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
 from app.sources.youtube import YouTubeUnavailable
 
@@ -68,6 +69,8 @@ def _call(endpoint: str, **params: str) -> dict:
         )
     except httpx.HTTPError as exc:
         raise YouTubeUnavailable(f"ScrapeCreators unreachable: {exc}") from exc
+    if response.status_code in (200, 404):  # an answer was scraped, so it was billed
+        capture_paid_call("scrapecreators", endpoint, settings.scrapecreators_price_per_call)
     if response.status_code == 404:  # removed/private video: nothing to read
         return {}
     if response.status_code != 200:
