@@ -751,13 +751,17 @@ function ComposeWorkspace({
       {/* Phone only, while a search runs: the compilation shrinks to its count
           and its action, pinned at the bottom of the screen. */}
       {showResults && staged.length > 0 && (
-        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 flex items-center justify-between gap-3 border-t px-4 py-3 backdrop-blur lg:hidden">
-          <span className="text-muted-foreground text-sm tabular-nums">
-            {staged.length} of {MAX_SOURCES} sources
-          </span>
-          <Button onClick={onCompile} disabled={submitting}>
-            {reviewLabel}
-          </Button>
+        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 flex flex-col gap-3 border-t px-4 py-3 backdrop-blur lg:hidden">
+          {/* The pane, where this error lives on a desktop, is hidden here. */}
+          {compileError && <Notice variant="error">{compileError}</Notice>}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground text-sm tabular-nums">
+              {staged.length} of {MAX_SOURCES} sources
+            </span>
+            <Button onClick={onCompile} disabled={submitting}>
+              {reviewLabel}
+            </Button>
+          </div>
         </div>
       )}
     </>
