@@ -30,14 +30,14 @@ export type ModelKind = "llm" | "stt";
 
 const KIND_COPY: Record<ModelKind, { name: string; title: string; purpose: string }> = {
   llm: {
-    name: "Cleanup",
+    name: "Text model",
     title: "Connect a model",
-    purpose: "Punctuates and tidies transcripts and articles.",
+    purpose: "Runs AI polish: punctuates and tidies transcripts and articles.",
   },
   stt: {
     name: "Transcription",
     title: "Connect transcription",
-    purpose: "Turns podcast episodes into text.",
+    purpose: "Only for podcast episodes that come without a transcript.",
   },
 };
 
@@ -428,9 +428,9 @@ function modelsFor(ids: string[], kind: ModelKind): string[] {
 // them, otherwise the free path.
 function withoutKeyLine(config: LlmConfig): string {
   if (config.available && config.stt_available) return "Without a key, Thothly uses its default models.";
-  if (config.available) return "Without a key, Thothly uses its default cleanup model. Podcast episodes need a transcription key.";
-  if (config.stt_available) return "Without a key, Thothly uses its default transcription model. Cleanup needs a key.";
-  return "Without a key, compilations are free: transcripts and articles are not cleaned up, and podcast episodes need a transcription key.";
+  if (config.available) return "Without a key, Thothly uses its default text model. Podcast episodes without a transcript are skipped.";
+  if (config.stt_available) return "Without a key, Thothly uses its default transcription model. AI polish needs a key.";
+  return "Without a key, compilations are free: transcripts and articles stay as they are, and podcast episodes without a transcript are skipped.";
 }
 
 type KeyStatus = "idle" | "checking" | "valid" | "invalid";
@@ -446,15 +446,23 @@ const KINDS = ["llm", "stt"] as const;
 const signature = (k: { apiKey: string; baseUrl: string }) => `${k.apiKey.trim()}\n${k.baseUrl.trim()}`;
 
 // Settings: a key belongs to a provider and is entered once; each task picks a
-// provider and one of its models. Storage keeps one full endpoint per task
-// (lib/model-keys.ts), so the backend sees the same shape as before.
+// provider and one of its models. Transcription follows the text model's
+// provider when that provider can transcribe, so one key covers both; its own
+// key field shows only once another provider is picked. Storage keeps one full
+// endpoint per task (lib/model-keys.ts), so the backend sees the same shape.
 export function ModelSettingsSections({ config }: { config: LlmConfig }) {
   const id = useId();
   const stored = useStoredModels();
-  const [providers, setProviders] = useState<Record<ModelKind, string>>(() => ({
-    llm: stored.llm?.provider ?? providerOptions(config, "llm")[0]?.value ?? "",
-    stt: stored.stt?.provider ?? providerOptions(config, "stt")[0]?.value ?? "",
-  }));
+  const [llmProvider, setLlmProvider] = useState(
+    () => stored.llm?.provider ?? providerOptions(config, "llm")[0]?.value ?? "",
+  );
+  // null: follow the text model's provider.
+  const [sttChoice, setSttChoice] = useState<string | null>(() => stored.stt?.provider ?? null);
+  const sttOptions = providerOptions(config, "stt");
+  const sttProvider =
+    sttChoice ??
+    (sttOptions.some((o) => o.value === llmProvider) ? llmProvider : (sttOptions[0]?.value ?? ""));
+  const providers: Record<ModelKind, string> = { llm: llmProvider, stt: sttProvider };
   const [keys, setKeys] = useState<Record<string, ProviderKey>>(() => {
     const init: Record<string, ProviderKey> = {};
     for (const e of [stored.llm, stored.stt]) {
@@ -543,7 +551,8 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
   }
 
   function chooseProvider(kind: ModelKind, provider: string) {
-    setProviders((prev) => ({ ...prev, [kind]: provider }));
+    if (kind === "llm") setLlmProvider(provider);
+    else setSttChoice(provider);
     // The task no longer runs on the old provider until a model is chosen.
     if (stored[kind] && stored[kind].provider !== provider) writeModels({ ...stored, [kind]: null });
   }
@@ -551,6 +560,8 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
   function chooseModel(kind: ModelKind, model: string) {
     const provider = providers[kind];
     const k = keyOf(provider);
+    // Once transcription has a model, it stays on that provider.
+    if (kind === "stt") setSttChoice(provider);
     writeModels({
       ...stored,
       [kind]: {
@@ -562,76 +573,72 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
     });
   }
 
-  const usedProviders = [...new Set(KINDS.map((kind) => providers[kind]).filter(Boolean))];
   const labelOf = (provider: string) =>
     provider === "custom"
       ? "Your own server"
       : (config.providers.find((p) => p.id === provider)?.label ?? provider);
 
+  // A provider's key, entered once whichever task uses it.
+  function keyField(provider: string) {
+    const k = keyOf(provider);
+    const isCustom = provider === "custom";
+    const isStored = KINDS.some((kind) => stored[kind]?.provider === provider);
+    const blur = () => void check(provider, keyOf(provider));
+    const pasted = (e: FormEvent<HTMLInputElement>) =>
+      (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
+    return (
+      <div className="flex flex-col gap-3">
+        {isCustom && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-${provider}-url`} className="text-sm font-medium">
+              Server address
+            </label>
+            <Input
+              id={`${id}-${provider}-url`}
+              type="url"
+              value={k.baseUrl}
+              onChange={(e) => edit(provider, { baseUrl: e.target.value }, pasted(e))}
+              onBlur={blur}
+              placeholder="http://localhost:11434/v1"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor={`${id}-${provider}-key`} className="text-sm font-medium">
+              {labelOf(provider)} key
+              {isCustom && <span className="text-muted-foreground font-normal"> (if needed)</span>}
+            </label>
+            <KeyStatusText status={k.status} />
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id={`${id}-${provider}-key`}
+              type="password"
+              value={k.apiKey}
+              onChange={(e) => edit(provider, { apiKey: e.target.value }, pasted(e))}
+              onBlur={blur}
+              placeholder="Paste your key"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {isStored && (
+              <Button type="button" variant="ghost" onClick={() => remove(provider)}>
+                Remove
+              </Button>
+            )}
+          </div>
+          <GetKeyLink provider={provider} label={labelOf(provider)} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <p className="text-muted-foreground text-sm">{withoutKeyLine(config)}</p>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-base font-medium">API keys</h2>
-        {usedProviders.map((provider) => {
-          const k = keyOf(provider);
-          const isCustom = provider === "custom";
-          const isStored = KINDS.some((kind) => stored[kind]?.provider === provider);
-          const blur = () => void check(provider, keyOf(provider));
-          const pasted = (e: FormEvent<HTMLInputElement>) =>
-            (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
-          return (
-            <div key={provider} className="flex flex-col gap-3">
-              {isCustom && (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`${id}-${provider}-url`} className="text-sm font-medium">
-                    Server address
-                  </label>
-                  <Input
-                    id={`${id}-${provider}-url`}
-                    type="url"
-                    value={k.baseUrl}
-                    onChange={(e) => edit(provider, { baseUrl: e.target.value }, pasted(e))}
-                    onBlur={blur}
-                    placeholder="http://localhost:11434/v1"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                </div>
-              )}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <label htmlFor={`${id}-${provider}-key`} className="flex items-center gap-2 text-sm font-medium">
-                    <ProviderIcon provider={provider} className="size-4 shrink-0" />
-                    {labelOf(provider)}
-                    {isCustom && <span className="text-muted-foreground font-normal">(key if needed)</span>}
-                  </label>
-                  <KeyStatusText status={k.status} />
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    id={`${id}-${provider}-key`}
-                    type="password"
-                    value={k.apiKey}
-                    onChange={(e) => edit(provider, { apiKey: e.target.value }, pasted(e))}
-                    onBlur={blur}
-                    placeholder="Paste your key"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  {isStored && (
-                    <Button type="button" variant="ghost" onClick={() => remove(provider)}>
-                      Remove
-                    </Button>
-                  )}
-                </div>
-                <GetKeyLink provider={provider} label={labelOf(provider)} />
-              </div>
-            </div>
-          );
-        })}
-      </section>
 
       {KINDS.map((kind) => {
         const options = providerOptions(config, kind);
@@ -640,10 +647,14 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
         const current = stored[kind]?.provider === provider ? stored[kind].model : "";
         const models = modelsFor(k.models, kind);
         if (current && !models.includes(current)) models.unshift(current);
+        const sharesKey = kind === "stt" && provider === llmProvider;
         return (
           <section key={kind} className="flex flex-col gap-4">
             <div className="flex flex-col gap-0.5">
-              <h2 className="text-base font-medium">{KIND_COPY[kind].name}</h2>
+              <h2 className="flex items-baseline gap-2 text-base font-medium">
+                {KIND_COPY[kind].name}
+                {kind === "stt" && <span className="text-muted-foreground text-xs font-normal">Optional</span>}
+              </h2>
               <p className="text-muted-foreground text-xs">{KIND_COPY[kind].purpose}</p>
             </div>
             {options.length === 0 ? (
@@ -660,7 +671,11 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
                     value={provider}
                     onChange={(v) => chooseProvider(kind, v)}
                   />
+                  {sharesKey && (
+                    <p className="text-muted-foreground text-xs">Uses your {labelOf(provider)} key from above.</p>
+                  )}
                 </div>
+                {!sharesKey && keyField(provider)}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor={`${id}-${kind}-model`} className="text-sm font-medium">
                     Model
@@ -672,7 +687,7 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
                   >
                     <SelectTrigger id={`${id}-${kind}-model`} className="w-full">
                       <SelectValue
-                        placeholder={k.status === "valid" ? "Choose a model" : "Add your key above"}
+                        placeholder={k.status === "valid" ? "Choose a model" : "Add your key first"}
                       />
                     </SelectTrigger>
                     <SelectContent>
@@ -686,10 +701,10 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
                 </div>
               </>
             )}
-            {kind === "llm" && <ModelInstructions config={config} />}
           </section>
         );
       })}
+      <ModelInstructions config={config} />
     </div>
   );
 }
