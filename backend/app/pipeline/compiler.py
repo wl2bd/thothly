@@ -2,7 +2,7 @@ import re
 from bisect import bisect_right
 from datetime import datetime, timezone
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from markdownify import markdownify as md
 
 from app.pipeline.i18n import dominant_language
@@ -78,7 +78,88 @@ def html_to_markdown(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     for a in soup.find_all("a", href=True):
         a["href"] = a["href"].replace("(", "%28").replace(")", "%29")
+    _flatten_tables(soup)
     return md(str(soup), heading_style="ATX", bullets="-").strip()
+
+
+# A footnote marker as sites set it: "[1]", "[d]", "[note 3]".
+_FOOTNOTE_MARK = re.compile(r"^\[[\w\s]{1,10}\]$")
+
+
+def _flatten_tables(soup: BeautifulSoup) -> None:
+    """Rewrite each table as the plain grid a pipe table can hold.
+
+    A pipe table has one header row and the same number of cells on every row;
+    HTML tables have captions, title rows spanning the grid, rowspan/colspan and
+    tables inside cells. Left alone, markdownify reads a title row as the header,
+    the real header as a body row, and row widths drift.
+    """
+    for table in soup.find_all("table"):
+        if table.decomposed or table.parent is None:
+            continue
+        rows = [tr for tr in table.find_all("tr") if tr.find_parent("table") is table]
+        cells = [tr.find_all(["td", "th"], recursive=False) for tr in rows]
+        if table.find("table") or max(map(len, cells), default=0) <= 1:
+            # A table holding a table, or a single column, is layout: its cells
+            # become plain blocks, and an inner table is flattened on its own
+            # later in the loop.
+            box = soup.new_tag("div")
+            for cell in (c for row in cells for c in row):
+                cell.name = "div"
+                box.append(cell.extract())
+            table.replace_with(box)
+            continue
+
+        caption = table.find("caption")
+        captions = [caption.get_text(" ", strip=True)] if caption else []
+        width = max((sum(_span(c, "colspan") for c in row) for row in cells), default=0)
+        # Title rows: one cell across a grid that has more than one column.
+        while len(cells) > 1 and len(cells[0]) == 1 and width > 1:
+            captions.append(cells.pop(0)[0].get_text(" ", strip=True))
+            width = max(sum(_span(c, "colspan") for c in row) for row in cells)
+
+        # Place every cell on a grid; a span leaves empty cells, not a shift.
+        grid: list[dict[int, Tag | None]] = [{} for _ in cells]
+        for r, row in enumerate(cells):
+            col = 0
+            for cell in row:
+                while col in grid[r]:
+                    col += 1
+                for dr in range(min(_span(cell, "rowspan"), len(cells) - r)):
+                    for dc in range(_span(cell, "colspan")):
+                        grid[r + dr][col + dc] = cell if dr == dc == 0 else None
+                col += _span(cell, "colspan")
+        width = max((max(g, default=-1) + 1 for g in grid), default=0)
+
+        flat = soup.new_tag("table")
+        for r, row in enumerate(grid):
+            tr = soup.new_tag("tr")
+            header = all(c.name == "th" for c in cells[r])
+            for col in range(width):
+                cell = row.get(col)
+                if cell is None:
+                    cell = soup.new_tag("th" if header else "td")
+                else:
+                    cell.attrs = {}
+                    for sup in cell.find_all("sup"):
+                        if _FOOTNOTE_MARK.match(sup.get_text(strip=True)):
+                            sup.decompose()
+                    for text in cell.find_all(string=True):
+                        if "|" in text:
+                            text.replace_with(text.replace("|", "\\|"))
+                tr.append(cell)
+            flat.append(tr)
+        for text in filter(None, captions):
+            p = soup.new_tag("p")
+            p.append(soup.new_tag("strong"))
+            p.strong.string = text
+            table.insert_before(p)
+        table.replace_with(flat)
+
+
+def _span(cell: Tag, attr: str) -> int:
+    value = str(cell.get(attr, "1")).strip()
+    return max(1, min(int(value), 50)) if value.isdigit() else 1
 
 
 _ATX_HEADING = re.compile(r"^(#{1,6})(\s.*)$")

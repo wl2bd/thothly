@@ -5,7 +5,7 @@ from app.sources.wikipedia import clean_wikipedia_html, is_wikipedia_article
 
 PAGE = r"""<html><body>
 <section data-mw-section-id="0"><div class="hatnote">For other uses, see X.</div>
-<p>Zeno taught at the <a href="./Stoa_Poikile">Stoa</a>.<sup class="mw-ref reference"><a href="#cite_note-1">[1]</a></sup></p>
+<p>Zeno taught at the <a href="./Stoa_Poikile">Stoa</a>.<sup class="mw-ref reference"><a href="#cite_note-1">[1]</a></sup><sup class="citation nobold"><a href="./Stoicism#endnote_A">[a]</a></sup></p>
 <figure><a href="./File:Zeno.jpg"><img src="//upload.wikimedia.org/zeno.jpg"></a><figcaption>Zeno</figcaption></figure>
 <p>Softmax: <span><math><semantics><annotation>{\displaystyle x}</annotation></semantics></math><img src="//wikimedia.org/math/x.svg"></span></p></section>
 <section data-mw-section-id="1"><h2>Sources</h2><p>Diogenes Laertius is our main witness.</p></section>
@@ -21,7 +21,7 @@ def test_keeps_the_article_and_drops_the_page_furniture():
     assert 'href="https://en.wikipedia.org/wiki/Stoa_Poikile"' in html
     assert 'src="https://upload.wikimedia.org/zeno.jpg"' in html and "File:Zeno" not in html
     assert "https://wikimedia.org/math/x.svg" in html and "displaystyle" not in html
-    for junk in ("[1]", "For other uses", "Philosophy navigation"):
+    for junk in ("[1]", "[a]", "For other uses", "Philosophy navigation"):
         assert junk not in html
 
 

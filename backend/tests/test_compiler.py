@@ -198,3 +198,59 @@ def test_a_link_with_parentheses_keeps_its_whole_url():
     html = '<p>See <a href="https://en.wikipedia.org/wiki/Naturalism_(philosophy)">naturalism</a>.</p>'
     md = html_to_markdown(html)
     assert "(https://en.wikipedia.org/wiki/Naturalism_%28philosophy%29)" in md
+
+
+def test_a_wikipedia_table_keeps_its_header_and_drops_its_caption_row():
+    # Wikipedia sets a table's title as a first row of one cell spanning the
+    # grid (often with a wrong colspan), then the real <th> row, and footnote
+    # markers inside cells.
+    html = (
+        '<table class="wikitable"><tbody>'
+        '<tr><th colspan="3"><p>Logical connectives</p></th></tr>'
+        '<tr><th>Name<sup class="citation"><a href="#endnote_D">[d]</a></sup></th><th>Example</th></tr>'
+        "<tr><td>Conditional</td><td><b>if</b> it is day, it is light</td></tr>"
+        "<tr><td>Disjunction</td><td>day | night</td></tr>"
+        "</tbody></table>"
+    )
+    assert html_to_markdown(html) == (
+        "**Logical connectives**\n\n"
+        "| Name | Example |\n"
+        "| --- | --- |\n"
+        "| Conditional | **if** it is day, it is light |\n"
+        "| Disjunction | day \\| night |"
+    )
+
+
+def test_a_caption_element_and_spans_keep_every_row_the_same_width():
+    html = (
+        "<table><caption>Scores</caption>"
+        "<tr><th>Team</th><th>Q1</th><th>Q2</th></tr>"
+        '<tr><td rowspan="2">Reds</td><td>1</td><td>2</td></tr>'
+        '<tr><td colspan="2">forfeit</td></tr>'
+        "</table>"
+    )
+    assert html_to_markdown(html) == (
+        "**Scores**\n\n"
+        "| Team | Q1 | Q2 |\n"
+        "| --- | --- | --- |\n"
+        "| Reds | 1 | 2 |\n"
+        "|  | forfeit |  |"
+    )
+
+
+def test_a_table_holding_a_table_gives_way_to_its_content():
+    html = (
+        "<table><tr><td><p>Fig 1. Encoder</p></td><td>"
+        "<table><tr><th>Label</th><th>Description</th></tr>"
+        "<tr><td>h</td><td>hidden vector</td></tr></table>"
+        "</td></tr></table>"
+    )
+    out = html_to_markdown(html)
+    assert "Fig 1. Encoder" in out
+    assert "| Label | Description |\n| --- | --- |\n| h | hidden vector |" in out
+    assert "| Fig 1" not in out
+
+
+def test_a_single_column_table_is_just_its_text():
+    html = "<table><tr><td><ul><li>(1) = 1st spouse</li></ul></td></tr></table>"
+    assert html_to_markdown(html) == "- (1) = 1st spouse"

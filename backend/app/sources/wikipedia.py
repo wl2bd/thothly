@@ -22,9 +22,12 @@ _ARTICLE = re.compile(r"^/wiki/([^:]+)$")  # no namespace: Talk:, File:, Special
 
 # Everything that is the page's furniture, not the article's text.
 _DROP = (
-    "sup.mw-ref, .mw-references-wrap, .reflist, .navbox, .navbox-styles, .infobox, "
+    "sup.mw-ref, sup.citation, .mw-references-wrap, .reflist, .navbox, .navbox-styles, .infobox, "
     ".sidebar, .vertical-navbox, .hatnote, .ambox, .metadata, .noprint, "
     ".shortdescription, .mw-empty-elt, style, link, "
+    # A box the page shows collapsed (a family tree drawn in table cells) is
+    # an aside no pipe table can hold.
+    "table.collapsed, table.mw-collapsed, "
     # A formula comes as MathML (its LaTeX leaks as raw text) plus a rendered
     # image of it: the image is what a reader can use.
     "math"
