@@ -225,6 +225,15 @@
   p {
     text-wrap: pretty;
   }
+  /* Selection in the brand gold, a wash rather than a fill; the text turns to
+     the ink so muted text stays readable on it (16:1 day, 6:1 night). */
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 35%, transparent);
+    color: var(--foreground);
+  }
+  .dark ::selection {
+    background-color: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
   /* Anchor jumps (the hero scroll cue → "how it works") glide rather than cut.
      Off under reduced motion. */
   @media (prefers-reduced-motion: no-preference) {

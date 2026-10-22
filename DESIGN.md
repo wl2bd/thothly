@@ -155,6 +155,9 @@ on a screen is a status color or a mistake.
 - **Deep Gold** (`primary-strong`): gold as text or icon on a neutral surface,
   the paid-path cue, and the focus `ring` (4.0:1 on the page). In dark it equals
   the fill gold, which already reads on the night ground.
+- **Selection** (`::selection`): the fill gold at 35% by day, 30% by night,
+  with the text turned to the ink (16:1 day, 6:1 night), so muted text stays
+  readable while selected. Replaces the browser's blue.
 
 ### Neutral
 - **Page** (`background`) and **Ink** (`foreground`).
