@@ -12,6 +12,9 @@ const alertVariants = cva(
         // (≥4.7:1 on page and card in both themes; a 20% tint drops light under 4.5).
         destructive:
           "border-destructive/30 bg-destructive/10 text-destructive *:data-[slot=alert-description]:text-destructive",
+        warning:
+          "border-warning/30 bg-warning/10 text-warning *:data-[slot=alert-description]:text-warning",
+        info: "border-info/30 bg-info/10 text-info *:data-[slot=alert-description]:text-info",
       },
     },
     defaultVariants: {

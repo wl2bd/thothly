@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils"
 // at a glance. Per-item micro-notes stay plain coloured text.
 const tone = {
   error: "destructive",
-  // News, not an alarm: the kit's neutral Alert, no orange (Wael, 2026-09-28).
-  warning: "default",
-  // Neutral too: the palette is ink and gold, no blue.
-  info: "default",
+  // Conventional status colours, so a warning reads as one at a glance
+  // (Wael, 2026-10-22, reversing the neutral notices of 2026-09-28).
+  warning: "warning",
+  info: "info",
 } as const
 
 const icon = {

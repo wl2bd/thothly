@@ -1046,7 +1046,7 @@ function LeftOutNotice({
   return (
     <div className={className} style={style}>
       <Notice variant="warning">
-        <span className="text-foreground font-medium">
+        <span className="font-medium">
           {leftOut.length} item{leftOut.length !== 1 ? "s" : ""} didn’t make it in
         </span>
         {/* Bounded rather than truncated: a long list scrolls, so a compilation
@@ -1055,8 +1055,8 @@ function LeftOutNotice({
         <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
           {leftOut.map((it) => (
             <li key={it.id} className="flex min-w-0 flex-col">
-              <span className="text-foreground truncate" title={it.title}>{it.title}</span>
-              {it.compile_note && <span>{it.compile_note}</span>}
+              <span className="truncate" title={it.title}>{it.title}</span>
+              {it.compile_note && <span className="text-xs">{it.compile_note}</span>}
             </li>
           ))}
         </ul>
@@ -1500,7 +1500,7 @@ function ReviewList({
         <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
           <Coins className="text-primary-strong mt-px size-3.5 shrink-0" />
           <span>
-            <span className="text-foreground font-medium">Metered either way</span>{" "}
+            <span className="font-medium">Metered either way</span>{" "}
             (transcribing audio). Everything else is free unless you turn on AI
             polish.
           </span>
@@ -1788,8 +1788,7 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
   return (
     <div className="flex flex-col gap-2">
       {preview.note && (
-        // What the excerpt is, not an alarm: neutral, like the warning Notice.
-        <p className="text-muted-foreground text-xs">{preview.note}</p>
+        <p className="text-warning text-xs">{preview.note}</p>
       )}
       {/* A quoted excerpt, NOT an editor: a full bordered + filled box reads as
           a textarea and implies you can type in it. A left rule (blockquote)
@@ -2109,7 +2108,7 @@ function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
     <div className="text-muted-foreground flex items-baseline justify-between gap-2 text-xs">
       <span>Estimated cost</span>
       <span className="text-right">
-        <span className="text-foreground font-medium">{totalLabel}</span>
+        <span className="font-medium">{totalLabel}</span>
         {parts.length > 1 && <span className="ml-1">({parts.join(" · ")})</span>}
       </span>
     </div>
