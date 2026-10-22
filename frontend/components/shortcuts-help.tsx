@@ -30,7 +30,7 @@ export function ShortcutsHelp() {
       <Kbd>?</Kbd>
     </button>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
           <DialogDescription>Single keys work when you are not typing in a field.</DialogDescription>

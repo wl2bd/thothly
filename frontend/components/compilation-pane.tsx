@@ -103,7 +103,7 @@ export function WorkPane({
   transitionName?: string;
 }) {
   const column = (
-    <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-8">
+    <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-6 sm:p-8">
       {children}
     </div>
   );

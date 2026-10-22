@@ -40,7 +40,7 @@ export function PaneFrame({
 }) {
   return (
     <>
-      <div className="flex flex-col gap-2 border-b px-6 py-6">
+      <div className="flex flex-col gap-2 border-b px-6 py-6 lg:px-8">
         {onBack && (
           <Button
             type="button"
@@ -79,14 +79,14 @@ export function PaneFrame({
         {meta && <span className="text-muted-foreground text-xs tabular-nums">{meta}</span>}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6 lg:px-8">{children}</div>
 
       {footer && (
         // On a phone the pane sits under a long list, so its action stays
         // pinned to the bottom of the screen, within reach of the thumb.
         <div
           ref={footerRef}
-          className="bg-card flex flex-col gap-3 border-t px-6 py-5 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          className="bg-card flex flex-col gap-3 border-t px-6 py-5 lg:px-8 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         >
           {footer}
         </div>
