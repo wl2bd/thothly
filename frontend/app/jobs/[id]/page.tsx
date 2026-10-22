@@ -964,8 +964,8 @@ function CompletedView({
                   <Button type="button" variant="outline" onClick={copy} disabled={!md} aria-keyshortcuts="C" className="flex-1">
                     {copied ? <Check /> : <Copy />}
                     <span className="grid">
-                      <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
-                      <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Copied</span>
+                      <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy Markdown</span>
+                      <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Markdown copied</span>
                     </span>
                     <Kbd>C</Kbd>
                   </Button>
@@ -980,6 +980,11 @@ function CompletedView({
                 <Kbd>N</Kbd>
               </Link>
             </div>
+            {hasMarkdown && (
+              <p className="text-muted-foreground text-xs">
+                The full compilation as Markdown, ready to paste into an AI.
+              </p>
+            )}
             {tokens != null && tokens > 200000 && (
               <p className="text-muted-foreground text-xs">
                 Large for some AIs: attaching the Markdown file may work better than pasting it.

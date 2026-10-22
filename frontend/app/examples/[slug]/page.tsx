@@ -85,14 +85,17 @@ export default function ExamplePage() {
                 <Button type="button" variant="outline" onClick={copy} disabled={!md} className="flex-1">
                   {copied ? <Check /> : <Copy />}
                   <span className="grid">
-                    <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy</span>
-                    <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Copied</span>
+                    <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy Markdown</span>
+                    <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Markdown copied</span>
                   </span>
                 </Button>
                 <Link href="/" className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground flex-1")}>
                   Make your own
                 </Link>
               </div>
+              <p className="text-muted-foreground text-xs">
+                The full compilation as Markdown, ready to paste into an AI.
+              </p>
             </div>
           }
         >
