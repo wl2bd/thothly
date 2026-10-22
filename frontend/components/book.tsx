@@ -1,6 +1,6 @@
 "use client";
 
-import { Kbd } from "@/components/ui/kbd";
+import { Kbd, KeyLabel } from "@/components/ui/kbd";
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,7 @@ export function BookReader({
         {chapters.length > 1 && (
           <div className="flex justify-between gap-2">
             <Button type="button" variant="outline" disabled={at === 0} onClick={() => onGo(at - 1)}>
-              <Kbd>←</Kbd>
+              <Kbd><KeyLabel k="←" /></Kbd>
               Previous
             </Button>
             <Button
@@ -64,7 +64,7 @@ export function BookReader({
               onClick={() => onGo(at + 1)}
             >
               Next
-              <Kbd>→</Kbd>
+              <Kbd><KeyLabel k="→" /></Kbd>
             </Button>
           </div>
         )}

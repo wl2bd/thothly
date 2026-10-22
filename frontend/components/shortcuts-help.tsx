@@ -1,6 +1,6 @@
 "use client";
 
-import { EnterKey, Kbd, ModKey } from "@/components/ui/kbd";
+import { Kbd, KeyLabel } from "@/components/ui/kbd";
 import { useState } from "react";
 
 import {
@@ -45,7 +45,7 @@ export function ShortcutsHelp() {
               <dd className="flex shrink-0 gap-1">
                 {s.keys.map((k) => (
                   <Kbd key={k} className="text-muted-foreground">
-                    {k === "Mod" ? <ModKey /> : k === "↵" ? <EnterKey /> : k}
+                    <KeyLabel k={k} />
                   </Kbd>
                 ))}
               </dd>

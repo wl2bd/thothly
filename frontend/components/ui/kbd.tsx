@@ -1,6 +1,12 @@
 "use client";
 
-import { ChevronUpIcon, CommandIcon, CornerDownLeftIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ChevronUpIcon,
+  CommandIcon,
+  CornerDownLeftIcon,
+} from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
@@ -27,11 +33,26 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
   );
 }
 
-// Symbol keys as icons: the ↵ ⌘ ⌃ glyphs render tiny in the mono face.
+// Symbol keys as icons: the ↵ ⌘ ⌃ glyphs render tiny in the mono face, and
+// the arrows wide and thin.
 const KEY_ICON = { className: "size-2.5", strokeWidth: 2.5, "aria-hidden": true } as const;
 
+const KEY_ICONS: Record<string, typeof CornerDownLeftIcon> = {
+  "↵": CornerDownLeftIcon,
+  "←": ArrowLeftIcon,
+  "→": ArrowRightIcon,
+};
+
+// What goes inside a Kbd for a key name: an icon for the symbol keys, the
+// modifier for "Mod", the text otherwise.
+export function KeyLabel({ k }: { k: string }) {
+  if (k === "Mod") return <ModKey />;
+  const Icon = KEY_ICONS[k];
+  return Icon ? <Icon {...KEY_ICON} /> : <>{k}</>;
+}
+
 export function EnterKey() {
-  return <CornerDownLeftIcon {...KEY_ICON} />;
+  return <KeyLabel k="↵" />;
 }
 
 // ⌘ on a Mac, the Control symbol elsewhere: a symbol reads faster than
