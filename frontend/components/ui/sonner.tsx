@@ -1,6 +1,8 @@
 "use client"
 
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 // Colours come from our own tokens (below), which follow the .dark class the
@@ -37,6 +39,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast",
+          // Sonner's own description grey is for its light theme only.
+          description: "text-muted-foreground!",
+          // The kit's outline button. Sonner styles [data-button] with a
+          // stronger selector (an inverted 24px chip), so the clashing
+          // properties need the important flag.
+          actionButton: cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "h-8! rounded-[min(var(--radius-md),12px)]! border! border-border! bg-field! px-3! text-sm! text-foreground! hover:bg-field-hover! focus-visible:border-ring! focus-visible:ring-3! focus-visible:ring-ring/50! dark:border-input!"
+          ),
         },
       }}
       {...props}
