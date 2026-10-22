@@ -67,7 +67,7 @@
       "destructive": "oklch(0.68 0.2 25)",
       "success": "oklch(0.72 0.14 150)",
       "success-foreground": "oklch(0.16 0.004 80)",
-      "warning": "oklch(0.78 0.15 55)",
+      "warning": "oklch(0.76 0.15 45)",
       "warning-foreground": "oklch(0.16 0.004 80)",
       "info": "oklch(0.7 0.14 255)",
       "info-foreground": "oklch(0.16 0.004 80)",
