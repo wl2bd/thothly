@@ -79,6 +79,13 @@ def test_stt_is_refused_for_a_provider_without_transcription() -> None:
         resolve_endpoint(no_stt.id, api_key="k", model="m", for_stt=True)
 
 
+def test_a_transcription_only_provider_is_refused_for_text() -> None:
+    with pytest.raises(ProviderRejected):
+        resolve_endpoint("elevenlabs", api_key="k", model="scribe_v2")
+    ep = resolve_endpoint("elevenlabs", api_key="k", model="scribe_v2", for_stt=True)
+    assert ep.base_url == "https://api.elevenlabs.io/v1"
+
+
 def test_endpoint_repr_never_shows_the_key() -> None:
     ep = Endpoint(base_url="https://api.openai.com/v1", model="m", api_key="sk-secret-4f2c")
     assert "sk-secret" not in repr(ep)
@@ -238,7 +245,9 @@ def test_confirm_refuses_an_unlisted_provider_before_starting(mock_compilation, 
 def test_llm_config_lists_providers_with_their_rates(client: TestClient) -> None:
     data = client.get("/llm").json()
     ids = {p["id"] for p in data["providers"]}
-    assert ids == {"openai", "mistral", "openrouter"}
+    assert ids == {"openai", "mistral", "openrouter", "elevenlabs"}
+    eleven = next(p for p in data["providers"] if p["id"] == "elevenlabs")
+    assert eleven["llm_per_mtok_in"] is None and eleven["stt_per_minute"] > 0
     assert data["custom_base_url_allowed"] is False
     assert all("base_url" not in p for p in data["providers"])
 
@@ -258,6 +267,15 @@ def test_verify_reports_a_refused_key(client: TestClient) -> None:
         resp = client.post("/llm/verify", json={"provider": "openai", "api_key": "sk-bad"})
     assert resp.status_code == 400
     assert "sk-bad" not in resp.text
+
+
+def test_verify_checks_an_elevenlabs_key_on_the_transcription_side(client: TestClient) -> None:
+    with patch("app.api.llm.list_models") as text_list,          patch("app.api.llm.list_stt_models", return_value=["scribe_v2"]) as stt_list:
+        resp = client.post("/llm/verify", json={"provider": "elevenlabs", "api_key": "xi"})
+    assert resp.status_code == 200
+    assert resp.json() == {"models": ["scribe_v2"]}
+    text_list.assert_not_called()
+    assert stt_list.call_args.args[0].base_url == "https://api.elevenlabs.io/v1"
 
 
 def test_verify_refuses_an_unlisted_provider(client: TestClient) -> None:

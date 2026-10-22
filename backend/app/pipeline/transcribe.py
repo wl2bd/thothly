@@ -24,14 +24,26 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import httpx
+
 from app.core.config import settings
-from app.pipeline.providers import Endpoint, describe_error
+from app.pipeline.llm import KeyRefused
+from app.pipeline.providers import ELEVENLABS_BASE_URL, Endpoint, describe_error
 
 logger = logging.getLogger(__name__)
 
 
 class TranscribeError(Exception):
     """A transcription call failed (after retries). Callers skip the episode."""
+
+
+class _HTTPStatus(Exception):
+    """A non-2xx answer from a provider called without an SDK. Carries only the
+    status, never the body, so `describe_error` stays key-safe."""
+
+    def __init__(self, status_code: int):
+        super().__init__(f"HTTP {status_code}")
+        self.status_code = status_code
 
 
 class _UnsupportedParams(Exception):
@@ -141,6 +153,8 @@ def _request_with_retries(path: Path, ep: Endpoint, params: dict) -> dict:
     for attempt in range(3):
         try:
             with open(path, "rb") as audio:
+                if _is_elevenlabs(ep):
+                    return _elevenlabs_transcribe(audio, ep, params)
                 raw = _client(ep).audio.transcriptions.with_raw_response.create(
                     model=ep.model,
                     file=audio,
@@ -172,6 +186,8 @@ def _is_bad_request(exc: Exception) -> bool:
 
 def _parse_response(data: dict) -> STTResult:
     text = (data.get("text") or "").strip()
+    if "words" in data:
+        return STTResult(text=text, segments=_segments_from_words(data["words"] or []))
     segments: list[STTSegment] = []
     for seg in data.get("segments") or []:
         start = seg.get("start")
@@ -189,3 +205,83 @@ def _parse_response(data: dict) -> STTResult:
             )
         )
     return STTResult(text=text, segments=segments)
+
+
+# ── ElevenLabs Scribe ────────────────────────────────────────────────────────
+# Not OpenAI-compatible: its own route, `xi-api-key` header and form fields, and
+# word-level output that we group back into sentence segments.
+
+ELEVENLABS_MODELS = ["scribe_v2", "scribe_v1"]
+_SENTENCE_END = (".", "?", "!", "…")
+
+
+def _is_elevenlabs(ep: Endpoint) -> bool:
+    return ep.base_url.rstrip("/") == ELEVENLABS_BASE_URL
+
+
+def _elevenlabs_transcribe(audio, ep: Endpoint, params: dict) -> dict:
+    """One Scribe call, taking the same params as the OpenAI path."""
+    data = {"model_id": ep.model}
+    if params.get("language"):
+        data["language_code"] = params["language"]
+    if params.get("extra_body", {}).get("diarize"):
+        data["diarize"] = "true"
+    response = httpx.post(
+        f"{ELEVENLABS_BASE_URL}/speech-to-text",
+        headers={"xi-api-key": ep.api_key or ""},
+        data=data,
+        files={"file": audio},
+        timeout=settings.stt_timeout_s,
+    )
+    if response.status_code >= 400:
+        raise _HTTPStatus(response.status_code)
+    return json.loads(response.text)
+
+
+def _segments_from_words(words: list[dict]) -> list[STTSegment]:
+    """Scribe's words and spacings, cut at each sentence end and speaker change.
+    Audio events like "(laughter)" are dropped: they aren't speech."""
+    segments: list[STTSegment] = []
+    parts: list[str] = []
+    start = end = 0.0
+    speaker = None
+
+    def flush():
+        text = "".join(parts).strip()
+        if text:
+            segments.append(STTSegment(text=text, start=start, end=end, speaker=speaker))
+        parts.clear()
+
+    for w in words:
+        kind = w.get("type", "word")
+        if kind == "audio_event":
+            continue
+        if kind == "word":
+            if parts and w.get("speaker_id") != speaker:
+                flush()
+            if not "".join(parts).strip():
+                start, speaker = float(w.get("start") or 0.0), w.get("speaker_id")
+            end = float(w.get("end") or end)
+        parts.append(w.get("text") or "")
+        if kind == "word" and parts[-1].rstrip().endswith(_SENTENCE_END):
+            flush()
+    flush()
+    return segments
+
+
+def list_models(endpoint: Endpoint) -> list[str]:
+    """Check a transcription-only provider's key and return its models.
+
+    Scribe has no model listing, so the key is checked against `GET /models`; a
+    key scoped to transcription only is refused there with `missing_permissions`
+    and still counts as valid. Raises KeyRefused for a rejected key."""
+    response = httpx.get(
+        f"{ELEVENLABS_BASE_URL}/models",
+        headers={"xi-api-key": endpoint.api_key or ""},
+        timeout=15,
+    )
+    if response.status_code in (401, 403) and "missing_permissions" not in response.text:
+        raise KeyRefused(f"HTTP {response.status_code}")
+    if response.status_code >= 400 and response.status_code not in (401, 403):
+        raise _HTTPStatus(response.status_code)
+    return list(ELEVENLABS_MODELS)

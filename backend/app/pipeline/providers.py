@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from app.core.config import settings
 
 CUSTOM = "custom"
+ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
 
 
 class ProviderRejected(ValueError):
@@ -39,9 +40,10 @@ class Provider:
     label: str
     base_url: str
     # Approximate USD rates for a typical small model on this provider, for the
-    # estimate only. `stt_per_minute` None = no transcription endpoint here.
-    llm_per_mtok_in: float
-    llm_per_mtok_out: float
+    # estimate only. `stt_per_minute` None = no transcription endpoint here;
+    # `llm_per_mtok_*` None = transcription only, no text model.
+    llm_per_mtok_in: float | None
+    llm_per_mtok_out: float | None
     stt_per_minute: float | None = None
 
 
@@ -49,6 +51,8 @@ PROVIDERS: tuple[Provider, ...] = (
     Provider("openai", "OpenAI", "https://api.openai.com/v1", 0.15, 0.60, 0.006),
     Provider("mistral", "Mistral", "https://api.mistral.ai/v1", 0.20, 0.60, 0.003),
     Provider("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", 0.15, 0.60),
+    # Not OpenAI-compatible: app/pipeline/transcribe.py has its own adapter.
+    Provider("elevenlabs", "ElevenLabs", ELEVENLABS_BASE_URL, None, None, 0.0067),
 )
 
 _BY_ID = {p.id: p for p in PROVIDERS}
@@ -88,6 +92,8 @@ def resolve_endpoint(
         raise ProviderRejected("That provider isn't supported.")
     if for_stt and provider.stt_per_minute is None:
         raise ProviderRejected(f"{provider.label} doesn't offer transcription.")
+    if not for_stt and provider.llm_per_mtok_in is None:
+        raise ProviderRejected(f"{provider.label} only offers transcription.")
     if not api_key:
         raise ProviderRejected(f"Add your {provider.label} API key.")
     # A supplied base_url is ignored on purpose: the provider fixes the host.
