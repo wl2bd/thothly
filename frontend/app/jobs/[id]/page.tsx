@@ -1046,7 +1046,7 @@ function LeftOutNotice({
   return (
     <div className={className} style={style}>
       <Notice variant="warning">
-        <span className="font-medium">
+        <span className="text-foreground font-medium">
           {leftOut.length} item{leftOut.length !== 1 ? "s" : ""} didn’t make it in
         </span>
         {/* Bounded rather than truncated: a long list scrolls, so a compilation
@@ -1055,10 +1055,8 @@ function LeftOutNotice({
         <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
           {leftOut.map((it) => (
             <li key={it.id} className="flex min-w-0 flex-col">
-              <span className="truncate" title={it.title}>{it.title}</span>
-              {it.compile_note && (
-                <span className="opacity-75">{it.compile_note}</span>
-              )}
+              <span className="text-foreground truncate" title={it.title}>{it.title}</span>
+              {it.compile_note && <span>{it.compile_note}</span>}
             </li>
           ))}
         </ul>

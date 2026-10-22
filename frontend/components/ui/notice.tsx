@@ -37,7 +37,7 @@ function Notice({
       {...props}
     >
       <Icon aria-hidden="true" />
-      <AlertDescription className="text-pretty">{children}</AlertDescription>
+      <AlertDescription className="min-w-0 text-pretty">{children}</AlertDescription>
     </Alert>
   )
 }
