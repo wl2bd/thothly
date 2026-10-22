@@ -174,7 +174,10 @@ on a screen is a status color or a mistake.
   Warning is pushed to orange (hue 45) so it never reads as the gold (hue 78).
 
 ### Named Rules
-**The One Color Rule.** Desert gold is the only brand hue. No second accent.
+**The One Color Rule.** Desert gold is the only brand hue. No second accent. Third-party
+logos are the exception: on the home page's uses, the source and AI marks show in
+their own colours (black-and-white brands keep the ink), because they are logos,
+not UI (Wael, 2026-10-22).
 
 **The Two Inks Rule.** Text is `foreground` or `muted-foreground`. Never an
 opacity of either (`text-foreground/70`): if a third tone seems needed, the

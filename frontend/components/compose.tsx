@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
-  ArrowRightIcon,
   HistoryIcon,
   PlusIcon,
   PodcastIcon,
@@ -603,31 +602,31 @@ function ComposeWorkspace({
               <div className="grid w-full gap-8 pt-4 text-left sm:grid-cols-2">
                 {USES.map((use) => (
                   <section key={use.eyebrow} className="row-span-5 grid grid-rows-subgrid gap-2">
-                    {/* Firmer ink than the usual muted: these sit on the
-                        densest gold. */}
-                    <span className="eyebrow text-foreground">{use.eyebrow}</span>
+                    {/* Muted, as a label: on the glow's darkest point it
+                        reaches 4.2:1, under AA for its size. A deliberate
+                        exception (Wael, 2026-10-22) so the title leads. */}
+                    <span className="eyebrow">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
                     {/* What goes in, or where it goes: the four most used,
-                        fading out to say there are more. Muted: as icons
-                        they need 3:1, and the grey keeps 4.2:1 on the glow,
-                        so they step back behind the title. */}
+                        in their own colours, fading out to say there are
+                        more. */}
                     <span
                       role="img"
                       aria-label={use.marksLabel}
-                      className="text-muted-foreground flex items-center gap-2.5 justify-self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
+                      className="text-foreground flex items-center gap-2.5 justify-self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
                     >
                       {use.marks}
                     </span>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
-                        // The kit's outline at its small size: a filled
-                        // surface lifts the topics off the glow, as the
-                        // things to press.
+                        // Suggestions, not buttons: no fill, a faint edge,
+                        // quieter ink than the search field above.
                         <Button
                           key={q}
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="border-input text-foreground bg-transparent shadow-none"
                           onClick={() => {
                             setQuery(q);
                             inputRef.current?.focus();
@@ -638,15 +637,9 @@ function ComposeWorkspace({
                       ))}
                     </div>
                     {/* A real one, made by the app, to see what you'd get. */}
-                    <Link
-                      href={use.example}
-                      className="text-foreground group/example flex items-center gap-1 justify-self-start pt-1 text-sm"
-                    >
-                      <span className="text-link">See example</span>
-                      <ArrowRightIcon
-                        aria-hidden="true"
-                        className="size-3.5 transition-transform group-hover/example:translate-x-0.5"
-                      />
+                    {/* Muted like the eyebrow, the same exception. */}
+                    <Link href={use.example} className="text-link text-muted-foreground hover:text-foreground justify-self-start pt-1 text-sm">
+                      See example
                     </Link>
                   </section>
                 ))}
@@ -1129,6 +1122,17 @@ function SortSelect({
 // open web. "Podcasts" (not "Apple Podcasts"): the iTunes index is just the
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
+// Third-party marks in their own colours, the one place the palette lets in
+// outside hues: they are logos, not UI. Black-and-white brands (Wikipedia,
+// OpenAI, xAI) keep the ink, which is their colour in both themes.
+const BRAND = {
+  youtube: "text-[#ff0033]",
+  podcasts: "text-[#a23cdd]",
+  substack: "text-[#ff6719]",
+  claude: "text-[#d97757]",
+  gemini: "text-[#3186ff]",
+} as const;
+
 const USES: {
   eyebrow: string;
   title: string;
@@ -1144,10 +1148,10 @@ const USES: {
     // (any show, through its feed), Wikipedia, blogs such as Substack.
     marks: (
       <>
-        <ProviderIcon provider="youtube" />
-        <PodcastIcon />
+        <ProviderIcon provider="youtube" className={BRAND.youtube} />
+        <PodcastIcon className={BRAND.podcasts} />
         <ProviderIcon provider="wikipedia" />
-        <ProviderIcon provider="substack" />
+        <ProviderIcon provider="substack" className={BRAND.substack} />
       </>
     ),
     marksLabel: "From YouTube, podcasts, Wikipedia, Substack and more",
@@ -1159,9 +1163,9 @@ const USES: {
     title: "Your AI answers from the source.",
     marks: (
       <>
-        <ProviderIcon provider="claude" />
+        <ProviderIcon provider="claude" className={BRAND.claude} />
         <ProviderIcon provider="openai" />
-        <ProviderIcon provider="gemini" />
+        <ProviderIcon provider="gemini" className={BRAND.gemini} />
         <ProviderIcon provider="xai" />
       </>
     ),
