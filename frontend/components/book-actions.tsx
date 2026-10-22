@@ -84,7 +84,7 @@ export function BookActions({
           href={epubUrl}
           download
           title={epubNote}
-          className={cn(buttonVariants(), "flex-1 gap-2 rounded-r-none")}
+          className={cn(buttonVariants(), "flex-1 gap-2 rounded-r-none bg-clip-border")}
         >
           <DownloadIcon />
           Download EPUB
@@ -96,7 +96,9 @@ export function BookActions({
               <Button
                 size="icon"
                 aria-label="More ways to get it"
-                className="border-l-primary-foreground/15 rounded-l-none"
+                // A short inset hairline, not a full-height border: it marks the
+                // menu without cutting the button in two.
+                className="relative rounded-l-none bg-clip-border before:absolute before:inset-y-2.5 before:left-0 before:w-px before:bg-primary-foreground/15"
               />
             }
           >
