@@ -150,8 +150,8 @@ Warm near-neutral grounds and exactly one chromatic brand color. Any other hue
 on a screen is a status color or a mistake.
 
 ### Primary
-- **Desert Gold** (`primary`): primary buttons, the switch track, the active
-  item, the mark. Text on it is always the ink (8.9:1).
+- **Desert Gold** (`primary`): primary buttons, checked boxes, the switch
+  track, the active item, the mark. Text on it is always the ink (8.9:1).
 - **Deep Gold** (`primary-strong`): gold as text or icon on a neutral surface,
   the paid-path cue, and the focus `ring` (4.0:1 on the page). In dark it equals
   the fill gold, which already reads on the night ground.
@@ -266,9 +266,10 @@ structure stays upstream; the few deliberate departures are listed here.
 - Fields don't react to hover.
 
 ### Checkbox and Switch
-- **Checkbox:** checked in ink, not gold, with an edge at 35% ink so the box
-  reaches 3:1 against the page. A review list checks every row; a column of gold
-  squares would outshout the one gold action.
+- **Checkbox:** checked in gold with an ink tick (8.9:1), unchecked with an edge
+  at 35% ink so the box reaches 3:1 against the page. Picking sources and items
+  is a primary action and the step Compile waits on, so it carries the brand
+  colour rather than reading as neutral (Wael, 2026-10-22, reversing ink).
 - **Switch:** gold track when on. Used only for the AI polish master toggle.
 
 ### Rows
