@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -36,9 +37,12 @@ export function SettingsPaneContent() {
       meta="Optional. Saved as you go, in this browser."
       onBack={close}
     >
-      <details className="text-muted-foreground -mt-2 text-xs">
-        <summary className="hover:text-foreground w-fit cursor-pointer underline decoration-current/35 underline-offset-3">
-          How keys are used
+      <details className="group text-muted-foreground -mt-2 text-xs">
+        {/* The accordion's chevron, after the words, instead of the browser's
+            triangle before them. */}
+        <summary className="hover:text-foreground flex w-fit cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+          <span className="underline decoration-current/35 underline-offset-3">How keys are used</span>
+          <ChevronDownIcon aria-hidden="true" className="size-3.5 transition-transform group-open:rotate-180" />
         </summary>
         <p className="mt-1.5">
           Thothly sends your key to your provider only to check it and to run a compilation you
