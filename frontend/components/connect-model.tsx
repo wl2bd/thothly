@@ -112,6 +112,7 @@ const KEY_PAGES: Record<string, string> = {
   openai: "https://platform.openai.com/api-keys",
   mistral: "https://console.mistral.ai/api-keys",
   openrouter: "https://openrouter.ai/settings/keys",
+  elevenlabs: "https://elevenlabs.io/app/settings/api-keys",
 };
 
 function GetKeyLink({ provider, label }: { provider: string; label: string }) {
@@ -130,13 +131,11 @@ function GetKeyLink({ provider, label }: { provider: string; label: string }) {
   );
 }
 
-const TRANSCRIPTION_MODEL = /whisper|voxtral|transcri/i;
-
-
+const TRANSCRIPTION_MODEL = /whisper|voxtral|transcri|scribe/i;
 function providerOptions(config: LlmConfig, kind: ModelKind) {
   return [
     ...config.providers
-      .filter((p) => kind === "llm" || p.stt_per_minute != null)
+      .filter((p) => (kind === "llm" ? p.llm_per_mtok_in != null : p.stt_per_minute != null))
       .map((p) => ({ value: p.id, label: p.label })),
     ...(config.custom_base_url_allowed ? [{ value: "custom", label: "Your own server" }] : []),
   ].map((o) => ({ ...o, icon: <ProviderIcon provider={o.value} className="size-4" /> }));
@@ -416,7 +415,7 @@ export function ConnectModelStep({
 
 // ponytail: name match only. A list whose names say nothing of the task (a
 // local server, say) is shown whole rather than emptied.
-const NOT_TEXT_MODEL = /whisper|voxtral|transcri|tts|speech|audio|realtime|embed|moderation|image|dall-e/i;
+const NOT_TEXT_MODEL = /whisper|voxtral|transcri|tts|speech|audio|realtime|scribe|embed|moderation|image|dall-e/i;
 
 function modelsFor(ids: string[], kind: ModelKind): string[] {
   const fit = ids.filter((m) =>

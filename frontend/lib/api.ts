@@ -111,8 +111,8 @@ export interface LlmPricing {
 export interface LlmProvider {
   id: string;
   label: string;
-  llm_per_mtok_in: number;
-  llm_per_mtok_out: number;
+  llm_per_mtok_in: number | null; // null = transcription only, no text model
+  llm_per_mtok_out: number | null;
   stt_per_minute: number | null; // null = no transcription on this provider
 }
 
