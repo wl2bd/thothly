@@ -198,6 +198,40 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
             </p>
           );
         }
+        const lines = block.trim().split("\n");
+        if (lines.length > 1 && lines.every((l) => l.startsWith("|")) && /^\|[\s|:-]+$/.test(lines[1])) {
+          // A pipe table: header, separator, rows. An all-blank header (a
+          // table with no <th> row at the source) is left out.
+          const [head, , ...rows] = lines.map(tableCells);
+          return (
+            <div key={i} className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-sm">
+                {head.some(Boolean) && (
+                  <thead>
+                    <tr>
+                      {head.map((cell, j) => (
+                        <th key={j} className="border-border text-foreground border-b px-2 py-1.5 align-bottom font-semibold">
+                          {renderInline(cell)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {rows.map((row, r) => (
+                    <tr key={r} className="border-border border-b last:border-0">
+                      {row.map((cell, j) => (
+                        <td key={j} className="px-2 py-1.5 align-top">
+                          {renderInline(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
         if (/^\s*[-*]\s+/.test(block)) {
           const lines = block.split("\n").map((l) => l.replace(/^\s*[-*]\s+/, ""));
           return (
@@ -212,6 +246,15 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
       })}
     </div>
   );
+}
+
+// "| a | b \| c |" → ["a", "b | c"]: an escaped pipe is text, not a border.
+function tableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\||\|$/g, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.trim().replace(/\\\|/g, "|"));
 }
 
 function renderInline(text: string): React.ReactNode[] {
