@@ -1790,7 +1790,8 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
   return (
     <div className="flex flex-col gap-2">
       {preview.note && (
-        <p className="text-warning text-xs">{preview.note}</p>
+        // What the excerpt is, not an alarm: neutral, like the warning Notice.
+        <p className="text-muted-foreground text-xs">{preview.note}</p>
       )}
       {/* A quoted excerpt, NOT an editor: a full bordered + filled box reads as
           a textarea and implies you can type in it. A left rule (blockquote)
