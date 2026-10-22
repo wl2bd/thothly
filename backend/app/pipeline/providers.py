@@ -49,8 +49,6 @@ PROVIDERS: tuple[Provider, ...] = (
     Provider("openai", "OpenAI", "https://api.openai.com/v1", 0.15, 0.60, 0.006),
     Provider("mistral", "Mistral", "https://api.mistral.ai/v1", 0.20, 0.60, 0.003),
     Provider("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", 0.15, 0.60),
-    Provider("groq", "Groq", "https://api.groq.com/openai/v1", 0.05, 0.08, 0.0007),
-    Provider("together", "Together", "https://api.together.xyz/v1", 0.18, 0.18),
 )
 
 _BY_ID = {p.id: p for p in PROVIDERS}

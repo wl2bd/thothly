@@ -112,8 +112,6 @@ const KEY_PAGES: Record<string, string> = {
   openai: "https://platform.openai.com/api-keys",
   mistral: "https://console.mistral.ai/api-keys",
   openrouter: "https://openrouter.ai/settings/keys",
-  groq: "https://console.groq.com/keys",
-  together: "https://api.together.ai/settings/api-keys",
 };
 
 function GetKeyLink({ provider, label }: { provider: string; label: string }) {

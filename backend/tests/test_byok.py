@@ -238,7 +238,7 @@ def test_confirm_refuses_an_unlisted_provider_before_starting(mock_compilation, 
 def test_llm_config_lists_providers_with_their_rates(client: TestClient) -> None:
     data = client.get("/llm").json()
     ids = {p["id"] for p in data["providers"]}
-    assert {"openai", "mistral", "openrouter", "groq", "together"} <= ids
+    assert ids == {"openai", "mistral", "openrouter"}
     assert data["custom_base_url_allowed"] is False
     assert all("base_url" not in p for p in data["providers"])
 
