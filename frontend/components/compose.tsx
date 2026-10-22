@@ -1123,14 +1123,14 @@ function SortSelect({
 // keyless search engine over the open podcast ecosystem — it returns each show's
 // own RSS feed, so the reach is podcasts at large, not Apple-only content.
 // Third-party marks in their own colours, the one place the palette lets in
-// outside hues: they are logos, not UI. Black-and-white brands (Wikipedia,
-// OpenAI, xAI) keep the ink, which is their colour in both themes.
+// outside hues: they are logos, not UI. Hexes from LobeHub's colour icons
+// (Claude; Gemini draws its own gradient) or Simple Icons for the sources.
+// Black-and-white brands (Wikipedia, OpenAI, Grok) keep the ink.
 const BRAND = {
-  youtube: "text-[#ff0033]",
-  podcasts: "text-[#a23cdd]",
+  youtube: "text-[#ff0000]",
+  podcasts: "text-[#9933cc]",
   substack: "text-[#ff6719]",
   claude: "text-[#d97757]",
-  gemini: "text-[#3186ff]",
 } as const;
 
 const USES: {
@@ -1165,8 +1165,8 @@ const USES: {
       <>
         <ProviderIcon provider="claude" className={BRAND.claude} />
         <ProviderIcon provider="openai" />
-        <ProviderIcon provider="gemini" className={BRAND.gemini} />
-        <ProviderIcon provider="xai" />
+        <ProviderIcon provider="gemini-color" />
+        <ProviderIcon provider="grok" />
       </>
     ),
     marksLabel: "Works with Claude, ChatGPT, Gemini, Grok and other AIs",
