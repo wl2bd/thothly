@@ -52,16 +52,16 @@
       "background": {
         "role": "neutral",
         "displayName": "Warm Page",
-        "canonical": "oklch(0.993 0.004 80)",
+        "canonical": "oklch(0.993 0.006 80)",
         "tonalRamp": [
-          "oklch(0.15 0.004 80)",
-          "oklch(0.27 0.004 80)",
-          "oklch(0.39 0.004 80)",
-          "oklch(0.51 0.004 80)",
-          "oklch(0.63 0.004 80)",
-          "oklch(0.75 0.004 80)",
-          "oklch(0.87 0.004 80)",
-          "oklch(0.95 0.004 80)"
+          "oklch(0.15 0.008 78)",
+          "oklch(0.27 0.008 78)",
+          "oklch(0.39 0.008 78)",
+          "oklch(0.51 0.008 78)",
+          "oklch(0.63 0.008 78)",
+          "oklch(0.75 0.008 78)",
+          "oklch(0.87 0.008 78)",
+          "oklch(0.95 0.008 78)"
         ]
       },
       "border": {
@@ -197,7 +197,7 @@
   ],
   "narrative": {
     "northStar": "Gold Leaf",
-    "overview": "One precious metal on a quiet ground. By day a warm near-white page with white\nsurfaces on it; by night a near-black with surfaces a step lighter. The greys\ncarry a barely perceptible warmth (chroma 0.004 at the gold's hue) so they sit\nwith the ink and the gold instead of reading cold. Against them, one strong\ncolor does the talking: desert gold, the heir of the name (Thoth, writing, the\ngilt of an illuminated page), executed as a flat modern color, never a texture.\n\nThe system is conventional shadcn on purpose. Every value is a role-named token,\nevery scale is Tailwind's standard scale, and the primitives are shadcn / Base UI\ncomponents re-skinned by tokens. The few additions (status colors, field fill,\npane width, header height, two small type steps, two easing curves) are declared\nonce in the theme and shipped in the registry. Brand lives in the token values\nand in three signatures: the page glow, the grain, and the serif on titles.\n\nLight and dark are both first-class and set before paint.",
+    "overview": "One precious metal on a quiet ground. By day a warm near-white page with white\nsurfaces on it; by night a near-black with surfaces a step lighter. The greys\ncarry a quiet warmth (chroma 0.006 to 0.01 near the gold's hue) so they sit\nwith the ink and the gold instead of reading cold. Against them, one strong\ncolor does the talking: desert gold, the heir of the name (Thoth, writing, the\ngilt of an illuminated page), executed as a flat modern color, never a texture.\n\nThe system is conventional shadcn on purpose. Every value is a role-named token,\nevery scale is Tailwind's standard scale, and the primitives are shadcn / Base UI\ncomponents re-skinned by tokens. The few additions (status colors, field fill,\npane width, header height, two small type steps, two easing curves) are declared\nonce in the theme and shipped in the registry. Brand lives in the token values\nand in three signatures: the page glow, the grain, and the serif on titles.\n\nLight and dark are both first-class and set before paint.",
     "keyCharacteristics": [
       "One brand color, desert gold: the primary action, the active item, keyboard focus, the mark.",
       "Warm near-neutral grounds; borders are translucent ink, so edges read on any surface.",

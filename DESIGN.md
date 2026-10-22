@@ -2,32 +2,32 @@
 name: Thothly
 description: Make anything readable. Warm near-neutral grounds carrying one strong color, desert gold.
 colors:
-  background: "oklch(0.993 0.004 80)"
+  background: "oklch(0.993 0.006 80)"
   foreground: "oklch(0.16 0.015 68)"
   card: "oklch(1 0 0)"
-  secondary: "oklch(0.955 0.004 80)"
-  muted: "oklch(0.965 0.004 80)"
-  muted-foreground: "oklch(0.5 0.004 80)"
+  secondary: "oklch(0.955 0.008 78)"
+  muted: "oklch(0.965 0.008 78)"
+  muted-foreground: "oklch(0.5 0.01 75)"
   border: "oklch(0.16 0.015 68 / 7%)"
   input: "oklch(0.16 0.015 68 / 12%)"
-  field: "oklch(0.967 0.004 80)"
-  field-hover: "oklch(0.945 0.004 80)"
+  field: "oklch(0.967 0.008 78)"
+  field-hover: "oklch(0.945 0.009 78)"
   primary: "oklch(0.82 0.145 80)"
   primary-strong: "oklch(0.6 0.15 75)"
   destructive: "oklch(0.52 0.21 27)"
   success: "oklch(0.5 0.12 150)"
   warning: "oklch(0.53 0.16 45)"
   info: "oklch(0.52 0.13 255)"
-  background-dark: "oklch(0.13 0.004 80)"
-  foreground-dark: "oklch(0.97 0.004 80)"
-  card-dark: "oklch(0.17 0.004 80)"
-  muted-dark: "oklch(0.22 0.004 80)"
-  muted-foreground-dark: "oklch(0.7 0.004 80)"
-  border-dark: "oklch(1 0 0 / 6%)"
-  input-dark: "oklch(1 0 0 / 8%)"
-  field-dark: "oklch(0.2 0.004 80)"
+  background-dark: "oklch(0.13 0.008 75)"
+  foreground-dark: "oklch(0.97 0.006 80)"
+  card-dark: "oklch(0.17 0.009 75)"
+  muted-dark: "oklch(0.22 0.01 75)"
+  muted-foreground-dark: "oklch(0.7 0.01 75)"
+  border-dark: "oklch(0.97 0.02 80 / 6%)"
+  input-dark: "oklch(0.97 0.02 80 / 8%)"
+  field-dark: "oklch(0.2 0.01 75)"
   primary-dark: "oklch(0.71 0.135 78)"
-  primary-foreground-dark: "oklch(0.16 0.004 80)"
+  primary-foreground-dark: "oklch(0.16 0.008 75)"
 typography:
   display:
     fontFamily: "Prociono, Georgia, serif"
@@ -123,7 +123,7 @@ When this file and the code disagree, the code wins.
 
 One precious metal on a quiet ground. By day a warm near-white page with white
 surfaces on it; by night a near-black with surfaces a step lighter. The greys
-carry a barely perceptible warmth (chroma 0.004 at the gold's hue) so they sit
+carry a quiet warmth (chroma 0.006 to 0.01 near the gold's hue) so they sit
 with the ink and the gold instead of reading cold. Against them, one strong
 color does the talking: desert gold, the heir of the name (Thoth, writing, the
 gilt of an illuminated page), executed as a flat modern color, never a texture.
@@ -164,7 +164,7 @@ on a screen is a status color or a mistake.
 - **Muted Ink** (`muted-foreground`): secondary text, metadata, placeholders,
   decorative icons.
 - **Hairline** (`border`) and **Field Edge** (`input`): ink at 7% and 12% by day,
-  white at 6% and 8% by night. Translucent so a chip on the gold glow keeps its
+  warm white at 6% and 8% by night. Translucent so a chip on the gold glow keeps its
   edge.
 - **Field** (`field`, `field-hover`): the fill of inputs, select triggers and
   outline buttons, a step below white by day and above black by night.
