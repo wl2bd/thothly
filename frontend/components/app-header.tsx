@@ -27,13 +27,15 @@ export function AppHeader() {
       <div className="flex items-center gap-1 sm:gap-2">
         {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}
         <SettingsLink className={navLink} />
+        {/* The two with a key sit together; About has none. */}
+        <ShortcutsHelp className={navLink} />
         <NavLink href="/about" className={navLink}>
           About
         </NavLink>
-        <ShortcutsHelp className={navLink} />
         <ThemeToggle />
       </div>
     </header>
     </ViewTransition>
   );
 }
+
