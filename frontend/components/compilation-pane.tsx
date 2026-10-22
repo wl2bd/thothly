@@ -84,23 +84,41 @@ export function CompilationPane({
 
 // The left-hand pane: whatever the current step is working on. Capped and
 // centred so a wide screen doesn't stretch a row across 2000px.
+// The transition type of the compilation pane opening or closing beside the work.
+export const PANE_TOGGLE = "pane-toggle";
+
 export function WorkPane({
   children,
   className,
   label = "Contents",
+  transitionName,
 }: {
   children: ReactNode;
   className?: string;
   label?: string;
+  // Named, the column glides to its new place when the pane opens or closes
+  // beside it (a PANE_TOGGLE transition), instead of jumping there with the
+  // grid. Only then: in other transitions it stays part of the page, so its own
+  // CSS motion (the search sliding up) isn't replaced by a cross-fade.
+  transitionName?: string;
 }) {
+  const column = (
+    <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-8">
+      {children}
+    </div>
+  );
   return (
     <section
       aria-label={label}
       className={cn("flex min-h-0 flex-1 flex-col lg:overflow-y-auto", className)}
     >
-      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-8">
-        {children}
-      </div>
+      {transitionName ? (
+        <ViewTransition name={transitionName} default={{ [PANE_TOGGLE]: "auto", default: "none" }}>
+          {column}
+        </ViewTransition>
+      ) : (
+        column
+      )}
     </section>
   );
 }

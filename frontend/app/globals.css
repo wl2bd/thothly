@@ -417,13 +417,17 @@
    in-place phase changes feel like a soft settle, not a hard swap. */
 /* easeOutQuint everywhere — a fast start that decelerates to a soft stop at the
    end (the same curve as the search bar's placeholder glide), so the card never
-   lands abruptly. Applied to the box morph AND the content cross-fade. */
-::view-transition-group(flow-card) {
+   lands abruptly. Applied to the box morph AND the content cross-fade. The
+   search column (compose.tsx) moves on the same beat when the pane opens. */
+::view-transition-group(flow-card),
+::view-transition-group(search-column) {
   animation-duration: 300ms;
   animation-timing-function: var(--ease-out-quint);
 }
 ::view-transition-old(flow-card),
-::view-transition-new(flow-card) {
+::view-transition-new(flow-card),
+::view-transition-old(search-column),
+::view-transition-new(search-column) {
   animation-duration: 200ms;
   animation-timing-function: var(--ease-out-quint);
 }

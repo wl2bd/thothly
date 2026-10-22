@@ -3,6 +3,7 @@
 import { Kbd, ModKey } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
 import {
+  addTransitionType,
   startTransition,
   useDeferredValue,
   useEffect,
@@ -42,7 +43,7 @@ import { highlightMatch } from "@/components/highlight";
 import { CompilationHistory } from "@/components/compilation-history";
 import { ProviderIcon } from "@/components/provider-icon";
 import { ToolSketch } from "@/components/tool-sketch";
-import { CompilationPane, WorkPane } from "@/components/compilation-pane";
+import { CompilationPane, PANE_TOGGLE, WorkPane } from "@/components/compilation-pane";
 import {
   createJob,
   MAX_SOURCES,
@@ -248,7 +249,30 @@ function ComposeWorkspace({
   // removes it) — there's no separate "add" step. The checkbox reads its state
   // from `staged`, so the results list, the Sources recap and the count always
   // agree, and a selection survives moving from one search to the next.
+  // The first source opens the pane (or swaps the history for the list) and the
+  // last one closes it: those updates run in a transition so the flow-card
+  // ViewTransition animates them like every other phase change. Within a
+  // non-empty list the rows animate themselves (StagedRow).
+  function paneChange(changes: boolean, update: () => void) {
+    if (!changes) return update();
+    startTransition(() => {
+      addTransitionType(PANE_TOGGLE);
+      update();
+    });
+  }
+
   function toggleResultStaged(r: SearchResult) {
+    const unstaging = staged.some((s) => s.url === r.url);
+    paneChange(staged.length === 0 || (unstaging && staged.length === 1), () =>
+      updateStaged(r),
+    );
+    // Click picks return to the bar so the next query types straight away;
+    // keyboard picks keep their place in the list (see pickedByPointer).
+    if (pickedByPointer.current) inputRef.current?.focus();
+    pickedByPointer.current = false;
+  }
+
+  function updateStaged(r: SearchResult) {
     if (staged.length === 0) setSuggestedTitle(sentenceCase(trimmed));
     if (trimmed !== "" && !staged.some((s) => s.url === r.url))
       setQueries((prev) => [trimmed, ...prev.filter((q) => q !== trimmed)].slice(0, 5));
@@ -270,10 +294,6 @@ function ComposeWorkspace({
             },
           ],
     );
-    // Click picks return to the bar so the next query types straight away;
-    // keyboard picks keep their place in the list (see pickedByPointer).
-    if (pickedByPointer.current) inputRef.current?.focus();
-    pickedByPointer.current = false;
   }
 
   function stageSources(toAdd: StagedSource[]) {
@@ -302,7 +322,7 @@ function ComposeWorkspace({
         return;
       }
       const url = normalizeUrl(trimmed);
-      stageSources([stagedFromUrl(url)]);
+      paneChange(staged.length === 0, () => stageSources([stagedFromUrl(url)]));
       setQuery("");
     }
   }
@@ -313,7 +333,9 @@ function ComposeWorkspace({
     const index = staged.findIndex((s) => s.url === url);
     if (index === -1) return;
     const removed = staged[index];
-    setStaged((prev) => prev.filter((s) => s.url !== url));
+    paneChange(staged.length === 1, () =>
+      setStaged((prev) => prev.filter((s) => s.url !== url)),
+    );
     toast("Source removed", {
       description: removed.title,
       action: {
@@ -331,10 +353,12 @@ function ComposeWorkspace({
   // Wipe the whole staged compilation — the "start over with entirely different
   // sources" escape hatch beside Review.
   function resetStaged() {
-    setStaged([]);
-    setSuggestedTitle("");
-    setTypedTitle(null);
-    setQueries([]);
+    paneChange(true, () => {
+      setStaged([]);
+      setSuggestedTitle("");
+      setTypedTitle(null);
+      setQueries([]);
+    });
   }
 
   // Empty the bar and hand focus back — the shared "start a fresh search"
@@ -416,6 +440,7 @@ function ComposeWorkspace({
     <>
       <WorkPane
         label="Search"
+        transitionName="search-column"
         // Phone, no search: hug the field so the compilation sits right
         // under it.
         className={cn(!showResults && "max-lg:flex-none")}
