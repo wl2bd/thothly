@@ -113,7 +113,9 @@
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.52 0.21 27);
   /* Status colors are informational only, kept apart from the brand gold
-     (warning is pushed to orange, hue 45, so it never reads as the gold). */
+     (warning is pushed to orange, hue 45, so it never reads as the gold).
+     The *-foreground pairs are for solid fills: unused in the app, kept because
+     the published registry theme ships them. */
   --success: oklch(0.5 0.12 150);
   --success-foreground: oklch(0.98 0.004 80);
   --warning: oklch(0.53 0.16 45);
