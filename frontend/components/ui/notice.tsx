@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils"
 // is the kit's own. The colour carries the nature; the icon makes it readable
 // at a glance. Per-item micro-notes stay plain coloured text.
 const tone = {
-  error: "text-destructive *:data-[slot=alert-description]:text-destructive/90",
+  error: "destructive",
   // News, not an alarm: the kit's neutral Alert, no orange (Wael, 2026-09-28).
-  warning: "",
+  warning: "default",
   // Neutral too: the palette is ink and gold, no blue.
-  info: "",
+  info: "default",
 } as const
 
 const icon = {
@@ -32,7 +32,8 @@ function Notice({
     <Alert
       // Errors interrupt (assertive); softer notices announce politely.
       role={variant === "error" ? "alert" : "status"}
-      className={cn("px-4 py-3", tone[variant], className)}
+      variant={tone[variant]}
+      className={cn("px-4 py-3", className)}
       {...props}
     >
       <Icon aria-hidden="true" />

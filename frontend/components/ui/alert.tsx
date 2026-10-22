@@ -8,8 +8,10 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "bg-card text-card-foreground",
+        // The status recipe: 10% tint, 30% edge, text in the status colour
+        // (≥4.7:1 on page and card in both themes; a 20% tint drops light under 4.5).
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "border-destructive/30 bg-destructive/10 text-destructive *:data-[slot=alert-description]:text-destructive",
       },
     },
     defaultVariants: {

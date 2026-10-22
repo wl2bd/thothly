@@ -768,12 +768,10 @@ function CompileStep({
 function FailedView({ job }: { job: JobResponse }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-destructive text-sm font-medium">
-        Compilation failed.
-      </p>
-      {job.error && (
-        <p className="text-muted-foreground text-sm">{job.error}</p>
-      )}
+      <Notice variant="error">
+        <span className="block font-medium">Compilation failed.</span>
+        {job.error}
+      </Notice>
       {job.discovered_items.length > 0 && (
         <ul className="flex flex-col divide-y">
           {job.discovered_items.map((it) => (
