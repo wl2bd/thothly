@@ -3,9 +3,9 @@
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  ChevronUpIcon,
   CommandIcon,
   CornerDownLeftIcon,
+  OptionIcon,
 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
@@ -33,7 +33,7 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
   );
 }
 
-// Symbol keys as icons: the ↵ ⌘ ⌃ glyphs render tiny in the mono face, and
+// Symbol keys as icons: the ↵ ⌘ ⌥ glyphs render tiny in the mono face, and
 // the arrows wide and thin.
 const KEY_ICON = { className: "size-2.5", strokeWidth: 2.5, "aria-hidden": true } as const;
 
@@ -44,9 +44,10 @@ const KEY_ICONS: Record<string, typeof CornerDownLeftIcon> = {
 };
 
 // What goes inside a Kbd for a key name: an icon for the symbol keys, the
-// modifier for "Mod", the text otherwise.
+// machine's own modifier for "Mod" and "Alt", the text otherwise.
 export function KeyLabel({ k }: { k: string }) {
   if (k === "Mod") return <ModKey />;
+  if (k === "Alt") return <AltKey />;
   const Icon = KEY_ICONS[k];
   return Icon ? <Icon {...KEY_ICON} /> : <>{k}</>;
 }
@@ -55,9 +56,14 @@ export function EnterKey() {
   return <KeyLabel k="↵" />;
 }
 
-// ⌘ on a Mac, the Control symbol elsewhere: a symbol reads faster than
-// "CTRL" (Wael, 2026-10-22); ⌃ is the Control keycap of a Mac keyboard.
+// Mac symbols on a Mac only: on Windows ⌃ and ⌥ aren't recognised, so the
+// keys are spelled out as printed on the keyboard (Wael, 2026-10-22).
 export function ModKey() {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
-  return mac ? <CommandIcon {...KEY_ICON} /> : <ChevronUpIcon {...KEY_ICON} />;
+  return mac ? <CommandIcon {...KEY_ICON} /> : <>Ctrl</>;
+}
+
+export function AltKey() {
+  const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
+  return mac ? <OptionIcon {...KEY_ICON} /> : <>Alt</>;
 }
