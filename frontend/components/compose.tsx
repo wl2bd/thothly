@@ -601,10 +601,14 @@ function ComposeWorkspace({
                   (subgrid), whatever wraps. */}
               <div className="grid w-full gap-8 pt-4 text-left sm:grid-cols-2">
                 {USES.map((use) => (
-                  <section key={use.eyebrow} className="row-span-5 grid grid-rows-subgrid gap-2">
-                    {/* Firmer ink than the usual muted: these sit on the
-                        densest gold. */}
-                    <span className="eyebrow text-foreground">{use.eyebrow}</span>
+                  // A card, so the block reads off the gold glow: on its
+                  // surface the muted grey clears 4.5:1, and the eyebrow and
+                  // marks can step back behind the title.
+                  <section
+                    key={use.eyebrow}
+                    className="bg-card shadow-surface row-span-5 grid grid-rows-subgrid gap-2 rounded-lg border p-6"
+                  >
+                    <span className="eyebrow text-muted-foreground">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
                     {/* What goes in, or where it goes: the four most used,
                         quieter than the title, fading out to say there are
@@ -612,20 +616,19 @@ function ComposeWorkspace({
                     <span
                       role="img"
                       aria-label={use.marksLabel}
-                      className="text-foreground flex items-center gap-2.5 justify-self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
+                      className="text-muted-foreground flex items-center gap-2.5 justify-self-start [mask-image:linear-gradient(to_right,#000_40%,transparent)] pr-4 [&_svg]:size-4"
                     >
                       {use.marks}
                     </span>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
-                        // Suggestions, not buttons: no fill, a faint edge,
-                        // quieter ink than the search field above.
+                        // Suggestions, not buttons: the kit's outline at its
+                        // small size, quieter than the search field above.
                         <Button
                           key={q}
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="border-input text-foreground bg-transparent shadow-none"
                           onClick={() => {
                             setQuery(q);
                             inputRef.current?.focus();
