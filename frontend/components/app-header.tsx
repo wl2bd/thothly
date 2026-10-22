@@ -30,7 +30,7 @@ export function AppHeader() {
         <NavLink href="/about" className={navLink}>
           About
         </NavLink>
-        <ShortcutsHelp />
+        <ShortcutsHelp className={navLink} />
         <ThemeToggle />
       </div>
     </header>

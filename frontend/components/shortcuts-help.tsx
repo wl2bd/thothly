@@ -11,22 +11,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SHORTCUTS, useShortcut } from "@/lib/shortcuts";
+import { cn } from "@/lib/utils";
 
 // The "?" list of every shortcut, so they can be found without reading docs.
-export function ShortcutsHelp() {
+export function ShortcutsHelp({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   useShortcut("?", () => setOpen(true));
   return (
     <>
-    {/* The list's own door, in the header: the key that opens it, as a
-        button. Only where there is a keyboard. */}
+    {/* The list's own door, in the header: named like Settings beside it,
+        with its key, so the bare "?" isn't read as About's shortcut. Only
+        where there is a keyboard. */}
     <button
       type="button"
       onClick={() => setOpen(true)}
-      aria-label="Keyboard shortcuts"
       aria-keyshortcuts="?"
-      className="text-muted-foreground hover:text-foreground px-1 py-2 transition-colors max-sm:hidden [@media(hover:none)]:hidden"
+      className={cn(className, "flex items-center gap-1.5 max-sm:hidden [@media(hover:none)]:hidden")}
     >
+      Shortcuts
       <Kbd>?</Kbd>
     </button>
     <Dialog open={open} onOpenChange={setOpen}>
