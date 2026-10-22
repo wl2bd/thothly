@@ -1,6 +1,6 @@
 "use client";
 
-import { Kbd, ModKey } from "@/components/ui/kbd";
+import { EnterKey, Kbd, ModKey } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
 import {
   addTransitionType,
@@ -530,7 +530,7 @@ function ComposeWorkspace({
                 >
                   <PlusIcon />
                   Add
-                  <Kbd>↵</Kbd>
+                  <Kbd><EnterKey /></Kbd>
                 </Button>
               ) : query === "" ? (
                 // An empty bar says how to reach it from anywhere on the page.
@@ -749,7 +749,7 @@ function ComposeWorkspace({
                   {reviewLabel}
                   {staged.length > 0 && !submitting && (
                     <Kbd>
-                      <ModKey /> ↵
+                      <ModKey /> <EnterKey />
                     </Kbd>
                   )}
                 </Button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { CornerDownLeftIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
@@ -17,13 +18,18 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
     <kbd
       aria-hidden="true"
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-current/25 px-1 font-sans text-3xs font-medium opacity-70 [@media(hover:none)]:hidden",
+        "inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-sm border border-current/25 px-1 font-mono text-3xs font-medium uppercase opacity-70 [@media(hover:none)]:hidden",
         className,
       )}
     >
       {children}
     </kbd>
   );
+}
+
+// Enter as an icon: the ↵ glyph renders tiny in the mono face.
+export function EnterKey() {
+  return <CornerDownLeftIcon className="size-2.5" strokeWidth={2.5} />;
 }
 
 // Ctrl or ⌘, whichever this machine uses.

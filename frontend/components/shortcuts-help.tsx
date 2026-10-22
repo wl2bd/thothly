@@ -1,6 +1,6 @@
 "use client";
 
-import { isMac, Kbd } from "@/components/ui/kbd";
+import { EnterKey, isMac, Kbd } from "@/components/ui/kbd";
 import { useState, useSyncExternalStore } from "react";
 
 import {
@@ -48,7 +48,7 @@ export function ShortcutsHelp() {
               <dd className="flex shrink-0 gap-1">
                 {s.keys.map((k) => (
                   <Kbd key={k} className="text-muted-foreground">
-                    {k === "Mod" ? (mac ? "⌘" : "Ctrl") : k}
+                    {k === "Mod" ? (mac ? "⌘" : "Ctrl") : k === "↵" ? <EnterKey /> : k}
                   </Kbd>
                 ))}
               </dd>

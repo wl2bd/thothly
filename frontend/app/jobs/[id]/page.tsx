@@ -1,6 +1,6 @@
 "use client";
 
-import { Kbd, ModKey } from "@/components/ui/kbd";
+import { EnterKey, Kbd, ModKey } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
 import {
   Fragment,
@@ -1553,7 +1553,7 @@ function ReviewList({
                     : "Compile"}
               {!confirming && selected.size > 0 && title.trim() !== "" && (
                 <Kbd>
-                  <ModKey /> ↵
+                  <ModKey /> <EnterKey />
                 </Kbd>
               )}
             </Button>

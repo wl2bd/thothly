@@ -11,8 +11,8 @@ import { useEffect, useRef } from "react";
 // so a new one is listed where it is declared.
 export const SHORTCUTS: { keys: string[]; label: string; where: string }[] = [
   { keys: ["/"], label: "Search", where: "Home" },
-  { keys: ["Enter"], label: "Add a pasted link", where: "Home" },
-  { keys: ["Mod", "Enter"], label: "Review sources, or Compile", where: "Home, Review" },
+  { keys: ["↵"], label: "Add a pasted link", where: "Home" },
+  { keys: ["Mod", "↵"], label: "Review sources, or Compile", where: "Home, Review" },
   { keys: ["A"], label: "Select or deselect every item", where: "Review" },
   { keys: ["D"], label: "Download the EPUB", where: "Ready" },
   { keys: ["C"], label: "Copy the Markdown", where: "Ready" },
