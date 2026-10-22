@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  ArrowRightIcon,
   HistoryIcon,
   PlusIcon,
   PodcastIcon,
@@ -601,18 +602,15 @@ function ComposeWorkspace({
                   (subgrid), whatever wraps. */}
               <div className="grid w-full gap-8 pt-4 text-left sm:grid-cols-2">
                 {USES.map((use) => (
-                  // A card, so the block reads off the gold glow: on its
-                  // surface the muted grey clears 4.5:1, and the eyebrow and
-                  // marks can step back behind the title.
-                  <section
-                    key={use.eyebrow}
-                    className="bg-card shadow-surface row-span-5 grid grid-rows-subgrid gap-2 rounded-lg border p-6"
-                  >
-                    <span className="eyebrow text-muted-foreground">{use.eyebrow}</span>
+                  <section key={use.eyebrow} className="row-span-5 grid grid-rows-subgrid gap-2">
+                    {/* Firmer ink than the usual muted: these sit on the
+                        densest gold. */}
+                    <span className="eyebrow text-foreground">{use.eyebrow}</span>
                     <h2 className="font-display text-xl tracking-tight">{use.title}</h2>
                     {/* What goes in, or where it goes: the four most used,
-                        quieter than the title, fading out to say there are
-                        more. */}
+                        fading out to say there are more. Muted: as icons
+                        they need 3:1, and the grey keeps 4.2:1 on the glow,
+                        so they step back behind the title. */}
                     <span
                       role="img"
                       aria-label={use.marksLabel}
@@ -622,8 +620,9 @@ function ComposeWorkspace({
                     </span>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {use.topics.map((q) => (
-                        // Suggestions, not buttons: the kit's outline at its
-                        // small size, quieter than the search field above.
+                        // The kit's outline at its small size: a filled
+                        // surface lifts the topics off the glow, as the
+                        // things to press.
                         <Button
                           key={q}
                           type="button"
@@ -639,8 +638,15 @@ function ComposeWorkspace({
                       ))}
                     </div>
                     {/* A real one, made by the app, to see what you'd get. */}
-                    <Link href={use.example} className="text-link text-foreground justify-self-start pt-1 text-sm">
-                      See example
+                    <Link
+                      href={use.example}
+                      className="text-foreground group/example flex items-center gap-1 justify-self-start pt-1 text-sm"
+                    >
+                      <span className="text-link">See example</span>
+                      <ArrowRightIcon
+                        aria-hidden="true"
+                        className="size-3.5 transition-transform group-hover/example:translate-x-0.5"
+                      />
                     </Link>
                   </section>
                 ))}
