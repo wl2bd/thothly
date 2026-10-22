@@ -7,20 +7,23 @@ import { useEffect, useRef } from "react";
 // fires while the visitor is typing in a field; a "mod+" combo does, so the
 // primary action is reachable from the title field.
 
-// Every shortcut the app has, for the "?" help. Kept here, beside the hook,
-// so a new one is listed where it is declared.
-export const SHORTCUTS: { keys: string[]; label: string; where: string }[] = [
-  { keys: ["/"], label: "Search", where: "Home" },
-  { keys: ["↵"], label: "Add a pasted link", where: "Home" },
-  { keys: ["Mod", "↵"], label: "Review sources, or Compile", where: "Home, Review" },
-  { keys: ["A"], label: "Select or deselect every item", where: "Review" },
-  { keys: ["D"], label: "Download the EPUB", where: "Ready" },
-  { keys: ["C"], label: "Copy the Markdown", where: "Ready" },
-  { keys: ["←", "→"], label: "Previous or next chapter", where: "Ready" },
-  { keys: ["N"], label: "New compilation", where: "Any compilation" },
-  { keys: [","], label: "Settings", where: "Everywhere" },
-  { keys: ["?"], label: "This list", where: "Everywhere" },
-  { keys: ["Esc"], label: "Clear the search, or close Settings and dialogs", where: "Everywhere" },
+// Every shortcut the app has, for the "?" help, grouped by the screen they
+// work on. Kept here, beside the hook, so a new one is listed where it is
+// declared.
+export const SHORTCUTS: { screen: string; keys: string[]; label: string }[] = [
+  { screen: "Home", keys: ["/"], label: "Search" },
+  { screen: "Home", keys: ["↵"], label: "Add a pasted link" },
+  { screen: "Home", keys: ["Mod", "↵"], label: "Review the sources" },
+  { screen: "Reviewing sources", keys: ["A"], label: "Select or deselect every item" },
+  { screen: "Reviewing sources", keys: ["Mod", "↵"], label: "Compile" },
+  { screen: "Reviewing sources", keys: ["N"], label: "New compilation" },
+  { screen: "Finished compilation", keys: ["D"], label: "Download the EPUB" },
+  { screen: "Finished compilation", keys: ["C"], label: "Copy the Markdown" },
+  { screen: "Finished compilation", keys: ["←", "→"], label: "Previous or next chapter" },
+  { screen: "Finished compilation", keys: ["N"], label: "New compilation" },
+  { screen: "Everywhere", keys: [","], label: "Settings" },
+  { screen: "Everywhere", keys: ["?"], label: "This list" },
+  { screen: "Everywhere", keys: ["Esc"], label: "Clear the search, or close Settings and dialogs" },
 ];
 
 function typing(target: EventTarget | null): boolean {

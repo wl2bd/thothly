@@ -37,23 +37,27 @@ export function ShortcutsHelp({ className }: { className?: string }) {
           <DialogTitle>Keyboard shortcuts</DialogTitle>
           <DialogDescription>Single keys work when you are not typing in a field.</DialogDescription>
         </DialogHeader>
-        <dl className="flex flex-col">
-          {SHORTCUTS.map((s) => (
-            <div key={s.label} className="flex items-center justify-between gap-4 border-b py-2 text-sm last:border-b-0">
-              <dt className="flex flex-col">
-                {s.label}
-                <span className="text-muted-foreground text-xs">{s.where}</span>
-              </dt>
-              <dd className="flex shrink-0 gap-1">
-                {s.keys.map((k) => (
-                  <Kbd key={k} className="text-muted-foreground">
-                    <KeyLabel k={k} />
-                  </Kbd>
-                ))}
-              </dd>
-            </div>
+        <div className="flex flex-col gap-4">
+          {Object.entries(Object.groupBy(SHORTCUTS, (s) => s.screen)).map(([screen, list = []]) => (
+              <section key={screen}>
+                <h3 className="text-muted-foreground text-xs">{screen}</h3>
+                <dl className="flex flex-col">
+                  {list.map((s) => (
+                    <div key={s.label} className="flex items-center justify-between gap-4 border-b py-2 text-sm last:border-b-0">
+                      <dt>{s.label}</dt>
+                      <dd className="flex shrink-0 gap-1">
+                        {s.keys.map((k) => (
+                          <Kbd key={k} className="text-muted-foreground">
+                            <KeyLabel k={k} />
+                          </Kbd>
+                        ))}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
           ))}
-        </dl>
+        </div>
       </DialogContent>
     </Dialog>
     </>
