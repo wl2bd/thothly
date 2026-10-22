@@ -252,6 +252,15 @@ checkboxes and key caps use `rounded-sm`. Icons follow the text they sit in:
 `size-3` with `text-xs`, `size-3.5` in dense rows, `size-4` by default, `size-5`
 for logos and spinners, `size-6` for empty states.
 
+**The Quiet Icon Rule.** An icon beside a text label sits a step under it, in
+`muted-foreground`, and comes up with the text on hover or focus. Built into
+`Button` (outline, secondary and ghost with a label) and the menu items, so it
+needs no class at the call site. Where the label is already muted (Back, the
+key link, meta rows), the icon matches it rather than dropping to an opacity,
+per the Two Inks Rule. Exceptions keep their colour: icon-only buttons (full
+contrast), the gold CTA (its icon follows the ink), status icons in a Notice,
+and brand marks. An icon that sets its own `text-*` class opts out.
+
 ## Components
 
 shadcn / Base UI primitives in `components/ui/`, styled through tokens. Their

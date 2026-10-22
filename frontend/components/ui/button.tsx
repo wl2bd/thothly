@@ -40,6 +40,18 @@ const buttonVariants = cva(
         "icon-lg": "size-12",
       },
     },
+    // An icon beside a label sits a step under it, in the muted ink, and comes
+    // up with the text on hover. Icon-only sizes keep full contrast, the gold
+    // and destructive fills keep their own colour, and an icon with its own
+    // text-* class (a brand mark) is left alone.
+    compoundVariants: [
+      {
+        variant: ["outline", "secondary", "ghost"],
+        size: ["default", "xs", "sm", "lg"],
+        className:
+          "[&_svg:not([class*='text-'])]:text-muted-foreground hover:[&_svg:not([class*='text-'])]:text-current aria-expanded:[&_svg:not([class*='text-'])]:text-current",
+      },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
