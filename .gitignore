@@ -27,6 +27,7 @@ backend/data/
 backend/test_output/
 *.db
 *.epub
+!frontend/public/examples/*.epub
 
 # Editor / OS / agent state
 .vscode/
