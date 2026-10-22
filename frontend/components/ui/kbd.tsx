@@ -1,6 +1,6 @@
 "use client";
 
-import { CornerDownLeftIcon } from "lucide-react";
+import { ChevronUpIcon, CommandIcon, CornerDownLeftIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
@@ -27,13 +27,16 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
   );
 }
 
-// Enter as an icon: the ↵ glyph renders tiny in the mono face.
+// Symbol keys as icons: the ↵ ⌘ ⌃ glyphs render tiny in the mono face.
+const KEY_ICON = { className: "size-2.5", strokeWidth: 2.5, "aria-hidden": true } as const;
+
 export function EnterKey() {
-  return <CornerDownLeftIcon className="size-2.5" strokeWidth={2.5} />;
+  return <CornerDownLeftIcon {...KEY_ICON} />;
 }
 
-// Ctrl or ⌘, whichever this machine uses.
+// ⌘ on a Mac, the Control symbol elsewhere: a symbol reads faster than
+// "CTRL" (Wael, 2026-10-22); ⌃ is the Control keycap of a Mac keyboard.
 export function ModKey() {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
-  return <>{mac ? "⌘" : "Ctrl"}</>;
+  return mac ? <CommandIcon {...KEY_ICON} /> : <ChevronUpIcon {...KEY_ICON} />;
 }

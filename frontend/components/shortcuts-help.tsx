@@ -1,7 +1,7 @@
 "use client";
 
-import { EnterKey, isMac, Kbd } from "@/components/ui/kbd";
-import { useState, useSyncExternalStore } from "react";
+import { EnterKey, Kbd, ModKey } from "@/components/ui/kbd";
+import { useState } from "react";
 
 import {
   Dialog,
@@ -12,12 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { SHORTCUTS, useShortcut } from "@/lib/shortcuts";
 
-const noSubscribe = () => () => {};
-
 // The "?" list of every shortcut, so they can be found without reading docs.
 export function ShortcutsHelp() {
   const [open, setOpen] = useState(false);
-  const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
   useShortcut("?", () => setOpen(true));
   return (
     <>
@@ -48,7 +45,7 @@ export function ShortcutsHelp() {
               <dd className="flex shrink-0 gap-1">
                 {s.keys.map((k) => (
                   <Kbd key={k} className="text-muted-foreground">
-                    {k === "Mod" ? (mac ? "⌘" : "Ctrl") : k === "↵" ? <EnterKey /> : k}
+                    {k === "Mod" ? <ModKey /> : k === "↵" ? <EnterKey /> : k}
                   </Kbd>
                 ))}
               </dd>
