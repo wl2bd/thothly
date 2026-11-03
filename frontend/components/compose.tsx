@@ -82,8 +82,9 @@ import {
 // A source the user has staged for compilation. Built either from a picked
 // search result or from a directly-pasted link.
 // Every settled query is a paid search (ScrapeCreators + triage), so wait for a
-// real pause in typing rather than every short hesitation.
-const SEARCH_DEBOUNCE_MS = 800;
+// pause in typing: long enough to skip the gaps inside a word, short enough not
+// to feel like waiting. The backend caches exact repeats for five minutes.
+const SEARCH_DEBOUNCE_MS = 400;
 
 // The staging machine: search on the left, the compilation it builds on the
 // right. Picking a result puts it in the compilation, which stays on screen
