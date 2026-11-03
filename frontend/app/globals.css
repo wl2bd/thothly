@@ -566,3 +566,15 @@
     --pool-x: calc((100% - var(--container-pane)) / 2);
   }
 }
+
+/* Inside a skeleton, Skullet draws text and boxes but not lines painted by
+   borders, shadows or pseudo-elements: the gold tab underline and the select's
+   edge would show through. Quiet them while it loads. */
+.skeleton-quiet *,
+.skeleton-quiet *::after {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.skeleton-quiet *::after {
+  opacity: 0 !important;
+}

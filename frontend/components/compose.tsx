@@ -723,7 +723,10 @@ function ComposeWorkspace({
               is already in place when the first results land and the list
               below never gets pushed down. */}
           {showResults && (results.length > 0 || pendingFirst) && (
-            <Skeleton loading={pendingFirst}>
+            <Skeleton
+              loading={pendingFirst}
+              className={pendingFirst ? "skeleton-quiet" : undefined}
+            >
               <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <TypeFilter
                   results={pendingFirst ? SAMPLE_RESULTS : results}
@@ -1018,7 +1021,10 @@ const SAMPLE_RESULTS: SearchResult[] = [
   url: `https://example.com/${i}`,
   thumbnail: null,
   duration_s: duration as number | null,
-  author: "Sample author",
+  // Web rows carry no author and the others a short one, like most real
+  // results: a long one wraps the meta line on a phone and makes the
+  // skeleton rows taller than the rows that replace them.
+  author: source === "web" ? null : "Lectures",
   meta: {},
 }));
 
