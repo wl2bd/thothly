@@ -1,7 +1,13 @@
+import logging
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter, Header, Query
+from fastapi.responses import StreamingResponse
 
 from app.search.models import SearchResponse
-from app.search.service import search_all
+from app.search.service import search_all, search_batches
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["search"])
 
@@ -21,6 +27,37 @@ async def search(
     if not query:
         return SearchResponse()
     return await search_all(query, hl=_primary_language(accept_language))
+
+
+@router.get("/search/stream")
+async def search_stream(
+    q: str = Query("", description="Free-text search query"),
+    accept_language: str | None = Header(default=None),
+) -> StreamingResponse:
+    """The same search, streamed: one JSON line per provider (NDJSON), each sent
+    the moment that provider answers, so fast sources show up without waiting
+    for the slowest. A line is a `ProviderBatch`. A blank query sends nothing."""
+    query = q.strip()
+    hl = _primary_language(accept_language)
+
+    async def lines() -> AsyncIterator[str]:
+        if not query:
+            return
+        # The 200 is already sent once the first line goes out, so a crash past
+        # that point can't become an error status: log it and end the stream
+        # cleanly, keeping the batches already delivered.
+        try:
+            async for batch in search_batches(query, hl=hl):
+                yield batch.model_dump_json() + "\n"
+        except Exception:  # noqa: BLE001
+            logger.exception("Streamed search failed for %r", query)
+
+    return StreamingResponse(
+        lines(),
+        media_type="application/x-ndjson",
+        # Proxies (Fly, Next) must pass each line through as it comes.
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
 
 
 def _primary_language(accept_language: str | None) -> str | None:

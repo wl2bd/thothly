@@ -1,8 +1,10 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import re
 import time
 from collections import Counter
+from collections.abc import AsyncIterator
 from urllib.parse import urlparse
 
 from app.core.config import settings
@@ -10,7 +12,7 @@ from app.core.posthog import capture
 from app.search.base import Provider
 from app.search.brave_provider import BraveProvider
 from app.search.marginalia_provider import MarginaliaProvider
-from app.search.models import ProviderError, SearchResponse, SearchResult
+from app.search.models import ProviderBatch, ProviderError, SearchResponse, SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.triage import triage, triage_enabled
 from app.search.web_provider import WebProvider
@@ -102,6 +104,13 @@ PROVIDERS: list[Provider] = [
 # Per-provider wall-clock budget: a slow or hung provider must never hold up the
 # results the others already produced, so each is capped independently.
 _PROVIDER_TIMEOUT_S = 12
+# The providers and the triage are blocking network calls run in threads. A
+# thread can't be cancelled, so a search the user typed past keeps its threads
+# busy until its calls return. The loop's default pool (cpu + 4 = 5 threads on a
+# one-CPU Fly machine) would fill after two abandoned searches and queue the
+# live one behind them, eating its timeout. Waiting on the network costs no CPU,
+# so a dedicated, wider pool keeps the live search from queuing.
+_EXECUTOR = ThreadPoolExecutor(max_workers=32, thread_name_prefix="search")
 _DEFAULT_LIMIT = 12
 
 
@@ -119,22 +128,7 @@ async def search_all(
     localize results (YouTube) use it, the rest ignore it.
     """
     loop = asyncio.get_running_loop()
-
-    async def run(provider: Provider) -> tuple[str, list[SearchResult], str | None]:
-        try:
-            results = await asyncio.wait_for(
-                loop.run_in_executor(None, provider.search, query, limit, hl),
-                _PROVIDER_TIMEOUT_S,
-            )
-            return provider.name, results, None
-        except asyncio.TimeoutError:
-            logger.warning("Search provider %s timed out", provider.name)
-            return provider.name, [], "timed out"
-        except Exception as exc:  # noqa: BLE001 — isolate one provider's failure
-            logger.warning("Search provider %s failed: %s", provider.name, exc)
-            return provider.name, [], str(exc)
-
-    outcomes = await asyncio.gather(*(run(p) for p in PROVIDERS))
+    outcomes = await asyncio.gather(*(_run(p, query, limit, hl) for p in PROVIDERS))
 
     # Flatten into (provider_index, within-provider rank, result). The two
     # indices are kept so ranking can fall back to a fair round-robin when no
@@ -150,7 +144,7 @@ async def search_all(
     results = _rank(ranked_inputs, query)
     found = len(results)
     if triage_enabled():
-        results = await loop.run_in_executor(None, triage, query, results)
+        results = await loop.run_in_executor(_EXECUTOR, triage, query, results)
     capture(
         "search_completed",
         {
@@ -162,6 +156,82 @@ async def search_all(
         },
     )
     return SearchResponse(results=results, errors=errors)
+
+
+async def _run(
+    provider: Provider, query: str, limit: int, hl: str | None
+) -> tuple[str, list[SearchResult], str | None]:
+    """One provider's search in a worker thread under its own timeout.
+
+    Never raises: a failure or timeout comes back as an error string with no
+    results, so one provider being down never takes the others with it."""
+    loop = asyncio.get_running_loop()
+    try:
+        results = await asyncio.wait_for(
+            loop.run_in_executor(_EXECUTOR, provider.search, query, limit, hl),
+            _PROVIDER_TIMEOUT_S,
+        )
+        return provider.name, results, None
+    except asyncio.TimeoutError:
+        logger.warning("Search provider %s timed out", provider.name)
+        return provider.name, [], "timed out"
+    except Exception as exc:  # noqa: BLE001 — isolate one provider's failure
+        logger.warning("Search provider %s failed: %s", provider.name, exc)
+        return provider.name, [], str(exc)
+
+
+async def search_batches(
+    query: str, limit: int = _DEFAULT_LIMIT, hl: str | None = None
+) -> AsyncIterator[ProviderBatch]:
+    """Like `search_all`, but yields each provider's results the moment it finishes.
+
+    Providers answer at very different speeds (podcasts well under a second, the
+    paid YouTube search several seconds, the web up to its timeout), so waiting
+    for all of them makes the fastest wait for the slowest. Each batch is ranked
+    and triaged on its own: every judgment is per result, so splitting by
+    provider costs nothing in quality, only one small triage call per provider
+    instead of one per search (fractions of a thousandth of a cent). Ranking across
+    providers is the caller's call; the UI appends batches so rows never move
+    under the user.
+    """
+    loop = asyncio.get_running_loop()
+    tasks = [asyncio.create_task(_run(p, query, limit, hl)) for p in PROVIDERS]
+    found = 0
+    shown: Counter[str] = Counter()
+    failed: list[str] = []
+    answered = 0
+    try:
+        for next_done in asyncio.as_completed(tasks):
+            name, results, error = await next_done
+            answered += 1
+            found += len(results)
+            results = _rank([(0, rank, r) for rank, r in enumerate(results)], query)
+            if results and triage_enabled():
+                results = await loop.run_in_executor(_EXECUTOR, triage, query, results)
+            shown.update(r.type for r in results)
+            if error is not None:
+                failed.append(name)
+            yield ProviderBatch(provider=name, results=results, error=error)
+    finally:
+        # The client aborts the stream on every new keystroke. Cancelling stops
+        # waiting on the providers still out; their threads finish on their own
+        # (see `_EXECUTOR`), and their paid calls are still billed.
+        for task in tasks:
+            task.cancel()
+        # Sent for abandoned searches too: their paid calls are counted anyway,
+        # so leaving them out would skew cost per search.
+        capture(
+            "search_completed",
+            {
+                "found_count": found,
+                "shown_count": sum(shown.values()),
+                "result_types": dict(shown),
+                "failed_providers": failed,
+                "triaged": triage_enabled(),
+                "streamed": True,
+                "aborted": answered < len(tasks),
+            },
+        )
 
 
 def _rank(

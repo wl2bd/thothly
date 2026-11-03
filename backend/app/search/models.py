@@ -40,6 +40,17 @@ class ProviderError(BaseModel):
     message: str
 
 
+class ProviderBatch(BaseModel):
+    """One provider's share of a streamed search, sent as soon as it finishes.
+
+    `error` is set when the provider failed or timed out; its results are then
+    empty and the other providers' batches still arrive."""
+
+    provider: str
+    results: list[SearchResult] = Field(default_factory=list)
+    error: str | None = None
+
+
 class SearchResponse(BaseModel):
     results: list[SearchResult] = Field(default_factory=list)
     errors: list[ProviderError] = Field(default_factory=list)

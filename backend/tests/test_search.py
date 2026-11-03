@@ -602,7 +602,80 @@ def test_search_all_isolates_a_failing_provider(monkeypatch):
     assert "boom" in resp.errors[0].message
 
 
+class _SlowProvider(_FakeProvider):
+    def __init__(self, name: str, results, delay_s: float):
+        super().__init__(name, results=results)
+        self._delay_s = delay_s
+
+    def search(self, query: str, limit: int, hl: str | None = None):
+        import time
+
+        time.sleep(self._delay_s)
+        return super().search(query, limit, hl)
+
+
+def _collect_batches(query: str):
+    async def run():
+        return [b async for b in service.search_batches(query)]
+
+    return asyncio.run(run())
+
+
+def test_search_batches_yields_each_provider_as_it_finishes(monkeypatch):
+    """The fast provider's results must not wait for the slow one."""
+    monkeypatch.setattr(service, "PROVIDERS", [
+        _SlowProvider("youtube", [_result("youtube:1")], delay_s=0.3),
+        _FakeProvider("podcast", results=[_result("podcast:1")]),
+    ])
+
+    batches = _collect_batches("q")
+
+    assert [b.provider for b in batches] == ["podcast", "youtube"]
+    assert [r.id for r in batches[0].results] == ["podcast:1"]
+
+
+def test_search_batches_isolates_a_failing_provider(monkeypatch):
+    monkeypatch.setattr(service, "PROVIDERS", [
+        _FakeProvider("youtube", results=[_result("youtube:1")]),
+        _FakeProvider("podcast", error="boom"),
+    ])
+
+    batches = {b.provider: b for b in _collect_batches("q")}
+
+    assert [r.id for r in batches["youtube"].results] == ["youtube:1"]
+    assert batches["youtube"].error is None
+    assert batches["podcast"].results == []
+    assert "boom" in batches["podcast"].error
+
+
 # ── endpoint ─────────────────────────────────────────────────────────────────
+
+def test_search_stream_endpoint_sends_one_json_line_per_provider(
+    client: TestClient, monkeypatch
+):
+    import json
+
+    monkeypatch.setattr(service, "PROVIDERS", [
+        _FakeProvider("youtube", results=[_result("youtube:1")]),
+        _FakeProvider("podcast", error="down"),
+    ])
+
+    res = client.get("/search/stream", params={"q": "x"})
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/x-ndjson")
+    lines = [json.loads(line) for line in res.text.splitlines() if line]
+    by_provider = {line["provider"]: line for line in lines}
+    assert set(by_provider) == {"youtube", "podcast"}
+    assert [r["id"] for r in by_provider["youtube"]["results"]] == ["youtube:1"]
+    assert by_provider["podcast"]["error"] == "down"
+
+
+def test_search_stream_endpoint_blank_query_sends_nothing(client: TestClient):
+    res = client.get("/search/stream", params={"q": "  "})
+    assert res.status_code == 200
+    assert res.text == ""
+
 
 def test_search_endpoint_blank_query_is_empty(client: TestClient):
     body = client.get("/search", params={"q": "   "}).json()

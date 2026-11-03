@@ -47,7 +47,7 @@ import { CompilationPane, PANE_TOGGLE, WorkPane } from "@/components/compilation
 import {
   createJob,
   MAX_SOURCES,
-  search,
+  searchStream,
   type ProviderError,
   type SearchResult,
 } from "@/lib/api";
@@ -210,28 +210,62 @@ function ComposeWorkspace({
         return;
       }
       // The pending skeleton stays immediate (instant feedback to a keystroke);
-      // only the settle below is a transition.
+      // only the settles below are transitions.
       setSearching(true);
+      // Providers answer one by one (podcasts in under a second, YouTube and
+      // the web in several): the first batch replaces the previous query's
+      // rows, later ones append below, so rows already on screen never move
+      // under the user's pointer.
+      let first = true;
       try {
-        const resp = await search(trimmed, controller.signal);
+        await searchStream(
+          trimmed,
+          (batch) => {
+            if (cancelled) return;
+            const isFirst = first;
+            first = false;
+            // Settle inside a transition so the card cross-fades + resizes from
+            // the skeleton to the results (the flow-card ViewTransition) rather
+            // than popping — the same motion as the face swap and the job phases.
+            startTransition(() => {
+              const error = batch.error
+                ? [{ provider: batch.provider, message: batch.error }]
+                : [];
+              if (isFirst) {
+                setResults(batch.results);
+                setSearchErrors(error);
+                setTypeFilter("all");
+                setSortBy("relevance");
+                setSettledQuery(trimmed);
+              } else {
+                setResults((prev) => {
+                  const seen = new Set(prev.map((r) => r.id));
+                  return [...prev, ...batch.results.filter((r) => !seen.has(r.id))];
+                });
+                setSearchErrors((prev) => [...prev, ...error]);
+              }
+            });
+          },
+          controller.signal,
+        );
         if (cancelled) return;
-        // Settle inside a transition so the card cross-fades + resizes from the
-        // skeleton to the results (the flow-card ViewTransition) rather than
-        // popping — the same motion as the face swap and the job phases.
         startTransition(() => {
-          setResults(resp.results);
-          setSearchErrors(resp.errors);
-          setTypeFilter("all");
-          setSortBy("relevance");
-          setSettledQuery(trimmed);
+          // A stream that ended without a single batch still settles the query.
+          if (first) {
+            setResults([]);
+            setSearchErrors([]);
+            setSettledQuery(trimmed);
+          }
           setSearching(false);
         });
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
         setError(err instanceof Error ? err.message : String(err));
         startTransition(() => {
-          setResults([]);
-          setSearchErrors([]);
+          if (first) {
+            setResults([]);
+            setSearchErrors([]);
+          }
           setSettledQuery(trimmed);
           setSearching(false);
         });
@@ -887,7 +921,10 @@ function SearchResults({
   // (not `searching`) so the gap between a keystroke and the debounced request
   // shows the skeleton too, never a flash of the empty state. The pulse is
   // staggered for a soft wave and stilled under reduced motion (bars still read).
-  if (!settled && results.length === 0) {
+  // A batch can land empty (no podcast for this query) while other providers
+  // are still out, so `searching` keeps the skeleton up too: "No results" only
+  // shows once every provider has answered.
+  if ((!settled || searching) && results.length === 0) {
     return (
       <ul
         aria-busy="true"
@@ -896,22 +933,8 @@ function SearchResults({
       >
         {/* Enough rows to reach the bottom of any screen; the list clips
             what doesn't fit. */}
-        {Array.from({ length: 16 }, (_, i) => [80, 66, 88, 58, 72][i % 5]).map((w, i) => (
-          <li
-            key={i}
-            className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
-            style={{ animationDelay: `${(i % 8) * 110}ms` }}
-          >
-            <span className="bg-muted size-5 shrink-0 rounded-sm" />
-            <span className="bg-muted h-12 w-20 shrink-0 rounded" />
-            <span className="flex min-w-0 flex-1 flex-col gap-2">
-              <span
-                className="bg-muted h-3.5 rounded-full"
-                style={{ width: `${w}%` }}
-              />
-              <span className="bg-muted h-3 w-2/5 rounded-full" />
-            </span>
-          </li>
+        {Array.from({ length: 16 }, (_, i) => (
+          <SkeletonRow key={i} index={i} />
         ))}
       </ul>
     );
@@ -939,8 +962,10 @@ function SearchResults({
     );
   }
 
-  // Settled with results. While a refinement is in flight the old rows stay put
-  // but dim, so the list reads as "updating" instead of flickering empty.
+  // Rows on screen. While a new query is in flight the old rows stay put but
+  // dim, so the list reads as "updating" instead of flickering empty. Rows of
+  // the live query stay at full strength while its slower providers come in,
+  // announced by a few skeleton rows at the bottom.
   return (
     <ul
       ref={listRef}
@@ -948,7 +973,7 @@ function SearchResults({
       aria-busy={searching || undefined}
       className={cn(
         "-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto transition-opacity",
-        searching && "opacity-60",
+        !settled && "opacity-60",
       )}
     >
       {results.map((r) => {
@@ -999,7 +1024,33 @@ function SearchResults({
           </li>
         );
       })}
+      {settled &&
+        searching &&
+        Array.from({ length: 3 }, (_, i) => (
+          <SkeletonRow key={`pending-${i}`} index={i} />
+        ))}
     </ul>
+  );
+}
+
+// A placeholder row mirroring the real row geometry (checkbox, media tile,
+// title line, meta line), so results replace it in place. The pulse is
+// staggered for a soft wave and stilled under reduced motion (bars still read).
+function SkeletonRow({ index }: { index: number }) {
+  const width = [80, 66, 88, 58, 72][index % 5];
+  return (
+    <li
+      aria-hidden="true"
+      className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
+      style={{ animationDelay: `${(index % 8) * 110}ms` }}
+    >
+      <span className="bg-muted size-5 shrink-0 rounded-sm" />
+      <span className="bg-muted h-12 w-20 shrink-0 rounded" />
+      <span className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="bg-muted h-3.5 rounded-full" style={{ width: `${width}%` }} />
+        <span className="bg-muted h-3 w-2/5 rounded-full" />
+      </span>
+    </li>
   );
 }
 

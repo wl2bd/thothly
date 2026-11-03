@@ -267,14 +267,44 @@ export function getDownloadUrl(id: string, format: "epub" | "md" = "epub"): stri
   return `/api/jobs/${id}/download?format=${format}`;
 }
 
-export async function search(
+/** One provider's share of a streamed search (backend `ProviderBatch`). */
+export interface ProviderBatch {
+  provider: string;
+  results: SearchResult[];
+  error: string | null;
+}
+
+/**
+ * Multi-provider search, streamed: `onBatch` fires once per provider, the
+ * moment it answers, so fast sources (podcasts) show up without waiting for
+ * the slow ones (YouTube, the web). Resolves when every provider has answered.
+ */
+export async function searchStream(
   query: string,
+  onBatch: (batch: ProviderBatch) => void,
   signal?: AbortSignal,
-): Promise<SearchResponse> {
-  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+): Promise<void> {
+  const res = await fetch(`/api/search/stream?q=${encodeURIComponent(query)}`, {
     cache: "no-store",
     signal,
   });
-  if (!res.ok) return parseError(res);
-  return res.json();
+  if (!res.ok || !res.body) return parseError(res);
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (value) buffer += value;
+      // Each complete line is one batch; a partial last line waits for the rest.
+      const lines = buffer.split("\n");
+      buffer = done ? "" : (lines.pop() ?? "");
+      for (const line of lines) {
+        if (line.trim()) onBatch(JSON.parse(line) as ProviderBatch);
+      }
+      if (done) return;
+    }
+  } finally {
+    // Close the connection if parsing threw mid-stream; a no-op once done.
+    reader.cancel().catch(() => {});
+  }
 }
