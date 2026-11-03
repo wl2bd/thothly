@@ -93,6 +93,13 @@
      cards, the compilation) read as laid on top, not printed flat. */
   --background: oklch(0.993 0.006 80);
   --foreground: oklch(0.16 0.015 68);
+  /* Skullet skeletons (search results): translucent ink like the light
+     borders (the muted grey vanished on the near-white ground), a soft light
+     sweep, slow like the rest of the motion. */
+  --skullet-base: oklch(0.16 0.015 68 / 0.08);
+  --skullet-highlight: oklch(1 0 0 / 0.6);
+  --skullet-animation: shimmer;
+  --skullet-speed: slow;
   /* Cards lift a step above the page. */
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
@@ -147,6 +154,8 @@
 .dark {
   color-scheme: dark;
   --background: oklch(0.13 0.008 75);
+  --skullet-base: var(--muted);
+  --skullet-highlight: oklch(1 0 0 / 0.06);
   --foreground: oklch(0.97 0.006 80);
   --card: oklch(0.17 0.009 75);
   --primary: oklch(0.71 0.135 78);

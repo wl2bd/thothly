@@ -66,6 +66,7 @@ import {
   type Draft,
   type StagedSource,
 } from "@/lib/workspace-draft";
+import { Skeleton } from "skullet/react";
 import { cn } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -915,36 +916,18 @@ function SearchResults({
     results.length,
   ]);
 
-  // Search pending or in flight, with no prior results to keep on screen: stand
-  // in skeleton rows that mirror the real row geometry — media tile, title line,
-  // meta line — so when results land they replace the placeholders in place
-  // rather than the list popping in from a stray spinner. Keyed off `settled`
-  // (not `searching`) so the gap between a keystroke and the debounced request
-  // shows the skeleton too, never a flash of the empty state. The pulse is
-  // staggered for a soft wave and stilled under reduced motion (bars still read).
-  // A batch can land empty (no podcast for this query) while other providers
-  // are still out, so `searching` keeps the skeleton up too: "No results" only
-  // shows once every provider has answered.
-  if ((!settled || searching) && results.length === 0) {
-    return (
-      <ul
-        aria-busy="true"
-        aria-label="Searching"
-        className="-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden"
-      >
-        {/* Enough rows to reach the bottom of any screen; the list clips
-            what doesn't fit. */}
-        {Array.from({ length: 16 }, (_, i) => (
-          <SkeletonRow key={i} index={i} />
-        ))}
-      </ul>
-    );
-  }
+  // Nothing on screen yet for this query: either the debounce hasn't fired, or
+  // providers are still out (a batch can land empty, say no podcast for this
+  // query, while the others run), so "No results" only shows once every
+  // provider has answered. Skullet measures real rows built from sample
+  // results, so the skeleton has the exact geometry of what lands, and the
+  // same wrapper reveals the real rows over it.
+  const pendingFirst = (!settled || searching) && results.length === 0;
 
   // Settled and empty: a centered, deliberate state (not a stray line). The
   // query is echoed back and the next move is spelled out, including the
   // paste-a-link path that always works.
-  if (results.length === 0) {
+  if (!pendingFirst && results.length === 0) {
     return (
       <div className="text-muted-foreground flex flex-col items-center gap-3 px-6 py-10 text-center">
         <SearchXIcon
@@ -963,94 +946,139 @@ function SearchResults({
     );
   }
 
-  // Rows on screen. While a new query is in flight the old rows stay put but
-  // dim, so the list reads as "updating" instead of flickering empty. Rows of
-  // the live query stay at full strength while its slower providers come in,
-  // announced by a few skeleton rows at the bottom.
+  const rowProps = { query, stagedUrls, full, onToggle, onPointerPick };
+
+  // While a new query is in flight the old rows stay put but dim, so the list
+  // reads as "updating" instead of flickering empty. Rows of the live query
+  // stay at full strength while its slower providers come in, announced by a
+  // short skeleton at the bottom.
   return (
-    <ul
-      ref={listRef}
-      style={fade}
-      aria-busy={searching || undefined}
-      className={cn(
-        "-mx-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto transition-opacity",
-        !settled && "opacity-60",
-      )}
+    <Skeleton
+      loading={pendingFirst}
+      label="Searching"
+      className="-mx-2 flex min-h-0 flex-1 flex-col"
     >
-      {results.map((r) => {
-        const checked = stagedUrls.has(r.url);
-        const kind = kindFromResultType(r.type);
-        return (
-          <li key={r.id}>
-            <label
-              onPointerDown={onPointerPick}
-              // No fill when picked: the checkbox says it, the row doesn't
-              // say it twice.
-              className="hover:bg-muted/50 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
-            >
-              <Checkbox
-                checked={checked}
-                disabled={full && !checked}
-                onCheckedChange={() => onToggle(r)}
-              />
-              <SourceMedia
-                kind={kind}
-                url={r.url}
-                thumbnail={r.thumbnail}
-                duration={formatDuration(r.duration_s)}
-              />
-              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="line-clamp-2 text-sm leading-snug">
-                  {highlightMatch(r.title, query)}
-                </span>
-                <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
-                  <SourceTypePill kind={kind} className="shrink-0" />
-                  <MetaSep />
-                  <span className="min-w-0 truncate">{hostOf(r.url)}</span>
-                  {r.author && (
-                    <>
-                      <MetaSep />
-                      <span className="min-w-0 truncate">{r.author}</span>
-                    </>
-                  )}
-                  {isContainerKind(kind) && (
-                    <>
-                      <MetaSep />
-                      <span className="shrink-0">expands when you review</span>
-                    </>
-                  )}
-                </span>
-              </span>
-            </label>
-          </li>
-        );
-      })}
-      {settled &&
-        searching &&
-        Array.from({ length: 3 }, (_, i) => (
-          <SkeletonRow key={`pending-${i}`} index={i} />
+      <ul
+        ref={listRef}
+        style={fade}
+        aria-busy={searching || undefined}
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-1 transition-opacity",
+          pendingFirst ? "overflow-hidden" : "overflow-y-auto",
+          !settled && !pendingFirst && "opacity-60",
+        )}
+      >
+        {(pendingFirst ? SAMPLE_RESULTS : results).map((r) => (
+          <ResultRow key={r.id} result={r} {...rowProps} />
         ))}
-    </ul>
+        {settled && searching && !pendingFirst && (
+          <li>
+            <Skeleton loading label="Searching more sources">
+              <ul className="flex flex-col gap-1">
+                {SAMPLE_RESULTS.slice(0, 2).map((r) => (
+                  <ResultRow key={r.id} result={r} {...rowProps} />
+                ))}
+              </ul>
+            </Skeleton>
+          </li>
+        )}
+      </ul>
+    </Skeleton>
   );
 }
 
-// A placeholder row mirroring the real row geometry (checkbox, media tile,
-// title line, meta line), so results replace it in place. The pulse is
-// staggered for a soft wave and stilled under reduced motion (bars still read).
-function SkeletonRow({ index }: { index: number }) {
-  const width = [80, 66, 88, 58, 72][index % 5];
+// Stand-ins the skeleton is measured from: never shown as text, only as the
+// shape of real rows. Mixed kinds and title lengths so the bars vary like a
+// real list. Enough rows to reach the bottom of a tall screen; the list clips
+// the rest.
+const SAMPLE_RESULTS: SearchResult[] = [
+  ["video", "youtube", "A complete introduction to the subject, from first principles", 2840],
+  ["episode", "podcast", "Episode 112: a long conversation about where the field is going next", 4210],
+  ["web", "web", "The essential guide, explained", null],
+  ["video", "youtube", "Lecture 4: the core ideas and why they matter today", 3550],
+  ["web", "web", "What most people get wrong about it, and how to read the sources", null],
+  ["episode", "podcast", "Interview with a researcher who spent ten years on the question", 3120],
+  ["video", "youtube", "A short explainer", 610],
+  ["web", "web", "Notes from a reading group, chapter by chapter", null],
+  ["video", "youtube", "Debate: two views on the same evidence, moderated", 5400],
+  ["episode", "podcast", "The history in twenty minutes", 1260],
+].map(([type, source, title, duration], i) => ({
+  id: `sample:${i}`,
+  type: type as SearchResult["type"],
+  source: source as SearchResult["source"],
+  title: title as string,
+  url: `https://example.com/${i}`,
+  thumbnail: null,
+  duration_s: duration as number | null,
+  author: "Sample author",
+  meta: {},
+}));
+
+interface ResultRowProps {
+  result: SearchResult;
+  query: string;
+  stagedUrls: Set<string>;
+  full: boolean;
+  onToggle: (result: SearchResult) => void;
+  onPointerPick: () => void;
+}
+
+function ResultRow({
+  result: r,
+  query,
+  stagedUrls,
+  full,
+  onToggle,
+  onPointerPick,
+}: ResultRowProps) {
+  const checked = stagedUrls.has(r.url);
+  const kind = kindFromResultType(r.type);
   return (
-    <li
-      aria-hidden="true"
-      className="flex animate-pulse items-center gap-3.5 px-3.5 py-3.5 motion-reduce:animate-none"
-      style={{ animationDelay: `${(index % 8) * 110}ms` }}
-    >
-      <span className="bg-muted size-5 shrink-0 rounded-sm" />
-      <span className="bg-muted h-12 w-20 shrink-0 rounded" />
-      <span className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="bg-muted h-3.5 rounded-full" style={{ width: `${width}%` }} />
-        <span className="bg-muted h-3 w-2/5 rounded-full" />
-      </span>
+    <li>
+      <label
+        onPointerDown={onPointerPick}
+        // No fill when picked: the checkbox says it, the row doesn't
+        // say it twice.
+        className="hover:bg-muted/50 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
+      >
+        <Checkbox
+          checked={checked}
+          disabled={full && !checked}
+          onCheckedChange={() => onToggle(r)}
+        />
+        {/* One block in the skeleton: the article placeholder's drawn lines
+            would otherwise come out as a stack of tiny bars. */}
+        <span skullet-block="" className="shrink-0">
+          <SourceMedia
+            kind={kind}
+            url={r.url}
+            thumbnail={r.thumbnail}
+            duration={formatDuration(r.duration_s)}
+          />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <span className="line-clamp-2 text-sm leading-snug">
+            {highlightMatch(r.title, query)}
+          </span>
+          <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
+            <SourceTypePill kind={kind} className="shrink-0" />
+            <MetaSep />
+            <span className="min-w-0 truncate">{hostOf(r.url)}</span>
+            {r.author && (
+              <>
+                <MetaSep />
+                <span className="min-w-0 truncate">{r.author}</span>
+              </>
+            )}
+            {isContainerKind(kind) && (
+              <>
+                <MetaSep />
+                <span className="shrink-0">expands when you review</span>
+              </>
+            )}
+          </span>
+        </span>
+      </label>
     </li>
   );
 }
