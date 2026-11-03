@@ -453,6 +453,9 @@ function ComposeWorkspace({
   // results, the compilation and the count never drift apart.
   const stagedUrls = new Set(staged.map((s) => s.url));
   const full = staged.length >= MAX_SOURCES;
+  // No row for the live query yet: the debounce hasn't fired, or every
+  // provider that answered came back empty while others are still out.
+  const pendingFirst = (!settled || searching) && results.length === 0;
   const reviewLabel = submitting
     ? "Starting…"
     : staged.length > 0
@@ -716,18 +719,23 @@ function ComposeWorkspace({
 
           {/* Chips and Sort share a row where there is room for one. On a phone
               the chips wrap and Sort stacks under them. */}
-          {showResults && results.length > 0 && (
-            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <TypeFilter
-                results={results}
-                active={typeFilter}
-                onChange={(v) => startTransition(() => setTypeFilter(v))}
-              />
-              <SortSelect
-                value={sortBy}
-                onChange={(v) => startTransition(() => setSortBy(v))}
-              />
-            </div>
+          {/* Drawn in the skeleton too (from the sample results), so the row
+              is already in place when the first results land and the list
+              below never gets pushed down. */}
+          {showResults && (results.length > 0 || pendingFirst) && (
+            <Skeleton loading={pendingFirst}>
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <TypeFilter
+                  results={pendingFirst ? SAMPLE_RESULTS : results}
+                  active={typeFilter}
+                  onChange={(v) => startTransition(() => setTypeFilter(v))}
+                />
+                <SortSelect
+                  value={sortBy}
+                  onChange={(v) => startTransition(() => setSortBy(v))}
+                />
+              </div>
+            </Skeleton>
           )}
 
           {showResults && (
