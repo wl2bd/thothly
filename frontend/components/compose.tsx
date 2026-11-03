@@ -304,7 +304,10 @@ function ComposeWorkspace({
     );
     // Click picks return to the bar so the next query types straight away;
     // keyboard picks keep their place in the list (see pickedByPointer).
-    if (pickedByPointer.current) inputRef.current?.focus();
+    // Mouse only, and without scrolling: on a touch screen it would jump the
+    // page back to the top and open the keyboard at every tap.
+    if (pickedByPointer.current && matchMedia("(pointer: fine)").matches)
+      inputRef.current?.focus({ preventScroll: true });
     pickedByPointer.current = false;
   }
 
