@@ -971,7 +971,7 @@ function SearchResults({
     <Skeleton
       loading={pendingFirst}
       label="Searching"
-      className="-mx-2 flex min-h-0 flex-1 flex-col"
+      className="-mx-2 flex flex-1 flex-col"
     >
       <ul
         ref={listRef}
