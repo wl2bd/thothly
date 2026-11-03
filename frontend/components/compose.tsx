@@ -1116,7 +1116,10 @@ function TypeFilter({
     counts[k] = (counts[k] ?? 0) + 1;
   }
   const kinds = KIND_ORDER.filter((k) => counts[k]);
-  if (kinds.length < 2) return null;
+  // Shown even with a single type: results stream in by provider, so hiding
+  // the row until a second type lands would make it pop in under the bar and
+  // push the list down (a whole line on a phone, where it sits alone).
+  if (kinds.length === 0) return null;
 
   const chips = [
     { key: "all", label: "All", count: results.length },
