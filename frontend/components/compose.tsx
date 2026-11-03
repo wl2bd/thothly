@@ -688,8 +688,6 @@ function ComposeWorkspace({
 
           {error && <Notice variant="error">{error}</Notice>}
 
-          {/* Full: say why the remaining results can't be checked. */}
-          {showResults && full && <Notice variant="info">{SOURCES_FULL}</Notice>}
 
           {/* Chips and Sort share a row where there is room for one. On a phone
               the chips wrap and Sort stacks under them. */}
@@ -776,7 +774,7 @@ function ComposeWorkspace({
           title={staged.length > 0 ? title : "No sources yet"}
           titleClassName={staged.length > 0 ? undefined : "text-muted-foreground"}
           onTitleChange={staged.length > 0 ? setTypedTitle : undefined}
-          meta={`${staged.length} of ${MAX_SOURCES} sources`}
+          meta={<SourceCount count={staged.length} />}
           className={cn(showResults && "max-lg:hidden")}
           footer={
             <>
@@ -833,8 +831,8 @@ function ComposeWorkspace({
           {/* The pane, where this error lives on a desktop, is hidden here. */}
           {compileError && <Notice variant="error">{compileError}</Notice>}
           <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground text-sm tabular-nums">
-              {staged.length} of {MAX_SOURCES} sources
+            <span className="text-muted-foreground text-sm">
+              <SourceCount count={staged.length} />
             </span>
             <Button onClick={onCompile} disabled={submitting}>
               {reviewLabel}
@@ -1275,6 +1273,21 @@ const USES: {
     example: "/examples/how-transformers-work",
   },
 ];
+
+// The count of staged sources. At the limit it says so itself, in gold, where
+// the count already sits (pane header on a desktop, bottom bar on a phone): a
+// banner above the results would push them down under the pointer at the
+// very click that fills the last slot.
+function SourceCount({ count }: { count: number }) {
+  if (count < MAX_SOURCES) {
+    return <span className="tabular-nums">{`${count} of ${MAX_SOURCES} sources`}</span>;
+  }
+  return (
+    <span className="text-primary tabular-nums" title={SOURCES_FULL}>
+      {`${count} of ${MAX_SOURCES} · limit reached`}
+    </span>
+  );
+}
 
 const SOURCES_FULL = `${MAX_SOURCES} sources is the limit for one compilation. Remove one to add another.`;
 
