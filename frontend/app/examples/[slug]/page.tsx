@@ -11,12 +11,14 @@ import { BookActions } from "@/components/book-actions";
 import { BookContents, BookReader, countWords, splitBook } from "@/components/book";
 import { CompilationPane, WorkPane, Workspace } from "@/components/compilation-pane";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 // What a compilation gives, for each use on the home page: a real one, made by
 // the app from three Wikipedia articles (free to republish) and shipped as
 // files in /public/examples. The reading one opens as a book; the AI one shows
-// the Markdown file exactly as an AI would get it.
+// the Markdown file exactly as an AI would get it, with a formatted view beside
+// it, since raw Markdown doesn't show at a glance that the content came through.
 const EXAMPLES: Record<string, { title: string; view: "book" | "markdown" }> = {
   stoicism: { title: "Stoicism", view: "book" },
   "how-transformers-work": { title: "How transformers work", view: "markdown" },
@@ -32,6 +34,8 @@ export default function ExamplePage() {
   const [md, setMd] = useState<string | null>(null);
   const [at, setAt] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<"markdown" | "formatted">("markdown");
+  const asBook = example.view === "book" || view === "formatted";
   useEffect(() => {
     fetch(mdUrl)
       .then((r) => r.text())
@@ -58,7 +62,15 @@ export default function ExamplePage() {
       <Workspace>
         <WorkPane label="Example">
           <BackLink href="/">Home</BackLink>
-          {example.view === "book" ? (
+          {example.view === "markdown" && (
+            <Tabs value={view} onValueChange={(v) => setView(v as "markdown" | "formatted")}>
+              <TabsList aria-label="View">
+                <TabsTrigger value="markdown">Markdown</TabsTrigger>
+                <TabsTrigger value="formatted">Formatted</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          {asBook ? (
             <BookReader chapters={chapters} at={at} onGo={setAt} />
           ) : (
             md && (
@@ -99,7 +111,7 @@ export default function ExamplePage() {
             </div>
           }
         >
-          {example.view === "book" ? (
+          {asBook ? (
             <BookContents chapters={chapters} at={at} onGo={setAt} />
           ) : (
             <p className="text-muted-foreground text-sm">
