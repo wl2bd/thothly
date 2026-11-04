@@ -266,3 +266,19 @@ def test_scrape_article_preserves_bold_italic_links(mock_fetch):
     assert "[lien\nvers une ressource](https://example.com/page)" in md or (
         "](https://example.com/page)" in md
     )
+
+
+def _page(body: str) -> str:
+    filler = "<p>" + "A sentence that makes this page an article. " * 40 + "</p>"
+    return f"<html><body><article><h1>T</h1>{body}{filler}</article></body></html>"
+
+
+@patch("app.sources.blog._fetch_url")
+def test_a_code_block_stays_one_fenced_block(mock_fetch):
+    # trafilatura nests it as <pre><pre>: the book got two empty fences and
+    # the code flattened into a paragraph between them.
+    mock_fetch.return_value = _page("<pre><code>def f(x):\n    return x**2</code></pre>")
+    md = html_to_markdown(scrape_article("https://x.test/a").content_html)
+    assert "```\ndef f(x):\n    return x**2\n```" in md
+    assert "```\n```" not in md
+

@@ -166,6 +166,15 @@ def _clean_extracted_html(html: str, base_url: str) -> str:
 
     soup = BeautifulSoup(html, "html.parser")
 
+    # trafilatura writes a code block (<pre><code>) as <pre><pre>. It keeps
+    # only its inner <pre>'s text (the space around it is trafilatura's
+    # pretty-printing), before the code-table pass, which would read each
+    # <pre> as a separate part.
+    for pre in soup.find_all("pre"):
+        inner = pre.find_all("pre")
+        if inner and not pre.find_parent("pre"):
+            pre.string = "\n".join(p.get_text() for p in inner)
+
     # <graphic> → <img>, deduped by scheme-insensitive URL (same image is often
     # emitted twice: once protocol-relative inside its <a>, once bare as http:).
     seen_images: set[str] = set()
