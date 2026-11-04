@@ -172,3 +172,99 @@ def test_discover_podcast_feed_lists_episodes_as_audio(mock_feed):
     assert items[0].title == "Ep 1"
     assert items[0].estimated_duration_s == 1800
     assert items[1].item_index == 1
+
+
+# --- Homepage link extraction: drop page furniture, flag in-prose links -------
+
+_BASE = "https://blog.example.com/"
+
+
+def _links(body: str) -> dict[str, bool]:
+    """url path -> uncertain, for the links kept from a homepage body."""
+    html = f"<html><body>{body}</body></html>"
+    return {
+        url.removeprefix(_BASE.rstrip("/")): uncertain
+        for url, _title, uncertain in discovery._extract_article_links(html, _BASE)
+    }
+
+
+def test_links_in_page_furniture_are_dropped():
+    links = _links(
+        '<nav><a href="/2024/01/nav-post">Nav post</a></nav>'
+        '<header><a href="/2024/01/header-post">Header post</a></header>'
+        '<aside><a href="/2024/01/aside-post">Aside post</a></aside>'
+        '<footer><a href="/2024/01/footer-post">Footer post</a></footer>'
+        '<div role="navigation"><a href="/2024/01/role-nav">Role nav</a></div>'
+        '<ol class="references"><li><a href="/2024/01/ref-post">Ref post</a></li></ol>'
+        '<main><h2><a href="/2024/01/real-post">Real post</a></h2></main>'
+    )
+    assert links == {"/2024/01/real-post": False}
+
+
+def test_links_without_letters_are_dropped():
+    # ISBNs and bare numbers are citations, not articles.
+    links = _links(
+        '<li><a href="/wiki/book-sources-9781400822447">978-1400822447</a></li>'
+        '<li><a href="/posts/0-521-25028-5">0-521-25028-5</a></li>'
+        '<li><a href="/posts/a-real-title">A real title</a></li>'
+    )
+    assert links == {"/posts/a-real-title": False}
+
+
+def test_wiki_namespace_pages_are_dropped():
+    links = _links(
+        '<li><a href="/wiki/Special:BookSources/some-thing">Book sources here</a></li>'
+        '<li><a href="/wiki/Category:Stoic-philosophers">Stoic philosophers</a></li>'
+        '<li><a href="/posts/kept-post">Kept post</a></li>'
+    )
+    assert links == {"/posts/kept-post": False}
+
+
+def test_a_link_to_the_page_itself_is_dropped():
+    links = _links('<li><a href="/">Home of the blog</a></li>'
+                   '<li><a href="/posts/kept-post">Kept post</a></li>')
+    assert links == {"/posts/kept-post": False}
+
+
+def test_links_in_running_prose_are_uncertain():
+    links = _links(
+        '<p>Stoics valued <a href="/posts/self-control">self-control</a> above all.</p>'
+        '<blockquote><a href="/posts/quoted-thing">Quoted thing</a></blockquote>'
+        '<ul><li><a href="/posts/listed-post">Listed post</a></li></ul>'
+    )
+    assert links == {
+        "/posts/self-control": True,
+        "/posts/quoted-thing": True,
+        "/posts/listed-post": False,
+    }
+
+
+def test_confident_links_come_before_uncertain_ones():
+    html = (
+        "<html><body>"
+        '<p><a href="/posts/inline-one">Inline one</a></p>'
+        '<h2><a href="/posts/listed-one">Listed one</a></h2>'
+        "</body></html>"
+    )
+    links = discovery._extract_article_links(html, _BASE)
+    assert [u for u, _t, unc in links] == [
+        "https://blog.example.com/posts/listed-one",
+        "https://blog.example.com/posts/inline-one",
+    ]
+
+
+@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.list_feed")
+def test_discover_blog_marks_in_prose_links_uncertain(mock_feed, mock_fetch):
+    mock_feed.side_effect = FeedUnavailable("no feed")
+    mock_fetch.return_value = (
+        "<html><body>"
+        '<h2><a href="/2024/01/great-article">Great Article</a></h2>'
+        '<p>See <a href="/2024/01/aside-mention">aside mention</a>.</p>'
+        "</body></html>"
+    )
+    _name, items = discovery.discover_source("https://blog.example.com", 0)
+    assert [(i.title, i.uncertain) for i in items] == [
+        ("Great Article", False),
+        ("aside mention", True),
+    ]

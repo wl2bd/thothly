@@ -108,6 +108,9 @@ class DiscoveredItemResponse(BaseModel):
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None
+    # A homepage link kept but not surely an article (it sat in running prose):
+    # listed at review, unselected by default.
+    uncertain: bool = False
 
     # How this item fared in the compile, filled in from the moment the user
     # confirms and advanced as the runner reaches it. None on items that weren't

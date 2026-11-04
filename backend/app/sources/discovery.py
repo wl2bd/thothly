@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -53,6 +53,9 @@ class DiscoveredItem:
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None
+    # A homepage link we kept but aren't sure is an article (it sat in running
+    # prose). Listed at review, unselected, so the user decides.
+    uncertain: bool = False
 
 
 _AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav")
@@ -280,8 +283,11 @@ def _discover_blog(
             item_type="blog",
             source_index=source_index,
             item_index=i,
+            uncertain=uncertain,
         )
-        for i, (link, title) in enumerate(links[: settings.max_items_per_source])
+        for i, (link, title, uncertain) in enumerate(
+            links[: settings.max_items_per_source]
+        )
     ]
     return _html_title(html), items
 
@@ -348,23 +354,48 @@ def _html_title(html: str) -> str | None:
     return None
 
 
-def _extract_article_links(html: str, base_url: str) -> list[tuple[str, str]]:
-    """Return a deduplicated list of (url, title) for likely article links."""
+# Page furniture: menus, sidebars, footers, reference lists. A homepage's
+# article list never lives in them, and they're where most junk links come from.
+_FURNITURE = (
+    "nav, header, footer, aside, [role=navigation], [role=banner], "
+    "[role=contentinfo], [role=complementary], .navbox, .reflist, "
+    "ol.references, .references, .mw-references-wrap"
+)
+# Running prose. A link here is a mention inside a sentence, which on a homepage
+# is sometimes a post but often just a cross-reference.
+_PROSE = ("p", "blockquote", "dd", "figcaption")
+
+
+def _extract_article_links(
+    html: str, base_url: str
+) -> list[tuple[str, str, bool]]:
+    """Deduplicated (url, title, uncertain) for likely article links, the
+    confident ones first so the item cap never cuts them for a mention."""
     soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.select(_FURNITURE):
+        tag.decompose()
+    page = base_url.split("#")[0].rstrip("/")
     seen: set[str] = set()
-    links: list[tuple[str, str]] = []
+    sure: list[tuple[str, str, bool]] = []
+    unsure: list[tuple[str, str, bool]] = []
 
     for tag in soup.find_all("a", href=True):
         href = urljoin(base_url, tag["href"]).split("#")[0]
-        if href in seen or not _looks_like_article(href, base_url):
+        if href in seen or href.rstrip("/") == page:
             continue
-        seen.add(href)
+        if not _looks_like_article(href, base_url):
+            continue
         text = re.sub(r"\s+", " ", tag.get_text(separator=" ", strip=True)).strip()
         text = _collapse_repeated_text(text)
+        # ISBNs, page numbers, years: a citation, not an article.
+        if text and not re.search(r"[^\W\d_]", text):
+            continue
+        seen.add(href)
         title = text if len(text) >= 4 else _slug_from_url(href)
-        links.append((href, title))
+        in_prose = tag.find_parent(_PROSE) is not None
+        (unsure if in_prose else sure).append((href, title, in_prose))
 
-    return links
+    return sure + unsure
 
 
 def _collapse_repeated_text(text: str) -> str:
@@ -386,6 +417,9 @@ def _looks_like_article(href: str, base_url: str) -> bool:
     if parsed.netloc and parsed.netloc != base.netloc:
         return False
     path = parsed.path.lower()
+    # Wiki namespaces (Special:, Category:, File:…) are tools, never articles.
+    if ":" in unquote(path):
+        return False
     if any(path.endswith(ext) for ext in _FILE_EXTENSIONS):
         return False
     if any(pattern in path for pattern in _EXCLUDE_PATTERNS):
