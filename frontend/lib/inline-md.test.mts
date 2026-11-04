@@ -67,3 +67,14 @@ test("a numbered list gives its items, anything else gives null", () => {
   assert.equal(parseOrderedList("1999. A year that opens a sentence\nand goes on."), null);
   assert.equal(parseOrderedList("- Salt"), null);
 });
+
+test("a link title holding parentheses stays out of the text", () => {
+  assert.deepEqual(
+    tokenizeInline('the [attention](https://w.test/Attention_%28ml%29 "Attention (machine learning)") mechanism'),
+    [
+      { t: "text", text: "the " },
+      { t: "link", text: "attention", href: "https://w.test/Attention_%28ml%29" },
+      { t: "text", text: " mechanism" },
+    ],
+  );
+});

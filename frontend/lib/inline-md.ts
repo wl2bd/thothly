@@ -16,7 +16,7 @@ export type InlineToken =
 // "a\*b"): matched where it stands, it is consumed before a star can open
 // italics.
 const INLINE =
-  /\*\*([^*]+)\*\*|\*(?=\S)([^*]*?\S)\*|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\\([!-\/:-@[-`{-~])|<sup>(.*?)<\/sup>|<sub>(.*?)<\/sub>/g;
+  /\*\*([^*]+)\*\*|\*(?=\S)([^*]*?\S)\*|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|`([^`]+)`|\\([!-\/:-@[-`{-~])|<sup>(.*?)<\/sup>|<sub>(.*?)<\/sub>/g;
 
 export function tokenizeInline(text: string): InlineToken[] {
   const tokens: InlineToken[] = [];
@@ -27,8 +27,9 @@ export function tokenizeInline(text: string): InlineToken[] {
     if (m.index > last) tokens.push({ t: "text", text: text.slice(last, m.index) });
     if (m[1] != null) tokens.push({ t: "strong", text: m[1] });
     else if (m[2] != null) tokens.push({ t: "em", children: tokenizeInline(m[2]) });
-    // A Markdown link may carry a title after its URL: `(url "Title")`.
-    else if (m[3] != null) tokens.push({ t: "link", text: m[3], href: m[4].replace(/\s+"[^"]*"$/, "") });
+    // A Markdown link may carry a title after its URL, `(url "Title (x)")`:
+    // the pattern matches it apart, parentheses and all, and drops it.
+    else if (m[3] != null) tokens.push({ t: "link", text: m[3], href: m[4] });
     else if (m[5] != null) tokens.push({ t: "code", text: m[5] });
     else if (m[6] != null) tokens.push({ t: "text", text: m[6] });
     else if (m[7] != null) tokens.push({ t: "sup", children: tokenizeInline(m[7]) });
