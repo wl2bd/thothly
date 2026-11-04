@@ -2127,15 +2127,16 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
   return <Tag>Transcript</Tag>;
 }
 
-// What was retrieved, in the same small tracked capitals as a source's type on
-// the home page: a label, not a chip.
+// What was retrieved: a state, written as a plain muted note in sentence case.
+// The small tracked capitals stay with the source's type (a category) in the
+// group header, so the two never read as the same kind of label.
 // Spreads its props (ref included) so it can be a tooltip's trigger.
 function Tag({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       {...props}
       className={cn(
-        "eyebrow inline-flex shrink-0 items-center gap-1 [&_svg]:size-3",
+        "inline-flex shrink-0 items-center gap-1 [&_svg]:size-3",
         className,
       )}
     />
