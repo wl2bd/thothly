@@ -519,7 +519,7 @@ Marcus was succeeded by his son [Commodus](https://en.wikipedia.org/wiki/Commodu
 
 > [Marcus] did not meet with the good fortune that he deserved, for he was not strong in body and was involved in a multitude of troubles throughout practically his entire reign. But for my part, I admire him all the more for this very reason, that amid unusual and extraordinary difficulties he both survived himself and preserved the empire. Just one thing prevented him from being completely happy, namely, that after rearing and educating his son in the best possible way he was vastly disappointed in him. This matter must be our next topic; for our history now descends from a kingdom of gold to one of iron and rust, as affairs did for the Romans of that day.
 >
-> :   –Dio lxxi. 36.3–4
+> –Dio lxxi. 36.3–4
 
 Dio adds that from Marcus's first days as counsellor to Antoninus to his final days as emperor of Rome, "he remained the same [person] and did not change in the least."
 

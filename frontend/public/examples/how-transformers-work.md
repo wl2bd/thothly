@@ -731,13 +731,13 @@ As [machine learning](https://en.wikipedia.org/wiki/Machine_learning "Machine le
 
 For example, the BPE tokenizer used by the legacy version of [GPT-3](https://en.wikipedia.org/wiki/GPT-3 "GPT-3") would split
 
-:   `tokenizer: texts -> series of numerical "tokens"`
+`tokenizer: texts -> series of numerical "tokens"`
 
 as
 
-:   |  |  |  |  |  |  |  |  |  |  |  |  |  |
-    | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-    | token | izer | : | texts | -> | series | of | numerical | " | t | ok | ens | " |
+|  |  |  |  |  |  |  |  |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| token | izer | : | texts | -> | series | of | numerical | " | t | ok | ens | " |
 
 Tokenization also [compresses](https://en.wikipedia.org/wiki/Data_compression "Data compression") the datasets. Because LLMs generally require input to be an [array](https://en.wikipedia.org/wiki/Array_%28data_structure%29 "Array (data structure)") that is not [jagged](https://en.wikipedia.org/wiki/Jagged_array "Jagged array"), the shorter texts must be "padded" until they match the length of the longest one.
 
