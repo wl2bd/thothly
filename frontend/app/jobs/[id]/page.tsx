@@ -487,7 +487,15 @@ export default function JobPage() {
         onToggle={toggle}
         onSelectItems={selectItems}
         onSelectAll={() =>
-          setSelected(new Set(job.discovered_items.map((it) => it.id)))
+          // Uncertain links stay out: they're picked from their own fold.
+          setSelected(
+            new Set(
+              (job.discovered_items.some((it) => !it.uncertain)
+                ? job.discovered_items.filter((it) => !it.uncertain)
+                : job.discovered_items
+              ).map((it) => it.id),
+            ),
+          )
         }
         onSelectNone={() => setSelected(new Set())}
         onConfirm={onConfirm}
@@ -1130,7 +1138,15 @@ function ReviewList({
   const [connecting, setConnecting] = useState<ModelKind | null>(null);
   // Mod+Enter compiles (from the title field too); A selects or clears all.
   useShortcut("mod+enter", () => void onConfirm(), !confirming && selected.size > 0 && title.trim() !== "");
-  useShortcut("a", () => (selected.size === items.length ? onSelectNone() : onSelectAll()), items.length > 0);
+  // "All" means the items discovery is sure of, as on each source's checkbox
+  // (uncertain links are picked from their own fold). A job of nothing but
+  // uncertain links falls back to all of them.
+  const masterItems = items.some((it) => !it.uncertain)
+    ? items.filter((it) => !it.uncertain)
+    : items;
+  const masterSelected = masterItems.filter((it) => selected.has(it.id)).length;
+  const allMaster = masterItems.length > 0 && masterSelected === masterItems.length;
+  useShortcut("a", () => (allMaster ? onSelectNone() : onSelectAll()), items.length > 0);
   const storedModels = useStoredModels();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   // Sources whose "uncertain links" fold is open. Closed by default: those
@@ -1247,9 +1263,17 @@ function ReviewList({
     groupItems: DiscoveredItem[],
     handleProps: Record<string, unknown> | null,
   ) => {
-    const ids = groupItems.map((it) => it.id);
+    // Links discovery wasn't sure about sit at the end, folded away, with a
+    // checkbox of their own. The source's checkbox and count cover only the
+    // items it's sure of: one click there must never pick links you can't see.
+    const sureItems = groupItems.filter((it) => !it.uncertain);
+    const unsureItems = groupItems.filter((it) => it.uncertain);
+    const headerItems = sureItems.length > 0 ? sureItems : groupItems;
+    const ids = headerItems.map((it) => it.id);
     const selectedCount = ids.filter((id) => selected.has(id)).length;
     const allSelected = selectedCount === ids.length;
+    const unsureIds = unsureItems.map((it) => it.id);
+    const unsureSelected = unsureIds.filter((id) => selected.has(id)).length;
     // A search overrides the manual collapse state: a query the user can't see
     // the matches of is useless, so any group with hits is force-expanded while
     // filtering (the collapse state is kept and restored once the query clears).
@@ -1295,10 +1319,7 @@ function ReviewList({
     }
 
     const someSelected = selectedCount > 0 && !allSelected;
-    // Links discovery wasn't sure about sit at the end, folded away. A search
-    // opens the fold, like it opens a collapsed source.
-    const sureItems = groupItems.filter((it) => !it.uncertain);
-    const unsureItems = groupItems.filter((it) => it.uncertain);
+    // A search opens the fold, like it opens a collapsed source.
     const showUnsure = needle !== "" || uncertainOpen.has(sourceIndex);
     const renderChild = (item: DiscoveredItem) => (
       <ReviewItem
@@ -1380,7 +1401,7 @@ function ReviewList({
                 )}
                 {(uniformKind || showHost) && <MetaSep />}
                 <span className="shrink-0 tabular-nums">
-                  {selectedCount}/{groupItems.length}
+                  {selectedCount}/{headerItems.length}
                 </span>
               </span>
             </button>
@@ -1439,30 +1460,66 @@ function ReviewList({
             )}
           >
             {sureItems.map(renderChild)}
-            {unsureItems.length > 0 && (
+            {sureItems.length > 0 && unsureItems.length > 0 && (
               <>
-                <button
-                  type="button"
-                  onClick={() => toggleUncertain(sourceIndex)}
-                  aria-expanded={showUnsure}
-                  className="text-muted-foreground hover:text-foreground flex items-center gap-3.5 rounded-lg px-3.5 py-3 text-left text-xs transition-colors"
-                >
-                  <span className="grid size-5 shrink-0 place-items-center">
-                    {showUnsure ? (
-                      <Minus className="size-3.5" />
-                    ) : (
-                      <Plus className="size-3.5" />
-                    )}
-                  </span>
-                  <span>
-                    {unsureItems.length} uncertain{" "}
-                    {unsureItems.length === 1 ? "link" : "links"}, mentioned in
-                    the page&apos;s text. Unselected.
-                  </span>
-                </button>
+                {/* Built like a source header one level down: its own tri-state
+                    checkbox on the left, a live count, the +/- on the right. */}
+                <div className="flex items-center gap-3.5 px-3.5 py-3">
+                  <Checkbox
+                    checked={unsureSelected === unsureIds.length}
+                    indeterminate={
+                      unsureSelected > 0 && unsureSelected < unsureIds.length
+                    }
+                    onCheckedChange={() =>
+                      onSelectItems(
+                        unsureIds,
+                        unsureSelected !== unsureIds.length,
+                      )
+                    }
+                    aria-label="Select all uncertain links"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleUncertain(sourceIndex)}
+                    aria-expanded={showUnsure}
+                    className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                  >
+                    <span className="text-sm">
+                      {unsureItems.length} uncertain{" "}
+                      {unsureItems.length === 1 ? "link" : "links"}
+                    </span>
+                    <span className="text-muted-foreground flex min-w-0 items-center gap-x-1.5 text-xs">
+                      <span className="truncate">
+                        Mentioned in the page&apos;s text, not listed as articles
+                      </span>
+                      <MetaSep />
+                      <span className="tabular-nums">
+                        {unsureSelected}/{unsureItems.length}
+                      </span>
+                    </span>
+                  </button>
+                  <Tooltip content={showUnsure ? "Collapse" : "Expand"}>
+                    <Button
+                      type="button"
+                      variant="nav"
+                      size="icon-sm"
+                      onClick={() => toggleUncertain(sourceIndex)}
+                      aria-expanded={showUnsure}
+                      aria-label={
+                        showUnsure
+                          ? "Hide uncertain links"
+                          : "Show uncertain links"
+                      }
+                      className="shrink-0"
+                    >
+                      {showUnsure ? <Minus /> : <Plus />}
+                    </Button>
+                  </Tooltip>
+                </div>
                 {showUnsure && unsureItems.map(renderChild)}
               </>
             )}
+            {sureItems.length === 0 && unsureItems.map(renderChild)}
           </div>
         )}
       </>
@@ -1479,13 +1536,13 @@ function ReviewList({
           count is status, not a heading, so it rides along muted. */}
       <label className="flex w-fit cursor-pointer items-center gap-3 text-sm">
         <Checkbox
-          checked={items.length > 0 && selected.size === items.length}
-          indeterminate={selected.size > 0 && selected.size < items.length}
+          checked={allMaster}
+          indeterminate={selected.size > 0 && !allMaster}
           onCheckedChange={() =>
-            selected.size === items.length ? onSelectNone() : onSelectAll()
+            allMaster ? onSelectNone() : onSelectAll()
           }
           aria-label={
-            selected.size === items.length && items.length > 0
+            allMaster
               ? "Deselect all items"
               : "Select all items"
           }
