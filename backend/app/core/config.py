@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     #                DuckDuckGo it isn't rate-limited to death after a couple of
     #                queries. Free keys carry a non-commercial data licence
     #                (CC-BY-NC-SA); a paid commercial key lifts that.
+    #   exa        — Exa (search by meaning, best for reading queries), with
+    #                TinyFish (free) as fallback. Both go through the data
+    #                gateway, so it needs TREG_TOKEN or MONID_API_KEY, no key of
+    #                its own. ~$0.007 a search.
     #   brave      — General-web index, commercial-friendly, but needs an API key
     #                (card on file) and is metered. Set BRAVE_API_KEY + this.
     #   ddg        — Legacy DuckDuckGo HTML scrape. Rate-limited hard (works a

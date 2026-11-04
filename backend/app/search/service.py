@@ -7,10 +7,12 @@ from collections import Counter
 from collections.abc import AsyncIterator
 from urllib.parse import urlparse
 
+from app.core import gateway
 from app.core.config import settings
 from app.core.posthog import capture
 from app.search.base import Provider
 from app.search.brave_provider import BraveProvider
+from app.search.exa_provider import EXA, ExaProvider
 from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import ProviderBatch, ProviderError, SearchResponse, SearchResult
 from app.search.podcast_provider import PodcastProvider
@@ -74,6 +76,14 @@ def _build_web_provider() -> Provider:
     returning nothing, and an unknown value falls back too.
     """
     backend = (settings.web_search_backend or "marginalia").strip().lower()
+    if backend == "exa":
+        if gateway.available(EXA):
+            return _CachedProvider(ExaProvider())
+        logger.warning(
+            "web_search_backend=exa but neither TREG_TOKEN nor MONID_API_KEY is set — "
+            "falling back to Marginalia."
+        )
+        return _CachedProvider(MarginaliaProvider())
     if backend == "brave":
         if settings.brave_api_key:
             return _CachedProvider(BraveProvider())
