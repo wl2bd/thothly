@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   Check,
+  CircleHelp,
   Coins,
   Copy,
   Eye,
@@ -1463,9 +1464,11 @@ function ReviewList({
             {sureItems.map(renderChild)}
             {sureItems.length > 0 && unsureItems.length > 0 && (
               <>
-                {/* Built like a source header one level down: its own tri-state
-                    checkbox on the left, a live count, the +/- on the right. */}
-                <div className="flex items-center gap-3.5 px-3.5 py-3">
+                {/* Built like a source header one level down (its own tri-state
+                    checkbox, a live count, the +/- on the right), but set on a
+                    tinted band with a help mark, so it reads as a divider over
+                    a different kind of content and never as one more item. */}
+                <div className="bg-foreground/[0.05] my-1 flex items-center gap-3.5 rounded-lg px-3.5 py-2.5">
                   <Checkbox
                     checked={unsureSelected === unsureIds.length}
                     indeterminate={
@@ -1485,7 +1488,8 @@ function ReviewList({
                     aria-expanded={showUnsure}
                     className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
                   >
-                    <span className="text-sm">
+                    <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
+                      <CircleHelp className="size-3.5 shrink-0" aria-hidden="true" />
                       {unsureItems.length} uncertain{" "}
                       {unsureItems.length === 1 ? "link" : "links"}
                     </span>
@@ -1521,7 +1525,9 @@ function ReviewList({
                   /* One level deeper, same grammar: a second rail dropped from
                      the fold's checkbox, so a fast scan of a long list still
                      tells the doubtful links from the source's real items. */
-                  <div className="border-foreground/15 ml-[23.5px] flex flex-col border-l pl-2.5">
+                  // Dashed where the source's rail is solid: the line itself
+                  // says these hang on a guess.
+                  <div className="border-foreground/20 ml-[23.5px] flex flex-col border-l border-dashed pl-2.5">
                     {unsureItems.map(renderChild)}
                   </div>
                 )}
