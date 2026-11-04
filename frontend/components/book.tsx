@@ -4,7 +4,7 @@ import { Kbd, KeyLabel } from "@/components/ui/kbd";
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { tokenizeInline, type InlineToken } from "@/lib/inline-md";
+import { parseFigure, parseOrderedList, tokenizeInline, type InlineToken } from "@/lib/inline-md";
 import { cn } from "@/lib/utils";
 
 // A compiled book, read in the app: its contents, one chapter at a time, and
@@ -185,10 +185,22 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
       )}
     >
       {blocks.map((block, i) => {
-        const image = /^!\[([^\]]*)\]\((\S+?)\)\s*$/.exec(block.trim());
-        if (image) {
-          // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
-          return <img key={i} src={image[2]} alt={image[1]} loading="lazy" className="max-h-80 max-w-full rounded-sm object-contain" />;
+        const figure = parseFigure(block);
+        if (figure) {
+          const img = (
+            // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
+            <img src={figure.src} alt="" loading="lazy" className="max-h-80 max-w-full rounded-sm object-contain" />
+          );
+          return figure.caption ? (
+            <figure key={i} className="flex flex-col items-center gap-2">
+              {img}
+              <figcaption className="text-muted-foreground text-center text-sm italic">
+                {renderInline(figure.caption)}
+              </figcaption>
+            </figure>
+          ) : (
+            <div key={i}>{img}</div>
+          );
         }
         const heading = /^(#{1,6})\s+(.*)$/.exec(block);
         if (heading) {
@@ -232,6 +244,16 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
             </div>
           );
         }
+        const numbered = parseOrderedList(block);
+        if (numbered) {
+          return (
+            <ol key={i} className="list-decimal pl-5">
+              {numbered.map((line, j) => (
+                <li key={j}>{renderInline(line)}</li>
+              ))}
+            </ol>
+          );
+        }
         if (/^\s*[-*]\s+/.test(block)) {
           const lines = block.split("\n").map((l) => l.replace(/^\s*[-*]\s+/, ""));
           return (
@@ -266,7 +288,7 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
     case "text":
       return token.text;
     case "strong":
-      return <strong key={key}>{token.text}</strong>;
+      return <strong key={key}>{renderInline(token.text)}</strong>;
     case "em":
       return <em key={key}>{token.children.map(renderToken)}</em>;
     case "link":
@@ -278,9 +300,13 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
           rel="noreferrer"
           className="text-link"
         >
-          {token.text}
+          {renderInline(token.text)}
         </a>
       );
+    case "sup":
+      return <sup key={key}>{token.children.map(renderToken)}</sup>;
+    case "sub":
+      return <sub key={key}>{token.children.map(renderToken)}</sub>;
     case "code":
       return (
         <code key={key} className="bg-muted rounded px-1 text-[0.85em]">

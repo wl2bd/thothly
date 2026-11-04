@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { tokenizeInline } from "./inline-md.ts";
+import { parseFigure, parseOrderedList, tokenizeInline } from "./inline-md.ts";
 
 test("single asterisks are italics, not literal stars", () => {
   assert.deepEqual(tokenizeInline("or *logos*, a"), [
@@ -31,4 +31,39 @@ test("links drop a trailing title, code stays verbatim", () => {
     { t: "text", text: " " },
     { t: "code", text: "*x*" },
   ]);
+});
+
+test("superscripts and subscripts are their own tokens", () => {
+  assert.deepEqual(tokenizeInline("H<sub>2</sub>O, XIX<sup>e</sup>"), [
+    { t: "text", text: "H" },
+    { t: "sub", children: [{ t: "text", text: "2" }] },
+    { t: "text", text: "O, XIX" },
+    { t: "sup", children: [{ t: "text", text: "e" }] },
+  ]);
+});
+
+test("a backslash escape is the character itself, never markup", () => {
+  assert.deepEqual(tokenizeInline("\\<div> and a\\*b\\*c"), [
+    { t: "text", text: "<" },
+    { t: "text", text: "div> and a" },
+    { t: "text", text: "*" },
+    { t: "text", text: "b" },
+    { t: "text", text: "*" },
+    { t: "text", text: "c" },
+  ]);
+});
+
+test("a figure is an image alone in its block, its description the caption", () => {
+  assert.deepEqual(parseFigure("![Ice near [Iceland](https://w.test/I), *2007*.](https://x.test/ice.jpg)"), {
+    caption: "Ice near [Iceland](https://w.test/I), *2007*.",
+    src: "https://x.test/ice.jpg",
+  });
+  assert.deepEqual(parseFigure("![](https://x.test/a.png)"), { caption: "", src: "https://x.test/a.png" });
+  assert.equal(parseFigure("Text with ![a](https://x.test/a.png) inside"), null);
+});
+
+test("a numbered list gives its items, anything else gives null", () => {
+  assert.deepEqual(parseOrderedList("1. Preheat\n2. Bake *well*"), ["Preheat", "Bake *well*"]);
+  assert.equal(parseOrderedList("1999. A year that opens a sentence\nand goes on."), null);
+  assert.equal(parseOrderedList("- Salt"), null);
 });
