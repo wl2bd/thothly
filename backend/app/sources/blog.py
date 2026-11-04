@@ -75,7 +75,7 @@ def scrape_article(url: str) -> Article:
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
 
-    downloaded = _unwrap_image_links(downloaded)
+    downloaded = _captions_to_titles(_unwrap_image_links(downloaded))
 
     # include_formatting/include_links keep bold, italics and hyperlinks (both
     # default to False, which would flatten the article to plain text). Tables
@@ -158,6 +158,33 @@ def _unwrap_image_links(html: str) -> str:
     return str(soup) if changed else html
 
 
+# A figure's caption: HTML5, then the WordPress classic editor's.
+_CAPTION = "figcaption, .wp-caption-text"
+
+
+def _captions_to_titles(html: str) -> str:
+    """Carry each figure's caption on its image's title, before extraction.
+
+    trafilatura drops <figcaption> and keeps a WordPress caption as one more
+    paragraph, but it keeps an image's title. The caption moves there (and
+    leaves the page); _clean_extracted_html turns it back into a <figcaption>.
+    Other titles (hover text, file names) are cleared so a title always means a
+    caption.
+    """
+    if "<img" not in html:
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    for img in soup.find_all("img", title=True):
+        del img["title"]
+    for figure in soup.select("figure, .wp-caption"):
+        images = figure.find_all("img")
+        caption = figure.select_one(_CAPTION)
+        if len(images) == 1 and caption and caption.get_text(strip=True):
+            images[0]["title"] = " ".join(caption.get_text().split())
+            caption.decompose()
+    return str(soup)
+
+
 def _clean_extracted_html(html: str, base_url: str) -> str:
     """Tidy trafilatura's extracted HTML before it becomes Markdown.
 
@@ -217,6 +244,13 @@ def _clean_extracted_html(html: str, base_url: str) -> str:
         img = soup.new_tag("img", src=src)
         if graphic.get("alt"):
             img["alt"] = graphic["alt"]
+        caption = (graphic.get("title") or "").strip()
+        if caption:  # set by _captions_to_titles
+            figure = soup.new_tag("figure")
+            figure.append(img)
+            figure.append(soup.new_tag("figcaption"))
+            figure.figcaption.string = caption
+            img = figure
         graphic.replace_with(img)
 
     # Absolutize every image URL against the page (skipping data: URIs, which

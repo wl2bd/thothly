@@ -296,3 +296,20 @@ def test_a_numbered_list_keeps_its_numbers(mock_fetch):
     md = html_to_markdown(scrape_article("https://x.test/a").content_html)
     assert "1. Preheat\n2. Bake" in md
     assert "- Salt" in md
+
+
+@patch("app.sources.blog._fetch_url")
+def test_a_figure_keeps_its_caption_set_apart(mock_fetch):
+    # trafilatura drops <figcaption>, and keeps a WordPress caption as a plain
+    # paragraph under the image.
+    mock_fetch.return_value = _page(
+        "<p>Intro.</p>"
+        '<figure><img src="https://x.test/a.png" alt="alt A"><figcaption>An <em>hourglass</em>.</figcaption></figure>'
+        "<p>Middle.</p>"
+        '<div class="wp-caption"><img src="https://x.test/c.png" alt=""><p class="wp-caption-text">A sundial.</p></div>'
+        "<p>End.</p>"
+    )
+    md = html_to_markdown(scrape_article("https://x.test/a").content_html)
+    assert "![An hourglass.](https://x.test/a.png)" in md
+    assert "![A sundial.](https://x.test/c.png)" in md
+    assert "\n\nA sundial.\n\n" not in md
