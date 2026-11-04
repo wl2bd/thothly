@@ -195,3 +195,26 @@ def test_download_revalidates_redirect_target(tmp_path, monkeypatch):
 
     assert podcast._download("https://cdn.example/show/ep.mp3", tmp_path) is None
     assert any("169.254" in url for url in checked)  # the hop was re-validated
+
+
+def test_published_transcript_is_used_before_transcribing(db):
+    from app.sources.models import Transcript, TranscriptSegment
+
+    found = Transcript(video_id=AUDIO_URL, language="en",
+                       segments=[TranscriptSegment(text="Hi.", start_s=0, duration_s=1, speaker="Ann")])
+    with patch.object(podcast.exa_podcast, "available", return_value=True), \
+         patch.object(podcast.exa_podcast, "find_transcript", return_value=found) as find, \
+         patch.object(podcast, "_transcribe_episode") as stt:
+        assert load_episode_transcript(AUDIO_URL, title="Ep 1", duration_s=60) is found
+        # cached: a second load pays for neither
+        assert load_episode_transcript(AUDIO_URL, title="Ep 1", duration_s=60).segments[0].speaker == "Ann"
+    find.assert_called_once_with(AUDIO_URL, "Ep 1", 60)
+    stt.assert_not_called()
+
+
+def test_no_published_transcript_falls_back_to_transcribing(db):
+    with patch.object(podcast.exa_podcast, "available", return_value=True), \
+         patch.object(podcast.exa_podcast, "find_transcript", return_value=None), \
+         patch.object(podcast, "_transcribe_episode", return_value=None) as stt:
+        assert load_episode_transcript(AUDIO_URL, title="Ep 1") is None
+    stt.assert_called_once()

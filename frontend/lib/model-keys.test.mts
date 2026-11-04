@@ -50,6 +50,7 @@ test("the confirm body uses the backend's field names", () => {
 const server: LlmConfig = {
   available: false,
   stt_available: false,
+  podcast_transcripts: false,
   roles: [],
   pricing: { stt_per_minute: 0.003, llm_per_mtok_in: 0.2, llm_per_mtok_out: 0.6 },
   providers: [

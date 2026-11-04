@@ -95,8 +95,8 @@ def _blog_preview(item: DiscoveredItemResponse) -> ItemPreview:
 def _podcast_preview(item: DiscoveredItemResponse) -> ItemPreview:
     return _unavailable(
         item,
-        "Podcasts are transcribed during compilation, so there's no preview "
-        "before that step.",
+        "A podcast's transcript is fetched or made during compilation, so "
+        "there's no preview before that step.",
     )
 
 

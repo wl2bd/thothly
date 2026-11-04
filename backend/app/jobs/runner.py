@@ -263,12 +263,14 @@ def _podcast_chapter(
     llm: Endpoint | None = None,
     stt: Endpoint | None = None,
 ) -> CompiledChapter:
-    # Transcribe lazily (and cached by audio URL): a metered API call runs once,
-    # only for selected episodes. No STT endpoint, or a download/transcription
-    # failure, leaves transcript None → the episode is skipped, like a video
-    # without subtitles.
-    _step(job_id, item.id, "Transcribing the audio")
-    transcript = load_episode_transcript(item.url, stt=stt)
+    # Lazily, and cached by audio URL: a published transcript (Exa) first, else
+    # transcription. Both are metered and run once, only for selected episodes.
+    # Neither available, or a failure, leaves transcript None → the episode is
+    # skipped, like a video without subtitles.
+    _step(job_id, item.id, "Getting the transcript")
+    transcript = load_episode_transcript(
+        item.url, stt=stt, title=item.title, duration_s=item.estimated_duration_s
+    )
     if transcript is None:
         raise ItemSkipped(NO_TRANSCRIPTION)
 

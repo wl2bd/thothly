@@ -10,6 +10,7 @@ from app.pipeline.providers import PROVIDERS, ProviderRejected, get_provider, re
 from app.pipeline.roles import ROLES
 from app.pipeline.transcribe import list_models as list_stt_models
 from app.pipeline.transcribe import stt_available
+from app.sources import exa_podcast
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,9 @@ class LLMConfig(BaseModel):
     # frontend ORs it with a key the browser holds.
     available: bool
     stt_available: bool
+    # Published podcast transcripts (Exa) can be looked up, so an episode may
+    # be included with no transcription at all.
+    podcast_transcripts: bool
     roles: list[RoleInfo]
     pricing: Pricing
     providers: list[ProviderInfo]
@@ -80,6 +84,7 @@ def get_llm_config() -> LLMConfig:
     return LLMConfig(
         available=llm_available(),
         stt_available=stt_available(),
+        podcast_transcripts=exa_podcast.available(),
         roles=[
             RoleInfo(
                 id=r.id,

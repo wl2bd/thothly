@@ -231,6 +231,7 @@ export default function JobPage() {
         setLlm({
           available: false,
           stt_available: false,
+          podcast_transcripts: false,
           roles: [],
           pricing: { stt_per_minute: 0, llm_per_mtok_in: 0, llm_per_mtok_out: 0 },
           providers: [],
@@ -1640,11 +1641,16 @@ function ReviewList({
         </p>
       )}
 
-      {/* Podcasts can't be read without transcription: with none available they
-          would be left out, so the way to include them sits right here. */}
+      {/* Podcasts can't be read without a transcript: with no published one
+          and no transcription they would be left out, so the way to include
+          them sits right here. */}
       {llm && !sttAvailable && items.some((it) => it.item_type === "podcast") && (
         <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span>Podcasts need transcription to be included.</span>
+          <span>
+            {llm.podcast_transcripts
+              ? "Episodes with no published transcript need transcription to be included."
+              : "Podcasts need transcription to be included."}
+          </span>
           <button
             type="button"
             onClick={() => setConnecting("stt")}

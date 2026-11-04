@@ -124,6 +124,9 @@ export interface LlmConfig {
   // top by withBrowserModels (lib/model-keys.ts).
   available: boolean;
   stt_available: boolean;
+  // Published podcast transcripts can be looked up: an episode may get in
+  // with no transcription at all.
+  podcast_transcripts: boolean;
   roles: LlmRole[];
   pricing: LlmPricing;
   providers: LlmProvider[];
