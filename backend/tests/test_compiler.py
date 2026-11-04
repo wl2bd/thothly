@@ -323,3 +323,9 @@ def test_a_math_span_becomes_tex_between_dollars_untouched():
         '<p><span class="math display">a^2 + b_i</span></p>'
     )
     assert html_to_markdown(html) == "Size $d_{\text{emb}} * 2$.\n\n$$a^2 + b_i$$"
+
+
+def test_a_blank_line_inside_a_formula_does_not_split_it():
+    # A blank line ends a Markdown paragraph, and the formula with it.
+    html = '<p><span class="math inline">\begin{aligned} a &= 1 \\\n\n\end{aligned}</span></p>'
+    assert html_to_markdown(html) == "$\begin{aligned} a &= 1 \\\n\end{aligned}$"

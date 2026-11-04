@@ -98,7 +98,8 @@ class _Converter(MarkdownConverter):
         # breaks the formula). Pandoc writes it as MathML in the EPUB.
         classes = el.get("class") or []
         if "math" in classes:
-            tex = el.get_text().strip()
+            # A blank line would end the paragraph, and the formula with it.
+            tex = re.sub(r"\n\s*\n", "\n", el.get_text().strip())
             if tex:
                 return f"$${tex}$$" if "display" in classes else f"${tex}$"
         return text
