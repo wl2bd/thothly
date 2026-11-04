@@ -1330,6 +1330,7 @@ function ReviewList({
         onToggle={() => onToggle(item.id)}
         sttAvailable={sttAvailable}
         highlight={needle}
+        muted={item.uncertain}
       />
     );
     // Says why a long podcast feed doesn't start fully selected.
@@ -1516,7 +1517,14 @@ function ReviewList({
                     </Button>
                   </Tooltip>
                 </div>
-                {showUnsure && unsureItems.map(renderChild)}
+                {showUnsure && (
+                  /* One level deeper, same grammar: a second rail dropped from
+                     the fold's checkbox, so a fast scan of a long list still
+                     tells the doubtful links from the source's real items. */
+                  <div className="border-foreground/15 ml-[23.5px] flex flex-col border-l pl-2.5">
+                    {unsureItems.map(renderChild)}
+                  </div>
+                )}
               </>
             )}
             {sureItems.length === 0 && unsureItems.map(renderChild)}
@@ -1747,6 +1755,9 @@ interface ReviewItemProps {
   // The active search term (lower-cased), highlighted within the title so it's
   // clear why the row matched. Empty when not filtering.
   highlight?: string;
+  // A link discovery wasn't sure about: its title is dimmed, so it reads as
+  // secondary next to the source's real items.
+  muted?: boolean;
 }
 
 // One review row: the selection checkbox + metadata, plus an on-demand preview
@@ -1763,6 +1774,7 @@ function ReviewItem({
   dragHandleProps,
   asSource,
   highlight,
+  muted,
 }: ReviewItemProps) {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<ItemPreview | null>(null);
@@ -1833,7 +1845,13 @@ function ReviewItem({
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className={cn("truncate text-sm", asSource && "font-medium")}>
+            <span
+              className={cn(
+                "truncate text-sm",
+                asSource && "font-medium",
+                muted && "text-muted-foreground",
+              )}
+            >
               {highlightMatch(item.title, highlight ?? "")}
             </span>
             {metaParts.length > 0 && (
