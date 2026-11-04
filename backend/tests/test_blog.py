@@ -288,3 +288,11 @@ def test_inline_code_stays_inside_its_paragraph(mock_fetch):
     mock_fetch.return_value = _page("<p>Run <code>pip install</code> first, then go.</p>")
     md = html_to_markdown(scrape_article("https://x.test/a").content_html)
     assert "Run `pip install` first, then go." in md
+
+
+@patch("app.sources.blog._fetch_url")
+def test_a_numbered_list_keeps_its_numbers(mock_fetch):
+    mock_fetch.return_value = _page("<ol><li>Preheat</li><li>Bake</li></ol><ul><li>Salt</li></ul>")
+    md = html_to_markdown(scrape_article("https://x.test/a").content_html)
+    assert "1. Preheat\n2. Bake" in md
+    assert "- Salt" in md

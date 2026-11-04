@@ -10,6 +10,8 @@ from urllib.request import Request, urlopen
 
 import feedparser
 import trafilatura
+from trafilatura.htmlprocessing import build_html_output
+from trafilatura.utils import normalize_unicode
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
@@ -84,15 +86,7 @@ def scrape_article(url: str) -> Article:
     # favor_recall keeps the full article body. The default (precision-first)
     # mode can latch onto one dense block — e.g. a large embedded code sample —
     # and discard the surrounding prose, so the EPUB shows only that block.
-    content_html = trafilatura.extract(
-        downloaded,
-        output_format="html",
-        url=url,
-        include_formatting=True,
-        include_links=True,
-        include_images=True,
-        favor_recall=True,
-    )
+    content_html = _extract_html(downloaded, url)
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")
 
@@ -107,6 +101,30 @@ def scrape_article(url: str) -> Article:
         content_html=content_html,
         language=_html_language(downloaded),
     )
+
+
+def _extract_html(downloaded: str, url: str) -> str | None:
+    """trafilatura.extract(output_format="html"), keeping numbered lists.
+
+    Its HTML writer turns every list into <ul>, though its own tree still marks
+    a numbered one (<list rend="ol">). Renaming those to <ol> before the writer
+    runs keeps the numbers; everything else is what extract() would return.
+    """
+    document = trafilatura.bare_extraction(
+        downloaded,
+        url=url,
+        include_formatting=True,
+        include_links=True,
+        include_images=True,
+        favor_recall=True,
+    )
+    if document is None or document.body is None:
+        return None
+    for lst in document.body.iter("list"):
+        if lst.get("rend") == "ol":
+            lst.tag = "ol"
+            lst.attrib.clear()
+    return normalize_unicode(build_html_output(document))
 
 
 _HTML_LANG = re.compile(r"<html\b[^>]*?\b(?:xml:)?lang\s*=\s*[\"']?([A-Za-z]{2,3}(?:[-_][A-Za-z0-9]+)*)", re.I)
