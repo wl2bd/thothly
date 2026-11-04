@@ -247,7 +247,6 @@ Each encoder layer consists of two major components: a self-attention mechanism 
 \text{given input vectors } & h_0, h_1, \dots\\
 \text{combine them into a matrix } H &= \begin{bmatrix} h_0 \\ h_1 \\ \vdots \end{bmatrix} \\
 \text{EncoderLayer}(H) &= \begin{bmatrix} \text{FFN}(\text{MultiheadAttention}(H, H, H)_0) \\ \text{FFN}(\text{MultiheadAttention}(H, H, H)_1) \\ \vdots \end{bmatrix} \\
-
 \end{aligned}$
 
 where $\text{FFN}$ stands for "feed-forward network". We can more succinctly write it as$$\text{EncoderLayer}(H) = \text{FFN}(\text{MultiheadAttention}(H, H, H))$$with the implicit convention that the $\text{FFN}$ is applied to each row of the matrix individually.
@@ -504,7 +503,6 @@ Ordinary transformers require a memory size that is quadratic in the size of the
 #### Random Feature Attention
 
 Random Feature Attention (2021) uses [Fourier random features](https://en.wikipedia.org/wiki/Radial_basis_function_kernel#Fourier_random_features "Radial basis function kernel"):$$\varphi(x) = \frac{1}{\sqrt D}[\cos\langle w_1, x\rangle, \sin\langle w_1, x\rangle, \cdots \cos\langle w_D, x\rangle, \sin\langle w_D, x\rangle]^T$$where $w_1, ..., w_D$ are independent samples from the normal distribution $N(0, \sigma^2 I)$. This choice of parameters satisfies$\mathbb E[\langle \varphi(x), \varphi(y)\rangle] = e^{-\frac{\|x-y\|^2}{2\sigma^2}}$, or $$e^{\langle x, y\rangle/\sigma^2} = \mathbb E[\langle e^{\|x\|^2/2\sigma^2} \varphi(x), e^{\|y\|^2/2\sigma^2}\varphi(y)\rangle] \approx \langle e^{\|x\|^2/2\sigma^2} \varphi(x), e^{\|y\|^2/2\sigma^2}\varphi(y)\rangle$$Consequently, the one-headed attention, with one query, can be written as $$\text{Attention}(q, K, V) = \text{softmax}\left(\frac{qK^\mathrm{T}}{\sqrt{d_k}}\right)V
-
 \approx \frac{\varphi(q)^T \sum_i e^{\|k_i\|^2/2\sigma^2}\varphi(k_i) v_i^T}{\varphi(q)^T \sum_i e^{\|k_i\|^2/2\sigma^2}\varphi(k_i)}$$where $\sigma = d_K^{1/4}$. Similarly for multiple queries, and for multihead attention.
 
 This approximation can be computed in linear time, as we can compute the matrix $\varphi(k_i) v_i^T$ first, then multiply it with the query. In essence, we have managed to obtain a more precise version of $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\mathrm{T}}{\sqrt{d_k}}\right)V \approx Q(K^TV/\sqrt{d_k})$$Performer (2020) uses the same Random Feature Attention, but $w_1, ..., w_D$ are first independently sampled from the normal distribution $N(0, \sigma^2 I)$, then they are [Gram–Schmidt processed](https://en.wikipedia.org/wiki/Gram–Schmidt_process "Gram–Schmidt process").
