@@ -294,3 +294,22 @@ def test_a_tag_in_a_video_chapter_title_stays_text():
         chapters=[Chapter(title="The <div> trick", start_s=0.0, end_s=10.0)],
     )
     assert "## The \<div> trick" in transcript_to_markdown(transcript)
+
+
+def test_a_figure_caption_becomes_the_figure_caption_not_a_paragraph():
+    # Pandoc reads an image alone in its paragraph as a <figure> whose
+    # <figcaption> is the image's description: the caption is set apart.
+    html = (
+        "<p>Before.</p>"
+        '<figure typeof="mw:File/Thumb"><a href="./File:Ice.jpg"><img src="https://x.test/ice.jpg" alt="ice"></a>'
+        '<figcaption>Ice near <a href="https://w.test/Iceland">Iceland</a>, <i>2007</i>.</figcaption></figure>'
+        "<p>After.</p>"
+    )
+    assert html_to_markdown(html) == (
+        "Before.\n\n![Ice near [Iceland](https://w.test/Iceland), *2007*.](https://x.test/ice.jpg)\n\nAfter."
+    )
+
+
+def test_a_figure_without_a_caption_keeps_its_alt():
+    html = '<figure><img src="https://x.test/a.png" alt="A chart"></figure>'
+    assert html_to_markdown(html) == "![A chart](https://x.test/a.png)"

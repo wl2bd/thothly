@@ -93,6 +93,18 @@ class _Converter(MarkdownConverter):
         # reader; raw HTML stays on for <sup>/<sub>.
         return escape_tags(super().escape(text, parent_tags))
 
+    def convert_figure(self, el, text, parent_tags):
+        # An image alone in its paragraph is a figure to Pandoc, its description
+        # the <figcaption>: the caption is set apart instead of reading as one
+        # more paragraph. A figure that isn't one image plus a caption is left
+        # to the default.
+        images = el.find_all("img")
+        caption = el.find("figcaption")
+        if len(images) != 1 or caption is None or not caption.get_text(strip=True):
+            return text
+        caption_md = " ".join(self.process_tag(caption, parent_tags | {"_inline"}).split())
+        return f"\n\n![{caption_md}]({images[0].get('src', '')})\n\n"
+
 
 # A footnote marker as sites set it: "[1]", "[d]", "[note 3]".
 _FOOTNOTE_MARK = re.compile(r"^\[[\w\s]{1,10}\]$")
