@@ -164,8 +164,8 @@ def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> N
                (id, job_id, source_index, item_index, item_type, title, url,
                 estimated_duration_s, estimated_size_chars, preview_html,
                 selected, created_at, has_transcript, transcript_lang,
-                is_punctuated, word_count, reading_time_min)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                is_punctuated, word_count, reading_time_min, has_content)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     item.id,
@@ -185,6 +185,7 @@ def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> N
                     _bool_to_int(item.is_punctuated),
                     item.word_count,
                     item.reading_time_min,
+                    _bool_to_int(item.has_content),
                 )
                 for item in items
             ],
@@ -329,6 +330,7 @@ def _item_row_to_response(row) -> DiscoveredItemResponse:
         is_punctuated=_int_to_bool(row["is_punctuated"]),
         word_count=row["word_count"],
         reading_time_min=row["reading_time_min"],
+        has_content=_int_to_bool(row["has_content"]),
         compile_state=row["compile_state"],
         compile_note=row["compile_note"],
     )

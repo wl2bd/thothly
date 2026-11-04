@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     # We list up to max_items_per_source but probe only the first N here; the
     # rest are listed with unknown transcript info (compile fetches them anyway).
     youtube_discovery_probe_limit: int = 50
+    # Web pages listed from a feed or a homepage are each scraped once at
+    # discovery to check they hold readable text; past this many they're listed
+    # unchecked (the compile still tells, item by item).
+    web_discovery_probe_limit: int = 30
 
     # ── Web article search ───────────────────────────────────────────────────
     # Which backend finds article URLs for a query. Pluggable so a self-hoster

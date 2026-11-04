@@ -2,12 +2,7 @@ import logging
 
 from app.jobs.models import DiscoveredItemResponse, ItemPreview
 from app.jobs.runner import _extract_video_id
-from app.pipeline.compiler import (
-    demote_headings,
-    html_to_markdown,
-    strip_leading_title,
-    transcript_to_markdown,
-)
+from app.pipeline.compiler import readable_markdown, transcript_to_markdown
 from app.pipeline.llm import llm_available
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.transcript_cache import load_transcript
@@ -82,9 +77,7 @@ def _blog_preview(item: DiscoveredItemResponse) -> ItemPreview:
         content_html = item.preview_html or ""
         note = "The full article didn't load, so this is the RSS summary only."
 
-    content_md = demote_headings(
-        strip_leading_title(html_to_markdown(content_html), item.title)
-    )
+    content_md = readable_markdown(content_html, item.title)
     if not content_md.strip():
         return _unavailable(
             item, "This page has no readable content."

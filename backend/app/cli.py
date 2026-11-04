@@ -78,6 +78,7 @@ def _item_json(number: int, item: DiscoveredItemResponse, names: list[str]) -> d
         "duration_s": item.estimated_duration_s,
         "reading_time_min": item.reading_time_min,
         "has_transcript": item.has_transcript,
+        "has_content": item.has_content,
     }
 
 

@@ -23,9 +23,7 @@ from app.pipeline.cleanup import (
 from app.pipeline.compiler import (
     CompilationError,
     compile_book,
-    demote_headings,
-    html_to_markdown,
-    strip_leading_title,
+    readable_markdown,
     transcript_to_markdown,
 )
 from app.pipeline.i18n import chrome, detect_language, normalize_language
@@ -318,8 +316,7 @@ def _blog_chapter(
         logger.warning("Scrape failed for %s (job %s), using RSS preview", item.url, job_id)
         content_html = item.preview_html or ""
 
-    content_md = html_to_markdown(content_html)
-    content_md = demote_headings(strip_leading_title(content_md, item.title))
+    content_md = readable_markdown(content_html, item.title)
     if not content_md:
         raise ItemSkipped(NO_CONTENT)
 

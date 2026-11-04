@@ -3,8 +3,16 @@ from unittest.mock import patch
 import pytest
 
 from app.sources import discovery
-from app.sources.blog import FeedUnavailable
+from app.sources.blog import FeedUnavailable, ScrapeUnavailable
 from app.sources.models import Article, VideoMeta
+
+
+@pytest.fixture(autouse=True)
+def _no_live_scrape():
+    # Discovery probes web pages for readable text; never let a test reach the
+    # network through it. Tests that care patch it themselves.
+    with patch("app.sources.discovery.scrape_article", side_effect=ScrapeUnavailable("offline")):
+        yield
 
 
 @pytest.mark.parametrize(
@@ -172,3 +180,73 @@ def test_discover_podcast_feed_lists_episodes_as_audio(mock_feed):
     assert items[0].title == "Ep 1"
     assert items[0].estimated_duration_s == 1800
     assert items[1].item_index == 1
+
+
+_ARTICLE_PAGE = (
+    "<html><head><title>Deep Dive</title></head><body><article>"
+    + "<p>" + "A real paragraph of article text that says something. " * 20 + "</p>"
+    + "</article></body></html>"
+)
+_EMPTY_PAGE = "<html><head><title>Sign in</title></head><body><div id='app'></div></body></html>"
+
+
+@patch("app.sources.discovery._fetch_url", return_value=_ARTICLE_PAGE)
+def test_single_article_with_text_is_flagged_readable(mock_fetch):
+    _, items = discovery.discover_source("https://blog.example.com/2024/01/deep-dive", 0)
+    assert items[0].has_content is True
+
+
+@patch("app.sources.discovery._fetch_url", return_value=_EMPTY_PAGE)
+def test_single_article_without_text_is_flagged_empty(mock_fetch):
+    # The review screen must say so up front, not only once the preview is opened.
+    _, items = discovery.discover_source("https://blog.example.com/2024/01/deep-dive", 0)
+    assert items[0].has_content is False
+
+
+@patch("app.sources.discovery._fetch_url", return_value=None)
+def test_single_article_that_does_not_load_is_flagged_empty(mock_fetch):
+    _, items = discovery.discover_source("https://blog.example.com/2024/01/deep-dive", 0)
+    assert items[0].has_content is False
+
+
+@patch("app.sources.discovery.list_feed")
+def test_feed_entry_with_text_is_readable_without_a_fetch(mock_feed):
+    mock_feed.return_value = (
+        "Blog",
+        [Article(url="https://b.com/p1", title="P1", content_html="<p>Some body text here.</p>")],
+    )
+    with patch("app.sources.discovery.scrape_article") as scrape:
+        _, items = discovery.discover_source("https://b.com/feed", 0)
+    scrape.assert_not_called()
+    assert items[0].has_content is True
+
+
+@patch("app.sources.discovery.list_feed")
+def test_feed_entry_without_text_is_probed(mock_feed):
+    mock_feed.return_value = (
+        "Blog",
+        [Article(url="https://b.com/p1", title="P1", content_html="")],
+    )
+    _, items = discovery.discover_source("https://b.com/feed", 0)
+    assert items[0].has_content is False  # scrape fails (fixture) and the feed has nothing
+
+
+@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.list_feed")
+def test_homepage_links_are_probed(mock_feed, mock_fetch):
+    mock_feed.side_effect = FeedUnavailable("no feed")
+    mock_fetch.return_value = (
+        '<html><body><a href="/2024/01/great-article">Great Article</a></body></html>'
+    )
+    article = Article(url="https://blog.example.com/2024/01/great-article", title="Great Article",
+                      content_html="<p>Body of the article.</p>")
+    with patch("app.sources.discovery.scrape_article", return_value=article):
+        _, items = discovery.discover_source("https://blog.example.com", 0)
+    assert items[0].has_content is True
+
+
+def test_wikipedia_article_is_not_probed():
+    with patch("app.sources.discovery.scrape_article") as scrape:
+        _, items = discovery.discover_source("https://en.wikipedia.org/wiki/Stoicism", 0)
+    scrape.assert_not_called()
+    assert items[0].has_content is None

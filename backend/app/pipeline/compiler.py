@@ -210,6 +210,12 @@ def strip_leading_title(markdown: str, title: str) -> str:
     return "\n".join(lines).lstrip("\n")
 
 
+def readable_markdown(content_html: str, title: str) -> str:
+    """The Markdown an article contributes, as the zero-LLM compile renders it.
+    Empty means there's nothing to read: the item would be skipped."""
+    return demote_headings(strip_leading_title(html_to_markdown(content_html), title))
+
+
 def demote_headings(markdown: str, floor: int = 2) -> str:
     """Shift a chapter body's headings so they nest under its title.
 

@@ -52,6 +52,9 @@ export interface DiscoveredItem {
   is_punctuated: boolean | null;
   word_count: number | null;
   reading_time_min: number | null;
+  // Web pages: whether the page holds readable text, checked at discovery.
+  // false = nothing to read (skipped at compile), null = not checked.
+  has_content: boolean | null;
   // How this item fared in the compile, present from the moment it's confirmed;
   // null on items that weren't part of one. "skipped" is nothing usable to build
   // from, "failed" is something that broke, and both carry the user-facing reason

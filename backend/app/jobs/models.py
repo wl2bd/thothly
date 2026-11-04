@@ -108,6 +108,10 @@ class DiscoveredItemResponse(BaseModel):
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None
+    # Web pages: whether the page holds readable text, checked at discovery so
+    # the review screen can say so before anyone opens the preview. Tri-state
+    # like has_transcript: None = not checked.
+    has_content: bool | None = None
 
     # How this item fared in the compile, filled in from the moment the user
     # confirms and advanced as the runner reaches it. None on items that weren't

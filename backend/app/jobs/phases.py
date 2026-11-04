@@ -67,6 +67,7 @@ def run_discovery(
                     is_punctuated=d.is_punctuated,
                     word_count=d.word_count,
                     reading_time_min=d.reading_time_min,
+                    has_content=d.has_content,
                 )
                 for d in discovered
             )

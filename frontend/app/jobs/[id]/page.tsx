@@ -125,6 +125,9 @@ function defaultSelection(items: DiscoveredItem[]): Set<string> {
       .filter(
         (it) => it.item_type !== "podcast" || it.item_index < PODCAST_PRESELECT,
       )
+      // Known to have nothing to read: the compile would skip them anyway, so
+      // they start unticked. Still there to tick, should the check be wrong.
+      .filter((it) => it.has_transcript !== false && it.has_content !== false)
       .map((it) => it.id),
   );
 }
@@ -1990,6 +1993,19 @@ function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
     );
   }
   if (item.item_type === "blog") {
+    if (item.has_content === false) {
+      // Same weight as "No subtitles": the one case where there's nothing to
+      // keep. The tip says why it can happen, since the page itself loads fine
+      // in a browser more often than not.
+      return (
+        <Tooltip content="No article text could be pulled from this page. It may sit behind a login or paywall, or be built in a way that hides its text. It would be skipped when compiling.">
+          <Tag tabIndex={0} className="text-destructive">
+            No readable text
+            <Info className="opacity-60" />
+          </Tag>
+        </Tooltip>
+      );
+    }
     return <Tag>Web text</Tag>;
   }
   // YouTube: the content state varies per item, so this is where it earns its
@@ -2080,7 +2096,7 @@ function estimateCost(
       if (hasPunctuate && it.is_punctuated === false) llmCost += pass(words);
       if (hasCopyedit) llmCost += pass(words);
       if (hasSections) llmCost += pass(words);
-    } else if (available) {
+    } else if (available && it.has_content !== false) {
       // Blog: only the manually-selected roles cost anything.
       const words = (it.estimated_size_chars ?? 0) / 6;
       if (hasCopyedit) llmCost += pass(words);

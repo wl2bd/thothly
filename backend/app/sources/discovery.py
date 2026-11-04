@@ -1,5 +1,6 @@
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from urllib.parse import urljoin, urlparse
@@ -7,8 +8,14 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
-from app.pipeline.compiler import is_punctuated
-from app.sources.blog import FeedUnavailable, list_feed
+from app.pipeline.compiler import is_punctuated, readable_markdown
+from app.sources.blog import (
+    FeedUnavailable,
+    ScrapeUnavailable,
+    extract_article,
+    list_feed,
+    scrape_article,
+)
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
 from app.sources.wikipedia import article_title, is_wikipedia_article
@@ -53,6 +60,8 @@ class DiscoveredItem:
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None
+    # Filled in for web pages by _probe_text (see below).
+    has_content: bool | None = None
 
 
 _AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav")
@@ -283,6 +292,7 @@ def _discover_blog(
         )
         for i, (link, title) in enumerate(links[: settings.max_items_per_source])
     ]
+    _probe_pages(items)
     return _html_title(html), items
 
 
@@ -297,6 +307,12 @@ def _feed_to_items(
         return None
     articles = articles[: settings.max_items_per_source]
     items = [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
+    # An entry the feed already carries text for is readable as it stands (the
+    # compile falls back to it if the page won't scrape). The rest get checked.
+    for item in items:
+        if item.item_type == "blog" and item.preview_html and _readable(item.preview_html, item.title):
+            item.has_content = True
+    _probe_pages([i for i in items if i.item_type == "blog" and i.has_content is None])
     return feed_title, items
 
 
@@ -338,7 +354,47 @@ def _single_article(
         source_index=source_index,
         item_index=0,
     )
+    # The page is already here, so checking it holds text costs nothing more.
+    _probe_text(item, html or "")
     return title, [item]
+
+
+def _probe_pages(items: list[DiscoveredItem]) -> None:
+    """Check the first web pages hold readable text, a few at a time.
+
+    The same test the compile applies, run now so the review screen can say
+    "no readable text" up front instead of only once the preview is opened.
+    Only the first N are checked: each is a page download.
+    """
+    batch = items[: settings.web_discovery_probe_limit]
+    if not batch:
+        return
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(_probe_text, batch))
+
+
+def _probe_text(item: DiscoveredItem, html: str | None = None) -> None:
+    """Set item.has_content from its page. `html` skips the download when the
+    page is already in hand ("" = it didn't load). Never breaks discovery."""
+    try:
+        if html is None:
+            article = scrape_article(item.url)
+        elif html:
+            article = extract_article(html, item.url)
+        else:
+            raise ScrapeUnavailable(f"Failed to download page: {item.url}")
+        content_html = article.content_html
+    except ScrapeUnavailable:
+        # The compile falls back to what the feed carried, so the check does too.
+        content_html = item.preview_html or ""
+    except Exception:
+        logger.exception("Readable-text probe failed for %s", item.url)
+        return
+    item.has_content = _readable(content_html, item.title)
+
+
+def _readable(content_html: str, title: str) -> bool:
+    return bool(readable_markdown(content_html, title).strip())
 
 
 def _html_title(html: str) -> str | None:

@@ -68,7 +68,11 @@ def scrape_article(url: str) -> Article:
     downloaded = _fetch_url(url, settings.scrape_timeout_s)
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
+    return extract_article(downloaded, url)
 
+
+def extract_article(downloaded: str, url: str) -> Article:
+    """The article in an already-downloaded page (see scrape_article)."""
     downloaded = _unwrap_image_links(downloaded)
 
     # include_formatting/include_links keep bold, italics and hyperlinks (both

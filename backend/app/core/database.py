@@ -104,6 +104,8 @@ _DISCOVERED_ITEM_ADDED_COLUMNS = (
     ("is_punctuated", "INTEGER"),
     ("word_count", "INTEGER"),
     ("reading_time_min", "INTEGER"),
+    # Web pages: 1 = readable text found at discovery, 0 = none, NULL = unchecked.
+    ("has_content", "INTEGER"),
     # Position in the user-confirmed compile order (the review screen lets sources
     # be reordered by drag). NULL until confirmed; the compile sorts on it.
     ("selected_order", "INTEGER"),
