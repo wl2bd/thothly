@@ -82,11 +82,12 @@ import {
 
 // A source the user has staged for compilation. Built either from a picked
 // search result or from a directly-pasted link.
-// Every settled query is a paid search (ScrapeCreators + triage), so wait for a
-// pause in typing: long enough to skip the gaps inside and between words (at
-// 400 ms, half-typed words and typos went out as searches), short enough not
-// to feel like waiting. The backend caches exact repeats for five minutes.
-const SEARCH_DEBOUNCE_MS = 700;
+// Every settled query is a paid search (ScrapeCreators + triage), so a
+// half-typed word must not go out. A space ends a word, so it searches at once;
+// mid-word, wait for a real pause (at 400 ms, "Desig" and typos were searched
+// and billed). Results take seconds to arrive, so the wait barely shows. The
+// backend caches exact repeats for five minutes.
+const SEARCH_DEBOUNCE_MS = 900;
 
 // The staging machine: search on the left, the compilation it builds on the
 // right. Picking a result puts it in the compilation, which stays on screen
@@ -182,8 +183,20 @@ function ComposeWorkspace({
   // never lags behind a frame.
   const deferredTrimmed = useDeferredValue(query).trim();
 
-  // Debounced multi-provider search. A pasted link never triggers a search
-  // (it's added directly on Enter); only free text does. Each keystroke aborts
+  // The query actually searched: follows `trimmed` at once when a word ends (a
+  // trailing space), the bar is cleared or a link is pasted, and after
+  // SEARCH_DEBOUNCE_MS otherwise. Typing the space after an already-searched
+  // word sets the same string, so it never searches twice.
+  const [searchTerm, setSearchTerm] = useState(trimmed);
+  const wordDone = /\s$/.test(query);
+  useEffect(() => {
+    const now = trimmed === "" || queryIsUrl || wordDone;
+    const timer = setTimeout(() => setSearchTerm(trimmed), now ? 0 : SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [trimmed, queryIsUrl, wordDone]);
+
+  // Multi-provider search of `searchTerm`. A pasted link never triggers a search
+  // (it's added directly on Enter); only free text does. A new term aborts
   // the in-flight request so only the latest query's results land. All state
   // updates happen inside the deferred callback (never synchronously in the
   // effect body) so a fast typer doesn't cause cascading re-renders.
@@ -196,7 +209,8 @@ function ComposeWorkspace({
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
-    const isReset = trimmed === "" || queryIsUrl;
+    const term = searchTerm;
+    const isReset = term === "" || looksLikeUrl(term);
 
     const timer = setTimeout(async () => {
       if (isReset) {
@@ -207,7 +221,7 @@ function ComposeWorkspace({
           setSearchErrors([]);
           setTypeFilter("all");
           setSortBy("relevance");
-          setSettledQuery(trimmed);
+          setSettledQuery(term);
           setSearching(false);
         });
         return;
@@ -222,7 +236,7 @@ function ComposeWorkspace({
       let first = true;
       try {
         await searchStream(
-          trimmed,
+          term,
           (batch) => {
             if (cancelled) return;
             const isFirst = first;
@@ -239,7 +253,7 @@ function ComposeWorkspace({
                 setSearchErrors(error);
                 setTypeFilter("all");
                 setSortBy("relevance");
-                setSettledQuery(trimmed);
+                setSettledQuery(term);
               } else {
                 setResults((prev) => {
                   const seen = new Set(prev.map((r) => r.id));
@@ -257,7 +271,7 @@ function ComposeWorkspace({
           if (first) {
             setResults([]);
             setSearchErrors([]);
-            setSettledQuery(trimmed);
+            setSettledQuery(term);
           }
           setSearching(false);
         });
@@ -269,18 +283,18 @@ function ComposeWorkspace({
             setResults([]);
             setSearchErrors([]);
           }
-          setSettledQuery(trimmed);
+          setSettledQuery(term);
           setSearching(false);
         });
       }
-    }, isReset ? 0 : SEARCH_DEBOUNCE_MS);
+    }, 0);
 
     return () => {
       cancelled = true;
       controller.abort();
       clearTimeout(timer);
     };
-  }, [trimmed, queryIsUrl]);
+  }, [searchTerm]);
 
   // Checking a result stages it straight into the Sources list (unchecking
   // removes it) — there's no separate "add" step. The checkbox reads its state
@@ -615,6 +629,7 @@ function ComposeWorkspace({
                     size="sm"
                     onClick={() => {
                       setQuery(q);
+                      setSearchTerm(q);
                       inputRef.current?.focus();
                     }}
                   >
@@ -672,6 +687,7 @@ function ComposeWorkspace({
                           className="border-input text-foreground bg-transparent shadow-none"
                           onClick={() => {
                             setQuery(q);
+                            setSearchTerm(q);
                             inputRef.current?.focus();
                           }}
                         >
