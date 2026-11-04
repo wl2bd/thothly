@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     #                TinyFish (free) as fallback. Both go through the data
     #                gateway, so it needs TREG_TOKEN or MONID_API_KEY, no key of
     #                its own. ~$0.007 a search.
+    #   tinyfish   — The same pair the other way round: TinyFish (free) first,
+    #                Exa only when TinyFish fails. Suits search-as-you-type,
+    #                where each typed query would otherwise bill an Exa call.
     #   brave      — General-web index, commercial-friendly, but needs an API key
     #                (card on file) and is metered. Set BRAVE_API_KEY + this.
     #   ddg        — Legacy DuckDuckGo HTML scrape. Rate-limited hard (works a

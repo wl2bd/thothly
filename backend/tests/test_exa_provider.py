@@ -44,3 +44,22 @@ def test_both_failing_raises_for_the_service_to_report():
     with patch.object(exa_provider.gateway, "call", side_effect=GatewayError("down")):
         with pytest.raises(RuntimeError, match="Web search failed"):
             ExaProvider().search("stoicism", 5)
+
+
+def test_free_first_asks_tinyfish_and_never_bills_exa_when_it_answers():
+    tf = {"results": [{"url": "https://a.example/p", "title": "A", "snippet": "s"}]}
+    with patch.object(exa_provider.gateway, "call", return_value=_ok(tf)) as call, \
+         patch.object(exa_provider, "capture_paid_call") as paid:
+        results = ExaProvider(free_first=True).search("stoicism", 5, None)
+    assert [r.title for r in results] == ["A"]
+    assert [c.args[0] for c in call.call_args_list] == [exa_provider.TINYFISH]
+    paid.assert_not_called()
+
+
+def test_free_first_falls_back_to_exa_when_tinyfish_fails():
+    exa = {"results": [{"url": "https://b.example/q", "title": "B"}]}
+    with patch.object(exa_provider.gateway, "call",
+                      side_effect=[GatewayError("down"), _ok(exa)]) as call:
+        results = ExaProvider(free_first=True).search("stoicism", 5, None)
+    assert [r.title for r in results] == ["B"]
+    assert call.call_args_list[1].args[0] is exa_provider.EXA

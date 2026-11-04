@@ -19,26 +19,36 @@ _PURPOSE = "find long-form articles or explainers a reader can learn from, to co
 
 
 class ExaProvider:
-    """Web-article search via Exa, with TinyFish as the free fallback.
+    """Web-article search via Exa and TinyFish, each the other's fallback.
 
     Exa searches by meaning, so on a reading query it surfaces course notes,
     essays and reviews where a keyword engine returns vendor pages (measured on
     five searches against Brave, 2026-11-04). Both go through the data gateway
     (treg, then Monid), so neither needs its own key. TinyFish is free but
-    keyword-ranked and slower; it only answers when Exa can't.
+    keyword-ranked and slower.
+
+    `free_first` puts TinyFish in front and keeps Exa for when it fails. The
+    search runs as the visitor types, several queries per search, so a metered
+    first choice bills every keystroke pause for results nobody picked.
 
     Emits `web` results, the same shape as the other web backends.
     """
 
     name = "web"
 
+    def __init__(self, free_first: bool = False):
+        self.free_first = free_first
+
     def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
+        exa = ("Exa", lambda: self._exa(query, limit))
+        tinyfish = ("TinyFish", lambda: self._tinyfish(query, limit, hl))
+        (first_name, first), (_, second) = (tinyfish, exa) if self.free_first else (exa, tinyfish)
         try:
-            return self._exa(query, limit)
-        except Exception as exc:  # noqa: BLE001 — any Exa failure → TinyFish
-            logger.warning("Exa search failed, trying TinyFish: %s", exc)
+            return first()
+        except Exception as exc:  # noqa: BLE001 — any failure → the other backend
+            logger.warning("%s search failed, trying the other backend: %s", first_name, exc)
         try:
-            return self._tinyfish(query, limit, hl)
+            return second()
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError(f"Web search failed: {exc}") from exc
 

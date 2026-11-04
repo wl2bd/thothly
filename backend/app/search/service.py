@@ -76,12 +76,12 @@ def _build_web_provider() -> Provider:
     returning nothing, and an unknown value falls back too.
     """
     backend = (settings.web_search_backend or "marginalia").strip().lower()
-    if backend == "exa":
+    if backend in ("exa", "tinyfish"):
         if gateway.available(EXA):
-            return _CachedProvider(ExaProvider())
+            return _CachedProvider(ExaProvider(free_first=backend == "tinyfish"))
         logger.warning(
-            "web_search_backend=exa but neither TREG_TOKEN nor MONID_API_KEY is set — "
-            "falling back to Marginalia."
+            "web_search_backend=%s but neither TREG_TOKEN nor MONID_API_KEY is set — "
+            "falling back to Marginalia.", backend
         )
         return _CachedProvider(MarginaliaProvider())
     if backend == "brave":

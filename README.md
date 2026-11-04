@@ -177,6 +177,7 @@ pluggable so you can self-host with whatever fits your use and licence:
 | --- | --- | --- | --- |
 | **`marginalia`** (default) | keyless | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Independent "small web": blogs, docs, long-form; downranks SEO/commercial pages. Not rate-limited to death like scraping DuckDuckGo. `public` key shares a tight limit; email `contact@marginalia-search.com` for a free personal key. |
 | **`exa`** | `TREG_TOKEN` or `MONID_API_KEY` | yes (metered, ~$0.007 a search) | Searches by meaning, so reading queries return course notes, essays and reviews rather than vendor pages. Falls back to TinyFish (free) when Exa can't answer. |
+| **`tinyfish`** | `TREG_TOKEN` or `MONID_API_KEY` | free (Exa, metered, only when TinyFish fails) | Keyword-ranked, roughly Brave's quality. Every query is free, which matters because the search runs as you type. |
 | **`brave`** | `BRAVE_API_KEY` | yes (metered) | Broad general-web index. Card on file required even on the free credits. The commercial path for a hosted deployment. |
 | **`ddg`** | keyless | n/a | Legacy DuckDuckGo HTML scrape. Rate-limited hard (a couple of queries, then nothing). Last-resort fallback only. |
 
