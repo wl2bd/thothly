@@ -31,8 +31,10 @@ _MAX_IMAGE_WIDTH = 1600
 _PIL_FORMAT = {".jpg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
 
 # ![alt](url "optional title") — title is kept so captions/hover text survive.
+# The alt of a figure is its caption, which can hold links: one level of
+# [brackets] inside it is part of the alt.
 _MD_IMAGE = re.compile(
-    r'!\[(?P<alt>[^\]]*)\]\(\s*(?P<url>\S+?)(?P<title>\s+"[^"]*")?\s*\)'
+    r'!\[(?P<alt>(?:[^\[\]]|\[[^\[\]]*\])*)\]\(\s*(?P<url>\S+?)(?P<title>\s+"[^"]*")?\s*\)'
 )
 _REMOTE = re.compile(r"^https?://", re.IGNORECASE)
 

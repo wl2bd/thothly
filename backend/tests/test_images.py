@@ -97,3 +97,21 @@ def test_recompress_downscales_wide_image():
 
 def test_recompress_unknown_format_is_passthrough():
     assert images._recompress(b"<svg/>", ".svg") == b"<svg/>"
+
+
+def test_a_caption_holding_a_link_keeps_the_image_and_its_link(tmp_path, monkeypatch):
+    # A figure's caption is the image's description: "[Iceland](…)" inside it
+    # used to end the match, so the link was fetched as the image.
+    fetched = []
+
+    def fake_urlopen(request, timeout):
+        fetched.append(request.full_url)
+        return _FakeResponse(_png(), "image/png")
+
+    monkeypatch.setattr(images, "urlopen", fake_urlopen)
+    md = "![Ice near [Iceland](https://w.test/Iceland), 2007.](https://example.org/ice.png)"
+    result = images.localize_images(md, tmp_path / "media")
+
+    assert fetched == ["https://example.org/ice.png"]
+    assert result.startswith("![Ice near [Iceland](https://w.test/Iceland), 2007.](")
+    assert "example.org" not in result
