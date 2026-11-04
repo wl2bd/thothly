@@ -162,6 +162,7 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `WEB_SEARCH_BACKEND` | `marginalia` | Which engine finds article URLs (see below) |
 | `MARGINALIA_API_KEY` | `public` | Marginalia key; `public` works keyless, personal/commercial keys lift the rate limit / licence |
 | `BRAVE_API_KEY` | empty | Brave Search API key (required when `WEB_SEARCH_BACKEND=brave`) |
+| `TREG_TOKEN` / `MONID_API_KEY` | empty | Pay-per-call data gateways (treg first, Monid as fallback): hosted YouTube transcripts, the `exa` web backend, and published podcast transcripts looked up before any speech-to-text |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
 | `BYOK_ALLOW_CUSTOM_BASE_URL` | `false` | Let users enter any server address for their own model, not just the listed providers. Only for an instance whose users you trust: the server calls whatever they type |
@@ -175,6 +176,7 @@ pluggable so you can self-host with whatever fits your use and licence:
 | Backend | Key? | Commercial use | Notes |
 | --- | --- | --- | --- |
 | **`marginalia`** (default) | keyless | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Independent "small web": blogs, docs, long-form; downranks SEO/commercial pages. Not rate-limited to death like scraping DuckDuckGo. `public` key shares a tight limit; email `contact@marginalia-search.com` for a free personal key. |
+| **`exa`** | `TREG_TOKEN` or `MONID_API_KEY` | yes (metered, ~$0.007 a search) | Searches by meaning, so reading queries return course notes, essays and reviews rather than vendor pages. Falls back to TinyFish (free) when Exa can't answer. |
 | **`brave`** | `BRAVE_API_KEY` | yes (metered) | Broad general-web index. Card on file required even on the free credits. The commercial path for a hosted deployment. |
 | **`ddg`** | keyless | n/a | Legacy DuckDuckGo HTML scrape. Rate-limited hard (a couple of queries, then nothing). Last-resort fallback only. |
 

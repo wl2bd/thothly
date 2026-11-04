@@ -53,7 +53,7 @@ export default function AboutPage() {
             </li>
             <li>
               Searching and compiling run on our server. Your searches go to
-              the search providers (Brave, YouTube, Apple Podcasts) and to a
+              the search providers (Exa, YouTube, Apple Podcasts) and to a
               model that sorts the results.
             </li>
             <li>
@@ -82,11 +82,6 @@ export default function AboutPage() {
           Built by{" "}
           <a href="https://wael.work" target="_blank" rel="noreferrer" className={link}>
             Wael
-          </a>
-          . Web search powered by{" "}
-          {/* Brave's free monthly API credit requires this attribution. */}
-          <a href="https://brave.com/search/api/" target="_blank" rel="noreferrer" className={link}>
-            Brave
           </a>
           .
         </p>
