@@ -23,7 +23,9 @@ import {
   Copy,
   Eye,
   EyeOff,
+  ExternalLink,
   GripVertical,
+  Headphones,
   Info,
   Minus,
   Plus,
@@ -1663,10 +1665,20 @@ function ReviewItem({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The trailing action follows what there is to look at. A text preview only
+  // earns its place when there's text: a podcast has none until it's
+  // transcribed, so it offers the audio itself; an item already known to be
+  // empty (no subtitles, no readable text) offers its page, to see why.
+  const nothingToRead =
+    (item.item_type === "youtube" && item.has_transcript === false) ||
+    (item.item_type === "blog" && item.has_content === false);
+  const action: "preview" | "listen" | "open" =
+    item.item_type === "podcast" ? "listen" : nothingToRead ? "open" : "preview";
+
   async function toggleOpen() {
     const next = !open;
     setOpen(next);
-    if (!next || preview || loading) return;
+    if (!next || action !== "preview" || preview || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -1744,22 +1756,58 @@ function ReviewItem({
             )}
           </span>
         </label>
-        <Tooltip content={open ? "Hide preview" : "Preview"}>
-          <Button
-            type="button"
-            variant="nav"
-            size="icon-sm"
-            onClick={toggleOpen}
-            aria-expanded={open}
-            aria-label={open ? "Hide preview" : "Preview"}
-            className="ml-2 shrink-0"
+        {action === "open" ? (
+          <Tooltip content={item.item_type === "youtube" ? "Open on YouTube" : "Open the page"}>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={item.item_type === "youtube" ? "Open on YouTube" : "Open the page"}
+              className={cn(buttonVariants({ variant: "nav", size: "icon-sm" }), "ml-2 shrink-0")}
+            >
+              <ExternalLink />
+            </a>
+          </Tooltip>
+        ) : (
+          <Tooltip
+            content={
+              action === "listen"
+                ? open ? "Hide player" : "Listen"
+                : open ? "Hide preview" : "Preview"
+            }
           >
-            {open ? <EyeOff /> : <Eye />}
-          </Button>
-        </Tooltip>
+            <Button
+              type="button"
+              variant="nav"
+              size="icon-sm"
+              onClick={toggleOpen}
+              aria-expanded={open}
+              aria-label={
+                action === "listen"
+                  ? open ? "Hide player" : "Listen"
+                  : open ? "Hide preview" : "Preview"
+              }
+              className="ml-2 shrink-0"
+            >
+              {action === "listen" ? <Headphones /> : open ? <EyeOff /> : <Eye />}
+            </Button>
+          </Tooltip>
+        )}
       </div>
 
-      {open && (
+      {open && action === "listen" && (
+        <div className="flex flex-col gap-2 px-3.5 pb-3 pl-10">
+          {/* preload="metadata": only the length loads until play is pressed,
+              so opening the player doesn't pull a whole episode. */}
+          <audio controls preload="metadata" src={item.url} className="h-9 w-full" />
+          <p className="text-muted-foreground text-xs">
+            The text comes from transcribing this audio when compiling, so there is
+            nothing to read yet.
+          </p>
+        </div>
+      )}
+
+      {open && action === "preview" && (
         <div className="px-3.5 pb-3 pl-10">
           {loading ? (
             <div className="text-muted-foreground flex items-center gap-2 py-2 text-xs">
