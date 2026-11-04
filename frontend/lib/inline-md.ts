@@ -56,10 +56,3 @@ export function parseFigure(block: string): { caption: string; src: string } | n
   const m = FIGURE.exec(block.trim());
   return m ? { caption: m[1], src: m[2] } : null;
 }
-
-// "1. a\n2. b" → ["a", "b"]; null unless every line is a numbered item.
-export function parseOrderedList(block: string): string[] | null {
-  const lines = block.trim().split("\n");
-  const items = lines.map((l) => /^\s*\d+\.\s+(.*)$/.exec(l)?.[1]);
-  return items.every((i) => i != null) ? (items as string[]) : null;
-}

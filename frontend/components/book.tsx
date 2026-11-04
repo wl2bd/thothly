@@ -6,7 +6,8 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 import { Button } from "@/components/ui/button";
-import { parseFigure, parseOrderedList, tokenizeInline, type InlineToken } from "@/lib/inline-md";
+import { tokenizeInline, type InlineToken } from "@/lib/inline-md";
+import { parseBlocks, type Block } from "@/lib/md-blocks";
 import { cn } from "@/lib/utils";
 
 // A compiled book, read in the app: its contents, one chapter at a time, and
@@ -166,17 +167,13 @@ export function countWords(text: string): number {
   return t ? t.split(/\s+/).length : 0;
 }
 
-// A deliberately small Markdown renderer for the narrow subset the compiler
-// emits (## headings, **bold** speaker labels, bullet lists, links). Avoids
-// pulling in a Markdown dependency for what is just a read-only preview.
+// A deliberately small Markdown renderer for the subset the compiler writes
+// (lib/md-blocks: headings, fenced code, quotes, nested lists, tables, figures;
+// lib/inline-md: emphasis, links, code, sup/sub, math). It reads "$10 and $20"
+// as prices the way Pandoc does, which a stock Markdown library would not.
 // `reading`: the chapter in the reader, set for long reading (ink, 16px, open
 // leading). Without it, a compact muted excerpt (the review preview).
 export function MarkdownPreview({ md, reading = false }: { md: string; reading?: boolean }) {
-  // A heading line is its own block even with no blank line around it: the
-  // "sections" pass often writes "## Title\nFirst sentence…".
-  const blocks = md
-    .split(/\n{2,}|\n(?=#{1,6}\s)|(?<=^#{1,6}\s[^\n]*)\n/m)
-    .filter((b) => b.trim());
   return (
     <div
       className={cn(
@@ -186,99 +183,95 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
           : "text-muted-foreground gap-2 text-sm leading-relaxed",
       )}
     >
-      {blocks.map((block, i) => {
-        const figure = parseFigure(block);
-        if (figure) {
-          const img = (
-            // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
-            <img src={figure.src} alt="" loading="lazy" className="max-h-80 max-w-full rounded-sm object-contain" />
-          );
-          return figure.caption ? (
-            <figure key={i} className="flex flex-col items-center gap-2">
-              {img}
-              <figcaption className="text-muted-foreground text-center text-sm italic">
-                {renderInline(figure.caption)}
-              </figcaption>
-            </figure>
-          ) : (
-            <div key={i}>{img}</div>
-          );
-        }
-        const heading = /^(#{1,6})\s+(.*)$/.exec(block);
-        if (heading) {
-          return (
-            <p key={i} className={cn("text-foreground font-semibold", reading ? "mt-4" : "mt-1")}>
-              {renderInline(heading[2])}
-            </p>
-          );
-        }
-        const lines = block.trim().split("\n");
-        if (lines.length > 1 && lines.every((l) => l.startsWith("|")) && /^\|[\s|:-]+$/.test(lines[1])) {
-          // A pipe table: header, separator, rows. An all-blank header (a
-          // table with no <th> row at the source) is left out.
-          const [head, , ...rows] = lines.map(tableCells);
-          return (
-            <div key={i} className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
-                {head.some(Boolean) && (
-                  <thead>
-                    <tr>
-                      {head.map((cell, j) => (
-                        <th key={j} className="border-border text-foreground border-b px-2 py-1.5 align-bottom font-semibold">
-                          {renderInline(cell)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                )}
-                <tbody>
-                  {rows.map((row, r) => (
-                    <tr key={r} className="border-border border-b last:border-0">
-                      {row.map((cell, j) => (
-                        <td key={j} className="px-2 py-1.5 align-top">
-                          {renderInline(cell)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        }
-        const numbered = parseOrderedList(block);
-        if (numbered) {
-          return (
-            <ol key={i} className="list-decimal pl-5">
-              {numbered.map((line, j) => (
-                <li key={j}>{renderInline(line)}</li>
-              ))}
-            </ol>
-          );
-        }
-        if (/^\s*[-*]\s+/.test(block)) {
-          const lines = block.split("\n").map((l) => l.replace(/^\s*[-*]\s+/, ""));
-          return (
-            <ul key={i} className="list-disc pl-5">
-              {lines.map((line, j) => (
-                <li key={j}>{renderInline(line)}</li>
-              ))}
-            </ul>
-          );
-        }
-        return <p key={i}>{renderInline(block.replace(/\n/g, " "))}</p>;
-      })}
+      {parseBlocks(md).map((block, i) => renderBlock(block, i, reading))}
     </div>
   );
 }
 
-// "| a | b \| c |" → ["a", "b | c"]: an escaped pipe is text, not a border.
-function tableCells(line: string): string[] {
-  return line
-    .trim()
-    .replace(/^\||\|$/g, "")
-    .split(/(?<!\\)\|/)
-    .map((cell) => cell.trim().replace(/\\\|/g, "|"));
+function renderBlock(block: Block, key: number, reading: boolean): React.ReactNode {
+  switch (block.t) {
+    case "heading":
+      return (
+        <p key={key} className={cn("text-foreground font-semibold", reading ? "mt-4" : "mt-1")}>
+          {renderInline(block.text)}
+        </p>
+      );
+    case "paragraph":
+      return <p key={key}>{renderInline(block.text)}</p>;
+    case "code":
+      return (
+        <pre key={key} className="bg-muted overflow-x-auto rounded-sm px-3 py-2 font-mono text-[0.8em] leading-snug">
+          <code>{block.text}</code>
+        </pre>
+      );
+    case "quote":
+      return (
+        <blockquote key={key} className="border-border text-muted-foreground flex flex-col gap-2 border-l-2 pl-4">
+          {block.blocks.map((b, i) => renderBlock(b, i, reading))}
+        </blockquote>
+      );
+    case "list": {
+      const List = block.ordered ? "ol" : "ul";
+      return (
+        <List key={key} className={cn("flex flex-col gap-1 pl-5", block.ordered ? "list-decimal" : "list-disc")}>
+          {block.items.map((item, j) => (
+            <li key={j}>
+              {renderInline(item.text)}
+              {item.blocks.length > 0 && (
+                <div className="mt-1 flex flex-col gap-2">{item.blocks.map((b, i) => renderBlock(b, i, reading))}</div>
+              )}
+            </li>
+          ))}
+        </List>
+      );
+    }
+    case "figure": {
+      const img = (
+        // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
+        <img src={block.src} alt="" loading="lazy" className="max-h-80 max-w-full rounded-sm object-contain" />
+      );
+      return block.caption ? (
+        <figure key={key} className="flex flex-col items-center gap-2">
+          {img}
+          <figcaption className="text-muted-foreground text-center text-sm italic">
+            {renderInline(block.caption)}
+          </figcaption>
+        </figure>
+      ) : (
+        <div key={key}>{img}</div>
+      );
+    }
+    case "table":
+      // An all-blank header (a table with no <th> row at the source) is left out.
+      return (
+        <div key={key} className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            {block.head.some(Boolean) && (
+              <thead>
+                <tr>
+                  {block.head.map((cell, j) => (
+                    <th key={j} className="border-border text-foreground border-b px-2 py-1.5 align-bottom font-semibold">
+                      {renderInline(cell)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {block.rows.map((row, r) => (
+                <tr key={r} className="border-border border-b last:border-0">
+                  {row.map((cell, j) => (
+                    <td key={j} className="px-2 py-1.5 align-top">
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+  }
 }
 
 function renderInline(text: string): React.ReactNode[] {

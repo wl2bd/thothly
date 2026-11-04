@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { parseFigure, parseOrderedList, tokenizeInline } from "./inline-md.ts";
+import { parseFigure, tokenizeInline } from "./inline-md.ts";
 
 test("single asterisks are italics, not literal stars", () => {
   assert.deepEqual(tokenizeInline("or *logos*, a"), [
@@ -62,11 +62,6 @@ test("a figure is an image alone in its block, its description the caption", () 
   assert.equal(parseFigure("Text with ![a](https://x.test/a.png) inside"), null);
 });
 
-test("a numbered list gives its items, anything else gives null", () => {
-  assert.deepEqual(parseOrderedList("1. Preheat\n2. Bake *well*"), ["Preheat", "Bake *well*"]);
-  assert.equal(parseOrderedList("1999. A year that opens a sentence\nand goes on."), null);
-  assert.equal(parseOrderedList("- Salt"), null);
-});
 
 test("a link title holding parentheses stays out of the text", () => {
   assert.deepEqual(
