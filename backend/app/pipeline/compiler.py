@@ -3,7 +3,7 @@ from bisect import bisect_right
 from datetime import datetime, timezone
 
 from bs4 import BeautifulSoup, Tag
-from markdownify import markdownify as md
+from markdownify import MarkdownConverter
 
 from app.pipeline.i18n import dominant_language
 from app.pipeline.models import CompiledBook, CompiledChapter
@@ -82,9 +82,21 @@ def html_to_markdown(html: str) -> str:
     # Superscripts and subscripts stay inline HTML: flattened, "H2O" and "XIXe"
     # read as other words. Pandoc, GitHub and Obsidian all render the tags;
     # Pandoc's "^2^"/"~2~" would show as strikethrough on GitHub.
-    return md(
-        str(soup), heading_style="ATX", bullets="-", sup_symbol="<sup>", sub_symbol="<sub>"
-    ).strip()
+    return _Converter(
+        heading_style="ATX", bullets="-", sup_symbol="<sup>", sub_symbol="<sub>"
+    ).convert(str(soup)).strip()
+
+
+# A "<" that could open a tag or an autolink.
+_TAG_OPEN = re.compile(r"<(?=[A-Za-z/!?])")
+
+
+class _Converter(MarkdownConverter):
+    def escape(self, text, parent_tags):
+        # A literal "<div>" in the text would be read as raw HTML by Pandoc,
+        # GitHub and Obsidian alike, and vanish. CommonMark's backslash escape
+        # keeps it text everywhere; raw HTML stays on for <sup>/<sub>.
+        return _TAG_OPEN.sub(r"\<", super().escape(text, parent_tags))
 
 
 # A footnote marker as sites set it: "[1]", "[d]", "[note 3]".

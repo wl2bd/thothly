@@ -262,3 +262,12 @@ def test_superscript_and_subscript_survive_as_inline_html():
     # on GitHub.
     html = "<p>H<sub>2</sub>O, E = mc<sup>2</sup>, le XIX<sup>e</sup> siècle.</p>"
     assert html_to_markdown(html) == "H<sub>2</sub>O, E = mc<sup>2</sup>, le XIX<sup>e</sup> siècle."
+
+
+def test_a_literal_tag_in_the_text_is_escaped_not_read_as_html():
+    # Unescaped, Pandoc (and GitHub, Obsidian) read "<tag>" as raw HTML and
+    # the words vanish from the book.
+    html = "<p>Write &lt;div&gt; or &lt;/p&gt;, mail &lt;me@x.test&gt;; a &lt; b &amp; c.</p><pre>&lt;div&gt;</pre>"
+    assert html_to_markdown(html) == (
+        "Write \<div> or \</p>, mail \<me@x.test>; a < b & c.\n\n```\n<div>\n```"
+    )
