@@ -313,3 +313,13 @@ def test_a_figure_caption_becomes_the_figure_caption_not_a_paragraph():
 def test_a_figure_without_a_caption_keeps_its_alt():
     html = '<figure><img src="https://x.test/a.png" alt="A chart"></figure>'
     assert html_to_markdown(html) == "![A chart](https://x.test/a.png)"
+
+
+def test_a_math_span_becomes_tex_between_dollars_untouched():
+    # Pandoc writes TeX math as MathML in the EPUB; GitHub and Obsidian render
+    # it too. Escaping its "_" or "*" would break the formula.
+    html = (
+        '<p>Size <span class="math inline">d_{\text{emb}} * 2</span>.</p>'
+        '<p><span class="math display">a^2 + b_i</span></p>'
+    )
+    assert html_to_markdown(html) == "Size $d_{\text{emb}} * 2$.\n\n$$a^2 + b_i$$"

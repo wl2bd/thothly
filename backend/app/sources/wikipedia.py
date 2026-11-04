@@ -7,6 +7,7 @@ references, external links) on "Stoicism". The REST API serves the article's
 own clean HTML (Parsoid), where each of those is a tagged element to remove.
 """
 
+import json
 import re
 from urllib.parse import unquote, urljoin, urlsplit
 from urllib.request import Request, urlopen
@@ -28,8 +29,8 @@ _DROP = (
     # A box the page shows collapsed (a family tree drawn in table cells) is
     # an aside no pipe table can hold.
     "table.collapsed, table.mw-collapsed, "
-    # A formula comes as MathML (its LaTeX leaks as raw text) plus a rendered
-    # image of it: the image is what a reader can use.
+    # A formula that comes with a rendered image of it: the image is what a
+    # reader can use (one without becomes TeX, see _formulas_to_tex).
     "math"
 )
 
@@ -81,9 +82,40 @@ def scrape_wikipedia(url: str, timeout: float) -> Article:
     )
 
 
+def _formulas_to_tex(soup: BeautifulSoup, body) -> None:
+    """A formula with no rendered image beside it becomes its TeX source.
+
+    Parsoid now serves formulas as MathML alone; dropped with the rest of the
+    MathML, they left "written as ." in the book. The TeX goes out as Pandoc's
+    own math span, which the compiler writes as $...$.
+    """
+    for math in body.find_all("math"):
+        if math.parent is not None and math.parent.find("img"):
+            continue
+        tex = _tex_source(math)
+        if not tex:
+            continue
+        display = math.get("display") == "block" or "mwe-math-element-block" in (math.get("class") or [])
+        span = soup.new_tag("span", attrs={"class": f"math {'display' if display else 'inline'}"})
+        span.string = tex
+        math.replace_with(span)
+
+
+def _tex_source(math) -> str:
+    try:
+        tex = json.loads(math.get("data-mw") or "{}").get("body", {}).get("extsrc")
+    except (ValueError, AttributeError):
+        tex = None
+    if not tex:
+        annotation = math.find("annotation", attrs={"encoding": "application/x-tex"})
+        tex = annotation.get_text() if annotation else math.get("alttext")
+    return (tex or "").strip()
+
+
 def clean_wikipedia_html(html: str, page_url: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     body = soup.body or soup
+    _formulas_to_tex(soup, body)
     for el in body.select(_DROP):
         el.decompose()
 

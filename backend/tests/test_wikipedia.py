@@ -44,3 +44,17 @@ def test_a_pasted_wikipedia_url_is_one_article_named_after_the_page():
     title, items = discover_source("https://fr.wikipedia.org/wiki/Sto%C3%AFcisme", 0)
     assert title == "Stoïcisme"
     assert [(i.title, i.item_type) for i in items] == [("Stoïcisme", "blog")]
+
+
+def test_a_formula_without_a_rendered_image_keeps_its_tex():
+    # Parsoid now serves formulas as MathML only: dropped, "written as ." was
+    # all the book kept.
+    page = (
+        '<p>written as <math class="mwe-math-element mwe-math-element-inline" '
+        """data-mw='{"name":"math","body":{"extsrc":"d_{\\text{emb}}"}}'><mi>d</mi></math>.</p>"""
+        '<p><math class="mwe-math-element mwe-math-element-block" display="block" alttext="{\displaystyle a^2}"><mi>a</mi></math></p>'
+    )
+    html = clean_wikipedia_html(page, "https://en.wikipedia.org/wiki/T")
+    assert '<span class="math inline">d_{\text{emb}}</span>' in html
+    assert '<span class="math display">{\displaystyle a^2}</span>' in html
+    assert "<math" not in html

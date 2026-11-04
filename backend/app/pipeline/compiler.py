@@ -93,6 +93,16 @@ class _Converter(MarkdownConverter):
         # reader; raw HTML stays on for <sup>/<sub>.
         return escape_tags(super().escape(text, parent_tags))
 
+    def convert_span(self, el, text, parent_tags):
+        # Pandoc's math span: TeX between dollars, verbatim (an escaped "_"
+        # breaks the formula). Pandoc writes it as MathML in the EPUB.
+        classes = el.get("class") or []
+        if "math" in classes:
+            tex = el.get_text().strip()
+            if tex:
+                return f"$${tex}$$" if "display" in classes else f"${tex}$"
+        return text
+
     def convert_figure(self, el, text, parent_tags):
         # An image alone in its paragraph is a figure to Pandoc, its description
         # the <figcaption>: the caption is set apart instead of reading as one
