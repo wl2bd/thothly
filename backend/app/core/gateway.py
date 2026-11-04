@@ -117,12 +117,18 @@ def _call_monid(provider: str, endpoint: str, params, body, timeout: float) -> G
         r = client.post(f"{base}/v1/run", json=payload)
         if r.status_code != 200 and r.status_code != 201 and r.status_code != 202:
             return GatewayResponse(status=r.status_code, data=_json(r), via="monid")
-        run = r.json()
+        run = _json(r)
+        run_id = run.get("runId") if isinstance(run, dict) else None
+        if not run_id:
+            return GatewayResponse(status=502, data=run, via="monid")
         while run.get("status") not in _MONID_TERMINAL:
-            if time.monotonic() > deadline:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 return GatewayResponse(status=504, data=None, via="monid")
-            time.sleep(_MONID_POLL_S)
-            run = client.get(f"{base}/v1/runs/{run['runId']}").json()
+            time.sleep(min(_MONID_POLL_S, remaining))
+            polled = _json(client.get(f"{base}/v1/runs/{run_id}", timeout=max(remaining, 1.0)))
+            if isinstance(polled, dict):
+                run = polled
 
     provider_response = run.get("providerResponse") or {}
     status = provider_response.get("httpStatus")

@@ -6,10 +6,12 @@ second, where transcribing the audio costs per minute and takes minutes. So a
 selected episode is looked up here first; the speech-to-text path only runs
 when Exa doesn't have it.
 
-The lookup searches by the episode's title, then only trusts a result whose
-title matches (episode numbers and punctuation aside) and whose length is
-close to the one iTunes gave. A near miss such as the next episode of the same
-show is rejected: no transcript is better than the wrong one.
+The lookup searches by the episode's title across Exa's whole library, with no
+show to anchor it, and a match is cached for good. So it trusts little: the
+title must match (episode numbers and punctuation aside) with the same numbers
+in it ("Part 1" is not "Part 2") and at least a few words (a bare "Mailbag" is
+anyone's). Then a close length is required; with no length known, only an
+exact title will do. No transcript is better than the wrong one.
 """
 
 import logging
@@ -30,6 +32,7 @@ ROUTE = gateway.Route(
 _TIMEOUT_S = 30.0
 _CANDIDATES = 3
 _MIN_TITLE_RATIO = 0.85
+_MIN_TITLE_WORDS = 4
 # A matching title with a very different length is a different cut (trailer,
 # rerun, bonus); within this, it's the same episode give or take ads.
 _DURATION_SLACK_S = 180
@@ -46,7 +49,16 @@ def available() -> bool:
 
 def find_transcript(audio_url: str, title: str, duration_s: int | None) -> Transcript | None:
     """The episode's published transcript, or None (not indexed, no confident
-    match, or the lookup failed). Never raises."""
+    match, or the lookup failed). Never raises: speech-to-text must still get
+    its turn when this goes wrong."""
+    try:
+        return _find(audio_url, title, duration_s)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Exa podcast lookup crashed for %r: %s", title, exc)
+        return None
+
+
+def _find(audio_url: str, title: str, duration_s: int | None) -> Transcript | None:
     try:
         response = gateway.call(
             ROUTE,
@@ -67,15 +79,20 @@ def find_transcript(audio_url: str, title: str, duration_s: int | None) -> Trans
     capture_paid_call("exa", "podcast_transcript", settings.exa_price_per_call)
 
     for row in (response.data or {}).get("results") or []:
-        if "/episode/" not in (row.get("url") or "") or not titles_match(title, row.get("title") or ""):
+        found = row.get("title") or ""
+        if "/episode/" not in (row.get("url") or "") or not titles_match(title, found):
             continue
         language, page_duration, segments = parse_episode_page(row.get("text") or "")
         if not segments:
+            logger.info("Exa episode %r has no transcript turns we could read", found)
             continue
-        if duration_s and page_duration and not _close(duration_s, page_duration):
-            logger.info("Exa episode %r matches by title but not by length (%ss vs %ss)",
-                        row.get("title"), duration_s, round(page_duration))
-            continue
+        if duration_s and page_duration:
+            if not _close(duration_s, page_duration):
+                logger.info("Exa episode %r matches by title but not by length (%ss vs %ss)",
+                            found, duration_s, round(page_duration))
+                continue
+        elif _normalize(title) != _normalize(found):
+            continue  # no length to confirm a near-match title
         logger.info("Podcast transcript from Exa: %r (%d turns)", row.get("title"), len(segments))
         return Transcript(video_id=audio_url, language=language or "", segments=segments)
     logger.info("No Exa transcript matches %r", title)
@@ -86,11 +103,12 @@ def parse_episode_page(text: str) -> tuple[str | None, float | None, list[Transc
     """(language, duration in seconds, speaker turns) from an Exa episode page.
     The transcript is the `## Transcript` section; each turn opens with a
     `**Speaker · start–end**` line and runs until the next one."""
-    fields = {m["key"].strip().lower(): m["value"].strip() for m in _FIELD_RE.finditer(text)}
-    language = (fields.get("language") or "").split("-")[0].lower() or None
-    duration = _seconds(fields["duration"]) if "duration" in fields else None
-
     start = text.find("\n## Transcript")
+    header = text if start < 0 else text[:start]
+    fields = {m["key"].strip().lower(): m["value"].strip() for m in _FIELD_RE.finditer(header)}
+    language = (fields.get("language") or "").split("-")[0].lower() or None
+    duration = _seconds(fields.get("duration") or "")
+
     if start < 0:
         return language, duration, []
     body = text[start + len("\n## Transcript"):]
@@ -105,7 +123,10 @@ def parse_episode_page(text: str) -> tuple[str | None, float | None, list[Transc
     def flush():
         words = " ".join(l.strip() for l in lines if l.strip())
         if turn and words:
-            s, e = turn["start"], turn["end"]
+            # An unreadable stamp keeps the words, placed right after the last turn.
+            prev_end = segments[-1].start_s + segments[-1].duration_s if segments else 0.0
+            s = turn["start"] if turn["start"] is not None else prev_end
+            e = turn["end"] if turn["end"] is not None else s
             segments.append(TranscriptSegment(
                 text=words, start_s=s, duration_s=max(e - s, 0.0), speaker=turn["speaker"]
             ))
@@ -124,7 +145,9 @@ def parse_episode_page(text: str) -> tuple[str | None, float | None, list[Transc
 
 def titles_match(wanted: str, found: str) -> bool:
     a, b = _normalize(wanted), _normalize(found)
-    if not a or not b:
+    if len(a.split()) < _MIN_TITLE_WORDS or len(b.split()) < _MIN_TITLE_WORDS:
+        return False
+    if re.findall(r"\d+", a) != re.findall(r"\d+", b):
         return False
     return a == b or SequenceMatcher(None, a, b).ratio() >= _MIN_TITLE_RATIO
 
@@ -135,10 +158,14 @@ def _normalize(title: str) -> str:
     return " ".join(t.split())
 
 
-def _seconds(stamp: str) -> float:
+def _seconds(stamp: str) -> float | None:
+    """'64:37.329' or '1:04:37.329' in seconds; None for anything else."""
     total = 0.0
-    for part in stamp.split(":"):
-        total = total * 60 + float(part)
+    try:
+        for part in stamp.split(":"):
+            total = total * 60 + float(part)
+    except ValueError:
+        return None
     return total
 
 

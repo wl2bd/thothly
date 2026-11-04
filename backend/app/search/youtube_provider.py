@@ -92,10 +92,10 @@ class YouTubeProvider:
             )
         except gateway.GatewayError as exc:
             raise RuntimeError(f"YouTube search failed: {exc}") from exc
-        if response.status != 200:
+        if response.status != 200 or not isinstance(response.data, dict):
             raise RuntimeError(f"YouTube search failed: HTTP {response.status}")
         capture_paid_call("scrapecreators", endpoint, settings.scrapecreators_price_per_call)
-        videos = (response.data or {}).get("videos") or []
+        videos = response.data.get("videos") or []
         results = []
         for v in videos:
             if not v.get("id"):

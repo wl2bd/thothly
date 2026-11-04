@@ -93,3 +93,12 @@ def test_monid_run_unwraps_provider_response(monkeypatch):
         r = gateway._call_monid("exa", "/search", None, {"query": "x"}, 5)
     assert (r.status, r.data, r.via) == (200, {"results": [1, 2]}, "monid")
     assert calls == [("POST", "/v1/run"), ("GET", "/v1/runs/r1")]
+
+
+def test_monid_run_without_run_id_is_a_failed_call(monkeypatch):
+    monkeypatch.setattr(gateway.settings, "monid_api_key", "m")
+    real_client = httpx.Client
+    handler = lambda request: httpx.Response(200, json={"error": {"message": "nope"}})
+    with patch.object(gateway.httpx, "Client",
+                      lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)):
+        assert gateway._call_monid("exa", "/search", None, {}, 5).status == 502

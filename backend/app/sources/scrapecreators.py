@@ -71,7 +71,9 @@ def _call(endpoint: str, **params: str) -> dict:
         return {}
     if response.status != 200:
         raise YouTubeUnavailable(f"ScrapeCreators {endpoint} HTTP {response.status}")
-    return response.data or {}
+    if not isinstance(response.data, dict):  # garbled: a failure, not "no subtitles"
+        raise YouTubeUnavailable(f"ScrapeCreators {endpoint}: unreadable response")
+    return response.data
 
 
 def _pick_language(tracks: list[dict], languages: list[str]) -> str | None:

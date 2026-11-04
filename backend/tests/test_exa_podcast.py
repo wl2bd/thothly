@@ -95,3 +95,37 @@ def test_find_rejects_a_same_title_episode_of_very_different_length():
 def test_find_returns_none_when_the_gateway_fails():
     with patch.object(exa_podcast.gateway, "call", side_effect=GatewayError("down")):
         assert find_transcript("a.mp3", "Any title here", None) is None
+
+
+def test_titles_differing_only_by_a_number_never_match():
+    assert not titles_match("The Fall of Rome, Part 1", "The Fall of Rome, Part 2")
+
+
+def test_short_generic_titles_are_never_trusted():
+    assert not titles_match("Ep 41: Mailbag", "#212 - Mailbag")
+    assert not titles_match("Episode 1", "Episode 1")
+
+
+def test_without_a_known_length_only_an_exact_title_is_trusted():
+    near = _hit("Roman Civil War: Rise of the General, Part 1 (Ad-Free)", PAGE)
+    with patch.object(exa_podcast.gateway, "call", return_value=_ok([near])):
+        assert find_transcript("a.mp3", "Roman Civil War: Rise of the General (Part 1)", None) is None
+    exact = _hit("701. Roman Civil War: Rise of the General (Part 1)", PAGE)
+    with patch.object(exa_podcast.gateway, "call", return_value=_ok([exact])):
+        assert find_transcript("a.mp3", "Roman Civil War: Rise of the General (Part 1)", None) is not None
+
+
+def test_odd_header_values_do_not_raise():
+    page = PAGE.replace("64:37.329", "1h 04m").replace("00:31.432", "1..2")
+    language, duration_s, segments = parse_episode_page(page)
+    assert duration_s is None and segments  # the bad turn is skipped, the rest kept
+
+
+def test_header_fields_are_read_from_the_header_only():
+    page = PAGE.replace("Très bien, il fait très beau.", "- **Duration:** 1:00.000")
+    assert round(parse_episode_page(page)[1], 3) == 3877.329
+
+
+def test_find_never_raises():
+    with patch.object(exa_podcast.gateway, "call", side_effect=KeyError("runId")):
+        assert find_transcript("a.mp3", "Roman Civil War: Rise of the General (Part 1)", 4752) is None
