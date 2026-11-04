@@ -78,6 +78,13 @@ def html_to_markdown(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     for a in soup.find_all("a", href=True):
         a["href"] = a["href"].replace("(", "%28").replace(")", "%29")
+    # A <dl> with no term is an indent (Wikipedia's ":"): written as a
+    # definition, Pandoc would make the paragraph above it the term.
+    for dl in soup.find_all("dl"):
+        if not dl.find("dt"):
+            for dd in dl.find_all("dd"):
+                dd.name = "div"
+            dl.name = "div"
     _flatten_tables(soup)
     # Superscripts and subscripts stay inline HTML: flattened, "H2O" and "XIXe"
     # read as other words. Pandoc, GitHub and Obsidian all render the tags;

@@ -329,3 +329,10 @@ def test_a_blank_line_inside_a_formula_does_not_split_it():
     # A blank line ends a Markdown paragraph, and the formula with it.
     html = '<p><span class="math inline">\begin{aligned} a &= 1 \\\n\n\end{aligned}</span></p>'
     assert html_to_markdown(html) == "$\begin{aligned} a &= 1 \\\n\end{aligned}$"
+
+
+def test_an_indent_with_no_term_is_its_content_not_a_definition_list():
+    # Wikipedia indents with <dl><dd> and no <dt>: written as ":   …", Pandoc
+    # made the paragraph above it a definition term.
+    html = "<p>It would split</p><dl><dd><code>a -> b</code></dd></dl><p>as</p>"
+    assert html_to_markdown(html) == "It would split\n\n`a -> b`\n\nas"
