@@ -102,8 +102,11 @@ export function WorkPane({
   // CSS motion (the search sliding up) isn't replaced by a cross-fade.
   transitionName?: string;
 }) {
+  // shrink-0, never min-h-0: a long list must push this box taller, not
+  // overflow it, or the bottom padding is lost and the last line sits glued
+  // to the pane's bottom edge once scrolled down.
   const column = (
-    <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-6 sm:p-8">
+    <div className="mx-auto flex w-full max-w-3xl flex-1 shrink-0 flex-col gap-6 p-6 sm:p-8">
       {children}
     </div>
   );
