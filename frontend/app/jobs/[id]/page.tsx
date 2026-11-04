@@ -579,6 +579,13 @@ function StatusMessage({ label }: { label: string }) {
   );
 }
 
+// The waits and the failure hold a short list on an otherwise empty pane, so
+// they sit in its vertical middle instead of hanging from the top. Auto margins
+// rather than justify-center: a list taller than the pane collapses them to
+// zero and starts at the top, scrolling as usual, where justify-center would
+// push its head out of reach. The back link above stays put.
+const CENTERED_IN_PANE = "my-auto w-full";
+
 // The head of both waits. No spinner: the one thing in motion is the row being
 // worked on (its title shimmers); the bar only moves when a step lands, so it
 // says exactly how far along it is rather than that something is spinning.
@@ -606,7 +613,7 @@ function DiscoveringView({ sources }: { sources: Source[] }) {
   // currently being looked through; the rest are still queued.
   const activeIndex = sources.findIndex((s) => !s.resolved);
   return (
-    <div className="flex flex-col gap-5">
+    <div className={cn("flex flex-col gap-5", CENTERED_IN_PANE)}>
       <WaitHeader
         label="Opening your sources"
         done={sources.filter((s) => s.resolved).length}
@@ -682,7 +689,7 @@ function CompilingView({ items }: { items: DiscoveredItem[] }) {
       ["done", "skipped", "failed"].includes(it.compile_state ?? "pending"),
     );
   return (
-    <div className="flex flex-col gap-5">
+    <div className={cn("flex flex-col gap-5", CENTERED_IN_PANE)}>
       <WaitHeader
         label={building ? "Building the file" : "Writing your chapters"}
         done={items.filter((it) => it.compile_state && it.compile_state !== "pending" && it.compile_state !== "compiling").length}
@@ -772,7 +779,7 @@ function CompileStep({
 // items to report); job.error alone still covers that case, as it always did.
 function FailedView({ job }: { job: JobResponse }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn("flex flex-col gap-2", CENTERED_IN_PANE)}>
       <Notice variant="error">
         <span className="block font-medium">Compilation failed.</span>
         {job.error}
