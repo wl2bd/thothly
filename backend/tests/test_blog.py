@@ -282,3 +282,9 @@ def test_a_code_block_stays_one_fenced_block(mock_fetch):
     assert "```\ndef f(x):\n    return x**2\n```" in md
     assert "```\n```" not in md
 
+
+@patch("app.sources.blog._fetch_url")
+def test_inline_code_stays_inside_its_paragraph(mock_fetch):
+    mock_fetch.return_value = _page("<p>Run <code>pip install</code> first, then go.</p>")
+    md = html_to_markdown(scrape_article("https://x.test/a").content_html)
+    assert "Run `pip install` first, then go." in md

@@ -32,6 +32,10 @@ _BROWSER_UA = (
 # No data table has a cell this long; a page laid out in a table does.
 _LAYOUT_CELL_CHARS = 1000
 
+# Elements that hold running text: a <pre> inside one is inline code.
+_INLINE_CONTEXT = ["p", "li", "td", "th", "cell", "h1", "h2", "h3", "h4", "h5", "h6",
+                   "a", "strong", "b", "em", "i", "u", "del", "sup", "sub"]
+
 
 class FeedUnavailable(Exception):
     pass
@@ -166,14 +170,19 @@ def _clean_extracted_html(html: str, base_url: str) -> str:
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # trafilatura writes a code block (<pre><code>) as <pre><pre>. It keeps
-    # only its inner <pre>'s text (the space around it is trafilatura's
-    # pretty-printing), before the code-table pass, which would read each
-    # <pre> as a separate part.
+    # trafilatura writes every code element as <pre>: a block (<pre><code>)
+    # comes out as <pre><pre>, inline <code> as a <pre> inside its paragraph.
+    # A block keeps only its inner <pre>'s text (the space around it is
+    # trafilatura's pretty-printing); a one-line <pre> inside text is inline
+    # code again. Both before the code-table pass, which reads any <pre> as a
+    # code layout.
     for pre in soup.find_all("pre"):
         inner = pre.find_all("pre")
         if inner and not pre.find_parent("pre"):
             pre.string = "\n".join(p.get_text() for p in inner)
+    for pre in soup.find_all("pre"):
+        if pre.find_parent(_INLINE_CONTEXT) and "\n" not in pre.get_text():
+            pre.name = "code"
 
     # <graphic> → <img>, deduped by scheme-insensitive URL (same image is often
     # emitted twice: once protocol-relative inside its <a>, once bare as http:).
