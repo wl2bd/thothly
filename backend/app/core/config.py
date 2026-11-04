@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     treg_token: str | None = None
     treg_base_url: str = "https://treg.to/call"
 
+    # Monid key (https://monid.ai): the fallback gateway for the same vendor
+    # calls when treg is down, out of balance or rate limited (app/core/gateway.py).
+    monid_api_key: str | None = None
+    monid_base_url: str = "https://api.monid.ai"
+
     # Search triage: one small-model call per search judges every result
     # (compilable? relevant? level, freshness) and re-orders the list. Any
     # OpenAI-compatible endpoint with JSON-schema output; unset = untriaged.
@@ -139,6 +144,8 @@ class Settings(BaseSettings):
     # (1 credit); Brave is its Search plan ($5 per 1,000 requests).
     scrapecreators_price_per_call: float = 0.00188
     brave_price_per_call: float = 0.005
+    # Exa: $0.007 per search of up to 10 results, the same through treg or Monid.
+    exa_price_per_call: float = 0.007
 
     # Bring your own LLM: visitors pick a provider from the allowlist in
     # app/pipeline/providers.py and the server calls that provider's fixed URL.

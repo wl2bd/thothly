@@ -6,6 +6,7 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import YoutubeDLError
 
 from app.core.config import settings
+from app.core import gateway
 from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
 from app.search.triage import triage_enabled
@@ -82,20 +83,19 @@ class YouTubeProvider:
         """Paid path (see app/sources/scrapecreators.py): unlike the flat yt-dlp
         search it returns each video's description and publish date, which the
         triage needs to judge a video and its freshness."""
+        endpoint = "scrapecreators.x.v1-youtube-search"
         try:
-            response = httpx.get(
-                f"{settings.treg_base_url}/scrapecreators.x.v1-youtube-search",
+            response = gateway.call(
+                gateway.Route(treg=endpoint),
                 params={"query": query, "type": "videos", "includeExtras": "true"},
-                headers={"X-Treg-Token": settings.treg_token or ""},
                 timeout=_SCRAPECREATORS_TIMEOUT_S,
             )
-            response.raise_for_status()
-            capture_paid_call(
-                "scrapecreators", "scrapecreators.x.v1-youtube-search", settings.scrapecreators_price_per_call
-            )
-            videos = response.json().get("videos") or []
-        except (httpx.HTTPError, ValueError) as exc:
+        except gateway.GatewayError as exc:
             raise RuntimeError(f"YouTube search failed: {exc}") from exc
+        if response.status != 200:
+            raise RuntimeError(f"YouTube search failed: HTTP {response.status}")
+        capture_paid_call("scrapecreators", endpoint, settings.scrapecreators_price_per_call)
+        videos = (response.data or {}).get("videos") or []
         results = []
         for v in videos:
             if not v.get("id"):
