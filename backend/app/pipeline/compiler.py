@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup, Tag
 from markdownify import MarkdownConverter
 
 from app.pipeline.i18n import dominant_language
-from app.pipeline.models import CompiledBook, CompiledChapter
+from app.pipeline.models import CompiledBook, CompiledChapter, escape_tags
 from app.sources.models import Transcript, TranscriptSegment
 
 
@@ -87,16 +87,11 @@ def html_to_markdown(html: str) -> str:
     ).convert(str(soup)).strip()
 
 
-# A "<" that could open a tag or an autolink.
-_TAG_OPEN = re.compile(r"<(?=[A-Za-z/!?])")
-
-
 class _Converter(MarkdownConverter):
     def escape(self, text, parent_tags):
-        # A literal "<div>" in the text would be read as raw HTML by Pandoc,
-        # GitHub and Obsidian alike, and vanish. CommonMark's backslash escape
-        # keeps it text everywhere; raw HTML stays on for <sup>/<sub>.
-        return _TAG_OPEN.sub(r"\<", super().escape(text, parent_tags))
+        # CommonMark's backslash escape keeps a literal "<div>" text in every
+        # reader; raw HTML stays on for <sup>/<sub>.
+        return escape_tags(super().escape(text, parent_tags))
 
 
 # A footnote marker as sites set it: "[1]", "[d]", "[note 3]".
@@ -435,7 +430,7 @@ def transcript_to_markdown(
         else:
             body = segments_to_markdown([s.text for s in segs])
         if body:
-            sections.append(f"## {chapter.title}\n\n{body}")
+            sections.append(f"## {escape_tags(chapter.title)}\n\n{body}")
     return "\n\n".join(sections)
 
 

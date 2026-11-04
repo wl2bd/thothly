@@ -1,8 +1,19 @@
+import re
 from datetime import datetime
 
 from pydantic import BaseModel
 
 from app.pipeline.i18n import FALLBACK, chrome
+
+
+# A "<" that could open a tag or an autolink.
+_TAG_OPEN = re.compile(r"<(?=[A-Za-z/!?])")
+
+
+def escape_tags(text: str) -> str:
+    """Keep a literal "<div>" text in Markdown: unescaped, Pandoc, GitHub and
+    Obsidian read it as raw HTML, and an unclosed one breaks the EPUB."""
+    return _TAG_OPEN.sub(r"\\<", text)
 
 
 class CompiledChapter(BaseModel):
@@ -47,7 +58,7 @@ class CompiledBook(BaseModel):
             parts.append(f"# {labels['sources']} {{.front-matter}}")
             parts.append("")
             for chapter in self.chapters:
-                parts.append(f"- [{chapter.title}]({chapter.source_url})")
+                parts.append(f"- [{escape_tags(chapter.title)}]({chapter.source_url})")
             parts.append("")
 
         # The generated preface opens the book, as its own front-matter heading.
@@ -59,13 +70,13 @@ class CompiledBook(BaseModel):
 
         for chapter in self.chapters:
             lang = f" {{lang={chapter.language}}}" if chapter.language else ""
-            parts.append(f"# {chapter.title}{lang}")
+            parts.append(f"# {escape_tags(chapter.title)}{lang}")
 
             # Show the actual source URL as a clickable link so each chapter is
             # traceable back to (and re-openable from) its origin.
             meta_parts = [f"*{labels['source']}: [{chapter.source_url}]({chapter.source_url})*"]
             if chapter.author:
-                meta_parts.append(f"*{labels['author']}: {chapter.author}*")
+                meta_parts.append(f"*{labels['author']}: {escape_tags(chapter.author)}*")
             if chapter.published_at:
                 meta_parts.append(f"*{labels['date']}: {chapter.published_at.strftime('%Y-%m-%d')}*")
 

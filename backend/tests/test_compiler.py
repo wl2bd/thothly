@@ -271,3 +271,26 @@ def test_a_literal_tag_in_the_text_is_escaped_not_read_as_html():
     assert html_to_markdown(html) == (
         "Write \<div> or \</p>, mail \<me@x.test>; a < b & c.\n\n```\n<div>\n```"
     )
+
+
+def test_a_tag_in_a_source_title_or_author_stays_text():
+    # A reference page titled "<ol>: …" made Pandoc open a raw <ol> it never
+    # closed, and the whole EPUB failed to parse.
+    book = compile_book(
+        [CompiledChapter(title="<ol>: the list element", source_type="blog",
+                         source_url="https://a.test", author="<team>", content_md="x")],
+        "Title",
+    )
+    md = book.to_markdown()
+    assert "# \<ol>: the list element" in md
+    assert "[\<ol>: the list element](https://a.test)" in md
+    assert "\<team>" in md
+
+
+def test_a_tag_in_a_video_chapter_title_stays_text():
+    transcript = Transcript(
+        video_id="v", language="en",
+        segments=[_seg("Hello there.", 0.0)],
+        chapters=[Chapter(title="The <div> trick", start_s=0.0, end_s=10.0)],
+    )
+    assert "## The \<div> trick" in transcript_to_markdown(transcript)
