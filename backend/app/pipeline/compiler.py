@@ -79,7 +79,12 @@ def html_to_markdown(html: str) -> str:
     for a in soup.find_all("a", href=True):
         a["href"] = a["href"].replace("(", "%28").replace(")", "%29")
     _flatten_tables(soup)
-    return md(str(soup), heading_style="ATX", bullets="-").strip()
+    # Superscripts and subscripts stay inline HTML: flattened, "H2O" and "XIXe"
+    # read as other words. Pandoc, GitHub and Obsidian all render the tags;
+    # Pandoc's "^2^"/"~2~" would show as strikethrough on GitHub.
+    return md(
+        str(soup), heading_style="ATX", bullets="-", sup_symbol="<sup>", sub_symbol="<sub>"
+    ).strip()
 
 
 # A footnote marker as sites set it: "[1]", "[d]", "[note 3]".

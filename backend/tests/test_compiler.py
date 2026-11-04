@@ -254,3 +254,11 @@ def test_a_table_holding_a_table_gives_way_to_its_content():
 def test_a_single_column_table_is_just_its_text():
     html = "<table><tr><td><ul><li>(1) = 1st spouse</li></ul></td></tr></table>"
     assert html_to_markdown(html) == "- (1) = 1st spouse"
+
+
+def test_superscript_and_subscript_survive_as_inline_html():
+    # Flattened, "H2O", "mc2" and "XIXe" read as different words. Inline HTML
+    # is what Pandoc, GitHub and Obsidian all render; "~2~" is strikethrough
+    # on GitHub.
+    html = "<p>H<sub>2</sub>O, E = mc<sup>2</sup>, le XIX<sup>e</sup> siècle.</p>"
+    assert html_to_markdown(html) == "H<sub>2</sub>O, E = mc<sup>2</sup>, le XIX<sup>e</sup> siècle."
