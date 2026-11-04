@@ -2,6 +2,8 @@
 
 import { Kbd, KeyLabel } from "@/components/ui/kbd";
 import { useEffect, useRef } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 import { Button } from "@/components/ui/button";
 import { parseFigure, parseOrderedList, tokenizeInline, type InlineToken } from "@/lib/inline-md";
@@ -302,6 +304,18 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
         >
           {renderInline(token.text)}
         </a>
+      );
+    case "math":
+      // KaTeX writes the TeX the compiler kept from the source; with its
+      // defaults (no \href, no raw HTML) the markup it returns is safe.
+      return (
+        <span
+          key={key}
+          className={cn(token.display && "block max-w-full overflow-x-auto py-1")}
+          dangerouslySetInnerHTML={{
+            __html: katex.renderToString(token.tex, { displayMode: token.display, throwOnError: false }),
+          }}
+        />
       );
     case "sup":
       return <sup key={key}>{token.children.map(renderToken)}</sup>;

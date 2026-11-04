@@ -1,6 +1,7 @@
 // The inline half of the reader's small Markdown renderer: bold, italics,
 // links, code spans, superscripts and subscripts (kept as <sup>/<sub> by the
-// compiler) and backslash escapes. Anything it doesn't know stays literal text.
+// compiler), backslash escapes and TeX math between dollars. Anything it
+// doesn't know stays literal text.
 export type InlineToken =
   | { t: "text"; text: string }
   | { t: "strong"; text: string }
@@ -8,15 +9,19 @@ export type InlineToken =
   | { t: "link"; text: string; href: string }
   | { t: "code"; text: string }
   | { t: "sup"; children: InlineToken[] }
-  | { t: "sub"; children: InlineToken[] };
+  | { t: "sub"; children: InlineToken[] }
+  | { t: "math"; tex: string; display: boolean };
 
 // Italics need a non-space right after the opening star and right before the
 // closing one, so "5 * 3" stays arithmetic.
 // A backslash before ASCII punctuation is that character as text ("\<div>",
 // "a\*b"): matched where it stands, it is consumed before a star can open
 // italics.
+// Math follows Pandoc's rule: "$$…$$" is display math; "$…$" needs a non-space
+// inside both dollars and no digit after the closing one, so "$10 and $20"
+// stays prices. Its TeX is verbatim: "\;" and "*" are not Markdown there.
 const INLINE =
-  /\*\*([^*]+)\*\*|\*(?=\S)([^*]*?\S)\*|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|`([^`]+)`|\\([!-\/:-@[-`{-~])|<sup>(.*?)<\/sup>|<sub>(.*?)<\/sub>/g;
+  /\*\*([^*]+)\*\*|\*(?=\S)([^*]*?\S)\*|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|`([^`]+)`|\\([!-\/:-@[-`{-~])|<sup>(.*?)<\/sup>|<sub>(.*?)<\/sub>|\$\$([\s\S]+?)\$\$|\$(?=\S)([^$\n]*?\S)\$(?!\d)/g;
 
 export function tokenizeInline(text: string): InlineToken[] {
   const tokens: InlineToken[] = [];
@@ -34,6 +39,8 @@ export function tokenizeInline(text: string): InlineToken[] {
     else if (m[6] != null) tokens.push({ t: "text", text: m[6] });
     else if (m[7] != null) tokens.push({ t: "sup", children: tokenizeInline(m[7]) });
     else if (m[8] != null) tokens.push({ t: "sub", children: tokenizeInline(m[8]) });
+    else if (m[9] != null) tokens.push({ t: "math", tex: m[9].trim(), display: true });
+    else if (m[10] != null) tokens.push({ t: "math", tex: m[10], display: false });
     last = re.lastIndex;
   }
   if (last < text.length) tokens.push({ t: "text", text: text.slice(last) });

@@ -78,3 +78,19 @@ test("a link title holding parentheses stays out of the text", () => {
     ],
   );
 });
+
+test("TeX between dollars is math, kept verbatim, escapes and stars included", () => {
+  assert.deepEqual(tokenizeInline(String.raw`size $d_{\text{key}} * 2$ and:$$a, \;b$$but`), [
+    { t: "text", text: "size " },
+    { t: "math", tex: String.raw`d_{\text{key}} * 2`, display: false },
+    { t: "text", text: " and:" },
+    { t: "math", tex: String.raw`a, \;b`, display: true },
+    { t: "text", text: "but" },
+  ]);
+});
+
+test("prices are not math", () => {
+  assert.deepEqual(tokenizeInline("$10 and $20, or 5 $ each"), [
+    { t: "text", text: "$10 and $20, or 5 $ each" },
+  ]);
+});
