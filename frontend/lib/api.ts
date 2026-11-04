@@ -52,6 +52,9 @@ export interface DiscoveredItem {
   is_punctuated: boolean | null;
   word_count: number | null;
   reading_time_min: number | null;
+  // A homepage link that may not be an article (it sat in the page's prose):
+  // listed at review but unselected by default.
+  uncertain: boolean;
   // How this item fared in the compile, present from the moment it's confirmed;
   // null on items that weren't part of one. "skipped" is nothing usable to build
   // from, "failed" is something that broke, and both carry the user-facing reason

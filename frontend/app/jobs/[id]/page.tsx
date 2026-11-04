@@ -115,6 +115,8 @@ const BOOK_TITLE_MAX = 100;
 // transcribed, billed per minute) and a whole feed can list hundreds. So only the
 // first PODCAST_PRESELECT of each source start selected; everything else, and
 // every free item, is pre-selected as usual. The user can still select them all.
+// A homepage link discovery wasn't sure about (a mention in the page's prose)
+// starts unselected too: it's listed so the user can pick it, not assumed.
 const PODCAST_PRESELECT = 10;
 
 // ponytail: "newest" = feed order (item_index), which is newest-first in
@@ -123,7 +125,9 @@ function defaultSelection(items: DiscoveredItem[]): Set<string> {
   return new Set(
     items
       .filter(
-        (it) => it.item_type !== "podcast" || it.item_index < PODCAST_PRESELECT,
+        (it) =>
+          !it.uncertain &&
+          (it.item_type !== "podcast" || it.item_index < PODCAST_PRESELECT),
       )
       .map((it) => it.id),
   );
@@ -1129,6 +1133,9 @@ function ReviewList({
   useShortcut("a", () => (selected.size === items.length ? onSelectNone() : onSelectAll()), items.length > 0);
   const storedModels = useStoredModels();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  // Sources whose "uncertain links" fold is open. Closed by default: those
+  // links are mostly noise and start unselected.
+  const [uncertainOpen, setUncertainOpen] = useState<Set<number>>(new Set());
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1216,6 +1223,14 @@ function ReviewList({
   // to reorder otherwise.
   const reorderable = needle === "" && sourceOrder.length > 1;
 
+  const toggleUncertain = (index: number) =>
+    setUncertainOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+
   const toggleCollapse = (index: number) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -1280,6 +1295,22 @@ function ReviewList({
     }
 
     const someSelected = selectedCount > 0 && !allSelected;
+    // Links discovery wasn't sure about sit at the end, folded away. A search
+    // opens the fold, like it opens a collapsed source.
+    const sureItems = groupItems.filter((it) => !it.uncertain);
+    const unsureItems = groupItems.filter((it) => it.uncertain);
+    const showUnsure = needle !== "" || uncertainOpen.has(sourceIndex);
+    const renderChild = (item: DiscoveredItem) => (
+      <ReviewItem
+        key={item.id}
+        jobId={jobId}
+        item={item}
+        checked={selected.has(item.id)}
+        onToggle={() => onToggle(item.id)}
+        sttAvailable={sttAvailable}
+        highlight={needle}
+      />
+    );
     // Says why a long podcast feed doesn't start fully selected.
     const episodeCount = groupItems.filter(
       (it) => it.item_type === "podcast",
@@ -1395,19 +1426,45 @@ function ReviewList({
             />
           )}
         </div>
-        {!isCollapsed &&
-          groupItems.map((item) => (
-            <ReviewItem
-              key={item.id}
-              jobId={jobId}
-              item={item}
-              checked={selected.has(item.id)}
-              onToggle={() => onToggle(item.id)}
-              sttAvailable={sttAvailable}
-              reserveGrip={reorderable}
-              highlight={needle}
-            />
-          ))}
+        {!isCollapsed && (
+          /* The children hang off a rail dropped from the source's checkbox, and
+             start under the source's name: even scrolled deep into a long list,
+             the line says these rows belong to the source above. ml puts the
+             1px rail on the checkbox's centre (with or without a grip before
+             it); pl lines each child's checkbox up under the source's title. */
+          <div
+            className={cn(
+              "border-foreground/15 flex flex-col border-l pl-2.5",
+              handleProps ? "ml-[61.5px]" : "ml-[23.5px]",
+            )}
+          >
+            {sureItems.map(renderChild)}
+            {unsureItems.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => toggleUncertain(sourceIndex)}
+                  aria-expanded={showUnsure}
+                  className="text-muted-foreground hover:text-foreground flex items-center gap-3.5 rounded-lg px-3.5 py-3 text-left text-xs transition-colors"
+                >
+                  <span className="grid size-5 shrink-0 place-items-center">
+                    {showUnsure ? (
+                      <Minus className="size-3.5" />
+                    ) : (
+                      <Plus className="size-3.5" />
+                    )}
+                  </span>
+                  <span>
+                    {unsureItems.length} uncertain{" "}
+                    {unsureItems.length === 1 ? "link" : "links"}, mentioned in
+                    the page&apos;s text. Unselected.
+                  </span>
+                </button>
+                {showUnsure && unsureItems.map(renderChild)}
+              </>
+            )}
+          </div>
+        )}
       </>
     );
   };
@@ -1630,10 +1687,6 @@ interface ReviewItemProps {
   // reads as a source header — a peer of the multi-item group headers — rather
   // than as a loose list item.
   asSource?: boolean;
-  // Reserve an empty grip-width gutter so a grouped item's checkbox lines up
-  // under its (draggable) source header's checkbox. Only needed while reordering
-  // is on — the header then has a real grip in that column.
-  reserveGrip?: boolean;
   // The active search term (lower-cased), highlighted within the title so it's
   // clear why the row matched. Empty when not filtering.
   highlight?: string;
@@ -1652,7 +1705,6 @@ function ReviewItem({
   sourceUrl,
   dragHandleProps,
   asSource,
-  reserveGrip,
   highlight,
 }: ReviewItemProps) {
   const [open, setOpen] = useState(false);
@@ -1720,8 +1772,6 @@ function ReviewItem({
           >
             <GripVertical className="size-4" />
           </button>
-        ) : reserveGrip ? (
-          <span className="w-6 shrink-0" aria-hidden="true" />
         ) : null}
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
           <Checkbox checked={checked} onCheckedChange={onToggle} />
