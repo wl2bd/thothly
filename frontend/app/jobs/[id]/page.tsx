@@ -2085,21 +2085,20 @@ function RoleSelector({
     else onSetRolesMany([...defaultIds, ...extraIds], false);
   }
 
-  const plural = unpunctuatedSelected !== 1 ? "s" : "";
-
   const providerLabel = browserModel
     ? (llm.providers.find((p) => p.id === browserModel.provider)?.label ?? "your own server")
     : null;
-  const rough =
+  // What the switch does, never the problem again: the rows already say which
+  // captions read raw. Its reach is a count, so you know what it would touch.
+  const reach =
     unpunctuatedSelected > 0
-      ? `${unpunctuatedSelected} raw transcript${plural} ${unpunctuatedSelected === 1 ? "has" : "have"} no punctuation. `
+      ? ` Applies to ${unpunctuatedSelected} source${unpunctuatedSelected !== 1 ? "s" : ""} with raw captions.`
       : "";
-  // One sentence for what the switch changes, from where it stands now.
   const what = !llm.available
-    ? `${rough}Your own AI model can punctuate and lightly copyedit the text. Without one, it stays exactly as retrieved.`
+    ? "Your own AI model can punctuate and lightly copyedit the text. Without one, it stays exactly as retrieved."
     : masterOn
-      ? "Adds missing punctuation and a light copyedit."
-      : `${rough}Off: the text stays exactly as retrieved.`;
+      ? `Adds missing punctuation and a light copyedit.${reach}`
+      : `Punctuates raw captions into paragraphs and lightly copyedits.${reach}`;
 
   // A section of the pane like the others, not a card: a name and its switch,
   // one sentence, then the extras and whose model it runs on.
