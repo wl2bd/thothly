@@ -1997,7 +1997,12 @@ function ReviewItem({
           ) : error ? (
             <p className="text-destructive text-xs">{error}</p>
           ) : preview ? (
-            <PreviewBody preview={preview} />
+            <PreviewBody
+              preview={preview}
+              rawCaptions={
+                item.item_type === "youtube" && item.is_punctuated === false
+              }
+            />
           ) : null}
         </div>
       )}
@@ -2005,7 +2010,16 @@ function ReviewItem({
   );
 }
 
-function PreviewBody({ preview }: { preview: ItemPreview }) {
+function PreviewBody({
+  preview,
+  rawCaptions = false,
+}: {
+  preview: ItemPreview;
+  // Raw auto-captions: the excerpt is labelled as such in its corner, so it's
+  // never taken for the final text. The row above already says why and offers
+  // the fix, so no sentence repeats it here.
+  rawCaptions?: boolean;
+}) {
   // The excerpt box has no sticky header, so it fades on BOTH edges that hide
   // content — the same softening the lists get, so a long preview dissolves at
   // top and bottom instead of being sliced on a hard line.
@@ -2029,12 +2043,19 @@ function PreviewBody({ preview }: { preview: ItemPreview }) {
       {/* A quoted excerpt, NOT an editor: a full bordered + filled box reads as
           a textarea and implies you can type in it. A left rule (blockquote)
           with a barely-there fill reads as displayed source text. */}
-      <div
-        ref={excerptRef}
-        style={fade}
-        className="border-border bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l py-2 pr-3 pl-4"
-      >
-        <MarkdownPreview md={preview.content_md ?? ""} />
+      <div className="relative">
+        <div
+          ref={excerptRef}
+          style={fade}
+          className="border-border bg-muted/20 max-h-72 overflow-y-auto rounded-r-md border-l py-2 pr-3 pl-4"
+        >
+          <MarkdownPreview md={preview.content_md ?? ""} />
+        </div>
+        {rawCaptions && (
+          <span className="bg-background text-muted-foreground border-border absolute top-2 right-4 rounded-full border px-2 py-0.5 text-[11px]">
+            Raw captions
+          </span>
+        )}
       </div>
       {preview.truncated && (
         <p className="text-muted-foreground text-xs">
