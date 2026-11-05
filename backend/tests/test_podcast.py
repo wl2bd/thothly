@@ -249,3 +249,26 @@ def test_no_published_transcript_falls_back_to_transcribing(db):
          patch.object(podcast, "_transcribe_episode", return_value=None) as stt:
         assert load_episode_transcript(AUDIO_URL, title="Ep 1") is None
     stt.assert_called_once()
+
+
+def test_discovery_reads_the_feeds_own_transcript_before_exa(db, monkeypatch):
+    from app.sources.models import Transcript, TranscriptSegment
+
+    seen = {}
+
+    def fake_rss(feed_url, audio_url, title):
+        seen["args"] = (feed_url, audio_url, title)
+        return Transcript(
+            video_id=audio_url,
+            language="fr",
+            segments=[TranscriptSegment(text="Bonjour et bienvenue.", start_s=0, duration_s=2)],
+        )
+
+    monkeypatch.setattr(podcast.rss_transcript, "find_transcript", fake_rss)
+    _, items = discover_source(
+        AUDIO_URL, 0, kind="podcast", title="Ep 1", feed_url="https://feed.example/rss"
+    )
+    assert seen["args"] == ("https://feed.example/rss", AUDIO_URL, "Ep 1")
+    assert items[0].has_transcript
+    # Cached: the compile reuses it without another lookup.
+    assert podcast.cached_episode_transcript(AUDIO_URL).language == "fr"

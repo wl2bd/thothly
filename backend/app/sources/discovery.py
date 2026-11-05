@@ -93,6 +93,7 @@ def discover_source(
     kind: str | None = None,
     title: str | None = None,
     duration_s: int | None = None,
+    feed_url: str | None = None,
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """Return the (source name, items) for a source URL.
 
@@ -109,7 +110,7 @@ def discover_source(
     logger.info("Discovering source %d (kind=%s, url=%s)", source_index, resolved, url)
 
     if resolved == "podcast":
-        return _discover_podcast(url, source_index, title, duration_s)
+        return _discover_podcast(url, source_index, title, duration_s, feed_url)
     if resolved == "youtube_playlist":
         return _discover_youtube(url, source_index)
     if resolved == "youtube_channel":
@@ -120,7 +121,11 @@ def discover_source(
 
 
 def _discover_podcast(
-    url: str, source_index: int, title: str | None, duration_s: int | None = None
+    url: str,
+    source_index: int,
+    title: str | None,
+    duration_s: int | None = None,
+    feed_url: str | None = None,
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """One item for a podcast episode. The audio enclosure isn't probed here —
     transcription is metered, so it's deferred to compile and runs only for the
@@ -136,20 +141,25 @@ def _discover_podcast(
         item_index=0,
         estimated_duration_s=duration_s,
     )
-    _enrich_podcast_item(item, duration_s)
+    _enrich_podcast_item(item, duration_s, feed_url)
     return episode_title, [item]
 
 
-def _enrich_podcast_item(item: DiscoveredItem, duration_s: int | None) -> None:
+def _enrich_podcast_item(
+    item: DiscoveredItem, duration_s: int | None, feed_url: str | None = None
+) -> None:
     """Look up a picked episode's published transcript now, like a video's
     subtitles, so review shows its text instead of promising it for later.
 
-    One flat lookup (~$0.007) that the compile would pay anyway: the hit is
+    The show's own feed is read first (free), then Exa: one flat lookup
+    (~$0.007) that the compile would pay anyway: the hit is
     cached. Only picked episodes come through here; a feed's episodes aren't
     probed, a long feed would cost one lookup each. Never transcribes, and any
     failure leaves the item as before ("From audio")."""
     try:
-        transcript = podcast.find_published_transcript(item.url, item.title, duration_s)
+        transcript = podcast.find_published_transcript(
+            item.url, item.title, duration_s, feed_url=feed_url
+        )
     except Exception as exc:  # noqa: BLE001 - best effort, never breaks discovery
         logger.warning("Published transcript lookup failed for %s: %s", item.url, exc)
         return

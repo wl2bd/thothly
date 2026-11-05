@@ -33,6 +33,9 @@ class Source(BaseModel):
     # probed at discovery (transcription is deferred), so this is the only place
     # the duration is known — it drives the review screen's reading/cost figures.
     duration_s: int | None = None
+    # The show's RSS feed, from the podcast search result: some feeds publish
+    # each episode's transcript (`<podcast:transcript>`), read for free.
+    feed_url: Annotated[str | None, Field(max_length=2000)] = None
     # The search that found this source, when it came from one: discovery judges
     # the items it unfolds into against it. Absent for a pasted URL.
     query: Annotated[str | None, Field(max_length=200)] = None

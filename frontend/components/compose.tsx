@@ -349,6 +349,7 @@ function ComposeWorkspace({
               source: r.source,
               thumbnail: r.thumbnail,
               durationS: r.duration_s,
+              feedUrl: typeof r.meta?.feed_url === "string" ? r.meta.feed_url : undefined,
               author: r.author,
               query: !queryIsUrl && trimmed !== "" ? trimmed : undefined,
             },
@@ -451,6 +452,7 @@ function ComposeWorkspace({
                 kind: "podcast",
                 title: s.title,
                 duration_s: s.durationS ?? undefined,
+                feed_url: s.feedUrl,
                 query: s.query,
               }
             : { url: s.url, title: s.title, query: s.query },

@@ -15,6 +15,8 @@ export interface Source {
   // Episode length (seconds) from the search result — the only place it's known,
   // and what the review screen needs for the transcription cost estimate.
   duration_s?: number;
+  // The show's RSS feed (podcasts only): some feeds publish the transcript.
+  feed_url?: string;
   // The search that found this source, so discovery can judge what it unfolds
   // into against it. Omitted for a pasted link.
   query?: string;

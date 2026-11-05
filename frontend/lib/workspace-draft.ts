@@ -10,6 +10,8 @@ export interface StagedSource {
   source: string;
   thumbnail: string | null;
   durationS: number | null;
+  // A podcast episode's show feed, from the search result.
+  feedUrl?: string;
   // For a podcast episode this is the show name; for other kinds it's the
   // author/channel. Kept so the Sources recap can show it (an episode's title
   // alone reads like a show name without it).
@@ -65,7 +67,7 @@ export function restoreJobDraft(jobId: string, sources: Source[], bookTitle: str
         ...stagedFromUrl(s.url),
         title: s.title || s.name || prettyUrl(s.url),
         ...(s.kind === "podcast"
-          ? { type: "episode" as ResultType, source: "podcast", durationS: s.duration_s ?? null }
+          ? { type: "episode" as ResultType, source: "podcast", durationS: s.duration_s ?? null, feedUrl: s.feed_url }
           : {}),
       })),
       suggestedTitle: "",

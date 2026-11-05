@@ -1,7 +1,8 @@
 """Turn a podcast episode's audio into a Transcript via the speech-to-text layer.
 
-A published transcript is looked up first (exa_podcast.py); only when there is
-none does the audio get transcribed here.
+A published transcript is looked up first, in the show's own RSS feed
+(rss_transcript.py, free) then Exa's index (exa_podcast.py); only when there
+is none does the audio get transcribed here.
 
 A picked episode's `url` is its audio enclosure. We download it and transcribe
 it — in a single request when it fits under the provider's length cap (so the
@@ -38,7 +39,7 @@ from app.pipeline.transcribe import (
     stt_available,
     transcribe_file,
 )
-from app.sources import exa_podcast
+from app.sources import exa_podcast, rss_transcript
 from app.sources.models import Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,10 @@ def load_episode_transcript(
 
 
 def find_published_transcript(
-    audio_url: str, title: str | None, duration_s: int | None = None
+    audio_url: str,
+    title: str | None,
+    duration_s: int | None = None,
+    feed_url: str | None = None,
 ) -> Transcript | None:
     """The cached or published transcript, never a transcription.
 
@@ -84,6 +88,11 @@ def find_published_transcript(
     cached = _get_cached(audio_url)
     if cached is not None:
         return cached
+    if feed_url:
+        transcript = rss_transcript.find_transcript(feed_url, audio_url, title)
+        if transcript is not None:
+            _store(transcript)
+            return transcript
     if not title or not exa_podcast.available():
         return None
     transcript = exa_podcast.find_transcript(audio_url, title, duration_s)
