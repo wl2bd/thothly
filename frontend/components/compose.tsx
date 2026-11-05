@@ -176,11 +176,10 @@ function ComposeWorkspace({
 
   const trimmed = query.trim();
   const queryIsUrl = looksLikeUrl(trimmed);
-  // The results panel is gated on a DEFERRED query, so its appearance and
-  // disappearance ride a transition (which activates the flow-card
-  // ViewTransition) — the card animates open as the search launches and shut
-  // when the bar clears — while the input stays on the live `query` so typing
-  // never lags behind a frame.
+  // The results panel is gated on a DEFERRED query, so the heavy re-render
+  // rides a transition while the input stays on the live `query`. No view
+  // transition may start from it (see CompilationPane's morphOn): one would
+  // freeze the page mid-word and drop the letters typed meanwhile.
   const deferredTrimmed = useDeferredValue(query).trim();
 
   // The query actually searched: follows `trimmed` at once when a word ends (a
@@ -241,9 +240,9 @@ function ComposeWorkspace({
             if (cancelled) return;
             const isFirst = first;
             first = false;
-            // Settle inside a transition so the card cross-fades + resizes from
-            // the skeleton to the results (the flow-card ViewTransition) rather
-            // than popping — the same motion as the face swap and the job phases.
+            // Settle inside a transition so a batch never blocks typing. It
+            // starts no view transition: batches land while the user is still
+            // typing, and a view transition would swallow their keystrokes.
             startTransition(() => {
               const error = batch.error
                 ? [{ provider: batch.provider, message: batch.error }]
@@ -796,6 +795,9 @@ function ComposeWorkspace({
           onTitleChange={staged.length > 0 ? setTypedTitle : undefined}
           meta={<SourceCount count={staged.length} />}
           className={cn(showResults && "max-lg:hidden")}
+          // Search runs transitions on every keystroke and every result
+          // batch; only the pane opening or closing morphs the card.
+          morphOn={[PANE_TOGGLE]}
           footer={
             <>
               {compileError && <Notice variant="error">{compileError}</Notice>}

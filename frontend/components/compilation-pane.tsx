@@ -23,6 +23,7 @@ export function CompilationPane({
   footer,
   className,
   titleClassName,
+  morphOn,
 }: {
   eyebrow: ReactNode;
   title: string;
@@ -33,6 +34,11 @@ export function CompilationPane({
   footer?: ReactNode;
   className?: string;
   titleClassName?: string;
+  // Given, the card morphs in place only for these transition types (it still
+  // morphs across a navigation). For a page that runs transitions while the
+  // user types: each one starts a view transition, which freezes the page for
+  // its length and drops the keystrokes that land in it.
+  morphOn?: string[];
 }) {
   useRegisterPane();
   const settingsOpen = useSettingsOpen();
@@ -53,7 +59,11 @@ export function CompilationPane({
   }, [footer]);
 
   return (
-    <ViewTransition name="flow-card">
+    <ViewTransition
+      name="flow-card"
+      share="auto"
+      default={morphOn ? { ...Object.fromEntries(morphOn.map((t) => [t, "auto"])), default: "none" } : "auto"}
+    >
       <aside
         data-pane
         aria-label={settings ? "Settings" : "Your compilation"}
