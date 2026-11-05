@@ -757,6 +757,36 @@ function ComposeWorkspace({
 
           {error && <Notice variant="error">{error}</Notice>}
 
+          {/* A provider that failed is said above the list, like every other
+              alert in the app (the review screen keeps its states on the rows
+              and nothing at the bottom), so alerts are always looked for in
+              one place. */}
+          {showResults &&
+            searchErrors.length > 0 &&
+            (() => {
+              // Concrete, distinct names — "web search", not "the web" (too
+              // broad when YouTube/podcast results are still shown). The raw
+              // provider codes are lowercase: "web", "youtube", "podcast".
+              const labels: Record<string, string> = {
+                web: "web search",
+                youtube: "YouTube",
+                podcast: "podcasts",
+              };
+              const names = searchErrors.map((e) => labels[e.provider] ?? e.provider);
+              const list =
+                names.length > 1
+                  ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+                  : names[0];
+              const subject = list.charAt(0).toUpperCase() + list.slice(1);
+              // Build the whole sentence as one string so there's never a glued
+              // "web"+"didn't" from JSX collapsing the space between nodes.
+              return (
+                <Notice variant="warning">
+                  {`${subject} didn't respond. Showing the other results.`}
+                </Notice>
+              );
+            })()}
+
 
           {/* Chips and Sort share a row where there is room for one. On a phone
               the chips wrap and Sort stacks under them. */}
@@ -795,34 +825,6 @@ function ComposeWorkspace({
             />
           )}
 
-          {/* A provider that failed is said under the list, not above it: it
-              usually answers last, and a notice landing on top would push
-              every result down while the user is already reading them. */}
-          {showResults &&
-            searchErrors.length > 0 &&
-            (() => {
-              // Concrete, distinct names — "web search", not "the web" (too
-              // broad when YouTube/podcast results are still shown). The raw
-              // provider codes are lowercase: "web", "youtube", "podcast".
-              const labels: Record<string, string> = {
-                web: "web search",
-                youtube: "YouTube",
-                podcast: "podcasts",
-              };
-              const names = searchErrors.map((e) => labels[e.provider] ?? e.provider);
-              const list =
-                names.length > 1
-                  ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
-                  : names[0];
-              const subject = list.charAt(0).toUpperCase() + list.slice(1);
-              // Build the whole sentence as one string so there's never a glued
-              // "web"+"didn't" from JSX collapsing the space between nodes.
-              return (
-                <Notice variant="warning">
-                  {`${subject} didn't respond. Showing the other results.`}
-                </Notice>
-              );
-            })()}
           </div>
 
           <div
