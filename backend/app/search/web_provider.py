@@ -120,7 +120,7 @@ def _canonical_key(url: str) -> str:
     return f"{host}/{'/'.join(segments)}"
 
 
-def _is_article_like(url: str) -> bool:
+def is_article_like(url: str) -> bool:
     """Drop hits that are never a usable article source.
 
     Two cheap, no-fetch rules, in order:
@@ -246,7 +246,7 @@ class WebProvider:
             key = _canonical_key(url)
             if key in seen:
                 continue
-            if not _is_article_like(url):
+            if not is_article_like(url):
                 continue
             seen.add(key)
 

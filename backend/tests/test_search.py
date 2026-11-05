@@ -450,31 +450,31 @@ def test_brave_provider_raises_on_http_error(mock_get):
 
 # ── web backend selection (config-driven) ────────────────────────────────────
 
-# The factory wraps the chosen backend in a cache (see `_CachedProvider`), so
-# tests reach through `._inner` to assert which backend was selected.
+# The factory wraps the chosen backend in a filter and a cache, so these tests
+# assert the selection on `_pick_web_provider`, which returns it bare.
 
 def test_web_backend_defaults_to_marginalia(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "marginalia")
-    assert isinstance(service._build_web_provider()._inner, MarginaliaProvider)
+    assert isinstance(service._pick_web_provider(), MarginaliaProvider)
 
 
 def test_web_backend_unknown_falls_back_to_marginalia(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "nonsense")
-    assert isinstance(service._build_web_provider()._inner, MarginaliaProvider)
+    assert isinstance(service._pick_web_provider(), MarginaliaProvider)
 
 
 def test_web_backend_ddg_selectable(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "ddg")
-    assert isinstance(service._build_web_provider()._inner, WebProvider)
+    assert isinstance(service._pick_web_provider(), WebProvider)
 
 
 def test_web_backend_brave_requires_key(monkeypatch):
     monkeypatch.setattr(service.settings, "web_search_backend", "brave")
     monkeypatch.setattr(service.settings, "brave_api_key", None)
     # Selected without a key → falls back rather than breaking search.
-    assert isinstance(service._build_web_provider()._inner, MarginaliaProvider)
+    assert isinstance(service._pick_web_provider(), MarginaliaProvider)
     monkeypatch.setattr(service.settings, "brave_api_key", "test-key")
-    assert isinstance(service._build_web_provider()._inner, BraveProvider)
+    assert isinstance(service._pick_web_provider(), BraveProvider)
 
 
 def test_cached_web_provider_caches_and_skips_short_queries():
@@ -722,3 +722,34 @@ def test_paid_youtube_search_follows_the_triage_whichever_backend_answers(monkey
         monkeypatch.setattr(cfg.settings, "search_triage_api_key", None)
         provider.search("q", 5)
     assert paid.called
+
+
+# ── every web backend drops non-article hosts ────────────────────────────────
+
+def _web(url: str) -> SearchResult:
+    return SearchResult(id=url, type="web", title=url, url=url, source="web")
+
+
+@pytest.mark.parametrize("backend", ["marginalia", "brave", "exa"])
+def test_every_web_backend_drops_social_video_and_shop_hits(backend):
+    # Only the DuckDuckGo provider filtered these, so on Exa, Brave or
+    # Marginalia a YouTube video or an Instagram profile came back labelled
+    # "Article".
+    hits = [
+        _web("https://www.instagram.com/quillnotes/"),
+        _web("https://www.youtube.com/@quillnotes"),
+        _web("https://us.amazon.com/stores/author/B0"),
+        _web("https://www.facebook.com/quillnotes/posts/1"),
+        _web("https://en.wikipedia.org/wiki/Quill_notes"),
+    ]
+    with (
+        patch.object(service.settings, "web_search_backend", backend),
+        patch.object(service.settings, "brave_api_key", "k"),
+        patch.object(service.gateway, "available", return_value=True),
+        patch.object(MarginaliaProvider, "search", return_value=hits),
+        patch.object(BraveProvider, "search", return_value=hits),
+        patch.object(service.ExaProvider, "search", return_value=hits),
+    ):
+        provider = service._build_web_provider()
+        urls = [r.url for r in provider.search("quill notes", 10)]
+    assert urls == ["https://en.wikipedia.org/wiki/Quill_notes"]

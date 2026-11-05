@@ -17,7 +17,7 @@ from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import ProviderBatch, ProviderError, SearchResponse, SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.triage import triage, triage_enabled
-from app.search.web_provider import WebProvider
+from app.search.web_provider import WebProvider, is_article_like
 from app.search.youtube_provider import YouTubeProvider
 
 logger = logging.getLogger(__name__)
@@ -67,9 +67,30 @@ class _CachedProvider:
         return results
 
 
+class _ArticlesOnly:
+    """Drops web hits that are never a readable article (social, video, shop…).
+
+    The host and URL-shape rules live with the DuckDuckGo provider, which was
+    the only backend applying them. Applied here, every web backend gets them,
+    so a YouTube channel or an Instagram profile never comes back as "Article".
+    """
+
+    def __init__(self, inner: Provider):
+        self._inner = inner
+        self.name = inner.name
+
+    def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
+        return [r for r in self._inner.search(query, limit, hl) if is_article_like(r.url)]
+
+
 def _build_web_provider() -> Provider:
-    """Pick the web-article backend from config (see Settings.web_search_backend),
-    wrapped in a per-keystroke cache (see `_CachedProvider`).
+    """The configured web backend, filtered to articles, behind the per-keystroke
+    cache (see `_ArticlesOnly` and `_CachedProvider`)."""
+    return _CachedProvider(_ArticlesOnly(_pick_web_provider()))
+
+
+def _pick_web_provider() -> Provider:
+    """Pick the web-article backend from config (see Settings.web_search_backend).
 
     All backends emit `web` results, so the rest of the app is backend-agnostic.
     Selecting "brave" without a key falls back to Marginalia rather than silently
@@ -78,25 +99,25 @@ def _build_web_provider() -> Provider:
     backend = (settings.web_search_backend or "marginalia").strip().lower()
     if backend in ("exa", "tinyfish"):
         if gateway.available(EXA):
-            return _CachedProvider(ExaProvider(free_first=backend == "tinyfish"))
+            return ExaProvider(free_first=backend == "tinyfish")
         logger.warning(
             "web_search_backend=%s but neither TREG_TOKEN nor MONID_API_KEY is set — "
             "falling back to Marginalia.", backend
         )
-        return _CachedProvider(MarginaliaProvider())
+        return MarginaliaProvider()
     if backend == "brave":
         if settings.brave_api_key:
-            return _CachedProvider(BraveProvider())
+            return BraveProvider()
         logger.warning(
             "web_search_backend=brave but BRAVE_API_KEY is unset — "
             "falling back to Marginalia."
         )
-        return _CachedProvider(MarginaliaProvider())
+        return MarginaliaProvider()
     if backend == "ddg":
-        return _CachedProvider(WebProvider())
+        return WebProvider()
     if backend != "marginalia":
         logger.warning("Unknown web_search_backend=%r — using Marginalia.", backend)
-    return _CachedProvider(MarginaliaProvider())
+    return MarginaliaProvider()
 
 
 # The provider registry. Adding a source kind = add one class here; the service,
