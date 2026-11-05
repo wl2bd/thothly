@@ -106,6 +106,8 @@ _DISCOVERED_ITEM_ADDED_COLUMNS = (
     ("reading_time_min", "INTEGER"),
     # 1 for a homepage link that may not be an article (see DiscoveredItem).
     ("uncertain", "INTEGER"),
+    # The discovery triage's reason to start an item unchecked (NULL = none).
+    ("set_aside", "TEXT"),
     # Position in the user-confirmed compile order (the review screen lets sources
     # be reordered by drag). NULL until confirmed; the compile sorts on it.
     ("selected_order", "INTEGER"),

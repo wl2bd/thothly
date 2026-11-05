@@ -56,6 +56,9 @@ class DiscoveredItem:
     # A homepage link we kept but aren't sure is an article (it sat in running
     # prose). Listed at review, unselected, so the user decides.
     uncertain: bool = False
+    # Set by the discovery triage (see app.jobs.phases): why this item starts
+    # unchecked at review.
+    set_aside: str | None = None
 
 
 _AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav")

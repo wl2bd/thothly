@@ -128,6 +128,7 @@ function defaultSelection(items: DiscoveredItem[]): Set<string> {
       .filter(
         (it) =>
           !it.uncertain &&
+          !it.set_aside &&
           (it.item_type !== "podcast" || it.item_index < PODCAST_PRESELECT),
       )
       .map((it) => it.id),
@@ -1190,6 +1191,7 @@ function ReviewList({
   const willBeSkipped = llm && !sttAvailable
     ? items.filter((it) => selected.has(it.id) && needsTranscription(it)).length
     : 0;
+  const setAsideCount = items.filter((it) => it.set_aside).length;
   const connectStt = llm && !sttAvailable ? () => setConnecting("stt") : undefined;
   // Raw-caption rows offer AI polish themselves, while it's available and off.
   const polishDefaultIds = (llm?.roles ?? [])
@@ -1590,7 +1592,7 @@ function ReviewList({
         <Kbd className="text-muted-foreground">A</Kbd>
       </label>
 
-      {(willBeSkipped > 0 || unpunctuatedSelected > 0) && (
+      {(willBeSkipped > 0 || unpunctuatedSelected > 0 || setAsideCount > 0) && (
         <Notice variant="warning">
           <span className="flex flex-col gap-1">
             {willBeSkipped > 0 && (
@@ -1606,6 +1608,13 @@ function ReviewList({
                   Connect transcription
                 </button>{" "}
                 to include {willBeSkipped === 1 ? "it" : "them"}.
+              </span>
+            )}
+            {setAsideCount > 0 && (
+              <span>
+                {setAsideCount === 1
+                  ? "1 item looks off-topic or has nothing to read, so it starts unchecked."
+                  : `${setAsideCount} items look off-topic or have nothing to read, so they start unchecked.`}
               </span>
             )}
             {unpunctuatedSelected > 0 && (
@@ -1890,6 +1899,16 @@ function ReviewItem({
       >
         {action.label}
       </button>,
+    );
+  }
+  // The discovery triage's doubt, after the content tag: the item is kept,
+  // only unchecked, and this says why.
+  if (item.set_aside) {
+    metaParts.push(
+      <Tag className="text-warning">
+        <TriangleAlert />
+        {item.set_aside}, unchecked
+      </Tag>,
     );
   }
   if (sourceUrl) {

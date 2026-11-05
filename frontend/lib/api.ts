@@ -15,6 +15,9 @@ export interface Source {
   // Episode length (seconds) from the search result — the only place it's known,
   // and what the review screen needs for the transcription cost estimate.
   duration_s?: number;
+  // The search that found this source, so discovery can judge what it unfolds
+  // into against it. Omitted for a pasted link.
+  query?: string;
   // The source's real name (channel / playlist / blog title), filled in by the
   // backend during discovery. Used to label the review's source groups.
   name?: string | null;
@@ -55,6 +58,9 @@ export interface DiscoveredItem {
   // A homepage link that may not be an article (it sat in the page's prose):
   // listed at review but unselected by default.
   uncertain: boolean;
+  // Why discovery doubts this item ("Likely off-topic"): it starts unchecked,
+  // with this reason on its row. Null when nothing is doubted.
+  set_aside?: string | null;
   // How this item fared in the compile, present from the moment it's confirmed;
   // null on items that weren't part of one. "skipped" is nothing usable to build
   // from, "failed" is something that broke, and both carry the user-facing reason

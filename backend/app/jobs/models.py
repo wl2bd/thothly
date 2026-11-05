@@ -33,6 +33,9 @@ class Source(BaseModel):
     # probed at discovery (transcription is deferred), so this is the only place
     # the duration is known — it drives the review screen's reading/cost figures.
     duration_s: int | None = None
+    # The search that found this source, when it came from one: discovery judges
+    # the items it unfolds into against it. Absent for a pasted URL.
+    query: Annotated[str | None, Field(max_length=200)] = None
     # The source's human name (playlist/channel/feed/site title), captured during
     # discovery and written back so the review screen can label each source group
     # by its real name instead of the raw URL. Absent until discovery has run.
@@ -111,6 +114,9 @@ class DiscoveredItemResponse(BaseModel):
     # A homepage link kept but not surely an article (it sat in running prose):
     # listed at review, unselected by default.
     uncertain: bool = False
+    # Why the discovery triage doubts this item ("Likely off-topic"): it starts
+    # unchecked at review, with this reason on its row. None = not doubted.
+    set_aside: str | None = None
 
     # How this item fared in the compile, filled in from the moment the user
     # confirms and advanced as the runner reaches it. None on items that weren't

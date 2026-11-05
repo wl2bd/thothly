@@ -321,3 +321,50 @@ def _published(r: SearchResult) -> datetime | None:
         return None
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
+
+
+# --- Item triage: after a source unfolds into items --------------------------
+# A channel, feed or homepage lists everything it holds, music videos and stray
+# links included. The same judge sorts them, but it never removes anything: an
+# item it doubts starts unchecked at review, with the reason on its row.
+
+# A long feed lists up to hundreds of items; only the first ones start selected
+# anyway, so judging past them would cost time for nothing.
+MAX_JUDGED_ITEMS = 50
+
+# Without a search behind the source there is no request to be on-topic for,
+# so the model is told so and only its "compilable" answer is used.
+_NO_REQUEST = "(no request: the user pasted this source; judge only whether each item is compilable)"
+
+
+def set_aside_reasons(verdict: _Verdict, n: int, *, has_query: bool) -> dict[int, str]:
+    """Index -> the short reason an item starts unchecked."""
+    reasons: dict[int, str] = {}
+    seen: set[int] = set()
+    for j in verdict.results:
+        if not 0 <= j.i < n or j.i in seen:
+            continue
+        seen.add(j.i)
+        if not j.compilable:
+            reasons[j.i] = "Likely nothing to read"
+        elif has_query and j.relevance < _MIN_RELEVANCE:
+            reasons[j.i] = "Likely off-topic"
+    return reasons
+
+
+def judge_items(query: str | None, items: list[SearchResult]) -> dict[int, str]:
+    """Reasons to set items aside; empty on any failure (the review then shows
+    every item as before)."""
+    if not items:
+        return {}
+    started = time.monotonic()
+    try:
+        verdict = _ask(query or _NO_REQUEST, items)
+    except Exception as exc:  # noqa: BLE001 — triage must never break discovery
+        logger.warning("Item triage failed, nothing set aside: %s", exc)
+        return {}
+    reasons = set_aside_reasons(verdict, len(items), has_query=bool(query))
+    logger.info(
+        "Item triage: %d of %d set aside in %.1fs", len(reasons), len(items), time.monotonic() - started
+    )
+    return reasons

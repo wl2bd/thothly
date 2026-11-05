@@ -14,6 +14,8 @@ export interface StagedSource {
   // author/channel. Kept so the Sources recap can show it (an episode's title
   // alone reads like a show name without it).
   author: string | null;
+  // The search that found it; absent when it was pasted as a link.
+  query?: string;
 }
 
 export interface Draft {

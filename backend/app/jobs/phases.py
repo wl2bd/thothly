@@ -7,7 +7,9 @@ from app.jobs.repository import (
     update_job_status,
 )
 from app.pipeline.compiler import derive_book_title
-from app.sources.discovery import discover_source
+from app.search.models import SearchResult
+from app.search.triage import MAX_JUDGED_ITEMS, judge_items, triage_enabled
+from app.sources.discovery import DiscoveredItem, discover_source
 from app.sources.youtube import YouTubeUnavailable
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,7 @@ def run_discovery(
                 logger.exception("Source %d of job %s couldn't be read", index, job_id)
                 source_name, discovered = None, []
                 source.error = "Couldn't be read."
+            _set_aside_doubtful(discovered, source_name, source.query)
             source_names.append(source_name)
             items.extend(
                 DiscoveredItemResponse(
@@ -68,6 +71,7 @@ def run_discovery(
                     word_count=d.word_count,
                     reading_time_min=d.reading_time_min,
                     uncertain=d.uncertain,
+                    set_aside=d.set_aside,
                 )
                 for d in discovered
             )
@@ -121,3 +125,39 @@ def run_discovery(
             "failed",
             error="Those sources couldn't be read. Try again.",
         )
+
+
+_RESULT_KIND = {
+    "youtube": ("video", "youtube"),
+    "podcast": ("episode", "podcast"),
+    "blog": ("web", "web"),
+}
+
+
+def _set_aside_doubtful(
+    items: list[DiscoveredItem], source_name: str | None, query: str | None
+) -> None:
+    """Mark the items of a channel, feed or homepage the search triage doubts.
+
+    A single item was picked on purpose, so it is never second-guessed. Nothing
+    is removed: a doubted item only starts unchecked, with its reason shown.
+    """
+    if len(items) < 2 or not triage_enabled():
+        return
+    judged = items[:MAX_JUDGED_ITEMS]
+    results = []
+    for i, d in enumerate(judged):
+        kind, provider = _RESULT_KIND.get(d.item_type, ("web", "web"))
+        results.append(
+            SearchResult(
+                id=f"item:{i}",
+                type=kind,
+                title=d.title,
+                url=d.url,
+                duration_s=d.estimated_duration_s,
+                author=source_name,
+                source=provider,
+            )
+        )
+    for i, reason in judge_items(query, results).items():
+        judged[i].set_aside = reason

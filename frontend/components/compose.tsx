@@ -350,6 +350,7 @@ function ComposeWorkspace({
               thumbnail: r.thumbnail,
               durationS: r.duration_s,
               author: r.author,
+              query: !queryIsUrl && trimmed !== "" ? trimmed : undefined,
             },
           ],
     );
@@ -450,8 +451,9 @@ function ComposeWorkspace({
                 kind: "podcast",
                 title: s.title,
                 duration_s: s.durationS ?? undefined,
+                query: s.query,
               }
-            : { url: s.url, title: s.title },
+            : { url: s.url, title: s.title, query: s.query },
         ),
         title.trim(),
       );

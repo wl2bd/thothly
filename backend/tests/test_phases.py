@@ -80,3 +80,24 @@ def test_one_unreadable_source_does_not_fail_the_others(mock_discover, mock_save
     assert written[0].resolved and written[0].item_count == 0
     assert written[0].error
     assert written[1].error is None
+
+
+def _items(n):
+    return [DiscoveredItem(title=f"T{i}", url=f"https://x/{i}", item_type="youtube",
+                           source_index=0, item_index=i) for i in range(n)]
+
+
+@patch("app.jobs.phases.triage_enabled", return_value=True)
+@patch("app.jobs.phases.judge_items", return_value={1: "Likely off-topic"})
+def test_doubtful_items_of_a_multi_item_source_are_set_aside(mock_judge, _enabled):
+    items = _items(3)
+    phases._set_aside_doubtful(items, "Channel", "stoicism")
+    assert [d.set_aside for d in items] == [None, "Likely off-topic", None]
+    assert mock_judge.call_args.args[0] == "stoicism"
+
+
+@patch("app.jobs.phases.triage_enabled", return_value=True)
+@patch("app.jobs.phases.judge_items")
+def test_a_single_picked_item_is_never_judged(mock_judge, _enabled):
+    phases._set_aside_doubtful(_items(1), None, None)
+    mock_judge.assert_not_called()

@@ -111,3 +111,29 @@ def test_typesafe_skips_a_result_the_model_left_unanswered():
 
     assert [j.i for j in verdict.results] == [1]
     assert [r.id for r in rank([_r(0), _r(1)], verdict)] == ["x:1", "x:0"]
+
+
+# --- Item triage: after a source unfolds into items -------------------------
+
+from app.search.triage import judge_items, set_aside_reasons  # noqa: E402
+
+
+def test_set_aside_flags_uncompilable_items_with_a_reason():
+    verdict = _v([_j(0), _j(1, compilable=False)])
+    assert set_aside_reasons(verdict, 2, has_query=False) == {1: "Likely nothing to read"}
+
+
+def test_off_topic_is_only_judged_against_a_real_query():
+    verdict = _v([_j(0, relevance=0), _j(1, relevance=2)])
+    assert set_aside_reasons(verdict, 2, has_query=True) == {0: "Likely off-topic"}
+    assert set_aside_reasons(verdict, 2, has_query=False) == {}
+
+
+def test_set_aside_ignores_bad_indices_and_keeps_the_first_judgement():
+    verdict = _v([_j(5, compilable=False), _j(0, compilable=False), _j(0)])
+    assert set_aside_reasons(verdict, 1, has_query=False) == {0: "Likely nothing to read"}
+
+
+def test_judge_items_failure_sets_nothing_aside():
+    with patch("app.search.triage._ask", side_effect=RuntimeError("boom")):
+        assert judge_items(None, [_r(0), _r(1)]) == {}
