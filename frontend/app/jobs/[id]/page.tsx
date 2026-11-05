@@ -1139,8 +1139,6 @@ function ReviewList({
 }: ReviewListProps) {
   const [query, setQuery] = useState("");
   const [connecting, setConnecting] = useState<ModelKind | null>(null);
-  // Mod+Enter compiles (from the title field too); A selects or clears all.
-  useShortcut("mod+enter", () => void onConfirm(), !confirming && selected.size > 0 && title.trim() !== "");
   // "All" means the items discovery is sure of, as on each source's checkbox
   // (uncertain links are picked from their own fold). A job of nothing but
   // uncertain links falls back to all of them.
@@ -1184,14 +1182,19 @@ function ReviewList({
   // podcast's tag only wears the metered accent when STT can actually run, and
   // the legend under the list only appears when such an item is present.
   const sttAvailable = !!llm?.stt_available;
-  const hasMeteredPodcast = sttAvailable && items.some(needsTranscription);
   // Issues surfaced up front, so nothing surprises at the end: selected
   // episodes that will be left out (no transcript, no transcription), and
   // selected videos whose captions have no punctuation.
-  const willBeSkipped = llm && !sttAvailable
-    ? items.filter((it) => selected.has(it.id) && needsTranscription(it)).length
-    : 0;
-  const setAsideCount = items.filter((it) => it.set_aside).length;
+  // An item the compile can't read (an episode with no transcript and no
+  // transcription, a video with no subtitles) shows unchecked and greyed on its
+  // own row. It stays in `selected`, so connecting transcription brings it back.
+  const sttMissing = !!llm && !sttAvailable;
+  const leftOut = (it: DiscoveredItem) => isLeftOut(it, sttMissing);
+  const includedCount = items.filter(
+    (it) => selected.has(it.id) && !leftOut(it),
+  ).length;
+  // Mod+Enter compiles (from the title field too); A selects or clears all.
+  useShortcut("mod+enter", () => void onConfirm(), !confirming && includedCount > 0 && title.trim() !== "");
   const connectStt = llm && !sttAvailable ? () => setConnecting("stt") : undefined;
   // Raw-caption rows offer AI polish themselves, while it's available and off.
   const polishDefaultIds = (llm?.roles ?? [])
@@ -1330,6 +1333,7 @@ function ReviewList({
           jobId={jobId}
           item={only}
           checked={selected.has(only.id)}
+          leftOut={leftOut(only)}
           onToggle={() => onToggle(only.id)}
           sttAvailable={sttAvailable}
           onConnectStt={connectStt}
@@ -1352,6 +1356,7 @@ function ReviewList({
         jobId={jobId}
         item={item}
         checked={selected.has(item.id)}
+        leftOut={leftOut(item)}
         onToggle={() => onToggle(item.id)}
         sttAvailable={sttAvailable}
         onConnectStt={connectStt}
@@ -1592,42 +1597,8 @@ function ReviewList({
         <Kbd className="text-muted-foreground">A</Kbd>
       </label>
 
-      {(willBeSkipped > 0 || unpunctuatedSelected > 0 || setAsideCount > 0) && (
-        <Notice variant="warning">
-          <span className="flex flex-col gap-1">
-            {willBeSkipped > 0 && (
-              <span>
-                {willBeSkipped === 1
-                  ? "1 episode has no published transcript and will be left out."
-                  : `${willBeSkipped} episodes have no published transcript and will be left out.`}{" "}
-                <button
-                  type="button"
-                  onClick={() => setConnecting("stt")}
-                  className="text-link font-medium"
-                >
-                  Connect transcription
-                </button>{" "}
-                to include {willBeSkipped === 1 ? "it" : "them"}.
-              </span>
-            )}
-            {setAsideCount > 0 && (
-              <span>
-                {setAsideCount === 1
-                  ? "1 item looks off-topic or has nothing to read, so it starts unchecked."
-                  : `${setAsideCount} items look off-topic or have nothing to read, so they start unchecked.`}
-              </span>
-            )}
-            {unpunctuatedSelected > 0 && (
-              <span>
-                {unpunctuatedSelected === 1
-                  ? "1 video only has raw captions, with no punctuation."
-                  : `${unpunctuatedSelected} videos only have raw captions, with no punctuation.`}{" "}
-                AI polish can fix {unpunctuatedSelected === 1 ? "it" : "them"}.
-              </span>
-            )}
-          </span>
-        </Notice>
-      )}
+      {/* No summary banner: each item's state and its fix live on its own row,
+          and the pane on the right counts what goes in. */}
 
       {items.length > 8 && (
         <div className="relative">
@@ -1690,20 +1661,6 @@ function ReviewList({
         )}
       </div>
 
-      {/* Legend for the one paid-path accent in the list: it appears only when a
-          metered podcast is actually present, so the gold tag never goes
-          unexplained — and never shows when there's nothing to explain. */}
-      {hasMeteredPodcast && (
-        <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
-          <TriangleAlert className="text-warning mt-px size-3.5 shrink-0" />
-          <span>
-            <span className="font-medium">Metered either way</span>{" "}
-            (transcribing audio). Everything else is free unless you turn on AI
-            polish.
-          </span>
-        </p>
-      )}
-
       </WorkPane>
 
       {/* The compilation: its name, what goes in, the one optional cost, and the
@@ -1713,33 +1670,27 @@ function ReviewList({
         eyebrow="Review"
         title={title}
         onTitleChange={onTitleChange}
-        meta={`${selected.size} of ${items.length} item${items.length !== 1 ? "s" : ""} selected`}
+        meta={`${includedCount} of ${items.length} included`}
         footer={
           <>
             {error && <Notice variant="error">{error}</Notice>}
-            {selected.size > 0 && <CostEstimate cost={cost} />}
-            {willBeSkipped > 0 && (
-              <p className="text-warning flex items-center gap-1.5 text-xs">
-                <TriangleAlert className="size-3.5 shrink-0" />
-                {willBeSkipped} selected item{willBeSkipped !== 1 ? "s" : ""} will be left out
-              </p>
-            )}
+            {includedCount > 0 && <CostEstimate cost={cost} />}
             {/* The button says what's blocking it (no item / no title), so
                 the message is where the click is. */}
             <Button
               onClick={onConfirm}
-              disabled={confirming || selected.size === 0 || title.trim() === ""}
+              disabled={confirming || includedCount === 0 || title.trim() === ""}
               aria-keyshortcuts="Control+Enter Meta+Enter"
               className="w-full"
             >
               {confirming
                 ? "Starting…"
-                : selected.size === 0
+                : includedCount === 0
                   ? "Select an item"
                   : title.trim() === ""
                     ? "Add a title"
                     : "Compile"}
-              {!confirming && selected.size > 0 && title.trim() !== "" && (
+              {!confirming && includedCount > 0 && title.trim() !== "" && (
                 <Kbd>
                   <ModKey /> <EnterKey />
                 </Kbd>
@@ -1800,6 +1751,9 @@ interface ReviewItemProps {
   jobId: string;
   item: DiscoveredItem;
   checked: boolean;
+  // The compile can't read this item: its checkbox shows unchecked and greyed,
+  // and there's nothing to preview.
+  leftOut?: boolean;
   onToggle: () => void;
   // Whether speech-to-text is configured. Only a podcast's tag reads it: with STT
   // on, transcription is metered, so the tag wears the paid-path accent.
@@ -1836,6 +1790,7 @@ function ReviewItem({
   jobId,
   item,
   checked,
+  leftOut = false,
   onToggle,
   sttAvailable,
   onConnectStt,
@@ -1922,6 +1877,9 @@ function ReviewItem({
 
   const metaClass =
     "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs";
+  // An episode still to transcribe has no text yet (its tag already says how it
+  // will get one), and a left-out item never will.
+  const noPreview = leftOut || needsTranscription(item);
 
   return (
     <div
@@ -1948,14 +1906,23 @@ function ReviewItem({
             <GripVertical className="size-4" />
           </button>
         ) : null}
-        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5">
-          <Checkbox checked={checked} onCheckedChange={onToggle} />
+        <label
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-3.5",
+            !leftOut && "cursor-pointer",
+          )}
+        >
+          <Checkbox
+            checked={checked && !leftOut}
+            disabled={leftOut}
+            onCheckedChange={onToggle}
+          />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span
               className={cn(
                 "truncate text-sm",
                 asSource && "font-medium",
-                muted && "text-muted-foreground",
+                (muted || leftOut) && "text-muted-foreground",
               )}
             >
               {highlightMatch(item.title, highlight ?? "")}
@@ -1972,19 +1939,25 @@ function ReviewItem({
             )}
           </span>
         </label>
-        <Tooltip content={open ? "Hide preview" : "Preview"}>
-          <Button
-            type="button"
-            variant="nav"
-            size="icon-sm"
-            onClick={toggleOpen}
-            aria-expanded={open}
-            aria-label={open ? "Hide preview" : "Preview"}
-            className="ml-2 shrink-0"
-          >
-            {open ? <EyeOff /> : <Eye />}
-          </Button>
-        </Tooltip>
+        {noPreview ? (
+          // Nothing to read before compiling: the slot stays so the column of
+          // eyes keeps its line.
+          <span aria-hidden="true" className="ml-2 size-8 shrink-0" />
+        ) : (
+          <Tooltip content={open ? "Hide preview" : "Preview"}>
+            <Button
+              type="button"
+              variant="nav"
+              size="icon-sm"
+              onClick={toggleOpen}
+              aria-expanded={open}
+              aria-label={open ? "Hide preview" : "Preview"}
+              className="ml-2 shrink-0"
+            >
+              {open ? <EyeOff /> : <Eye />}
+            </Button>
+          </Tooltip>
+        )}
       </div>
 
       {open && (
@@ -2307,6 +2280,13 @@ function Tag({ className, ...props }: React.ComponentProps<"span">) {
 // will have to be made from the audio (metered) when compiling.
 function needsTranscription(item: DiscoveredItem): boolean {
   return item.item_type === "podcast" && item.has_transcript !== true;
+}
+
+// An item the compile will skip whatever the user ticks: an episode with no
+// transcript while no transcription is connected, or a video with no subtitles.
+function isLeftOut(item: DiscoveredItem, sttMissing: boolean): boolean {
+  if (needsTranscription(item)) return sttMissing;
+  return item.item_type === "youtube" && item.has_transcript === false;
 }
 
 // --- Pre-compile cost estimate -------------------------------------------------
