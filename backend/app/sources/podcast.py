@@ -66,18 +66,34 @@ def load_episode_transcript(
     A published transcript (Exa's podcast index, see exa_podcast.py) is tried
     before transcribing: one flat-priced lookup instead of a per-minute bill.
     """
+    transcript = find_published_transcript(audio_url, title, duration_s)
+    if transcript is None:
+        transcript = _transcribe_episode(audio_url, stt)
+        if transcript is not None:
+            _store(transcript)
+    return transcript
+
+
+def find_published_transcript(
+    audio_url: str, title: str | None, duration_s: int | None = None
+) -> Transcript | None:
+    """The cached or published transcript, never a transcription.
+
+    Discovery calls this so the review screen can show a picked episode's text
+    like a video's. A hit is cached, so the compile doesn't pay for it twice."""
     cached = _get_cached(audio_url)
     if cached is not None:
         return cached
-
-    transcript = None
-    if title and exa_podcast.available():
-        transcript = exa_podcast.find_transcript(audio_url, title, duration_s)
-    if transcript is None:
-        transcript = _transcribe_episode(audio_url, stt)
+    if not title or not exa_podcast.available():
+        return None
+    transcript = exa_podcast.find_transcript(audio_url, title, duration_s)
     if transcript is not None:
         _store(transcript)
     return transcript
+
+
+def cached_episode_transcript(audio_url: str) -> Transcript | None:
+    return _get_cached(audio_url)
 
 
 def _transcribe_episode(audio_url: str, stt: Endpoint | None) -> Transcript | None:

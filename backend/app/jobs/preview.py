@@ -9,6 +9,7 @@ from app.pipeline.compiler import (
     transcript_to_markdown,
 )
 from app.pipeline.llm import llm_available
+from app.sources.podcast import cached_episode_transcript
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import YouTubeUnavailable
@@ -93,10 +94,17 @@ def _blog_preview(item: DiscoveredItemResponse) -> ItemPreview:
 
 
 def _podcast_preview(item: DiscoveredItemResponse) -> ItemPreview:
+    # A picked episode's published transcript was looked up at discovery and
+    # cached; read it back (free). Otherwise there's no text until compile.
+    transcript = cached_episode_transcript(item.url)
+    if transcript is not None:
+        content_md = transcript_to_markdown(transcript)
+        if content_md.strip():
+            return _available(item, content_md, None)
     return _unavailable(
         item,
-        "A podcast's transcript is fetched or made during compilation, so "
-        "there's no preview before that step.",
+        "This episode has no published transcript, so its text is made from "
+        "the audio when compiling.",
     )
 
 

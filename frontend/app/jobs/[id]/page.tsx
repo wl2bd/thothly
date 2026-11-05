@@ -1183,8 +1183,7 @@ function ReviewList({
   // podcast's tag only wears the metered accent when STT can actually run, and
   // the legend under the list only appears when such an item is present.
   const sttAvailable = !!llm?.stt_available;
-  const hasMeteredPodcast =
-    sttAvailable && items.some((it) => it.item_type === "podcast");
+  const hasMeteredPodcast = sttAvailable && items.some(needsTranscription);
 
   // Sources AI polish can actually act on: youtube captions and articles.
   // Podcasts keep their verbatim diarized dialogue, so on an all-podcast
@@ -1644,7 +1643,7 @@ function ReviewList({
       {/* Podcasts can't be read without a transcript: with no published one
           and no transcription they would be left out, so the way to include
           them sits right here. */}
-      {llm && !sttAvailable && items.some((it) => it.item_type === "podcast") && (
+      {llm && !sttAvailable && items.some(needsTranscription) && (
         <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>
             {llm.podcast_transcripts
@@ -2112,6 +2111,11 @@ function sourceLabel(url: string | undefined): string {
 // "Web text" (not "Article") names what was pulled from a page so it never reads
 // as a duplicate of the "Article" type pill the source header already shows.
 function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
+  // A picked episode whose published transcript was found at discovery reads
+  // like any clean transcript: nothing to transcribe, nothing to pay.
+  if (item.item_type === "podcast" && item.has_transcript === true) {
+    return <Tag>Transcript</Tag>;
+  }
   if (item.item_type === "podcast") {
     return sttAvailable ? (
       // Coin sits AFTER the label so this tag's marker is on the same side as
@@ -2173,6 +2177,12 @@ function Tag({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
+// A podcast episode with no published transcript found at discovery: its text
+// will have to be made from the audio (metered) when compiling.
+function needsTranscription(item: DiscoveredItem): boolean {
+  return item.item_type === "podcast" && item.has_transcript !== true;
+}
+
 // --- Pre-compile cost estimate -------------------------------------------------
 // Mirrors the backend's auto-passes so the figure matches what will actually run:
 // podcasts are transcribed (STT) + speaker-named (small LLM call), raw YouTube
@@ -2209,7 +2219,7 @@ function estimateCost(
       // Podcasts only cost transcription: they keep their raw diarized dialogue,
       // with no LLM editing or naming pass by default.
       const minutes = (it.estimated_duration_s ?? 0) / 60;
-      if (stt_available) stt += minutes * pricing.stt_per_minute;
+      if (stt_available && needsTranscription(it)) stt += minutes * pricing.stt_per_minute;
     } else if (it.item_type === "youtube") {
       if (it.has_transcript === false || !available) continue;
       const words = it.word_count ?? 0;

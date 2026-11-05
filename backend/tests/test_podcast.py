@@ -22,6 +22,12 @@ def db(tmp_path, monkeypatch):
     database.init_db()
 
 
+@pytest.fixture(autouse=True)
+def no_live_exa(monkeypatch):
+    """Discovery now looks up published transcripts; never hit Exa from tests."""
+    monkeypatch.setattr(podcast.exa_podcast, "available", lambda: False)
+
+
 # ── discovery ─────────────────────────────────────────────────────────────────
 
 def test_detect_kind_audio_url_is_podcast():
@@ -49,6 +55,31 @@ def test_discover_podcast_carries_duration_for_cost_estimate():
     # or the review screen's transcription cost estimate reads as $0.
     _, items = discover_source(AUDIO_URL, 0, kind="podcast", duration_s=1470)
     assert items[0].estimated_duration_s == 1470
+
+
+def test_discover_picked_episode_carries_its_published_transcript(db):
+    from app.jobs.preview import _podcast_preview
+    from app.sources.models import Transcript, TranscriptSegment
+
+    found = Transcript(video_id=AUDIO_URL, language="en", segments=[
+        TranscriptSegment(text="Hello there, and welcome to the show.", start_s=0, duration_s=3, speaker="Ann"),
+    ])
+    with patch.object(podcast.exa_podcast, "available", return_value=True),          patch.object(podcast.exa_podcast, "find_transcript", return_value=found) as find:
+        _, items = discover_source(AUDIO_URL, 0, kind="podcast", title="Ep 1: Origins", duration_s=60)
+        # the compile reuses the cached hit instead of paying again
+        assert load_episode_transcript(AUDIO_URL, title="Ep 1: Origins", duration_s=60).segments[0].speaker == "Ann"
+    find.assert_called_once()
+    item = items[0]
+    assert (item.has_transcript, item.word_count) == (True, 7)
+    preview = _podcast_preview(type("I", (), {"id": "x", "item_type": "podcast", "url": AUDIO_URL})())
+    assert preview.available and "welcome to the show" in preview.content_md
+
+
+def test_discover_episode_without_published_transcript_stays_from_audio(db):
+    with patch.object(podcast.exa_podcast, "available", return_value=True),          patch.object(podcast.exa_podcast, "find_transcript", return_value=None),          patch.object(podcast, "_transcribe_episode") as stt:
+        _, items = discover_source(AUDIO_URL, 0, kind="podcast", title="Ep 1: Origins")
+    assert items[0].has_transcript is None
+    stt.assert_not_called()
 
 
 # ── transcript assembly + cache ───────────────────────────────────────────────

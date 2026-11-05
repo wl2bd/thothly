@@ -12,7 +12,7 @@ from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
 from app.sources.models import Article
 from app.sources.wikipedia import article_title, is_wikipedia_article
-from app.sources import scrapecreators
+from app.sources import podcast, scrapecreators
 from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import (
     YouTubeUnavailable,
@@ -133,7 +133,25 @@ def _discover_podcast(
         item_index=0,
         estimated_duration_s=duration_s,
     )
+    _enrich_podcast_item(item, duration_s)
     return episode_title, [item]
+
+
+def _enrich_podcast_item(item: DiscoveredItem, duration_s: int | None) -> None:
+    """Look up a picked episode's published transcript now, like a video's
+    subtitles, so review shows its text instead of promising it for later.
+
+    One flat lookup (~$0.007) that the compile would pay anyway: the hit is
+    cached. Only picked episodes come through here; a feed's episodes aren't
+    probed, a long feed would cost one lookup each. Never transcribes, and any
+    failure leaves the item as before ("From audio")."""
+    try:
+        transcript = podcast.find_published_transcript(item.url, item.title, duration_s)
+    except Exception as exc:  # noqa: BLE001 - best effort, never breaks discovery
+        logger.warning("Published transcript lookup failed for %s: %s", item.url, exc)
+        return
+    if transcript is not None:
+        _apply_transcript_stats(item, transcript)
 
 
 def _discover_youtube(
@@ -201,13 +219,16 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
         item.has_transcript = False  # no native subtitles → will be skipped
         return
 
+    # The transcript itself is now in the video-keyed cache (load_transcript
+    # stored it); we only keep the derived review metadata on the item.
+    _apply_transcript_stats(item, transcript)
+
+
+def _apply_transcript_stats(item: DiscoveredItem, transcript) -> None:
     full_text = " ".join(
         s.text.strip() for s in transcript.segments if s.text and s.text.strip()
     )
     word_count = len(full_text.split())
-
-    # The transcript itself is now in the video-keyed cache (load_transcript
-    # stored it); we only keep the derived review metadata on the item.
     item.has_transcript = True
     item.transcript_lang = transcript.language
     item.is_punctuated = is_punctuated(full_text)
