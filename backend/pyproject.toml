@@ -15,7 +15,6 @@ dependencies = [
     "markdownify>=0.13.0",
     "openai>=1.0",
     "pillow>=12.2.0",
-    "typesafe-sdk>=0.7.0",
 ]
 
 # The command's name. Renaming the tool means changing this key, nothing else.
