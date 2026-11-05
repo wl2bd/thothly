@@ -8,8 +8,10 @@ is False and the rest of the app stays on the free zero-LLM path.
 
 import logging
 import time
+from urllib.parse import urlsplit
 
 from app.core.config import settings
+from app.core.posthog import capture_paid_call
 from app.pipeline.providers import Endpoint, describe_error
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,25 @@ def _client(endpoint: Endpoint, timeout: float, **kwargs):
     )
 
 
+def extra_body(endpoint: Endpoint) -> dict:
+    """Request fields only OpenRouter understands. Every call here is a faithful
+    transform or a closed question, where a reasoning pass only costs time and
+    tokens: measured on DeepSeek V4.1 Flash, it spent a cleanup chunk's whole
+    output budget thinking and returned an empty text. Another provider would
+    reject the unknown field, so it is sent to OpenRouter alone."""
+    if urlsplit(endpoint.base_url).hostname == "openrouter.ai":
+        return {"reasoning": {"enabled": False}}
+    return {}
+
+
+def call_cost(response) -> float | None:
+    """The USD cost OpenRouter reports in the response's usage, or None when
+    the provider doesn't report one."""
+    usage = getattr(response, "usage", None)
+    cost = (getattr(usage, "model_extra", None) or {}).get("cost")
+    return float(cost) if isinstance(cost, (int, float)) else None
+
+
 def list_models(endpoint: Endpoint) -> list[str]:
     """The model ids this key grants (`GET /models`), checking the key on the way.
 
@@ -91,7 +112,12 @@ def complete(
                 ],
                 temperature=0,
                 max_tokens=max_tokens,
+                extra_body=extra_body(ep),
             )
+            cost = call_cost(response)
+            # The operator's own key only: a visitor's spend is on their invoice.
+            if endpoint is None and cost is not None:
+                capture_paid_call("openrouter", "llm", cost)
             return (response.choices[0].message.content or "").strip()
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
             last_exc = exc

@@ -72,3 +72,39 @@ def test_confirm_defaults_to_no_roles(
 
     client.post(f"/jobs/{job_id}/confirm", json={"selected_ids": ["item-1"]})
     assert repository.get_job_llm_roles(job_id) == []
+
+
+def _completion(cost: float | None):
+    from types import SimpleNamespace
+
+    usage = SimpleNamespace(model_extra={"cost": cost} if cost is not None else {})
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=" ok "))], usage=usage)
+
+
+def test_reasoning_is_switched_off_on_openrouter_only() -> None:
+    from app.pipeline.llm import extra_body
+    from app.pipeline.providers import Endpoint
+
+    assert extra_body(Endpoint("https://openrouter.ai/api/v1", "m")) == {"reasoning": {"enabled": False}}
+    # Any other provider would reject the unknown field.
+    assert extra_body(Endpoint("https://api.mistral.ai/v1", "m")) == {}
+    assert extra_body(Endpoint("http://localhost:11434/v1", "m")) == {}
+
+
+def test_cost_is_recorded_for_the_server_key_only(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+
+    from app.pipeline import llm
+    from app.pipeline.providers import Endpoint
+
+    monkeypatch.setattr(llm.settings, "llm_base_url", "https://openrouter.ai/api/v1")
+    monkeypatch.setattr(llm.settings, "llm_model", "deepseek/deepseek-v4.1-flash")
+    client = MagicMock()
+    client.chat.completions.create.return_value = _completion(0.0007)
+    with patch.object(llm, "_client", return_value=client), patch.object(llm, "capture_paid_call") as paid:
+        assert llm.complete("s", "u") == "ok"
+        paid.assert_called_once_with("openrouter", "llm", 0.0007)
+        paid.reset_mock()
+        # A visitor's own key: their spend, not the operator's.
+        llm.complete("s", "u", endpoint=Endpoint("https://openrouter.ai/api/v1", "m", "visitor"))
+        paid.assert_not_called()
