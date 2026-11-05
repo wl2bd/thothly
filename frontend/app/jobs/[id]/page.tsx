@@ -18,17 +18,17 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
+  Ban,
   Check,
   CircleHelp,
-  Coins,
   Copy,
   Eye,
   EyeOff,
   GripVertical,
-  Info,
   Minus,
   Plus,
   Search,
+  TriangleAlert,
   X,
 } from "lucide-react";
 import {
@@ -1184,6 +1184,25 @@ function ReviewList({
   // the legend under the list only appears when such an item is present.
   const sttAvailable = !!llm?.stt_available;
   const hasMeteredPodcast = sttAvailable && items.some(needsTranscription);
+  // Issues surfaced up front, so nothing surprises at the end: selected
+  // episodes that will be left out (no transcript, no transcription), and
+  // selected videos whose captions have no punctuation.
+  const willBeSkipped = llm && !sttAvailable
+    ? items.filter((it) => selected.has(it.id) && needsTranscription(it)).length
+    : 0;
+  const connectStt = llm && !sttAvailable ? () => setConnecting("stt") : undefined;
+  // Raw-caption rows offer AI polish themselves, while it's available and off.
+  const polishDefaultIds = (llm?.roles ?? [])
+    .filter((r) => r.tier === "default")
+    .map((r) => r.id);
+  const polishOn =
+    polishDefaultIds.length > 0 &&
+    polishDefaultIds.every((id) => selectedRoles.has(id));
+  const turnOnPolish =
+    llm?.available && !polishOn && polishDefaultIds.length > 0
+      ? () => onSetRolesMany(polishDefaultIds, true)
+      : undefined;
+  const sttPerMinute = llm?.pricing.stt_per_minute ?? 0;
 
   // Sources AI polish can actually act on: youtube captions and articles.
   // Podcasts keep their verbatim diarized dialogue, so on an all-podcast
@@ -1311,6 +1330,9 @@ function ReviewList({
           checked={selected.has(only.id)}
           onToggle={() => onToggle(only.id)}
           sttAvailable={sttAvailable}
+          onConnectStt={connectStt}
+          onPolish={turnOnPolish}
+          sttPerMinute={sttPerMinute}
           sourceUrl={showHost ? url : undefined}
           dragHandleProps={handleProps}
           asSource
@@ -1330,6 +1352,9 @@ function ReviewList({
         checked={selected.has(item.id)}
         onToggle={() => onToggle(item.id)}
         sttAvailable={sttAvailable}
+        onConnectStt={connectStt}
+          onPolish={turnOnPolish}
+          sttPerMinute={sttPerMinute}
         highlight={needle}
         muted={item.uncertain}
       />
@@ -1565,6 +1590,36 @@ function ReviewList({
         <Kbd className="text-muted-foreground">A</Kbd>
       </label>
 
+      {(willBeSkipped > 0 || unpunctuatedSelected > 0) && (
+        <Notice variant="warning">
+          <span className="flex flex-col gap-1">
+            {willBeSkipped > 0 && (
+              <span>
+                {willBeSkipped === 1
+                  ? "1 episode has no published transcript and will be left out."
+                  : `${willBeSkipped} episodes have no published transcript and will be left out.`}{" "}
+                <button
+                  type="button"
+                  onClick={() => setConnecting("stt")}
+                  className="text-link font-medium"
+                >
+                  Connect transcription
+                </button>{" "}
+                to include {willBeSkipped === 1 ? "it" : "them"}.
+              </span>
+            )}
+            {unpunctuatedSelected > 0 && (
+              <span>
+                {unpunctuatedSelected === 1
+                  ? "1 video only has raw captions, with no punctuation."
+                  : `${unpunctuatedSelected} videos only have raw captions, with no punctuation.`}{" "}
+                AI polish can fix {unpunctuatedSelected === 1 ? "it" : "them"}.
+              </span>
+            )}
+          </span>
+        </Notice>
+      )}
+
       {items.length > 8 && (
         <div className="relative">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -1631,32 +1686,12 @@ function ReviewList({
           unexplained — and never shows when there's nothing to explain. */}
       {hasMeteredPodcast && (
         <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
-          <Coins className="text-primary-strong mt-px size-3.5 shrink-0" />
+          <TriangleAlert className="text-warning mt-px size-3.5 shrink-0" />
           <span>
             <span className="font-medium">Metered either way</span>{" "}
             (transcribing audio). Everything else is free unless you turn on AI
             polish.
           </span>
-        </p>
-      )}
-
-      {/* Podcasts can't be read without a transcript: with no published one
-          and no transcription they would be left out, so the way to include
-          them sits right here. */}
-      {llm && !sttAvailable && items.some(needsTranscription) && (
-        <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span>
-            {llm.podcast_transcripts
-              ? "Episodes with no published transcript need transcription to be included."
-              : "Podcasts need transcription to be included."}
-          </span>
-          <button
-            type="button"
-            onClick={() => setConnecting("stt")}
-            className="text-foreground text-link font-medium"
-          >
-            Connect transcription
-          </button>
         </p>
       )}
 
@@ -1674,6 +1709,12 @@ function ReviewList({
           <>
             {error && <Notice variant="error">{error}</Notice>}
             {selected.size > 0 && <CostEstimate cost={cost} />}
+            {willBeSkipped > 0 && (
+              <p className="text-warning flex items-center gap-1.5 text-xs">
+                <TriangleAlert className="size-3.5 shrink-0" />
+                {willBeSkipped} selected item{willBeSkipped !== 1 ? "s" : ""} will be left out
+              </p>
+            )}
             {/* The button says what's blocking it (no item / no title), so
                 the message is where the click is. */}
             <Button
@@ -1754,6 +1795,13 @@ interface ReviewItemProps {
   // Whether speech-to-text is configured. Only a podcast's tag reads it: with STT
   // on, transcription is metered, so the tag wears the paid-path accent.
   sttAvailable: boolean;
+  // Set when an episode here can't be read without transcription and none is
+  // connected: the row then offers the fix itself.
+  onConnectStt?: () => void;
+  // Set while AI polish is available and off: a raw-caption row offers it.
+  onPolish?: () => void;
+  // Transcription price, so a metered episode shows what it will cost.
+  sttPerMinute?: number;
   // When this row IS a whole single-item source (no group header above it), its
   // domain is shown inline (favicon + host) so it still reads as a top-level
   // source, and a drag handle is rendered so it can still be reordered.
@@ -1781,6 +1829,9 @@ function ReviewItem({
   checked,
   onToggle,
   sttAvailable,
+  onConnectStt,
+  onPolish,
+  sttPerMinute = 0,
   sourceUrl,
   dragHandleProps,
   asSource,
@@ -1815,7 +1866,32 @@ function ReviewItem({
   // (four on a video, one on a podcast, none on an article), which read as
   // inconsistent. Length now lives where it's actionable — the per-item preview
   // and the aggregate cost estimate.
-  const metaParts: ReactNode[] = [contentTag(item, sttAvailable)];
+  const metaParts: ReactNode[] = [contentTag(item, sttAvailable, sttPerMinute)];
+  // The fix sits on the row it fixes, so the problem and its way out read together.
+  const action =
+    onConnectStt && needsTranscription(item)
+      ? { label: "Connect transcription", run: onConnectStt }
+      : onPolish &&
+          item.item_type === "youtube" &&
+          item.has_transcript === true &&
+          item.is_punctuated === false
+        ? { label: "Fix with AI polish", run: onPolish }
+        : null;
+  if (action) {
+    metaParts.push(
+      <button
+        type="button"
+        onClick={(e) => {
+          // Inside the row's label: don't toggle the checkbox.
+          e.preventDefault();
+          action.run();
+        }}
+        className="text-foreground text-link font-medium"
+      >
+        {action.label}
+      </button>,
+    );
+  }
   if (sourceUrl) {
     metaParts.push(
       <span className="inline-flex shrink-0 items-center gap-1">
@@ -2110,52 +2186,62 @@ function sourceLabel(url: string | undefined): string {
 // include no matter what, while everything else is free unless AI polish is on.
 // "Web text" (not "Article") names what was pulled from a page so it never reads
 // as a duplicate of the "Article" type pill the source header already shows.
-function contentTag(item: DiscoveredItem, sttAvailable: boolean) {
-  // A picked episode whose published transcript was found at discovery reads
-  // like any clean transcript: nothing to transcribe, nothing to pay.
+function contentTag(
+  item: DiscoveredItem,
+  sttAvailable: boolean,
+  sttPerMinute: number,
+) {
+  // Each tag says the consequence, not a technical state. Three tones: muted
+  // when nothing needs doing, warning when the item is included but costs or
+  // reads rough, destructive when it will be left out.
   if (item.item_type === "podcast" && item.has_transcript === true) {
     return <Tag>Transcript</Tag>;
   }
   if (item.item_type === "podcast") {
-    return sttAvailable ? (
-      // Coin sits AFTER the label so this tag's marker is on the same side as
-      // the "Raw captions" info icon — side-by-side in the list, mismatched
-      // sides read as untidy. The bottom legend (visible, not a hover tip) is
-      // this tag's explanation, so it needs no tooltip of its own.
-      <Tag className="text-primary-strong">
-        From audio
-        <Coins />
+    if (!sttAvailable) {
+      return (
+        <Tag className="text-destructive">
+          <Ban />
+          No transcript, will be left out
+        </Tag>
+      );
+    }
+    const minutes = Math.round((item.estimated_duration_s ?? 0) / 60);
+    const price = minutes * sttPerMinute;
+    return (
+      <Tag className="text-warning">
+        <TriangleAlert />
+        Transcribed from the audio
+        {minutes > 0 && ` · ${minutes} min`}
+        {price > 0 && ` · ~${price < 0.01 ? "< $0.01" : `$${price.toFixed(2)}`}`}
       </Tag>
-    ) : (
-      <Tag>From audio</Tag>
     );
   }
   if (item.item_type === "blog") {
-    return <Tag>Web text</Tag>;
+    return <Tag>Full article</Tag>;
   }
-  // YouTube: the content state varies per item, so this is where it earns its
-  // place — clean transcript, rough auto-captions, or nothing usable.
   if (item.has_transcript === false) {
-    return <Tag className="text-destructive">No subtitles</Tag>;
+    return (
+      <Tag className="text-destructive">
+        <Ban />
+        No subtitles, will be left out
+      </Tag>
+    );
   }
   if (item.has_transcript == null) {
-    return <Tag>Subtitles unchecked</Tag>;
+    return (
+      <Tag className="text-warning">
+        <CircleHelp />
+        Subtitles not checked, may be left out
+      </Tag>
+    );
   }
   if (item.is_punctuated === false) {
-    // Neutral, not an alarm: raw captions still work, they just read rougher.
-    // A hover/focus tip explains what the term means (the word alone may not
-    // convey it, and the AI-polish nudge below isn't shown when no model is
-    // set). It only DESCRIBES the state — offering the fix is the polish panel's
-    // job, and that panel exists only when there's a fix to offer.
     return (
-      <Tooltip content="Auto-generated captions, without punctuation, so they read a bit rough as-is.">
-        <Tag tabIndex={0}>
-          Raw captions
-          {/* A visible marker that there's a note here — a bare hover tip can't
-              be guessed at. Neutral, so it informs without alarming. */}
-          <Info className="opacity-60" />
-        </Tag>
-      </Tooltip>
+      <Tag className="text-warning">
+        <TriangleAlert />
+        Auto captions, no punctuation
+      </Tag>
     );
   }
   return <Tag>Transcript</Tag>;
