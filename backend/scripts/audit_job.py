@@ -8,7 +8,7 @@ measurably off. Chapters with no flag need no attention. No model is called.
 
 `--full` prints every chapter, including the clean ones.
 
-`--judge` has the search triage's model re-read the chapters the mechanical checks call clean,
+`--judge` has TypeSafe re-read the chapters the mechanical checks call clean,
 passage by passage, for content the polish invented or meaning it changed.
 It is the one step that calls a model (fractions of a cent per chapter).
 """
@@ -97,10 +97,10 @@ def main(argv: list[str]) -> int:
     # mean something attached to what produced them.
     model = get_job_llm_model(job_id)
     if judge:
-        if not settings.search_triage_api_key:
-            print("--judge needs SEARCH_TRIAGE_API_KEY")
+        if not settings.typesafe_api_key:
+            print("--judge needs TYPESAFE_API_KEY")
             return 1
-        if model == settings.search_triage_model:
+        if model == settings.typesafe_model:
             # A judge grading its own work measures the judge, not the book.
             print(f"The book was compiled by the judge model ({model}); pick another judge.")
             return 1
