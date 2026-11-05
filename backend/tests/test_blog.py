@@ -313,3 +313,29 @@ def test_a_figure_keeps_its_caption_set_apart(mock_fetch):
     assert "![An hourglass.](https://x.test/a.png)" in md
     assert "![A sundial.](https://x.test/c.png)" in md
     assert "\n\nA sundial.\n\n" not in md
+
+
+def test_fetch_url_gives_up_when_the_download_hangs():
+    # A host that never finishes answering used to strand discovery forever:
+    # the timeout fired, but leaving the thread pool waited for the hung
+    # download anyway. The fetch must return within its timeout.
+    import threading
+    import time
+
+    from app.sources import blog
+
+    release = threading.Event()
+
+    def hang(url):
+        release.wait(10)
+        return None
+
+    try:
+        with patch("app.sources.blog.assert_public_url"), patch(
+            "app.sources.blog.trafilatura.fetch_url", side_effect=hang
+        ), patch("app.sources.blog._browser_fetch", return_value=None):
+            start = time.monotonic()
+            assert blog._fetch_url("https://slow.example/post", 0.2) is None
+            assert time.monotonic() - start < 2
+    finally:
+        release.set()

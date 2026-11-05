@@ -327,13 +327,18 @@ def _fetch_url(url: str, timeout: float) -> str | None:
         logger.warning("Refusing to fetch non-public URL %s: %s", url, exc)
         return None
 
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(trafilatura.fetch_url, url)
-        try:
-            downloaded = future.result(timeout=timeout)
-        except FuturesTimeoutError:
-            logger.warning("Timed out downloading %s after %ss", url, timeout)
-            downloaded = None
+    # No `with` block: leaving it joins the worker, so a download that never
+    # finishes would block here forever and the timeout would mean nothing.
+    # A hung download is abandoned to its thread instead.
+    pool = ThreadPoolExecutor(max_workers=1)
+    future = pool.submit(trafilatura.fetch_url, url)
+    try:
+        downloaded = future.result(timeout=timeout)
+    except FuturesTimeoutError:
+        logger.warning("Timed out downloading %s after %ss", url, timeout)
+        downloaded = None
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
     if downloaded:
         return downloaded
