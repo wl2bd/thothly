@@ -1689,7 +1689,9 @@ function ReviewList({
                   ? "Select an item"
                   : title.trim() === ""
                     ? "Add a title"
-                    : "Compile"}
+                    : costLabel(cost)
+                      ? `Compile · ${costLabel(cost)}`
+                      : "Compile"}
               {!confirming && includedCount > 0 && title.trim() !== "" && (
                 <Kbd>
                   <ModKey /> <EnterKey />
@@ -2350,25 +2352,35 @@ function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
+// The total as it reads in the footer and on the Compile button. Null when
+// nothing is metered.
+function costLabel(cost: { stt: number; llm: number }): string | null {
   const total = cost.stt + cost.llm;
+  if (total <= 0) return null;
+  return total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
+}
 
+function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
   const parts: string[] = [];
-  if (cost.stt > 0) parts.push(`transcription ${formatUsd(cost.stt)}`);
+  if (cost.stt > 0) parts.push(`Transcription ${formatUsd(cost.stt)}`);
   if (cost.llm > 0) parts.push(`AI polish ${formatUsd(cost.llm)}`);
 
   // "Free" is the headline, not a blank line: when nothing is metered, say so.
   // It's the zero-LLM promise paying off, worth affirming at the decision point.
-  const totalLabel =
-    total <= 0 ? "Free" : total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
+  // A metered total wears the warning tone, with what it pays for under it.
+  const label = costLabel(cost);
 
   return (
-    <div className="text-muted-foreground flex items-baseline justify-between gap-2 text-xs">
-      <span>Estimated cost</span>
-      <span className="text-right">
-        <span className="font-medium">{totalLabel}</span>
-        {parts.length > 1 && <span className="ml-1">({parts.join(" · ")})</span>}
-      </span>
+    <div className="text-muted-foreground flex flex-col gap-0.5 text-xs">
+      <div className="flex items-baseline justify-between gap-2">
+        <span>Estimated cost</span>
+        <span className={cn("font-medium tabular-nums", label && "text-warning")}>
+          {label ?? "Free"}
+        </span>
+      </div>
+      {label && (
+        <span className="text-right tabular-nums">{parts.join(" · ")}</span>
+      )}
     </div>
   );
 }
