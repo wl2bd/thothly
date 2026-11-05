@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.core.posthog import capture
+from app.core.posthog import capture_paid_call
 from app.pipeline.llm import _client
 from app.pipeline.providers import Endpoint
 from app.search.models import SearchResult
@@ -219,16 +219,8 @@ def _ask_typesafe(query: str, results: list[SearchResult]) -> _Verdict:
             questions=questions,
             model=settings.typesafe_model,
         )
-    # Priced per token and negligible (well under a cent a search): the tokens
-    # are sent, a cost estimate would only be a guess at TypeSafe's rate card.
-    capture(
-        "paid_call",
-        {
-            "provider": "typesafe",
-            "endpoint": "system_one",
-            "input_tokens": answers.usage.input_tokens,
-            "output_tokens": answers.usage.output_tokens,
-        },
+    capture_paid_call(
+        "openrouter", "triage", answers.usage.input_tokens * settings.typesafe_price_per_mtok_in / 1e6
     )
 
     judged = []

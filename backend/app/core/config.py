@@ -76,14 +76,22 @@ class Settings(BaseSettings):
     search_triage_base_url: str = "https://openrouter.ai/api/v1"
     search_triage_model: str = "mistralai/mistral-small-24b-instruct-2501"
 
-    # TypeSafe System One answers closed questions directly and returns a
-    # probability per answer, instead of writing JSON a word at a time — which
-    # is where a chat model spends its seconds on this task. Set this key and it
-    # takes over the triage; the OpenAI-compatible settings above stay usable so
-    # the two can be compared on the same search.
+    # System One triage: a decision model answers the closed questions directly
+    # and returns a probability per answer, instead of writing JSON a word at a
+    # time, which is where a chat model spends its seconds on this task. Set
+    # this key and it takes over the triage; the OpenAI-compatible settings
+    # above stay usable so the two can be compared on the same search.
+    # OpenRouter serves TypeSafe's /v1/systemone contract for many decision
+    # models. Perplexity Decider v1.2 ranked best of ten on five test searches
+    # (2026-11-05), ~1 s for 24 results; Jev was faster (0.3 s) but kept
+    # self-help hits on top. Drex Max and Clef cap a call at 64 questions,
+    # under the ~100 a full search sends.
     typesafe_api_key: str | None = None
-    typesafe_base_url: str = "https://api.typesafe.ai"
-    typesafe_model: str = "jev-latest"
+    typesafe_base_url: str = "https://openrouter.ai/api"
+    typesafe_model: str = "perplexity/pplx-decider-v1.2"
+    # USD per million input tokens (output is free), for the paid_call event:
+    # the SDK drops the cost OpenRouter returns.
+    typesafe_price_per_mtok_in: float = 0.02
 
     # Preferred content language(s), highest priority first. Drives YouTube
     # metadata localization (title, chapters) and is a hint for transcript track
