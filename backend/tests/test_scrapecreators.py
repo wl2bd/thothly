@@ -56,6 +56,24 @@ def test_pick_language_takes_original_asr_over_foreign_human_track():
     assert _pick_language(tracks, ["en"]) == "fr"
 
 
+def test_pick_language_on_auto_dubbed_video_takes_the_original_audio_language():
+    # Trimmed from a real auto-dubbed video (aPxiAzsJCZI, 2026-11-05): YouTube
+    # runs ASR on every dubbed audio track, so all tracks say "asr" and the
+    # original is only named in audioTracks.
+    tracks = [{"languageCode": c, "kind": "asr"} for c in ("ar", "bn", "nl-NL", "en", "fr-FR")]
+    audio = [
+        {"id": "ar.10", "audioIsDefault": False, "isAutoDubbed": True},
+        {"id": "nl-NL.10", "audioIsDefault": False, "isAutoDubbed": True},
+        {"id": "en-US.4", "audioIsDefault": True, "isAutoDubbed": None},
+    ]
+    assert _pick_language(tracks, ["fr"], audio) == "en"
+
+
+def test_pick_language_on_dubbed_video_without_audio_info_prefers_a_preferred_asr():
+    tracks = [{"languageCode": c, "kind": "asr"} for c in ("ar", "bn", "en")]
+    assert _pick_language(tracks, ["en"]) == "en"
+
+
 # A single pasted video: yt-dlp is bot-walled on Fly (2026-09-29), so its title
 # and duration come from the detail call.
 @patch("app.sources.scrapecreators._call", return_value={"id": "dQw0example", "title": "A Long Evening Talk", "durationMs": 12212000})

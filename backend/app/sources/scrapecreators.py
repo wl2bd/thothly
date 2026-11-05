@@ -24,7 +24,11 @@ _TIMEOUT_S = 60.0
 def fetch_transcript(video_id: str, languages: list[str] | None = None) -> Transcript | None:
     url = f"https://www.youtube.com/watch?v={video_id}"
     detail = _call("scrapecreators.youtube.video.detail", url=url)
-    language = _pick_language(detail.get("captionTracks") or [], languages or settings.preferred_languages)
+    language = _pick_language(
+        detail.get("captionTracks") or [],
+        languages or settings.preferred_languages,
+        detail.get("audioTracks") or [],
+    )
     if language is None:
         return None
     payload = _call("scrapecreators.x.v1-youtube-video-transcript", url=url, language=language)
@@ -76,17 +80,43 @@ def _call(endpoint: str, **params: str) -> dict:
     return response.data
 
 
-def _pick_language(tracks: list[dict], languages: list[str]) -> str | None:
+def _pick_language(tracks: list[dict], languages: list[str], audio_tracks: list[dict] | None = None) -> str | None:
     """Same preference as the yt-dlp path: human subtitles in a preferred
-    language, else the auto-caption (ASR is always the original language, never
-    a translation), else any human track."""
+    language, else the auto-caption in the video's original language, else any
+    human track.
+
+    On an auto-dubbed video YouTube runs ASR on every dubbed audio track, so
+    "asr" no longer means "original": the original is the default, non-dubbed
+    audio track. Without that info, an ASR track in a preferred language wins
+    over the first one listed (alphabetical, so usually Arabic)."""
     manual = [t["languageCode"] for t in tracks if t.get("kind") != "asr" and t.get("languageCode")]
     auto = [t["languageCode"] for t in tracks if t.get("kind") == "asr" and t.get("languageCode")]
     for lang in languages:
-        for code in manual:
-            if code == lang or code.split("-")[0] == lang:
-                return code
+        picked = _match(manual, lang)
+        if picked:
+            return picked
+    original = _original_audio_language(audio_tracks or [])
+    for lang in ([original] if original else []) + list(languages):
+        picked = _match(auto, lang)
+        if picked:
+            return picked
     return (auto or manual or [None])[0]
+
+
+def _match(codes: list[str], lang: str) -> str | None:
+    base = lang.split("-")[0]
+    for code in codes:
+        if code == lang or code.split("-")[0] == base:
+            return code
+    return None
+
+
+def _original_audio_language(audio_tracks: list[dict]) -> str | None:
+    """The original audio's language ("en-US.4" -> "en-US"), or None."""
+    for track in audio_tracks:
+        if track.get("audioIsDefault") and not track.get("isAutoDubbed") and track.get("id"):
+            return track["id"].split(".")[0]
+    return None
 
 
 def _parse_segments(rows: list[dict]) -> list[TranscriptSegment]:
