@@ -326,7 +326,12 @@ function ComposeWorkspace({
   }
 
   function updateStaged(r: SearchResult) {
-    if (staged.length === 0) setSuggestedTitle(sentenceCase(trimmed));
+    // An empty list is a new compilation: the old name goes, even one restored
+    // from an earlier compilation or typed, and this search names the new one.
+    if (staged.length === 0) {
+      setSuggestedTitle(sentenceCase(trimmed));
+      setTypedTitle(null);
+    }
     if (trimmed !== "" && !staged.some((s) => s.url === r.url))
       setQueries((prev) => [trimmed, ...prev.filter((q) => q !== trimmed)].slice(0, 5));
     setStaged((prev) =>
@@ -375,6 +380,11 @@ function ComposeWorkspace({
         return;
       }
       const url = normalizeUrl(trimmed);
+      // A link names nothing, so a new compilation starts unnamed.
+      if (staged.length === 0) {
+        setSuggestedTitle("");
+        setTypedTitle(null);
+      }
       paneChange(staged.length === 0, () => stageSources([stagedFromUrl(url)]));
       setQuery("");
     }
