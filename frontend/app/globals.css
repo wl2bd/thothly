@@ -421,6 +421,9 @@
 .glow-layer {
   opacity: 0.15;
   transition: opacity 1000ms var(--ease-out-quint);
+  /* Its own layer: the fade runs on the compositor, never repainting the
+     gradients while the search lifts. */
+  will-change: opacity;
 }
 
 [data-glow-full] .glow-layer {

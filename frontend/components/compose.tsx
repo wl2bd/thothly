@@ -7,6 +7,7 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -494,6 +495,37 @@ function ComposeWorkspace({
   useShortcut("/", () => inputRef.current?.focus());
   useShortcut("mod+enter", () => void onCompile(), staged.length > 0 && !submitting);
 
+  // The search block (catchline, field, results) jumps to its new place in
+  // one frame, then glides there from where it was: only a transform moves,
+  // so the glide stays smooth while results render and batches land below.
+  // Animating the layout itself (spacers, row heights) re-laid the whole
+  // column every frame and stuttered.
+  const liftRef = useRef<HTMLDivElement>(null);
+  // Measured on the field, not the block: at rest the catchline tops the
+  // block, so the block's own top barely moves while the field rises.
+  const fieldRef = useRef<HTMLFormElement>(null);
+  const liftTop = useRef<number | null>(null);
+  const liftGlide = useRef<Animation | null>(null);
+  useLayoutEffect(() => {
+    const el = liftRef.current;
+    const field = fieldRef.current;
+    if (!el || !field) return;
+    const from = liftTop.current;
+    liftGlide.current?.cancel();
+    const to = field.getBoundingClientRect().top;
+    if (from === null || Math.abs(from - to) < 1) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    liftGlide.current = el.animate(
+      [{ transform: `translateY(${from - to}px)` }, { transform: "none" }],
+      { duration: 500, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+  }, [showResults]);
+  // Where the block sits on screen after every commit (mid-glide included),
+  // so the next glide starts from what the user actually sees.
+  useLayoutEffect(() => {
+    liftTop.current = fieldRef.current?.getBoundingClientRect().top ?? null;
+  });
+
   // The layout's glow is in full colour only here, at rest; a search (or
   // leaving the page) lets it ease down to its light trace.
   useEffect(() => {
@@ -517,22 +549,26 @@ function ComposeWorkspace({
           <div
             aria-hidden="true"
             className={cn(
-              "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
+              "hidden lg:block",
               // Half the bottom spacer's share: the block sits a little high,
               // so the sketch comes up into the first screen.
               showResults ? "grow-0" : "grow",
             )}
           />
-          {/* The catchline, only while the page is at rest: it folds away
-              (height and fade together) as soon as results need the room. */}
+          <div ref={liftRef} className="relative flex flex-col gap-6">
+          {/* The catchline, only while the page is at rest. A search lifts it
+              out of the flow, above the field, where it fades as it rides up
+              with the block. */}
           <div
             className={cn(
-              "grid transition-[grid-template-rows,opacity] duration-500 ease-out-quint",
-              showResults ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+              "transition-opacity duration-500 ease-out-quint",
+              showResults
+                ? "pointer-events-none absolute inset-x-0 bottom-full opacity-0"
+                : "opacity-100",
             )}
             aria-hidden={showResults}
           >
-            <div className="overflow-hidden">
+            <div>
               <div className="flex flex-col items-center gap-3 pt-2 pb-8 text-center">
                 {/* Said plainly while the product is being built. */}
                 <Badge variant="outline" className="text-muted-foreground mb-1 font-normal">
@@ -550,7 +586,7 @@ function ComposeWorkspace({
               </div>
             </div>
           </div>
-          <form onSubmit={onSubmit} className="flex flex-col gap-2">
+          <form ref={fieldRef} onSubmit={onSubmit} className="flex flex-col gap-2">
             {/* A plain field, the magnifier always in place. */}
             <div className="relative">
               <SearchIcon
@@ -626,7 +662,7 @@ function ComposeWorkspace({
 
           {/* Once sources are in: the searches that brought them, to go back
               to one, instead of a pane gone blank. */}
-          {trimmed === "" && staged.length > 0 && queries.length > 0 && (
+          {deferredTrimmed === "" && staged.length > 0 && queries.length > 0 && (
             <div className="flex flex-col items-center gap-3 pt-6">
               <span className="eyebrow">Search again</span>
               <div className="flex flex-wrap justify-center gap-2">
@@ -652,7 +688,9 @@ function ComposeWorkspace({
 
           {/* First visit: something to press instead of a blank pane. A real
               search, so it shows the tool at work, and never a dead link. */}
-          {trimmed === "" && staged.length === 0 && (
+          {/* On the deferred query, like the results: it leaves in the same
+              frame as they arrive, so the field never jumps twice. */}
+          {deferredTrimmed === "" && staged.length === 0 && (
             // Bottom padding here, not only on the pane: content that
             // overflows the pane's box scrolls past the pane's own padding.
             <div className="flex flex-col items-center gap-3 lg:pb-8">
@@ -783,11 +821,12 @@ function ComposeWorkspace({
                 </Notice>
               );
             })()}
+          </div>
 
           <div
             aria-hidden="true"
             className={cn(
-              "hidden transition-[flex-grow] duration-500 ease-out-quint lg:block",
+              "hidden lg:block",
               showResults ? "grow-0" : "grow-2",
             )}
           />
