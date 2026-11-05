@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ClockIcon,
   FileTextIcon,
@@ -186,13 +186,7 @@ export function SourceMedia({
       )}
     >
       {!text && thumbnail ? (
-        // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; per-provider host optimization isn't worth wiring
-        <img
-          src={thumbnail}
-          alt=""
-          loading="lazy"
-          className="size-full object-cover"
-        />
+        <Thumbnail key={thumbnail} src={thumbnail} />
       ) : (
         <span
           className="text-muted-foreground flex size-full items-center justify-center"
@@ -211,6 +205,34 @@ export function SourceMedia({
         </span>
       )}
     </span>
+  );
+}
+
+// A remote thumbnail that fades in once loaded, over the muted tile.
+//
+// The src is set one effect after mount on purpose. When search results replace
+// their skeleton, Skullet holds every <img> still loading behind an overlay it
+// pins at the image's position at that instant, and lifts it only on load (or
+// after 10s). Rows then shift as more providers land, the pinned overlays stay
+// put, and thumbnails read as cut off until they all lift together. An <img>
+// without a src counts as complete, so Skullet leaves it alone.
+function Thumbnail({ src }: { src: string }) {
+  const [ready, setReady] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate post-reveal src, see above
+  useEffect(() => setReady(src), [src]);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- decorative remote thumbnail; per-provider host optimization isn't worth wiring
+    <img
+      src={ready ?? undefined}
+      alt=""
+      loading="lazy"
+      onLoad={() => setLoaded(true)}
+      className={cn(
+        "size-full object-cover transition-opacity duration-300 ease-out motion-reduce:transition-none",
+        loaded ? "opacity-100" : "opacity-0",
+      )}
+    />
   );
 }
 
