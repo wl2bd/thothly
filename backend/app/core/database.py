@@ -107,6 +107,8 @@ _JOB_ADDED_COLUMNS = (
     # 1 when the title was typed in the workspace, so review keeps it instead
     # of offering its own default.
     ("title_named", "INTEGER"),
+    # 1 once the visitor asked to stop: the runner checks it between items.
+    ("stop_requested", "INTEGER"),
 )
 
 _DISCOVERED_ITEM_ADDED_COLUMNS = (

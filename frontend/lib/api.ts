@@ -249,6 +249,14 @@ export async function confirmJob(
   return res.json();
 }
 
+// Stops a running compile after the item in progress; the book keeps the
+// chapters already built.
+export async function stopJob(id: string): Promise<JobResponse> {
+  const res = await fetch(`/api/jobs/${id}/stop`, { method: "POST" });
+  if (!res.ok) return parseError(res);
+  return res.json();
+}
+
 // Checks a key with its provider (through the backend: providers refuse
 // browser calls) and returns the models it grants.
 export async function verifyKey(

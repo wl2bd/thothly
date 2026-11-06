@@ -46,6 +46,18 @@ def get_job(job_id: str) -> JobResponse:
     return job
 
 
+@router.post("/{job_id}/stop", response_model=JobResponse)
+def stop_job(job_id: str) -> JobResponse:
+    """Stop a compile after the item in progress; the book keeps what's ready."""
+    job = repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
+    if job.status != "processing":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This compilation isn't running.")
+    repository.request_stop(job_id)
+    return job
+
+
 @router.post("/{job_id}/confirm", response_model=JobResponse)
 def confirm_job(
     job_id: str, payload: JobConfirm, background_tasks: BackgroundTasks

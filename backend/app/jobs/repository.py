@@ -360,3 +360,17 @@ def _row_to_response(row) -> JobResponse:
         output_md_path=row["output_md_path"],
         error=row["error"],
     )
+
+
+def request_stop(job_id: str) -> None:
+    """Ask a running compile to stop. The runner reads it between items, so the
+    item in progress finishes and the book is built from what's ready."""
+    with get_connection() as conn:
+        conn.execute("UPDATE jobs SET stop_requested = 1 WHERE id = ?", (job_id,))
+        conn.commit()
+
+
+def stop_requested(job_id: str) -> bool:
+    with get_connection() as conn:
+        row = conn.execute("SELECT stop_requested FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    return bool(row and row["stop_requested"])

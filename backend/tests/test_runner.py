@@ -464,3 +464,60 @@ def test_run_compilation_fails_when_every_item_crashes(
         ("j-0-1", "compiling", None),
         ("j-0-1", "failed", "This item could not be built."),
     ]
+
+
+# --- Stop: the user can end a long compile and keep what's ready ---------------
+def _second_youtube_item() -> DiscoveredItemResponse:
+    return DiscoveredItemResponse(
+        id="j-0-1", source_index=0, item_index=1, item_type="youtube",
+        title="Another video", url="https://www.youtube.com/watch?v=def456",
+    )
+
+
+@patch("app.jobs.runner.stop_requested")
+@patch("app.jobs.runner.set_item_compile_state")
+@patch("app.jobs.runner.get_job")
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_stop_builds_the_book_from_the_chapters_ready(
+    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state, mock_stop,
+    tmp_path, monkeypatch,
+):
+    import app.core.config as cfg
+    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
+    mock_job.return_value = SimpleNamespace(book_title="My Book")
+    mock_fetch.return_value = Transcript(
+        video_id="abc123", language="en",
+        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
+    )
+    mock_stop.side_effect = [False, True]  # stop asked while the first item compiled
+
+    runner.run_compilation("job1")
+
+    mock_fetch.assert_called_once()  # the second item is never fetched
+    assert mock_update.call_args.args[1] == "completed"
+    assert len(mock_render.call_args.args[0].chapters) == 1
+    mock_state.assert_any_call("job1", "j-0-1", "skipped", runner.STOPPED)
+
+
+@patch("app.jobs.runner.stop_requested", return_value=True)
+@patch("app.jobs.runner.set_item_compile_state")
+@patch("app.jobs.runner.get_job")
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_stop_before_any_chapter_ends_the_compile(
+    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state, mock_stop,
+):
+    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
+
+    runner.run_compilation("job1")
+
+    mock_fetch.assert_not_called()
+    mock_render.assert_not_called()
+    assert mock_update.call_args.args[1] == "failed"
+    assert mock_update.call_args.kwargs["error"] == runner.STOPPED_EMPTY

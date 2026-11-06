@@ -408,3 +408,21 @@ def test_confirm_attributes_the_compile_to_the_model_that_runs_it(
     assert repository.get_job_llm_model(visitor) == "mistral/mistral-small"
     assert repository.get_job_llm_model(house) == "server/house-model"
     assert repository.get_job_llm_model(free) is None
+
+
+def test_stop_flags_a_compiling_job(client):
+    from app.jobs.repository import stop_requested, update_job_status
+
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    update_job_status(job_id, "processing")
+    assert client.post(f"/jobs/{job_id}/stop").status_code == 200
+    assert stop_requested(job_id) is True
+
+
+def test_stop_refuses_a_job_that_is_not_compiling(client):
+    job_id = client.post("/jobs", json={"sources": [VALID_SOURCE]}).json()["id"]
+    from app.jobs.repository import update_job_status
+
+    update_job_status(job_id, "completed")
+    assert client.post(f"/jobs/{job_id}/stop").status_code == 409
+    assert client.post("/jobs/nope/stop").status_code == 404

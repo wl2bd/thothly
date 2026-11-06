@@ -12,6 +12,7 @@ from app.jobs.repository import (
     get_job_llm_roles,
     get_selected_items,
     set_item_compile_state,
+    stop_requested,
     update_job_status,
 )
 from app.pipeline.cleanup import (
@@ -68,6 +69,10 @@ ITEM_FAILED = "This item could not be built."
 # be actively misleading here (it tells the user to check subtitles and readable
 # text, when the real cause was an error the log already has), so this case gets
 # its own, honest message instead of falling through to that one.
+# Stop: the items never reached, and the compile stopped before any was ready.
+STOPPED = "Stopped before this item."
+STOPPED_EMPTY = "Compilation stopped before any chapter was ready."
+
 NOTHING_BUILT = "None of the selected items could be built. Try again, or pick different sources."
 
 
@@ -106,7 +111,15 @@ def run_compilation(job_id: str) -> None:
         stats["source_types"] = dict(Counter(item.item_type for item in items))
         stats["ai_used"] = bool(roles)
 
-        for item in items:
+        for position, item in enumerate(items):
+            if stop_requested(job_id):
+                for left in items[position:]:
+                    set_item_compile_state(job_id, left.id, "skipped", STOPPED)
+                stats["stopped"] = True
+                if not chapters:
+                    stats["failure"] = "stopped"
+                    raise CompilationError(STOPPED_EMPTY)
+                break
             set_item_compile_state(job_id, item.id, "compiling")
             try:
                 if item.item_type == "youtube":

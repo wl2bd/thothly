@@ -85,6 +85,7 @@ import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   ApiError,
   confirmJob,
+  stopJob,
   fetchItemPreview,
   fetchJob,
   fetchLlmConfig,
@@ -519,7 +520,7 @@ export default function JobPage() {
           eyebrow="Compiling"
           title={job.book_title ?? ""}
           meta={`${built} of ${job.discovered_items.length} ready`}
-          footer={<WaitingButton label="Compiling…" />}
+          footer={<StopButton jobId={id} built={built} />}
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
             This can take a few minutes. It keeps going if you leave, and waits
@@ -2387,6 +2388,36 @@ function CostEstimate({ cost }: { cost: { stt: number; llm: number } }) {
 
 // The footer of a step that is working on its own: the primary action's place,
 // saying what is happening.
+// The way out of a long compile. It ends after the item in progress and keeps
+// what's ready, so stopping a 200-item run never throws the first chapters away.
+function StopButton({ jobId, built }: { jobId: string; built: number }) {
+  const [stopping, setStopping] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const stop = async () => {
+    setStopping(true);
+    setFailed(false);
+    try {
+      await stopJob(jobId);
+    } catch {
+      setStopping(false);
+      setFailed(true);
+    }
+  };
+  const label = stopping
+    ? "Stopping after this chapter…"
+    : built > 0
+      ? `Stop and keep ${built} chapter${built !== 1 ? "s" : ""}`
+      : "Stop";
+  return (
+    <div className="flex flex-col gap-2">
+      <Button type="button" variant="outline" onClick={stop} disabled={stopping} className="w-full">
+        {label}
+      </Button>
+      {failed && <p className="text-destructive text-sm">Couldn’t stop it. Try again.</p>}
+    </div>
+  );
+}
+
 function WaitingButton({ label }: { label: string }) {
   return (
     <Button type="button" disabled className="w-full">
