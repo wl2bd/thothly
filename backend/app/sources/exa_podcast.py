@@ -27,7 +27,10 @@ from app.sources.models import Transcript, TranscriptSegment
 logger = logging.getLogger(__name__)
 
 ROUTE = gateway.Route(
-    treg="exa.web.search.podcasts", monid_provider="exa", monid_endpoint="/search"
+    treg="exa.web.search.podcasts", monid_provider="exa", monid_endpoint="/search",
+    # A miss is cached too (Exa answers 200 with no match): the index grows, but
+    # not fast enough to pay every review of the same episode to re-ask.
+    cache_ttl_s=gateway.DETAIL_TTL_S,
 )
 _TIMEOUT_S = 30.0
 _CANDIDATES = 3
@@ -76,7 +79,8 @@ def _find(audio_url: str, title: str, duration_s: int | None) -> Transcript | No
     if response.status != 200:
         logger.warning("Exa podcast lookup for %r: HTTP %s", title, response.status)
         return None
-    capture_paid_call("exa", "podcast_transcript", settings.exa_price_per_call)
+    if not response.cached:
+        capture_paid_call("exa", "podcast_transcript", settings.exa_price_per_call)
 
     for row in (response.data or {}).get("results") or []:
         found = row.get("title") or ""

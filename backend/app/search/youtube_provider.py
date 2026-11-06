@@ -86,7 +86,7 @@ class YouTubeProvider:
         endpoint = "scrapecreators.x.v1-youtube-search"
         try:
             response = gateway.call(
-                gateway.Route(treg=endpoint),
+                gateway.Route(treg=endpoint, cache_ttl_s=gateway.SEARCH_TTL_S),
                 params={"query": query, "type": "videos", "includeExtras": "true"},
                 timeout=_SCRAPECREATORS_TIMEOUT_S,
             )
@@ -94,7 +94,8 @@ class YouTubeProvider:
             raise RuntimeError(f"YouTube search failed: {exc}") from exc
         if response.status != 200 or not isinstance(response.data, dict):
             raise RuntimeError(f"YouTube search failed: HTTP {response.status}")
-        capture_paid_call("scrapecreators", endpoint, settings.scrapecreators_price_per_call)
+        if not response.cached:
+            capture_paid_call("scrapecreators", endpoint, settings.scrapecreators_price_per_call)
         videos = response.data.get("videos") or []
         results = []
         for v in videos:

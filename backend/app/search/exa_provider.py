@@ -10,9 +10,11 @@ logger = logging.getLogger(__name__)
 _TIMEOUT_S = 10.0
 _SNIPPET_CHARS = 300
 
-EXA = gateway.Route(treg="exa.web.search", monid_provider="exa", monid_endpoint="/search")
+EXA = gateway.Route(treg="exa.web.search", monid_provider="exa", monid_endpoint="/search",
+                     cache_ttl_s=gateway.SEARCH_TTL_S)
 TINYFISH = gateway.Route(
-    treg="tinyfish.web.search", monid_provider="tinyfish", monid_endpoint="/free/search"
+    treg="tinyfish.web.search", monid_provider="tinyfish", monid_endpoint="/free/search",
+    cache_ttl_s=gateway.SEARCH_TTL_S,
 )
 # Sent to TinyFish as a ranking hint: Thothly wants pages to read, not portals.
 _PURPOSE = "find long-form articles or explainers a reader can learn from, to compile into a book"
@@ -65,7 +67,8 @@ class ExaProvider:
         )
         if response.status != 200:
             raise RuntimeError(f"Exa HTTP {response.status}")
-        capture_paid_call("exa", "web_search", settings.exa_price_per_call)
+        if not response.cached:
+            capture_paid_call("exa", "web_search", settings.exa_price_per_call)
         rows = (response.data or {}).get("results") or []
         return [r for r in (exa_result(row) for row in rows[:limit]) if r is not None]
 

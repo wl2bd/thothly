@@ -8,8 +8,8 @@ the app keeps the free yt-dlp path (fine from a residential IP).
 
 Two calls per video (~$0.002 each): the detail call gives the caption tracks,
 chapters and channel; the transcript call gives the text. A video with no
-caption track stops after the first call. Results land in the transcript cache,
-so a video is paid for once, ever.
+caption track stops after the first call. Both answers sit in the gateway cache
+and the transcript in the transcript cache, so a video is paid for once.
 """
 
 from app.core import gateway
@@ -19,6 +19,12 @@ from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
 from app.sources.youtube import YouTubeUnavailable
 
 _TIMEOUT_S = 60.0
+# Discovery asks for a video's detail (title, length), then its transcript asks
+# again: the gateway cache makes the second ask free.
+_TTL_S = {
+    "scrapecreators.youtube.video.detail": gateway.DETAIL_TTL_S,
+    "scrapecreators.x.v1-youtube-video-transcript": gateway.TRANSCRIPT_TTL_S,
+}
 
 
 def fetch_transcript(video_id: str, languages: list[str] | None = None) -> Transcript | None:
@@ -52,7 +58,6 @@ def fetch_video_meta(url: str) -> VideoMeta:
     detail = _call("scrapecreators.youtube.video.detail", url=url)
     if not detail.get("id"):
         raise YouTubeUnavailable(f"ScrapeCreators has no video at {url}")
-    # ponytail: fetch_transcript repeats this detail call (~$0.002); share it if volume grows.
     duration_ms = detail.get("durationMs")
     return VideoMeta(
         id=detail["id"],
@@ -64,12 +69,13 @@ def fetch_video_meta(url: str) -> VideoMeta:
 
 def _call(endpoint: str, **params: str) -> dict:
     try:
-        response = gateway.call(gateway.Route(treg=endpoint), params=params, timeout=_TIMEOUT_S)
+        route = gateway.Route(treg=endpoint, cache_ttl_s=_TTL_S.get(endpoint))
+        response = gateway.call(route, params=params, timeout=_TIMEOUT_S)
     except gateway.GatewayError as exc:
         # 402 (treg balance), 429/5xx (provider), unreachable: transient, never
         # cached as "no subtitles". ScrapeCreators isn't on Monid, so no fallback.
         raise YouTubeUnavailable(f"ScrapeCreators {endpoint}: {exc}") from exc
-    if response.status in (200, 404):  # an answer was scraped, so it was billed
+    if response.status in (200, 404) and not response.cached:  # scraped, so billed
         capture_paid_call("scrapecreators", endpoint, settings.scrapecreators_price_per_call)
     if response.status == 404:  # removed/private video: nothing to read
         return {}

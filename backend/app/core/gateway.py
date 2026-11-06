@@ -10,9 +10,16 @@ answer, not an outage, so it never triggers the fallback.
 The same vendor endpoint is named differently on each side (treg:
 `exa.web.search`, Monid: provider `exa` + endpoint `/search`), so a caller passes
 both names. A call with no Monid name only goes through treg.
+
+A route with `cache_ttl_s` keeps each vendor answer (200 or 404) in SQLite for
+that long, keyed by the whole request, so the same paid call is bought once per
+TTL however many code paths ask for it. Outages are never kept.
 """
 
+import hashlib
+import json
 import logging
+import sqlite3
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -20,6 +27,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.core.database import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +47,7 @@ class GatewayResponse:
     status: int
     data: Any
     via: str  # "treg" or "monid", for logs and analytics
+    cached: bool = False  # served from the response cache: nothing was billed
 
 
 @dataclass
@@ -48,6 +57,7 @@ class Route:
     treg: str | None = None  # e.g. "exa.web.search"
     monid_provider: str | None = None  # e.g. "exa"
     monid_endpoint: str | None = None  # e.g. "/search"
+    cache_ttl_s: float | None = None  # keep answers this long; None = never cache
 
 
 def available(route: Route | None = None) -> bool:
@@ -66,6 +76,18 @@ def call(
 ) -> GatewayResponse:
     """Call one vendor endpoint. `params` go in the query string, `body` as JSON
     (and makes the call a POST). Raises GatewayError when nothing could serve it."""
+    key = _cache_key(route, params, body) if route.cache_ttl_s else None
+    if key:
+        hit = _cache_get(key, route.cache_ttl_s)
+        if hit is not None:
+            return hit
+    response = _call_uncached(route, params, body, timeout)
+    if key and response.status in _CACHEABLE:
+        _cache_put(key, response)
+    return response
+
+
+def _call_uncached(route: Route, params, body, timeout: float) -> GatewayResponse:
     errors: list[str] = []
     if settings.treg_token and route.treg:
         try:
@@ -136,6 +158,47 @@ def _call_monid(provider: str, endpoint: str, params, body, timeout: float) -> G
         status = 502  # the run itself failed before reaching the vendor
     data = provider_response.get("data", provider_response.get("error", run.get("output")))
     return GatewayResponse(status=int(status or 200), data=data, via="monid")
+
+
+# --- Response cache (gateway_cache) --------------------------------------------
+# TTLs the routes use. Searches go stale; a video's tracks and a transcript don't.
+SEARCH_TTL_S = 6 * 3600.0
+DETAIL_TTL_S = 7 * 86400.0
+TRANSCRIPT_TTL_S = 30 * 86400.0
+_CACHEABLE = {200, 404}  # vendor answers; anything else reached here is not one
+
+
+def _cache_key(route: Route, params, body) -> str:
+    request = [route.treg, route.monid_provider, route.monid_endpoint, params or {}, body or {}]
+    return hashlib.sha256(json.dumps(request, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def _cache_get(key: str, ttl_s: float) -> GatewayResponse | None:
+    # A broken cache must never block a call: it just pays, as before.
+    try:
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT status, data, via, stored_at FROM gateway_cache WHERE key = ?", (key,)
+            ).fetchone()
+    except sqlite3.Error as exc:
+        logger.warning("gateway cache read failed: %s", exc)
+        return None
+    if row is None or time.time() - row["stored_at"] >= ttl_s:
+        return None
+    return GatewayResponse(status=row["status"], data=json.loads(row["data"]), via=row["via"], cached=True)
+
+
+def _cache_put(key: str, response: GatewayResponse) -> None:
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO gateway_cache (key, status, data, via, stored_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (key, response.status, json.dumps(response.data), response.via, time.time()),
+            )
+            conn.commit()
+    except (sqlite3.Error, TypeError, ValueError) as exc:
+        logger.warning("gateway cache write failed: %s", exc)
 
 
 def _json(r: httpx.Response) -> Any:

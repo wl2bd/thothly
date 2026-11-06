@@ -77,6 +77,17 @@ def init_db() -> None:
                 PRIMARY KEY (content_key, roles_key, model)
             )
         """)
+        # Paid vendor answers (treg/Monid), keyed by a hash of the whole request,
+        # so the same call is bought once per its route's TTL. See core/gateway.py.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gateway_cache (
+                key       TEXT PRIMARY KEY,
+                status    INTEGER NOT NULL,
+                data      TEXT NOT NULL,
+                via       TEXT NOT NULL,
+                stored_at REAL NOT NULL
+            )
+        """)
         _add_missing_columns(conn, "jobs", _JOB_ADDED_COLUMNS)
         _add_missing_columns(conn, "job_discovered_items", _DISCOVERED_ITEM_ADDED_COLUMNS)
         _add_missing_columns(conn, "transcript_cache", _TRANSCRIPT_CACHE_ADDED_COLUMNS)
