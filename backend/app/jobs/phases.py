@@ -43,6 +43,7 @@ def run_discovery(
                     title=source.title,
                     duration_s=source.duration_s,
                     feed_url=source.feed_url,
+                    single_page=bool(source.query),
                 )
             except YouTubeUnavailable:
                 logger.exception("Source %d of job %s: YouTube refused", index, job_id)

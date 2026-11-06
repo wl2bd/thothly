@@ -101,6 +101,7 @@ def discover_source(
     title: str | None = None,
     duration_s: int | None = None,
     feed_url: str | None = None,
+    single_page: bool = False,
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """Return the (source name, items) for a source URL.
 
@@ -112,6 +113,10 @@ def discover_source(
     a picked podcast episode passes kind="podcast" (its audio URL isn't
     self-identifying), its title, and its length (the audio isn't probed here).
     A pasted URL leaves them None and the kind is auto-detected.
+
+    `single_page` is set for a web page picked from search: the visitor chose
+    that page, so a deep one stays one page instead of unfolding into its site's
+    whole feed (one job ad once came back as 250). A home or section still unfolds.
     """
     resolved = kind or detect_kind(url)
     logger.info("Discovering source %d (kind=%s, url=%s)", source_index, resolved, url)
@@ -124,7 +129,21 @@ def discover_source(
         return _discover_youtube(_channel_videos_url(url), source_index)
     if resolved == "youtube_video":
         return _discover_youtube_video(url, source_index)
+    if single_page and _is_deep_page(url):
+        return _single_article(url, source_index)
     return _discover_blog(url, source_index)
+
+
+def _is_deep_page(url: str) -> bool:
+    """Two or more path segments once a locale prefix is set aside: a page, not
+    a home (`/`, `/fr/`) or a section (`/blog`)."""
+    segments = [s for s in urlparse(url).path.split("/") if s]
+    if segments and _LOCALE_SEGMENT_RE.fullmatch(segments[0].lower()):
+        segments = segments[1:]
+    return len(segments) >= 2
+
+
+_LOCALE_SEGMENT_RE = re.compile(r"[a-z]{2}(?:-[a-z]{2})?")
 
 
 def _discover_podcast(

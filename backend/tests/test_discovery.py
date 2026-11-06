@@ -285,3 +285,21 @@ def test_discover_blog_marks_in_prose_links_uncertain(mock_feed, mock_fetch):
         ("Great Article", False),
         ("aside mention", True),
     ]
+
+
+@patch("app.sources.discovery._feed_to_items")
+@patch("app.sources.discovery._single_article")
+def test_a_deep_page_picked_from_search_is_that_page_not_its_site(mock_single, mock_feed):
+    mock_single.return_value = ("Mechanical Design Engineer", [])
+    discovery.discover_source(
+        "https://careers.example.com/job/berkeley/design-engineer/185/1029", 0, single_page=True
+    )
+    mock_single.assert_called_once()
+    mock_feed.assert_not_called()
+
+
+@patch("app.sources.discovery._single_article")
+@patch("app.sources.discovery._feed_to_items", return_value=("A blog", []))
+def test_a_site_home_picked_from_search_still_unfolds(mock_feed, mock_single):
+    discovery.discover_source("https://blog.example.com/fr/", 0, single_page=True)
+    mock_single.assert_not_called()
