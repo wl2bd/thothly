@@ -16,6 +16,7 @@ from app.jobs.repository import (
     update_job_status,
 )
 from app.pipeline.cleanup import (
+    CompileStopped,
     clean_markdown,
     clean_transcript,
     generate_preface,
@@ -128,6 +129,11 @@ def run_compilation(job_id: str) -> None:
                     chapter = _podcast_chapter(item, job_id, roles, model, llm, stt)
                 else:
                     chapter = _blog_chapter(item, job_id, roles, model, llm)
+            except CompileStopped:
+                # Stopped mid-polish: this item is dropped, not half-polished.
+                # The check at the top of the next turn ends the loop.
+                set_item_compile_state(job_id, item.id, "skipped", STOPPED)
+                continue
             except ItemSkipped as exc:
                 # Nothing usable to build from. Expected, explainable, and never
                 # fatal: the reason is written against the item and shown next to
@@ -251,7 +257,9 @@ def _youtube_chapter(
     # a free sentence-split on captions that are already punctuated).
     if roles:
         _step(job_id, item.id, "Polishing the text")
-        content_md = clean_transcript(transcript, roles, model, llm)
+        content_md = clean_transcript(
+            transcript, roles, model, llm, should_stop=lambda: stop_requested(job_id)
+        )
     else:
         content_md = transcript_to_markdown(transcript)
     if not content_md:
@@ -343,7 +351,8 @@ def _blog_chapter(
     if roles:
         _step(job_id, item.id, "Polishing the text")
         content_md = clean_markdown(
-            content_md, roles, model, content_key=item.url, endpoint=llm
+            content_md, roles, model, content_key=item.url, endpoint=llm,
+            should_stop=lambda: stop_requested(job_id),
         )
 
     return CompiledChapter(

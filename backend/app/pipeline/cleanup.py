@@ -10,6 +10,7 @@ import json
 import logging
 import re
 from bisect import bisect_right
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -36,6 +37,13 @@ logger = logging.getLogger(__name__)
 
 _ATX_HEADING = re.compile(r"(?m)^#{1,6}\s")
 
+StopCheck = Callable[[], bool] | None
+
+
+class CompileStopped(Exception):
+    """The visitor stopped the compile: polishing ends before the next LLM call,
+    so a stop never waits for (or pays) the rest of a long item."""
+
 
 # ---------------------------------------------------------------------------
 # Public entry points
@@ -45,6 +53,8 @@ def clean_transcript(
     role_ids: list[str],
     model: str,
     endpoint: Endpoint | None = None,
+    *,
+    should_stop: StopCheck = None,
 ) -> str:
     """Markdown for a video transcript with the selected item-roles applied."""
     roles_key = _roles_key(role_ids)
@@ -52,7 +62,7 @@ def clean_transcript(
     if cached is not None:
         return cached
 
-    md, ok = _build_transcript(transcript, role_ids, endpoint)
+    md, ok = _build_transcript(transcript, role_ids, endpoint, should_stop)
     if ok:
         _store(transcript.video_id, roles_key, model, md)
     return md
@@ -65,6 +75,7 @@ def clean_markdown(
     *,
     content_key: str,
     endpoint: Endpoint | None = None,
+    should_stop: StopCheck = None,
 ) -> str:
     """Apply the article-applicable roles (copyedit, sections) to blog markdown."""
     roles_key = _roles_key(role_ids)
@@ -76,13 +87,17 @@ def clean_markdown(
     ok = True
     if has_role(role_ids, COPYEDIT) and body.strip():
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
-        edited, c_ok = _run_role(chunks, COPYEDIT, validate_copyedit, endpoint=endpoint)
+        edited, c_ok = _run_role(
+            chunks, COPYEDIT, validate_copyedit, endpoint=endpoint, should_stop=should_stop
+        )
         body = edited if edited.strip() else body
         ok = ok and c_ok
     # Only structure articles that have no headings of their own.
     if has_role(role_ids, SECTIONS) and body.strip() and not _ATX_HEADING.search(body):
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
-        structured, s_ok = _run_role(chunks, SECTIONS, validate_sections, endpoint=endpoint)
+        structured, s_ok = _run_role(
+            chunks, SECTIONS, validate_sections, endpoint=endpoint, should_stop=should_stop
+        )
         body = structured if structured.strip() else body
         ok = ok and s_ok
 
@@ -223,7 +238,10 @@ def generate_preface(
 # Transcript assembly
 # ---------------------------------------------------------------------------
 def _build_transcript(
-    transcript: Transcript, role_ids: list[str], endpoint: Endpoint | None
+    transcript: Transcript,
+    role_ids: list[str],
+    endpoint: Endpoint | None,
+    should_stop: StopCheck = None,
 ) -> tuple[str, bool]:
     roles = {r.id for r in selected_item_roles(role_ids)}
     do_punct = PUNCTUATE in roles
@@ -235,14 +253,14 @@ def _build_transcript(
         # Chapters already give structure, so the `sections` role is a no-op here.
         sections_out: list[str] = []
         for title, texts in _bucket_by_chapter(transcript):
-            body, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint)
+            body, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint, should_stop)
             ok = ok and body_ok
             if body:
                 sections_out.append(f"## {title}\n\n{body}")
         return "\n\n".join(sections_out), ok
 
     texts = [s.text for s in transcript.segments]
-    md, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint)
+    md, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint, should_stop)
     ok = ok and body_ok
     if do_sections and md.strip():
         chunks = _group_paragraphs(md, settings.llm_chunk_words)
@@ -252,6 +270,7 @@ def _build_transcript(
             chunks, SECTIONS, validate_sections,
             system=sections_prompt(transcript.language),
             endpoint=endpoint,
+            should_stop=should_stop,
         )
         md = structured if structured.strip() else md
         ok = ok and sec_ok
@@ -259,7 +278,11 @@ def _build_transcript(
 
 
 def _body_from_texts(
-    texts: list[str], do_punct: bool, do_copyedit: bool, endpoint: Endpoint | None
+    texts: list[str],
+    do_punct: bool,
+    do_copyedit: bool,
+    endpoint: Endpoint | None,
+    should_stop: StopCheck = None,
 ) -> tuple[str, bool]:
     cleaned = [t.strip() for t in texts if t and t.strip()]
     if not cleaned:
@@ -271,7 +294,9 @@ def _body_from_texts(
     # tracks already sentence-split cleanly for free.
     if do_punct and not is_punctuated(full):
         chunks = _split_words(full, settings.llm_chunk_words)
-        body, p_ok = _run_role(chunks, PUNCTUATE, validate_preserve, endpoint=endpoint)
+        body, p_ok = _run_role(
+            chunks, PUNCTUATE, validate_preserve, endpoint=endpoint, should_stop=should_stop
+        )
         if not body.strip():
             body = segments_to_markdown(texts)  # nothing usable came back
         ok = ok and p_ok
@@ -280,7 +305,9 @@ def _body_from_texts(
 
     if do_copyedit and body.strip():
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
-        edited, c_ok = _run_role(chunks, COPYEDIT, validate_copyedit, endpoint=endpoint)
+        edited, c_ok = _run_role(
+            chunks, COPYEDIT, validate_copyedit, endpoint=endpoint, should_stop=should_stop
+        )
         body = edited if edited.strip() else body
         ok = ok and c_ok
 
@@ -315,6 +342,7 @@ def _run_role(
     *,
     system: str | None = None,
     endpoint: Endpoint | None = None,
+    should_stop: StopCheck = None,
 ) -> tuple[str, bool]:
     role = get_role(role_id)
     if not chunks:
@@ -323,7 +351,7 @@ def _run_role(
     # `system` lets a caller pin a parameterised variant (e.g. a language-locked
     # sections prompt); otherwise the role's default prompt is used.
     outputs, no_transient = _transform_chunks(
-        chunks, system or role.system_prompt, validate, endpoint
+        chunks, system or role.system_prompt, validate, endpoint, should_stop
     )
     pieces = [
         out if out is not None else raw  # None = fell back to the source chunk
@@ -333,7 +361,11 @@ def _run_role(
 
 
 def _transform_chunks(
-    chunks: list[str], system: str, validate, endpoint: Endpoint | None
+    chunks: list[str],
+    system: str,
+    validate,
+    endpoint: Endpoint | None,
+    should_stop: StopCheck = None,
 ) -> tuple[list[str | None], bool]:
     """Transform chunks in parallel. Output[i] is None when chunk i must fall
     back (drift or error). Second return is False if any call errored out.
@@ -345,6 +377,9 @@ def _transform_chunks(
     transient = False
 
     def work(index: int, chunk: str) -> tuple[int, str | None, bool]:
+        # Checked before every call: the chunks still queued cost nothing.
+        if should_stop and should_stop():
+            raise CompileStopped()
         try:
             out = complete(system, chunk, max_tokens=_budget(chunk), endpoint=endpoint)
         except LLMError as exc:

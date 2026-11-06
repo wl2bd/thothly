@@ -152,3 +152,24 @@ def test_language_name_maps_tags_and_falls_back():
     assert language_name("EN") == "English"  # case-insensitive
     assert language_name(None) is None
     assert language_name("xx") is None  # unknown → generic clause kept
+
+
+def test_stop_ends_polishing_before_the_next_llm_call(db_env, monkeypatch):
+    calls = []
+    monkeypatch.setattr(cleanup, "complete", lambda s, u, **k: (calls.append(1), u)[1])
+    with pytest.raises(cleanup.CompileStopped):
+        cleanup.clean_transcript(
+            _raw_transcript(), [PUNCTUATE, COPYEDIT], "test-model", should_stop=lambda: True
+        )
+    assert calls == []
+    assert _cache_rows() == 0  # a half-polished text is never cached
+
+
+def test_stop_also_ends_article_polishing(db_env, monkeypatch):
+    calls = []
+    monkeypatch.setattr(cleanup, "complete", lambda s, u, **k: (calls.append(1), u)[1])
+    with pytest.raises(cleanup.CompileStopped):
+        cleanup.clean_markdown(
+            "Some text here.", [COPYEDIT], "test-model", content_key="k", should_stop=lambda: True
+        )
+    assert calls == []

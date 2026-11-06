@@ -521,3 +521,35 @@ def test_stop_before_any_chapter_ends_the_compile(
     mock_render.assert_not_called()
     assert mock_update.call_args.args[1] == "failed"
     assert mock_update.call_args.kwargs["error"] == runner.STOPPED_EMPTY
+
+
+@patch("app.jobs.runner.stop_requested")
+@patch("app.jobs.runner.clean_transcript")
+@patch("app.jobs.runner.get_job_llm_roles", return_value=["punctuate"])
+@patch("app.jobs.runner.llm_endpoint")
+@patch("app.jobs.runner.set_item_compile_state")
+@patch("app.jobs.runner.get_job")
+@patch("app.jobs.runner.update_job_status")
+@patch("app.jobs.runner.render_epub")
+@patch("app.jobs.runner.load_transcript")
+@patch("app.jobs.runner.get_selected_items")
+def test_stop_mid_polish_drops_that_item_without_waiting(
+    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
+    mock_llm, mock_roles, mock_clean, mock_stop,
+):
+    from app.pipeline.cleanup import CompileStopped
+
+    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
+    mock_llm.return_value = SimpleNamespace(model="m")
+    mock_fetch.return_value = Transcript(
+        video_id="abc123", language="en",
+        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
+    )
+    mock_clean.side_effect = CompileStopped()
+    mock_stop.side_effect = [False, True]
+
+    runner.run_compilation("job1")
+
+    assert mock_clean.call_args.kwargs["should_stop"] is not None
+    mock_state.assert_any_call("job1", "j-0-0", "skipped", runner.STOPPED)
+    assert mock_update.call_args.kwargs["error"] == runner.STOPPED_EMPTY
