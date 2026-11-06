@@ -52,7 +52,7 @@ First read the user's REQUEST and decide:
 - level: the depth the request asks for ("intro", "intermediate", "expert"), or "any" when it doesn't say.
 
 Then judge EVERY result by its index i:
-- compilable: true if the item is mostly continuous speech or prose a reader could learn from (lecture, talk, interview, debate, documentary, podcast episode, explainer, article). false for music videos, songs, trailers, teasers, compilations of clips, gameplay without commentary, ASMR, livestream replays of mostly silence, shopping pages.
+- compilable: true if the item is mostly continuous speech or prose a reader could learn from (lecture, talk, interview, debate, documentary, podcast episode, explainer, article). false for music videos, songs, trailers, teasers, compilations of clips, gameplay without commentary, ASMR, livestream replays of mostly silence, shopping pages, job ads and job boards.
 - relevance: 0 = off-topic, 1 = loosely related, 2 = on topic, 3 = exactly what was asked.
 - format: one of lecture, interview, documentary, explainer, news, reaction, article, other.
 - level: "intro", "intermediate" or "expert".

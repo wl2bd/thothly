@@ -753,3 +753,27 @@ def test_every_web_backend_drops_social_video_and_shop_hits(backend):
         provider = service._build_web_provider()
         urls = [r.url for r in provider.search("quill notes", 10)]
     assert urls == ["https://en.wikipedia.org/wiki/Quill_notes"]
+
+
+@pytest.mark.parametrize("url", [
+    "https://jobs.boeing.com/job/berkeley/mechanical-design-engineer/185/102910579072",
+    "https://www.indeed.com/q-design-engineer-l-las-vegas,-nv-jobs.html",
+    "https://www.glassdoor.com/Job/design-engineer-jobs-SRCH_KO0,15.htm",
+    "https://careers.example.com/open-roles/design-engineer",
+    "https://example.com/careers/design-engineer",
+    "https://example.com/jobs/1234-design-engineer",
+    "https://boards.greenhouse.io/acme/jobs/123",
+    "https://jobs.lever.co/acme/abc-123",
+    "https://www.welcometothejungle.com/fr/companies/acme/jobs/design-engineer",
+])
+def test_job_pages_are_not_articles(url):
+    from app.search.web_provider import is_article_like
+
+    assert is_article_like(url) is False
+
+
+def test_an_article_about_jobs_is_still_an_article():
+    from app.search.web_provider import is_article_like
+
+    assert is_article_like("https://blog.example.com/what-a-design-engineer-does") is True
+    assert is_article_like("https://blog.example.com/posts/jobs-to-be-done") is True

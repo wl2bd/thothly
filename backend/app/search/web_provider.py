@@ -44,8 +44,26 @@ _NON_ARTICLE_HOSTS = frozenset(
         "spotify.com",
         "podcasts.apple.com",
         "apple.com",
+        # job boards and applicant-tracking systems: a job ad is never a read
+        "indeed.com",
+        "glassdoor.com",
+        "monster.com",
+        "ziprecruiter.com",
+        "simplyhired.com",
+        "careerbuilder.com",
+        "greenhouse.io",
+        "lever.co",
+        "ashbyhq.com",
+        "myworkdayjobs.com",
+        "smartrecruiters.com",
+        "workable.com",
+        "francetravail.fr",
+        "hellowork.com",
     }
 )
+
+# Subdomains a company keeps for its job ads (jobs.boeing.com, careers.acme.io).
+_JOB_SUBDOMAINS = ("jobs.", "careers.", "career.", "emplois.", "recrutement.")
 
 
 # Path segments that mark a page as a listing, taxonomy, shop, forum or account
@@ -65,6 +83,9 @@ _NON_ARTICLE_SEGMENTS = frozenset(
         # account / utility
         "login", "signin", "signup", "register", "account", "search",
         "contact", "privacy", "terms",
+        # job ads, in the shapes job sites and careers pages use
+        "job", "jobs", "career", "careers", "emplois", "offres-emploi",
+        "stellenangebote", "vacancies", "openings",
     }
 )
 
@@ -142,6 +163,8 @@ def is_article_like(url: str) -> bool:
     parsed = urlparse(url)
     host = _host(url)
     if any(host == d or host.endswith(f".{d}") for d in _NON_ARTICLE_HOSTS):
+        return False
+    if host.startswith(_JOB_SUBDOMAINS):
         return False
     segments = [s.lower() for s in parsed.path.split("/") if s]
     if any(seg in _NON_ARTICLE_SEGMENTS for seg in segments):
