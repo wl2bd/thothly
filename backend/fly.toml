@@ -22,3 +22,11 @@ primary_region = "cdg"
 [[vm]]
   size = "shared-cpu-1x"
   memory = "1gb"
+
+# The SQLite DB (jobs and every paid-answer cache) lives in /data. Without a
+# volume each deploy wipes it, and every cached transcript is bought again.
+# fly deploy creates the volume on first run (about $0.15/month for 1 GB).
+[mounts]
+  source = "thothly_data"
+  destination = "/data"
+  initial_size = "1gb"
