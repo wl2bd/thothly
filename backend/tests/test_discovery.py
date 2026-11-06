@@ -18,12 +18,29 @@ from app.sources.models import Article, VideoMeta
         ("https://youtu.be/8XFMRd34fKk?list=PL0LLIK", "youtube_video"),
         ("https://www.youtube.com/@veritasium", "youtube_channel"),
         ("https://www.youtube.com/channel/UC123", "youtube_channel"),
+        # Shorts, lives and embeds are single videos, never an article to scrape.
+        ("https://www.youtube.com/shorts/abc123XYZ", "youtube_video"),
+        ("https://youtube.com/live/abc123XYZ?si=x", "youtube_video"),
+        ("https://www.youtube.com/embed/abc123XYZ", "youtube_video"),
+        ("https://m.youtube.com/watch?v=abc123", "youtube_video"),
         ("https://blog.example.com", "blog"),
         ("https://hnrss.org/frontpage", "blog"),
     ],
 )
 def test_detect_kind(url, expected):
     assert discovery.detect_kind(url) == expected
+
+
+@pytest.mark.parametrize("url", [
+    "https://www.youtube.com/shorts/abc123XYZ",
+    "https://youtube.com/live/abc123XYZ?si=x",
+    "https://www.youtube.com/embed/abc123XYZ",
+    "https://youtu.be/abc123XYZ?t=30",
+    "https://www.youtube.com/watch?v=abc123XYZ&list=PL1",
+])
+def test_video_urls_are_cleaned_to_one_watch_url(url):
+    assert discovery._clean_video_url(url) == "https://www.youtube.com/watch?v=abc123XYZ"
+    assert discovery._video_id(url) == "abc123XYZ"
 
 
 @patch("app.sources.discovery.load_transcript", return_value=None)

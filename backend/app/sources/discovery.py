@@ -64,6 +64,13 @@ class DiscoveredItem:
 _AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav")
 
 
+# A single video's id, in every URL shape YouTube hands out: watch?v=, youtu.be,
+# Shorts, lives and embeds. Anything else on youtube.com is a list or a channel.
+_VIDEO_ID_RE = re.compile(
+    r"(?:[?&]v=|youtu\.be/|youtube\.com/(?:shorts|live|embed)/)([A-Za-z0-9_-]{6,})"
+)
+
+
 def detect_kind(url: str) -> str:
     """Classify a pasted URL so the user never has to pick a source type.
 
@@ -73,7 +80,7 @@ def detect_kind(url: str) -> str:
     u = url.lower()
     # An explicit video id wins over a playlist context: a link to a specific
     # video (even one carrying `?list=…`) means "this video", not the whole list.
-    if ("youtube.com/watch" in u and "v=" in u) or "youtu.be/" in u:
+    if ("youtube.com/watch" in u and "v=" in u) or _VIDEO_ID_RE.search(url):
         return "youtube_video"
     if "list=" in u or "youtube.com/playlist" in u:
         return "youtube_playlist"
@@ -250,13 +257,13 @@ def _apply_transcript_stats(item: DiscoveredItem, transcript) -> None:
 
 
 def _video_id(url: str) -> str:
-    match = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]+)", url)
+    match = _VIDEO_ID_RE.search(url)
     return match.group(1) if match else url.rstrip("/").split("/")[-1]
 
 
 def _clean_video_url(url: str) -> str:
     """Strip playlist/extra params: a single-video URL must extract one video."""
-    match = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{6,})", url)
+    match = _VIDEO_ID_RE.search(url)
     if match:
         return f"https://www.youtube.com/watch?v={match.group(1)}"
     return url
