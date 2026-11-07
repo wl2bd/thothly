@@ -5,6 +5,7 @@ import json
 import app.core.database as database
 from app.jobs import repository
 from app.sources import transcript_cache
+from app.sources.models import Transcript
 
 
 def _legacy(conn) -> None:
@@ -63,3 +64,22 @@ def test_older_caches_and_items_survive_the_upgrade():
         "A video", True, False, False,
     )
     assert (item.set_aside, item.estimated_duration_s, item.selected) == ("Likely off-topic", 60, True)
+
+
+def test_init_drops_video_transcripts_cached_in_a_preferred_language_once():
+    # Cached before 2026-11-07, an English transcript may be a hand translation
+    # of a French talk; refetch it. French and episode rows stay.
+    with database.get_connection() as conn:
+        conn.execute("PRAGMA user_version = 0")
+        conn.commit()
+    for key, lang in (("vidEN", "en-GB"), ("vidFR", "fr"), ("https://cdn.example/ep.mp3", "en")):
+        transcript_cache.put(key, Transcript(video_id=key, language=lang, segments=[]))
+
+    database.init_db()
+    assert transcript_cache.get("vidEN") is None
+    assert transcript_cache.get("vidFR") is not None
+    assert transcript_cache.get("https://cdn.example/ep.mp3") is not None
+
+    transcript_cache.put("vidEN", Transcript(video_id="vidEN", language="en", segments=[]))
+    database.init_db()  # already done: a fresh English fetch is kept
+    assert transcript_cache.get("vidEN") is not None

@@ -46,8 +46,15 @@ def test_no_caption_track_skips_the_paid_transcript_call(mock_call):
     assert mock_call.call_count == 1
 
 
-def test_pick_language_prefers_human_subtitles_in_preferred_language():
+def test_pick_language_keeps_the_lone_asr_over_a_hand_translation():
+    # A French talk with hand-made English subtitles and no audio-track info:
+    # the body stays French, like its title and chapters.
     tracks = [{"languageCode": "fr", "kind": "asr"}, {"languageCode": "en-GB"}]
+    assert _pick_language(tracks, ["en"]) == "fr"
+
+
+def test_pick_language_prefers_human_subtitles_when_the_spoken_language_is_unknown():
+    tracks = [{"languageCode": "de"}, {"languageCode": "en-GB"}]
     assert _pick_language(tracks, ["en"]) == "en-GB"
 
 

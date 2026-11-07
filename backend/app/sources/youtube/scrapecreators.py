@@ -87,12 +87,14 @@ def _call(endpoint: str, **params: str) -> dict:
 
 
 def _pick_language(tracks: list[dict], languages: list[str], audio_tracks: list[dict] | None = None) -> str | None:
-    """On an auto-dubbed video YouTube runs ASR on every dubbed audio track, so
-    "asr" no longer means "original": the original is the default, non-dubbed
-    audio track."""
+    """The spoken language is the default, non-dubbed audio track. Without that
+    info, a lone ASR track is it: YouTube runs ASR on the spoken audio only, so a
+    French talk with hand-made English subtitles stays French. On an auto-dubbed
+    video every dubbed track gets ASR too, so "asr" alone says nothing."""
     manual = [t["languageCode"] for t in tracks if t.get("kind") != "asr" and t.get("languageCode")]
     auto = [t["languageCode"] for t in tracks if t.get("kind") == "asr" and t.get("languageCode")]
-    return pick_track(manual, auto, _original_audio_language(audio_tracks or []), languages)
+    original = _original_audio_language(audio_tracks or []) or (auto[0] if len(auto) == 1 else None)
+    return pick_track(manual, auto, original, languages)
 
 
 def _original_audio_language(audio_tracks: list[dict]) -> str | None:

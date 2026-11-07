@@ -56,6 +56,7 @@ def init_db() -> None:
             )
         """)
         _merge_legacy_transcript_caches(conn)
+        _drop_translated_video_transcripts(conn)
         # Cleaned-content cache for the LLM roles, keyed by the content (video id
         # or blog url), the applied role set, and the model — so a re-compile with
         # the same choices never re-calls the LLM.
@@ -165,6 +166,27 @@ def _merge_legacy_transcript_caches(conn: sqlite3.Connection) -> None:
             ), fetched_at FROM podcast_transcript_cache WHERE format_version = 2
         """)
         conn.execute("DROP TABLE podcast_transcript_cache")
+
+
+def _drop_translated_video_transcripts(conn: sqlite3.Connection) -> None:
+    """Once: forget video transcripts cached in a preferred language. Until
+    2026-11-07 the paid path took hand-made subtitles in a preferred language
+    over the spoken one when YouTube named no audio track, so a French talk
+    could be cached in English. Those videos are fetched again under the fixed
+    rule; a transcript in any other language was the spoken one and is kept.
+    Episodes (keyed by URL) never went through that rule."""
+    if conn.execute("PRAGMA user_version").fetchone()[0] >= 1:
+        return
+    for lang in {code.split("-")[0].lower() for code in settings.preferred_languages}:
+        conn.execute(
+            """
+            DELETE FROM transcripts WHERE key NOT LIKE 'http%'
+            AND (json_extract(transcript, '$.language') = ?
+                 OR json_extract(transcript, '$.language') LIKE ? || '-%')
+            """,
+            (lang, lang),
+        )
+    conn.execute("PRAGMA user_version = 1")
 
 
 def _add_missing_columns(
