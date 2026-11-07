@@ -70,7 +70,7 @@ def test_init_drops_video_transcripts_cached_in_a_preferred_language_once():
     # Cached before 2026-11-07, an English transcript may be a hand translation
     # of a French talk; refetch it. French and episode rows stay.
     with database.get_connection() as conn:
-        conn.execute("PRAGMA user_version = 0")
+        conn.execute("PRAGMA user_version = 1")  # a DB from the first fix
         conn.commit()
     for key, lang in (("vidEN", "en-GB"), ("vidFR", "fr"), ("https://cdn.example/ep.mp3", "en")):
         transcript_cache.put(key, Transcript(video_id=key, language=lang, segments=[]))

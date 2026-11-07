@@ -168,14 +168,18 @@ def _merge_legacy_transcript_caches(conn: sqlite3.Connection) -> None:
         conn.execute("DROP TABLE podcast_transcript_cache")
 
 
+_TRANSCRIPT_RULE_VERSION = 2
+
+
 def _drop_translated_video_transcripts(conn: sqlite3.Connection) -> None:
-    """Once: forget video transcripts cached in a preferred language. Until
-    2026-11-07 the paid path took hand-made subtitles in a preferred language
-    over the spoken one when YouTube named no audio track, so a French talk
-    could be cached in English. Those videos are fetched again under the fixed
-    rule; a transcript in any other language was the spoken one and is kept.
-    Episodes (keyed by URL) never went through that rule."""
-    if conn.execute("PRAGMA user_version").fetchone()[0] >= 1:
+    """Once per fix: forget video transcripts cached in a preferred language.
+    Until 2026-11-07 the paid path could read a French talk in English: hand-made
+    English subtitles taken over the spoken French (fixed in version 1), or the
+    captions of YouTube's English auto-dub, which it plays by default to an
+    English locale (fixed in version 2). Those videos are fetched again under
+    the fixed rule; a transcript in any other language was the spoken one and
+    is kept. Episodes (keyed by URL) never went through that rule."""
+    if conn.execute("PRAGMA user_version").fetchone()[0] >= _TRANSCRIPT_RULE_VERSION:
         return
     for lang in {code.split("-")[0].lower() for code in settings.preferred_languages}:
         conn.execute(
@@ -186,7 +190,7 @@ def _drop_translated_video_transcripts(conn: sqlite3.Connection) -> None:
             """,
             (lang, lang),
         )
-    conn.execute("PRAGMA user_version = 1")
+    conn.execute(f"PRAGMA user_version = {_TRANSCRIPT_RULE_VERSION}")
 
 
 def _add_missing_columns(

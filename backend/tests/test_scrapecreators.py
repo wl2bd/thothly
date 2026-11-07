@@ -102,3 +102,17 @@ def test_fetch_video_meta_maps_detail(_):
 def test_fetch_video_meta_missing_video_is_unavailable(_):
     with pytest.raises(YouTubeUnavailable):
         fetch_video_meta("https://www.youtube.com/watch?v=gone")
+
+
+# Trimmed from a real video (2026-11-07): a French talk YouTube auto-dubbed into
+# English. Asked from an English locale, the dub is the DEFAULT audio track and
+# the French original is not, so "default" does not mean "spoken".
+DUBBED_TRACKS = [{"languageCode": "en", "kind": "asr"}, {"languageCode": "fr", "kind": "asr"}]
+DUBBED_AUDIO = [
+    {"id": "en-US.10", "displayName": "English (US)", "audioIsDefault": True, "isAutoDubbed": True},
+    {"id": "fr-FR.4", "displayName": "French (FR) original", "audioIsDefault": False, "isAutoDubbed": None},
+]
+
+
+def test_pick_language_on_a_dub_played_by_default_takes_the_original():
+    assert _pick_language(DUBBED_TRACKS, ["en"], DUBBED_AUDIO) == "fr"

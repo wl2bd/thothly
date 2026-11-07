@@ -87,7 +87,7 @@ def _call(endpoint: str, **params: str) -> dict:
 
 
 def _pick_language(tracks: list[dict], languages: list[str], audio_tracks: list[dict] | None = None) -> str | None:
-    """The spoken language is the default, non-dubbed audio track. Without that
+    """The spoken language is the audio track that isn't an auto-dub. Without that
     info, a lone ASR track is it: YouTube runs ASR on the spoken audio only, so a
     French talk with hand-made English subtitles stays French. On an auto-dubbed
     video every dubbed track gets ASR too, so "asr" alone says nothing."""
@@ -98,11 +98,18 @@ def _pick_language(tracks: list[dict], languages: list[str], audio_tracks: list[
 
 
 def _original_audio_language(audio_tracks: list[dict]) -> str | None:
-    """The original audio's language ("en-US.4" -> "en-US"), or None."""
-    for track in audio_tracks:
-        if track.get("audioIsDefault") and not track.get("isAutoDubbed") and track.get("id"):
-            return track["id"].split(".")[0]
-    return None
+    """The original audio's language ("fr-FR.4" -> "fr-FR"), or None.
+
+    Not simply the default track: asked from an English locale, YouTube plays
+    an English auto-dub by default and the French original is the one marked
+    "original". Among tracks that aren't auto-dubs, the one YouTube labels
+    original wins, then the default one."""
+    real = [t for t in audio_tracks if not t.get("isAutoDubbed") and t.get("id")]
+    real.sort(key=lambda t: (
+        not (t.get("displayName") or "").lower().endswith("original"),
+        not t.get("audioIsDefault"),
+    ))
+    return real[0]["id"].split(".")[0] if real else None
 
 
 def _parse_segments(rows: list[dict]) -> list[TranscriptSegment]:
