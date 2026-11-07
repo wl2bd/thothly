@@ -102,7 +102,7 @@ def main(argv: list[str]) -> int:
 
     if unmeasured:
         print(f"Not measured ({len(unmeasured)}): " + ", ".join(t[:40] for t in unmeasured))
-        print("  Podcasts and articles have no free source to compare against.\n")
+        print("  The source could not be read again (not cached, or the page no longer loads).\n")
 
     print(
         f"{len(flagged)} of {len(audits)} chapter(s) worth a look."

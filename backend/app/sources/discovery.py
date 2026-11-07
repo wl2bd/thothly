@@ -181,8 +181,8 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
     This is the deliberate cost the user accepted: discovery is no longer free
     for YouTube, but in exchange the review screen can show, per video, whether
     it has usable subtitles, in which language, how long it is to read, and
-    whether the text is punctuated (clean) or will need an LLM cleanup pass. The
-    transcript is cached on the item so compilation reuses it instead of hitting
+    whether the captions are punctuated. The transcript itself lands in the
+    video-keyed transcript cache, so compilation reuses it instead of hitting
     YouTube a second time. Best-effort: any failure leaves the item flagged and
     never breaks discovery.
     """

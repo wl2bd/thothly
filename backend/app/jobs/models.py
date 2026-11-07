@@ -80,7 +80,7 @@ class ItemPreview(BaseModel):
     `available` is False when there's nothing free to show (a podcast awaiting
     transcription, a video without subtitles, an unscrapable page); `note` then
     explains why. `note` is also set on an *available* preview to flag a caveat
-    (e.g. raw captions the final compile would punctuate). `truncated` marks a
+    (e.g. an article that fell back to its feed summary). `truncated` marks a
     long body clipped for transport — the compile still uses the full text.
     """
 
