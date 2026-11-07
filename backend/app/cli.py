@@ -181,7 +181,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.CRITICAL)
     # ponytail: a fresh temp dir per run, so transcript and AI caches don't survive
     # between runs; point DATA_DIR at a folder to keep them.
-    if settings.data_dir == Path("/data"):
+    if "data_dir" not in settings.model_fields_set:
         settings.data_dir = Path(tempfile.mkdtemp())
     init_db()
     return args.run(args)
