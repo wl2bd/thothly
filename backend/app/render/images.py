@@ -15,11 +15,9 @@ import io
 import logging
 import re
 from pathlib import Path
-from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
 
-from app.core.net import BlockedURLError, assert_public_url
+from app.core.net import fetch_public
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +35,6 @@ _MD_IMAGE = re.compile(
     r'!\[(?P<alt>(?:[^\[\]]|\[[^\[\]]*\])*)\]\(\s*(?P<url>\S+?)(?P<title>\s+"[^"]*")?\s*\)'
 )
 _REMOTE = re.compile(r"^https?://", re.IGNORECASE)
-
-# A real browser UA: plenty of hosts 403 anything that looks like a bot/library.
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
 
 _EXT_BY_TYPE = {
     "image/jpeg": ".jpg",
@@ -85,22 +77,13 @@ def localize_images(
 
 
 def _download(url: str, media_dir: Path, timeout: float) -> Path | None:
-    try:
-        assert_public_url(url)  # SSRF guard: images come from scraped third-party HTML
-        request = Request(url, headers={"User-Agent": _USER_AGENT})
-        with urlopen(request, timeout=timeout) as response:
-            content_type = response.headers.get_content_type()
-            data = response.read(_MAX_BYTES + 1)
-    except (URLError, ValueError, OSError, BlockedURLError) as exc:
-        logger.warning("Dropping unreachable image %s: %s", url, exc)
+    # Images come from scraped third-party HTML, hence the public-host guard.
+    fetched = fetch_public(url, timeout=timeout, max_bytes=_MAX_BYTES)
+    if not fetched or not fetched[0]:
+        logger.warning("Dropping an image that couldn't be fetched: %s", url)
         return None
-
-    if len(data) > _MAX_BYTES:
-        logger.warning("Dropping oversized image %s (> %d bytes)", url, _MAX_BYTES)
-        return None
-    if not data:
-        logger.warning("Dropping empty image %s", url)
-        return None
+    data, headers = fetched
+    content_type = headers.get("content-type", "").split(";")[0].strip().lower()
 
     extension = _EXT_BY_TYPE.get(content_type) or _extension_from_url(url) or ".img"
     data = _recompress(data, extension)
@@ -151,15 +134,8 @@ def _extension_from_url(url: str) -> str | None:
 
 
 def _http_bytes(url: str, timeout: float) -> bytes | None:
-    try:
-        assert_public_url(url)  # SSRF guard: favicon/emblem URLs come from scraped pages
-        request = Request(url, headers={"User-Agent": _USER_AGENT})
-        with urlopen(request, timeout=timeout) as response:
-            data = response.read(_MAX_BYTES + 1)
-        return data if data and len(data) <= _MAX_BYTES else None
-    except (URLError, ValueError, OSError, BlockedURLError) as exc:
-        logger.info("Fetch failed for %s: %s", url, exc)
-        return None
+    fetched = fetch_public(url, timeout=timeout, max_bytes=_MAX_BYTES)
+    return fetched[0] if fetched and fetched[0] else None
 
 
 def favicon_candidates(page_url: str, timeout: float = 15.0) -> list[str]:

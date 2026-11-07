@@ -1,43 +1,21 @@
 import io
-from urllib.error import HTTPError
 
+import httpx
 import pytest
 
 from app.render import images
-
-
-class _FakeResponse(io.BytesIO):
-    def __init__(self, data: bytes, content_type: str):
-        super().__init__(data)
-        self._content_type = content_type
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        self.close()
-
-    class _Headers:
-        def __init__(self, content_type: str):
-            self._content_type = content_type
-
-        def get_content_type(self):
-            return self._content_type
-
-    @property
-    def headers(self):
-        return self._Headers(self._content_type)
 
 
 def _png(n: int = 64) -> bytes:
     return b"\x89PNG\r\n\x1a\n" + b"\x00" * n
 
 
-def test_localizes_remote_image_and_embeds_it(tmp_path, monkeypatch):
-    def fake_urlopen(request, timeout):
-        return _FakeResponse(_png(), "image/png")
+def _image(data: bytes):
+    return lambda request: httpx.Response(200, content=data, headers={"content-type": "image/png"})
 
-    monkeypatch.setattr(images, "urlopen", fake_urlopen)
+
+def test_localizes_remote_image_and_embeds_it(tmp_path, web):
+    web(_image(_png()))
     md = "![un chat](https://example.org/cat.png)"
     result = images.localize_images(md, tmp_path / "media")
 
@@ -48,11 +26,8 @@ def test_localizes_remote_image_and_embeds_it(tmp_path, monkeypatch):
     assert len(files) == 1 and files[0].suffix == ".png"
 
 
-def test_drops_unreachable_image(tmp_path, monkeypatch):
-    def fake_urlopen(request, timeout):
-        raise HTTPError("https://example.org/x.png", 404, "Not Found", {}, None)
-
-    monkeypatch.setattr(images, "urlopen", fake_urlopen)
+def test_drops_unreachable_image(tmp_path, web):
+    web(lambda request: httpx.Response(404))
     md = "avant ![alt](https://example.org/x.png) après"
     result = images.localize_images(md, tmp_path / "media")
 
@@ -61,20 +36,17 @@ def test_drops_unreachable_image(tmp_path, monkeypatch):
     assert "avant" in result and "après" in result
 
 
-def test_leaves_local_references_untouched(tmp_path, monkeypatch):
-    def boom(*a, **k):
+def test_leaves_local_references_untouched(tmp_path, web):
+    def boom(request):
         raise AssertionError("should not download local refs")
 
-    monkeypatch.setattr(images, "urlopen", boom)
+    web(boom)
     md = "![local](media/pic.png)"
     assert images.localize_images(md, tmp_path / "media") == md
 
 
-def test_oversized_image_is_dropped(tmp_path, monkeypatch):
-    def fake_urlopen(request, timeout):
-        return _FakeResponse(b"\x00" * (images._MAX_BYTES + 100), "image/png")
-
-    monkeypatch.setattr(images, "urlopen", fake_urlopen)
+def test_oversized_image_is_dropped(tmp_path, web):
+    web(_image(b"\x00" * (images._MAX_BYTES + 100)))
     md = "![big](https://example.org/big.png)"
     result = images.localize_images(md, tmp_path / "media")
 
@@ -99,16 +71,16 @@ def test_recompress_unknown_format_is_passthrough():
     assert images._recompress(b"<svg/>", ".svg") == b"<svg/>"
 
 
-def test_a_caption_holding_a_link_keeps_the_image_and_its_link(tmp_path, monkeypatch):
+def test_a_caption_holding_a_link_keeps_the_image_and_its_link(tmp_path, web):
     # A figure's caption is the image's description: "[Iceland](…)" inside it
     # used to end the match, so the link was fetched as the image.
     fetched = []
 
-    def fake_urlopen(request, timeout):
-        fetched.append(request.full_url)
-        return _FakeResponse(_png(), "image/png")
+    def serve(request):
+        fetched.append(str(request.url))
+        return _image(_png())(request)
 
-    monkeypatch.setattr(images, "urlopen", fake_urlopen)
+    web(serve)
     md = "![Ice near [Iceland](https://w.test/Iceland), 2007.](https://example.org/ice.png)"
     result = images.localize_images(md, tmp_path / "media")
 

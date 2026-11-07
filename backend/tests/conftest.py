@@ -60,3 +60,23 @@ def fake_pandoc():
 
     with patch("app.jobs.runner.render_epub", side_effect=render) as mock:
         yield mock
+
+
+@pytest.fixture
+def web(monkeypatch):
+    """Answer outbound fetches made through app.core.net with `handler(request)`,
+    every host treated as public. Call it with the handler."""
+    import httpx
+
+    import app.core.net as net
+
+    real_client = httpx.Client
+    monkeypatch.setattr(net, "assert_public_url", lambda url: None)
+
+    def serve(handler):
+        monkeypatch.setattr(
+            net.httpx, "Client",
+            lambda *a, **kw: real_client(*a, **{**kw, "transport": httpx.MockTransport(handler)}),
+        )
+
+    return serve

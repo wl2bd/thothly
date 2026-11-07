@@ -13,16 +13,23 @@ default and is documented as "do not expose to the public internet"):
 - Resolution happens once, at check time. A host that resolves to a public
   address here and a private one at connect time (DNS rebinding) is not caught.
 - Only the URL we're handed is checked. Libraries that follow redirects
-  internally (feedparser, trafilatura, urllib) are not re-validated per hop; the
-  podcast downloader, whose redirects we control, validates every hop itself.
+  internally (feedparser, trafilatura) are not re-validated per hop; every fetch
+  made through `open_public` validates each hop itself.
 - Unresolvable hosts pass (the real fetch then fails on its own): a name that
   can't be resolved can't be connected to, so it is not an SSRF vector, and
   failing open here keeps offline / hermetic test runs working.
 """
 
 import ipaddress
+import logging
 import socket
+from collections.abc import Iterator
+from contextlib import contextmanager
 from urllib.parse import urlsplit
+
+import httpx
+
+logger = logging.getLogger(__name__)
 
 _ALLOWED_SCHEMES = {"http", "https"}
 
@@ -77,3 +84,63 @@ def assert_public_url(url: str) -> None:
         ip = info[4][0]
         if not _is_public_ip(ip):
             raise BlockedURLError(f"Blocked non-public address {ip} for host {host!r}")
+
+
+# Some hosts serve an empty page, or a 403, to anything that doesn't look like a
+# browser.
+BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+_MAX_REDIRECTS = 5
+
+
+class TooLarge(Exception):
+    """The body went past the caller's byte cap."""
+
+
+@contextmanager
+def open_public(
+    url: str, *, timeout: float, headers: dict[str, str] | None = None
+) -> Iterator[httpx.Response]:
+    """A streaming GET to a public host, following redirects itself so every hop
+    is checked against the SSRF guard: a redirect must never bounce the server
+    onto an internal address. Raises BlockedURLError or httpx.HTTPError."""
+    with httpx.Client(
+        follow_redirects=False,
+        timeout=timeout,
+        headers={"User-Agent": BROWSER_UA, **(headers or {})},
+    ) as client:
+        for _ in range(_MAX_REDIRECTS + 1):
+            assert_public_url(url)
+            with client.stream("GET", url) as response:
+                location = response.headers.get("location")
+                if response.is_redirect and location:
+                    url = str(httpx.URL(url).join(location))
+                    continue
+                response.raise_for_status()
+                yield response
+                return
+        raise httpx.TooManyRedirects(f"Too many redirects from {url}")
+
+
+def read_capped(response: httpx.Response, max_bytes: int) -> bytes:
+    data = bytearray()
+    for chunk in response.iter_bytes():
+        data += chunk
+        if len(data) > max_bytes:
+            raise TooLarge(f"over {max_bytes} bytes")
+    return bytes(data)
+
+
+def fetch_public(
+    url: str, *, timeout: float, max_bytes: int, headers: dict[str, str] | None = None
+) -> tuple[bytes, httpx.Headers] | None:
+    """A public URL's body and headers, or None when it can't be had: blocked,
+    unreachable, an error status, or over `max_bytes`."""
+    try:
+        with open_public(url, timeout=timeout, headers=headers) as response:
+            return read_capped(response, max_bytes), response.headers
+    except (httpx.HTTPError, BlockedURLError, TooLarge) as exc:
+        logger.info("Could not fetch %s: %s", url, exc)
+        return None

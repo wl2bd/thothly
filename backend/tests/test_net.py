@@ -44,3 +44,27 @@ def test_allows_unresolvable_host():
 def test_blocks_url_without_host():
     with pytest.raises(BlockedURLError):
         assert_public_url("http:///just-a-path")
+
+
+def test_every_redirect_hop_is_checked(monkeypatch):
+    import httpx
+
+    import app.core.net as net
+
+    checked: list[str] = []
+
+    def guard(url: str) -> None:
+        checked.append(url)
+        if "169.254" in url:  # cloud metadata, reached through a redirect
+            raise BlockedURLError("internal")
+
+    real_client = httpx.Client
+    monkeypatch.setattr(net, "assert_public_url", guard)
+    monkeypatch.setattr(net.httpx, "Client", lambda *a, **kw: real_client(
+        *a, **{**kw, "transport": httpx.MockTransport(
+            lambda req: httpx.Response(302, headers={"location": "http://169.254.169.254/x"})
+        )},
+    ))
+
+    assert net.fetch_public("https://cdn.example/ep.mp3", timeout=5, max_bytes=10) is None
+    assert checked == ["https://cdn.example/ep.mp3", "http://169.254.169.254/x"]

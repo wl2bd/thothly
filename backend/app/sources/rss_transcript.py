@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import httpx
 from bs4 import BeautifulSoup
 
-from app.core.net import BlockedURLError, assert_public_url
+from app.core.net import fetch_public
 from app.sources.models import Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 _NS = "{https://podcastindex.org/namespace/1.0}"
 _TIMEOUT_S = 20.0
 _MAX_BYTES = 15 * 1024 * 1024  # long-running feeds run to several MB
-_MAX_REDIRECTS = 5
 _UA = "Thothly/1.0 (+https://thothly.vercel.app)"
 
 # Most structured first: timings and speakers beat timings, beat bare text.
@@ -197,24 +196,10 @@ def _flat(paragraphs: list[str]) -> list[TranscriptSegment]:
 # --- network --------------------------------------------------------------------
 
 def _get_text(url: str) -> str | None:
-    """GET a feed or transcript file, re-checking every redirect hop against the
-    SSRF guard, with a byte cap. None on any failure."""
-    try:
-        with httpx.Client(follow_redirects=False, timeout=_TIMEOUT_S, headers={"User-Agent": _UA}) as client:
-            for _ in range(_MAX_REDIRECTS + 1):
-                assert_public_url(url)
-                with client.stream("GET", url) as response:
-                    if response.is_redirect and response.headers.get("location"):
-                        url = str(httpx.URL(url).join(response.headers["location"]))
-                        continue
-                    if response.status_code != 200:
-                        return None
-                    data = bytearray()
-                    for chunk in response.iter_bytes():
-                        data += chunk
-                        if len(data) > _MAX_BYTES:
-                            return None
-                    return data.decode(response.encoding or "utf-8", errors="replace")
-    except (httpx.HTTPError, BlockedURLError) as exc:
-        logger.info("Could not fetch %s: %s", url, exc)
-    return None
+    """A feed or transcript file as text, or None on any failure."""
+    fetched = fetch_public(url, timeout=_TIMEOUT_S, max_bytes=_MAX_BYTES, headers={"User-Agent": _UA})
+    if fetched is None:
+        return None
+    data, headers = fetched
+    charset = headers.get("content-type", "").partition("charset=")[2].strip() or "utf-8"
+    return data.decode(charset, errors="replace")

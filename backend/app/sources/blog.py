@@ -15,20 +15,15 @@ from trafilatura.utils import normalize_unicode
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
-from app.core.net import BlockedURLError, assert_public_url
+from app.core.net import BlockedURLError, assert_public_url, fetch_public
 from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 from app.sources.wikipedia import is_wikipedia_article, scrape_wikipedia
 
 logger = logging.getLogger(__name__)
 
-# A browser-like User-Agent. trafilatura's own downloader is rejected outright
-# by some hosts (returns nothing), even though the page loads fine in a normal
-# client — so we keep this for a fallback fetch.
-_BROWSER_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
+# A page bigger than this is not an article.
+_MAX_PAGE_BYTES = 20 * 1024 * 1024
 
 
 # No data table has a cell this long; a page laid out in a table does.
@@ -348,18 +343,14 @@ def _fetch_url(url: str, timeout: float) -> str | None:
 
 
 def _browser_fetch(url: str, timeout: float) -> str | None:
-    try:
-        request = Request(
-            url,
-            headers={"User-Agent": _BROWSER_UA, "Accept-Language": "fr,en;q=0.8"},
-        )
-        with urlopen(request, timeout=timeout) as response:
-            raw = response.read()
-            charset = response.headers.get_content_charset() or "utf-8"
-        return raw.decode(charset, errors="replace")
-    except (URLError, ValueError, OSError) as exc:
-        logger.warning("Browser-UA fetch failed for %s: %s", url, exc)
+    fetched = fetch_public(
+        url, timeout=timeout, max_bytes=_MAX_PAGE_BYTES, headers={"Accept-Language": "fr,en;q=0.8"}
+    )
+    if fetched is None:
         return None
+    data, headers = fetched
+    charset = headers.get("content-type", "").partition("charset=")[2].strip() or "utf-8"
+    return data.decode(charset, errors="replace")
 
 
 def _extract_metadata(
