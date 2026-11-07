@@ -460,23 +460,6 @@
   animation-timing-function: var(--ease-out-quint);
 }
 
-/* Returning to the home page (the "New compilation" / logo links carry the
-   `to-home` transition type): the home view is far richer than the job view (the
-   headline, the field and the sketch), so snapping it in at the forward
-   speed reads as abrupt. Let the chrome AND the card settle in over a longer,
-   still-decelerating beat so the home page eases back rather than slamming in. */
-:active-view-transition-type(to-home)::view-transition-old(root),
-:active-view-transition-type(to-home)::view-transition-new(root) {
-  animation-duration: 300ms;
-}
-:active-view-transition-type(to-home)::view-transition-group(flow-card) {
-  animation-duration: 500ms;
-}
-:active-view-transition-type(to-home)::view-transition-old(flow-card),
-:active-view-transition-type(to-home)::view-transition-new(flow-card) {
-  animation-duration: 300ms;
-}
-
 /* A new page, a new step of a compilation, Settings opening: the old view
    leaves fast, then the new one settles in with a short rise. Sequenced rather
    than cross-faded, so the change reads as one even on the same ground. */

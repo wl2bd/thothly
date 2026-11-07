@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  ClockIcon,
   FileTextIcon,
   ListVideoIcon,
   MicIcon,
@@ -90,28 +89,6 @@ export function MetaSep() {
       aria-hidden="true"
       className="bg-border h-3 w-px shrink-0 self-center"
     />
-  );
-}
-
-// The "weight" of a source, in one consistent slot. `duration` (clock) is play
-// time; `reading` (doc) is read time. Icon-led so the two never blur together.
-export function SourceMetric({
-  kind,
-  children,
-  className,
-}: {
-  kind: "duration" | "reading";
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const Icon = kind === "reading" ? FileTextIcon : ClockIcon;
-  return (
-    <span
-      className={cn("inline-flex items-center gap-1 tabular-nums", className)}
-    >
-      <Icon className="size-3 shrink-0" aria-hidden="true" />
-      {children}
-    </span>
   );
 }
 

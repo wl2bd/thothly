@@ -5,7 +5,6 @@ import {
   ArrowRightIcon,
   CommandIcon,
   CornerDownLeftIcon,
-  OptionIcon,
 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
@@ -13,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const noSubscribe = () => () => {};
 
-export const isMac = () =>
+const isMac = () =>
   typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 // A key, written next to the action it triggers so shortcuts can be found by
@@ -44,10 +43,9 @@ const KEY_ICONS: Record<string, typeof CornerDownLeftIcon> = {
 };
 
 // What goes inside a Kbd for a key name: an icon for the symbol keys, the
-// machine's own modifier for "Mod" and "Alt", the text otherwise.
+// machine's own modifier for "Mod", the text otherwise.
 export function KeyLabel({ k }: { k: string }) {
   if (k === "Mod") return <ModKey />;
-  if (k === "Alt") return <AltKey />;
   const Icon = KEY_ICONS[k];
   return Icon ? <Icon {...KEY_ICON} /> : <>{k}</>;
 }
@@ -61,9 +59,4 @@ export function EnterKey() {
 export function ModKey() {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
   return mac ? <CommandIcon {...KEY_ICON} /> : <>Ctrl</>;
-}
-
-export function AltKey() {
-  const mac = useSyncExternalStore(noSubscribe, isMac, () => false);
-  return mac ? <OptionIcon {...KEY_ICON} /> : <>Alt</>;
 }

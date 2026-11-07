@@ -38,7 +38,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
           // Sonner's own description grey is for its light theme only.
           description: "text-muted-foreground!",
           // The kit's outline button. Sonner styles [data-button] with a
