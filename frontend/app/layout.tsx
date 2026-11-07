@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Grain } from "@/components/grain";
 import { PageTransition } from "@/components/page-transition";
-import { Toaster } from "@/components/ui/sonner";
+import { AppToaster } from "@/components/app-toaster";
 
 // Body / UI grotesk — Host Grotesk (variable, OFL): the readable sans that runs
 // the whole tool (`--font-sans`). Upright + italic variable files cover 300–800.
@@ -116,8 +116,7 @@ export default function RootLayout({
           className="glow-layer pointer-events-none fixed inset-x-0 top-header bottom-0 -z-10 bg-no-repeat"
         />
         <PageTransition>{children}</PageTransition>
-        {/* Top, like every alert in the app, just under the header. */}
-        <Toaster position="top-center" offset={{ top: "calc(var(--spacing-header) + 0.75rem)" }} mobileOffset={{ top: "calc(var(--spacing-header) + 0.75rem)" }} />
+        <AppToaster />
       </body>
     </html>
   );
