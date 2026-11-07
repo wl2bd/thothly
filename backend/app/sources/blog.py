@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 from app.core.config import settings
 from app.core.net import BlockedURLError, assert_public_url, fetch_public_text
+from app.pipeline.footnotes import attach_footnotes, lift_footnotes
 from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 from app.sources.wikipedia import WikipediaUnavailable, is_wikipedia_article, scrape_wikipedia
@@ -102,6 +103,8 @@ def scrape_article(url: str, downloaded: str | None = None) -> Article:
         raise Paywalled(url)
 
     downloaded = _captions_to_titles(_unwrap_image_links(_drop_site_chrome(downloaded)))
+    # Extractors drop a page's notes and unlink its calls: they leave first.
+    downloaded, notes = lift_footnotes(downloaded)
 
     # include_formatting/include_links keep bold, italics and hyperlinks (both
     # default to False, which would flatten the article to plain text). Tables
@@ -116,7 +119,10 @@ def scrape_article(url: str, downloaded: str | None = None) -> Article:
     if not content_html:
         raise ScrapeUnavailable(f"Could not extract content from: {url}")
 
-    content_html = _clean_extracted_html(content_html, url)
+    content_html = attach_footnotes(
+        _clean_extracted_html(content_html, url),
+        [_clean_extracted_html(note, url) for note in notes],
+    )
 
     title, author, published_at = _extract_metadata(downloaded, url)
     return Article(
@@ -443,6 +449,7 @@ def _entry_to_article(entry) -> Article:
         content_html = entry.summary
     else:
         content_html = ""
+    content_html = attach_footnotes(*lift_footnotes(content_html))
 
     return Article(
         url=getattr(entry, "link", ""),

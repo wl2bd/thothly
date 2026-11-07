@@ -6,6 +6,7 @@ from urllib.parse import unquote
 from bs4 import BeautifulSoup, Tag
 from markdownify import MarkdownConverter
 
+from app.pipeline.footnotes import TOKEN, split_footnotes, write_footnotes
 from app.pipeline.models import escape_tags
 
 
@@ -16,6 +17,15 @@ def html_to_markdown(html: str) -> str:
     # Naturalism_(philosophy) would land on the wrong page. Percent-encoded
     # parentheses are the same URL to every browser and e-reader.
     soup = BeautifulSoup(html, "html.parser")
+    notes = split_footnotes(soup)
+    body = _convert(soup)
+    if not notes and not TOKEN.search(body):
+        return body
+    # Each note is Markdown of its own, set after the text as "[^fnN]: ...".
+    return write_footnotes(body, {n: _convert(BeautifulSoup(str(note), "html.parser")) for n, note in notes.items()})
+
+
+def _convert(soup) -> str:
     for a in soup.find_all("a", href=True):
         if _links_to_its_own_image(a):
             a.unwrap()

@@ -3,6 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.pipeline.footnotes import number_book_footnotes
 from app.pipeline.i18n import FALLBACK, chrome
 from app.sources.models import ItemType
 
@@ -87,7 +88,7 @@ class CompiledBook(BaseModel):
             parts.append(self.preface.strip())
             parts.append("")
 
-        for chapter in self.chapters:
+        for number, chapter in enumerate(self.chapters, 1):
             lang = f" {{lang={chapter.language}}}" if chapter.language else ""
             parts.append(f"# {escape_tags(chapter.title)}{lang}")
 
@@ -110,6 +111,6 @@ class CompiledBook(BaseModel):
             parts.append(" | ".join(meta_parts))
             parts.append(":::")
             parts.append("")
-            parts.append(chapter.content_md)
+            parts.append(number_book_footnotes(chapter.content_md, number))
             parts.append("")
         return "\n".join(parts)

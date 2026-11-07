@@ -14,6 +14,7 @@ from urllib.parse import unquote, urljoin, urlsplit
 from bs4 import BeautifulSoup
 
 from app.core.net import BOT_UA, fetch_public_text
+from app.pipeline.footnotes import attach_footnotes, lift_footnotes
 from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 
@@ -24,7 +25,7 @@ _MAX_API_BYTES = 20 * 1024 * 1024
 
 # Everything that is the page's furniture, not the article's text.
 _DROP = (
-    "sup.mw-ref, sup.citation, .mw-references-wrap, .reflist, .navbox, .navbox-styles, .infobox, "
+    "sup.mw-ref, sup.citation, .need_ref_tag, .mw-references-wrap, .reflist, .navbox, .navbox-styles, .infobox, "
     ".sidebar, .vertical-navbox, .hatnote, .ambox, .metadata, .noprint, "
     ".shortdescription, .mw-empty-elt, style, link, "
     # A box the page shows collapsed (a family tree drawn in table cells) is
@@ -121,6 +122,8 @@ def _tex_source(math) -> str:
 
 
 def clean_wikipedia_html(html: str, page_url: str) -> str:
+    # The notes first: they live in the "Notes" section dropped below.
+    html, notes = lift_footnotes(html)
     soup = BeautifulSoup(html, "html.parser")
     body = soup.body or soup
     _formulas_to_tex(soup, body)
@@ -147,4 +150,14 @@ def clean_wikipedia_html(html: str, page_url: str) -> str:
         a["href"] = urljoin(page_url, a["href"])
     for img in body.find_all("img", src=True):
         img["src"] = urljoin(page_url, img["src"])
-    return "".join(str(child) for child in body.children)
+    return attach_footnotes(
+        "".join(str(child) for child in body.children),
+        [_absolute_links(note, page_url) for note in notes],
+    )
+
+
+def _absolute_links(note: str, page_url: str) -> str:
+    soup = BeautifulSoup(note, "html.parser")
+    for a in soup.find_all("a", href=True):
+        a["href"] = urljoin(page_url, a["href"])
+    return str(soup)
