@@ -717,6 +717,35 @@ def test_job_pages_are_not_articles(url):
     assert is_article_like(url) is False
 
 
+@pytest.mark.parametrize("url", [
+    "https://jbi.global/sites/default/files/How%20To%20Create%20A%20Thread%20On%20X.Pdf",
+    "https://example.com/papers/report.pdf",
+    "https://example.com/report.PDF?download=1",
+    "https://example.com/slides/deck.pptx",
+    "https://example.com/files/sheet.xlsx",
+    "https://example.com/files/notes.docx",
+    "https://example.com/archive.zip",
+    "https://example.com/books/novel.epub",
+    "https://example.com/media/talk.mp4",
+    "https://example.com/img/diagram.png",
+])
+def test_files_are_not_articles(url):
+
+    assert is_article_like(url) is False
+
+
+@pytest.mark.parametrize("url", [
+    "https://example.com/post.html",
+    "https://example.com/index.php",
+    "https://example.com/blog/why-i-moved-to-node.js",
+    "https://example.com/releases/v2.5",
+    "https://en.wikipedia.org/wiki/ThreadX",
+])
+def test_web_pages_with_dots_are_still_articles(url):
+
+    assert is_article_like(url) is True
+
+
 def test_an_article_about_jobs_is_still_an_article():
 
     assert is_article_like("https://blog.example.com/what-a-design-engineer-does") is True

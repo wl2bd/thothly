@@ -1,6 +1,6 @@
 """What every web backend's results go through, whichever engine found them."""
 
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from app.search.models import SearchResult
 
@@ -68,6 +68,23 @@ _NON_ARTICLE_SEGMENTS = frozenset(
         # job ads, in the shapes job sites and careers pages use
         "job", "jobs", "career", "careers", "emplois", "offres-emploi",
         "stellenangebote", "vacancies", "openings",
+    }
+)
+
+# File types a URL can end in that are a download, not a web page: documents,
+# spreadsheets, slides, archives, ebooks, media, images. Thothly reads web pages,
+# so a hit pointing at a file is dropped whatever the site. A blocklist of file
+# types, not an allowlist of page types, so a slug that merely ends in a dot
+# ("/why-i-moved-to-node.js", "/releases/v2.5") is still kept.
+_FILE_EXTENSIONS = frozenset(
+    {
+        "pdf", "ps", "djvu", "doc", "docx", "odt", "rtf", "pages", "txt", "md",
+        "xls", "xlsx", "ods", "csv", "numbers", "ppt", "pptx", "odp", "key",
+        "zip", "rar", "7z", "gz", "tar", "tgz", "dmg", "exe", "msi", "apk",
+        "epub", "mobi", "azw", "azw3",
+        "mp3", "m4a", "wav", "ogg", "flac", "mp4", "m4v", "mov", "avi", "mkv", "webm",
+        "png", "jpg", "jpeg", "gif", "webp", "svg", "tif", "tiff", "bmp", "heic",
+        "xml", "json",
     }
 )
 
@@ -149,9 +166,17 @@ def is_article_like(url: str) -> bool:
     segments = [s.lower() for s in parsed.path.split("/") if s]
     if any(seg in _NON_ARTICLE_SEGMENTS for seg in segments):
         return False
+    if segments and _extension(segments[-1]) in _FILE_EXTENSIONS:
+        return False
     if {k.lower() for k in parse_qs(parsed.query)} & _LISTING_QUERY_KEYS:
         return False
     return True
+
+
+def _extension(segment: str) -> str:
+    """The file extension of a path segment, lowercased (`X.Pdf` -> `pdf`), or ""."""
+    name = unquote(segment)
+    return name.rsplit(".", 1)[1].lower() if "." in name else ""
 
 
 def is_home(url: str) -> bool:
