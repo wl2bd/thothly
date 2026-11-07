@@ -364,3 +364,34 @@ def test_a_page_declared_not_free_in_its_metadata_is_refused(mock_fetch):
 def test_a_free_page_mentioning_paywalls_is_not_refused(mock_fetch):
     mock_fetch.return_value = _page("<p>Why the paywall model fails readers.</p>")
     assert scrape_article("https://blog.example/post").content_html
+
+
+_TEASER = (
+    "<p>The opening of a paid post, cut mid-sentence&#8230;</p>"
+    '<p>\n  <a href="https://news.example/p/paid">\n    Read more\n  </a>\n</p>'
+)
+
+
+@patch("app.sources.blog.feedparser.parse")
+def test_a_newsletter_feed_flags_its_paid_posts_from_their_teaser(mock_parse):
+    result = _make_feed_result([
+        _make_entry(link="https://news.example/p/paid", content=[_make_content_item(_TEASER)]),
+        _make_entry(link="https://news.example/p/free", content=[_make_content_item("<p>All of it.</p>")]),
+    ])
+    result.feed["generator"] = "Substack"
+    mock_parse.return_value = result
+
+    _title, articles = list_feed("https://news.example/feed")
+
+    assert [a.paywalled for a in articles] == [True, False]
+
+
+@patch("app.sources.blog.feedparser.parse")
+def test_an_excerpt_feed_elsewhere_is_not_taken_for_a_paywall(mock_parse):
+    # A blog that only syndicates excerpts ends them the same way; its page
+    # is free, so nothing is flagged.
+    mock_parse.return_value = _make_feed_result([
+        _make_entry(link="https://news.example/p/paid", content=[_make_content_item(_TEASER)]),
+    ])
+    _title, articles = list_feed("https://blog.example/feed")
+    assert articles[0].paywalled is False

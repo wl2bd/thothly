@@ -51,6 +51,17 @@ _PAYWALL_BOX = re.compile(r'class="paywall["\s]')
 _NOT_FREE = re.compile(r'"isAccessibleForFree"\s*:\s*(false|"false")', re.IGNORECASE)
 
 
+# A paid newsletter post in its feed: the opening, cut, then a lone "Read more"
+# link back to the post. Trusted on Substack feeds only: an excerpt-only blog
+# ends its free posts the same way.
+_READ_MORE = re.compile(r'<a\s[^>]*href="([^"]+)"[^>]*>\s*Read more\s*</a>\s*</p>\s*$', re.IGNORECASE)
+
+
+def _ends_on_read_more(content_html: str, url: str) -> bool:
+    m = _READ_MORE.search(content_html or "")
+    return bool(m) and m.group(1).rstrip("/") == url.rstrip("/")
+
+
 def _is_paywalled(html: str) -> bool:
     return bool(_PAYWALL_BOX.search(html) or _NOT_FREE.search(html))
 
@@ -64,7 +75,11 @@ def list_feed(feed_url: str) -> tuple[str | None, list[Article]]:
         raise FeedUnavailable(f"HTTP {status} fetching {feed_url}")
     feed = getattr(result, "feed", None)
     title = (feed.get("title") if feed else None) or None
-    return title, [_entry_to_article(entry) for entry in result.entries]
+    articles = [_entry_to_article(entry) for entry in result.entries]
+    if "substack" in ((feed.get("generator") if feed else None) or "").lower():
+        for article in articles:
+            article.paywalled = _ends_on_read_more(article.content_html, article.url)
+    return title, articles
 
 
 def scrape_article(url: str) -> Article:

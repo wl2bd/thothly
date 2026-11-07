@@ -102,9 +102,11 @@ export function needsTranscription(item: DiscoveredItem): boolean {
 }
 
 // An item the compile will skip whatever is ticked: an episode with no
-// transcript while no transcription is connected, or a video with no subtitles.
+// transcript while no transcription is connected, a paid post, or a video with
+// no subtitles.
 export function isLeftOut(item: DiscoveredItem, sttMissing: boolean): boolean {
   if (needsTranscription(item)) return sttMissing;
+  if (item.paywalled) return true;
   return item.item_type === "youtube" && item.has_transcript === false;
 }
 

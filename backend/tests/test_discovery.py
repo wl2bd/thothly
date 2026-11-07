@@ -314,3 +314,8 @@ def test_pasted_urls_read_as_the_frontend_reads_them():
     cases = json.loads((Path(__file__).parents[2] / "fixtures" / "url-kinds.json").read_text("utf-8"))
     for url, kind in cases["cases"]:
         assert discovery.detect_kind(url) == kind, url
+
+
+def test_a_paywalled_feed_article_is_flagged_for_review():
+    article = Article(url="https://news.example/p/paid", title="Paid", content_html="<p>…</p>", paywalled=True)
+    assert discovery._article_to_item(article, 0, 0, "https://news.example/feed").paywalled is True

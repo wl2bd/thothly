@@ -1312,6 +1312,14 @@ function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
       </Tag>
     );
   }
+  if (item.item_type === "blog" && item.paywalled) {
+    return (
+      <Tag className="text-destructive">
+        <Ban />
+        Paywalled, will be left out
+      </Tag>
+    );
+  }
   if (item.item_type === "blog") {
     return <Tag>Full article</Tag>;
   }

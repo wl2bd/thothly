@@ -664,6 +664,11 @@
             ],
             "title": "Set Aside"
           },
+          "paywalled": {
+            "type": "boolean",
+            "title": "Paywalled",
+            "default": false
+          },
           "id": {
             "type": "string",
             "title": "Id"

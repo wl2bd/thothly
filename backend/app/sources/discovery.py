@@ -443,6 +443,7 @@ def _article_to_item(
         item_index=item_index,
         estimated_size_chars=len(article.content_html) if article.content_html else None,
         preview_html=preview,
+        paywalled=article.paywalled,
     )
 
 

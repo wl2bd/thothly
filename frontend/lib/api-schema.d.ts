@@ -283,6 +283,11 @@ export interface components {
             uncertain: boolean;
             /** Set Aside */
             set_aside?: string | null;
+            /**
+             * Paywalled
+             * @default false
+             */
+            paywalled: boolean;
             /** Id */
             id: string;
             /**

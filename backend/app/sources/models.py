@@ -95,6 +95,8 @@ class Article(ArticleMeta):
     # Set when a feed entry carries an audio enclosure (a podcast episode).
     audio_url: str | None = None
     duration_s: int | None = None
+    # A feed entry that is a paid post's teaser (see blog.list_feed).
+    paywalled: bool = False
 
 
 class DiscoveredItem(BaseModel):
@@ -129,6 +131,9 @@ class DiscoveredItem(BaseModel):
     # Why the discovery triage doubts this item ("Likely off-topic"): it starts
     # unchecked at review, with this reason on its row.
     set_aside: str | None = None
+    # A paid post (its feed only carries a teaser): left out at review, the
+    # compile would skip it anyway.
+    paywalled: bool = False
 
 
 class SourceSpec(BaseModel):
