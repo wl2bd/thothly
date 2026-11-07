@@ -81,6 +81,10 @@ jobs:
       # keeps equal to the API; this keeps the types equal to the file.
       - if: steps.install.outcome == 'success'
         run: pnpm api:types && git diff --exit-code lib/api-schema.d.ts
+      # public/r is built from components/ui and registry.json; this keeps the
+      # committed build equal to its sources.
+      - if: steps.install.outcome == 'success'
+        run: pnpm registry:build && git diff --exit-code public/r
       - if: steps.install.outcome == 'success'
         run: pnpm typecheck
       - if: steps.install.outcome == 'success'
