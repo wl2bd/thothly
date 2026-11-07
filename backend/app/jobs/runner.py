@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import Counter
+from dataclasses import dataclass
 
 from app.core.posthog import capture
 from app.jobs import credentials
@@ -59,6 +60,7 @@ def run_compilation(job_id: str) -> None:
         stats["source_types"] = dict(Counter(item.item_type for item in items))
         stats["ai_used"] = bool(roles)
         outcomes: Counter = Counter()
+        rate_limited = 0
         chapters: list[CompiledChapter] = []
 
         for position, item in enumerate(items):
@@ -70,25 +72,26 @@ def run_compilation(job_id: str) -> None:
                     stats["failure"] = "stopped"
                     raise CompilationError(STOPPED_EMPTY)
                 break
-            state, note, chapter = _build(job_id, item, roles, llm, stt)
-            set_item_compile_state(job_id, item.id, state, note)
-            outcomes[note if state == "failed" else state] += 1
-            if chapter is not None:
-                chapters.append(chapter)
+            built = _build(job_id, item, roles, llm, stt)
+            set_item_compile_state(job_id, item.id, built.state, built.note)
+            outcomes[built.state] += 1
+            rate_limited += built.rate_limited
+            if built.chapter is not None:
+                chapters.append(built.chapter)
         stats.update(
             chapter_count=len(chapters),
             skipped_count=outcomes["skipped"],
-            failed_count=outcomes[YOUTUBE_RATE_LIMITED] + outcomes[ITEM_FAILED],
+            failed_count=outcomes["failed"],
         )
 
         # Nothing built: say why, the most specific cause first. A wholly
         # rate-limited run is external and transient; a crash is not the
         # content's fault. Only an all-skipped run falls through to
         # compile_book's own "no usable content".
-        if not chapters and outcomes[YOUTUBE_RATE_LIMITED]:
+        if not chapters and rate_limited:
             stats["failure"] = "youtube_rate_limited"
             raise CompilationError(YOUTUBE_BUSY)
-        if not chapters and outcomes[ITEM_FAILED]:
+        if not chapters and outcomes["failed"]:
             stats["failure"] = "nothing_built"
             raise CompilationError(NOTHING_BUILT)
 
@@ -126,15 +129,24 @@ def run_compilation(job_id: str) -> None:
         )
 
 
+@dataclass
+class _Built:
+    state: str
+    note: str | None
+    chapter: CompiledChapter | None = None
+    # Failed on a YouTube refusal rather than a crash: external, and transient.
+    rate_limited: bool = False
+
+
 def _build(
     job_id: str,
     item: DiscoveredItemResponse,
     roles: list[str],
     llm: Endpoint | None,
     stt: Endpoint | None,
-) -> tuple[str, str | None, CompiledChapter | None]:
-    """One item's (compile state, note, chapter). Never raises: one broken item
-    must not cost the visitor the others."""
+) -> _Built:
+    """One item's outcome. Never raises: one broken item must not cost the
+    visitor the others."""
 
     def step(label: str) -> None:
         # The stage rides the item's note while it compiles: a long item (a big
@@ -149,19 +161,19 @@ def _build(
         )
     except CompileStopped:
         # Stopped mid-polish: the item is dropped, not half-polished.
-        return "skipped", STOPPED, None
+        return _Built("skipped", STOPPED)
     except ItemSkipped as exc:
         logger.info("Skipped %s (job %s): %s", item.url, job_id, exc)
-        return "skipped", str(exc), None
+        return _Built("skipped", exc.reason.note)
     except YouTubeUnavailable as exc:
         # Usually a 429 from this IP: failed rather than skipped, since retrying
         # later is the fix.
         logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
-        return "failed", YOUTUBE_RATE_LIMITED, None
+        return _Built("failed", YOUTUBE_RATE_LIMITED, rate_limited=True)
     except Exception:
         logger.exception("Item %s failed (job %s)", item.url, job_id)
-        return "failed", ITEM_FAILED, None
-    return "done", None, chapter
+        return _Built("failed", ITEM_FAILED)
+    return _Built("done", None, chapter)
 
 
 def _render(book: CompiledBook, job_id: str) -> None:

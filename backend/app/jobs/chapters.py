@@ -9,6 +9,7 @@ what review shows is what lands in the book.
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
 
 from app.core.config import settings
 from app.pipeline.cleanup import StopCheck, clean_markdown, clean_transcript, map_speaker_names
@@ -25,11 +26,6 @@ from app.sources.podcast import cached_episode_transcript, load_episode_transcri
 
 logger = logging.getLogger(__name__)
 
-# Why an item didn't make it into the book. They travel with the item to the
-# compile screen and the finished one, so they're written for a reader.
-NO_SUBTITLES = "No subtitles available."
-NO_TRANSCRIPTION = "Transcription unavailable."
-NO_CONTENT = "No readable content."
 YOUTUBE_BUSY = (
     "YouTube didn't respond. It rate-limits requests from some networks, so "
     "try again in a little while."
@@ -38,8 +34,39 @@ YOUTUBE_BUSY = (
 Step = Callable[[str], None]
 
 
+class SkipReason(Enum):
+    """Why an item has nothing to build a chapter from.
+
+    Each reason carries both texts, written for a reader: the note that travels
+    with the item to the compile screen and the finished one, and the sentence
+    the review preview shows. Code compares reasons, never their text.
+    """
+
+    NO_SUBTITLES = (
+        "No subtitles available.",
+        "This video has no subtitles, so it would be skipped when compiling.",
+    )
+    NO_TRANSCRIPTION = (
+        "Transcription unavailable.",
+        "This episode has no published transcript, so its text is made from "
+        "the audio when compiling.",
+    )
+    NO_CONTENT = (
+        "No readable content.",
+        "There's no readable content here, so it would be skipped when compiling.",
+    )
+
+    def __init__(self, note: str, preview_note: str):
+        self.note = note
+        self.preview_note = preview_note
+
+
 class ItemSkipped(Exception):
-    """The item has nothing usable to build a chapter from. Carries the reason."""
+    """The item has nothing usable to build a chapter from."""
+
+    def __init__(self, reason: SkipReason):
+        super().__init__(reason.note)
+        self.reason = reason
 
 
 @dataclass
@@ -106,7 +133,7 @@ def polish(
             endpoint=llm, should_stop=should_stop,
         )
     if not content:
-        raise ItemSkipped(NO_CONTENT)
+        raise ItemSkipped(SkipReason.NO_CONTENT)
     return chapter.model_copy(update={"content_md": content})
 
 
@@ -114,10 +141,10 @@ def _youtube(item: DiscoveredItem, step: Step) -> Draft:
     step("Reading the transcript")
     transcript = youtube.load_transcript(youtube.video_id(item.url))
     if transcript is None:
-        raise ItemSkipped(NO_SUBTITLES)
+        raise ItemSkipped(SkipReason.NO_SUBTITLES)
     content = transcript_to_markdown(transcript)
     if not content.strip():
-        raise ItemSkipped(NO_CONTENT)
+        raise ItemSkipped(SkipReason.NO_CONTENT)
     return Draft(
         CompiledChapter(
             title=normalize_title(item.title),
@@ -140,12 +167,12 @@ def _podcast(
         load_episode_transcript(item, stt) if transcribe else cached_episode_transcript(item.url)
     )
     if transcript is None:
-        raise ItemSkipped(NO_TRANSCRIPTION)
+        raise ItemSkipped(SkipReason.NO_TRANSCRIPTION)
     # Transcription rarely reports a language, so it is read off the words.
     language = normalize_language(transcript.language) or detect_language(transcript.full_text)
     content = transcript_to_markdown(transcript, {}, chrome(language)["speaker"])
     if not content.strip():
-        raise ItemSkipped(NO_CONTENT)
+        raise ItemSkipped(SkipReason.NO_CONTENT)
     return Draft(
         CompiledChapter(
             title=normalize_title(item.title),
@@ -170,7 +197,7 @@ def _blog(item: DiscoveredItem, step: Step) -> Draft:
         html, note = article.content_html, None
     content = demote_headings(strip_leading_title(html_to_markdown(html), item.title))
     if not content.strip():
-        raise ItemSkipped(NO_CONTENT)
+        raise ItemSkipped(SkipReason.NO_CONTENT)
     declared = article.language if article else None
     return Draft(
         CompiledChapter(

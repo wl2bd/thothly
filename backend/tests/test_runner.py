@@ -216,3 +216,13 @@ def test_stop_mid_polish_drops_that_item_without_waiting(_load, _llm):
 
     assert _outcomes(job_id)[0] == ("i0", "skipped", runner.STOPPED)
     assert repository.get_job(job_id).error == runner.STOPPED_EMPTY
+
+
+@patch("app.jobs.chapters.youtube.load_transcript", return_value=None)
+def test_the_preview_says_why_a_video_has_nothing_to_show(_load):
+    from app.jobs.preview import build_item_preview
+
+    preview = build_item_preview(_video(0))
+
+    assert not preview.available
+    assert "no subtitles" in preview.note

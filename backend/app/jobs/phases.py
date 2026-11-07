@@ -30,6 +30,7 @@ def run_discovery(
     try:
         items: list[DiscoveredItemResponse] = []
         source_names: list[str | None] = []
+        refused = 0
         for index, source in enumerate(sources):
             try:
                 source_name, discovered = discover_source(source, index)
@@ -37,6 +38,7 @@ def run_discovery(
                 logger.exception("Source %d of job %s: YouTube refused", index, job_id)
                 source_name, discovered = None, []
                 source.error = YOUTUBE_BUSY
+                refused += 1
             except Exception:
                 # The raw exception stays in the log; the source gets one line.
                 logger.exception("Source %d of job %s couldn't be read", index, job_id)
@@ -58,7 +60,7 @@ def run_discovery(
 
         if not items:
             errors = {s.error for s in sources}
-            if errors == {YOUTUBE_BUSY}:
+            if refused == len(sources):
                 error = YOUTUBE_BUSY
             elif None in errors:
                 error = "Those sources had no content to compile."

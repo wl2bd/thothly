@@ -1,6 +1,6 @@
 import logging
 
-from app.jobs.chapters import NO_CONTENT, NO_SUBTITLES, NO_TRANSCRIPTION, ItemSkipped, draft
+from app.jobs.chapters import ItemSkipped, draft
 from app.jobs.models import DiscoveredItemResponse, ItemPreview
 from app.sources.youtube import YouTubeUnavailable
 
@@ -10,23 +10,13 @@ logger = logging.getLogger(__name__)
 # ship megabytes to the browser. The compile always uses the full text.
 _PREVIEW_CHAR_LIMIT = 8000
 
-_WHY_NOTHING = {
-    NO_SUBTITLES: "This video has no subtitles, so it would be skipped when compiling.",
-    NO_TRANSCRIPTION: (
-        "This episode has no published transcript, so its text is made from "
-        "the audio when compiling."
-    ),
-    NO_CONTENT: "There's no readable content here, so it would be skipped when compiling.",
-}
-
-
 def build_item_preview(item: DiscoveredItemResponse) -> ItemPreview:
     """The chapter a discovered item would contribute with no AI, as the compile
     builds it. Free: nothing is ever transcribed for a preview."""
     try:
         drafted = draft(item, transcribe=False)
     except ItemSkipped as exc:
-        return _unavailable(item, _WHY_NOTHING[str(exc)])
+        return _unavailable(item, exc.reason.preview_note)
     except YouTubeUnavailable as exc:
         logger.info("YouTube unavailable for preview of %s: %s", item.url, exc)
         return _unavailable(
