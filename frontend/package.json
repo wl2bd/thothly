@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "registry:build": "shadcn build",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/*.test.mts",
     "api:types": "openapi-typescript lib/openapi.json -o lib/api-schema.d.ts"
