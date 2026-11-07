@@ -249,7 +249,7 @@ def test_list_feed_no_published_date(mock_parse):
 
 # ── scrape_article (formatting fidelity) ─────────────────────────────────────
 
-@patch("app.sources.blog._fetch_url")
+@patch("app.sources.blog.fetch_page")
 def test_scrape_article_preserves_bold_italic_links(mock_fetch):
     mock_fetch.return_value = _ARTICLE_HTML
     article = scrape_article("https://x.test/article")
@@ -273,7 +273,7 @@ def _page(body: str) -> str:
     return f"<html><body><article><h1>T</h1>{body}{filler}</article></body></html>"
 
 
-@patch("app.sources.blog._fetch_url")
+@patch("app.sources.blog.fetch_page")
 def test_a_code_block_stays_one_fenced_block(mock_fetch):
     # trafilatura nests it as <pre><pre>: the book got two empty fences and
     # the code flattened into a paragraph between them.
@@ -283,14 +283,14 @@ def test_a_code_block_stays_one_fenced_block(mock_fetch):
     assert "```\n```" not in md
 
 
-@patch("app.sources.blog._fetch_url")
+@patch("app.sources.blog.fetch_page")
 def test_inline_code_stays_inside_its_paragraph(mock_fetch):
     mock_fetch.return_value = _page("<p>Run <code>pip install</code> first, then go.</p>")
     md = html_to_markdown(scrape_article("https://x.test/a").content_html)
     assert "Run `pip install` first, then go." in md
 
 
-@patch("app.sources.blog._fetch_url")
+@patch("app.sources.blog.fetch_page")
 def test_a_numbered_list_keeps_its_numbers(mock_fetch):
     mock_fetch.return_value = _page("<ol><li>Preheat</li><li>Bake</li></ol><ul><li>Salt</li></ul>")
     md = html_to_markdown(scrape_article("https://x.test/a").content_html)
@@ -298,7 +298,7 @@ def test_a_numbered_list_keeps_its_numbers(mock_fetch):
     assert "- Salt" in md
 
 
-@patch("app.sources.blog._fetch_url")
+@patch("app.sources.blog.fetch_page")
 def test_a_figure_keeps_its_caption_set_apart(mock_fetch):
     # trafilatura drops <figcaption>, and keeps a WordPress caption as a plain
     # paragraph under the image.
@@ -315,7 +315,7 @@ def test_a_figure_keeps_its_caption_set_apart(mock_fetch):
     assert "\n\nA sundial.\n\n" not in md
 
 
-def test_fetch_url_gives_up_when_the_download_hangs():
+def test_fetch_page_gives_up_when_the_download_hangs():
     # A host that never finishes answering used to strand discovery forever:
     # the timeout fired, but leaving the thread pool waited for the hung
     # download anyway. The fetch must return within its timeout.
@@ -335,7 +335,7 @@ def test_fetch_url_gives_up_when_the_download_hangs():
             "app.sources.blog.trafilatura.fetch_url", side_effect=hang
         ), patch("app.sources.blog._browser_fetch", return_value=None):
             start = time.monotonic()
-            assert blog._fetch_url("https://slow.example/post", 0.2) is None
+            assert blog.fetch_page("https://slow.example/post", 0.2) is None
             assert time.monotonic() - start < 2
     finally:
         release.set()

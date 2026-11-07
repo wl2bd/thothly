@@ -10,16 +10,17 @@ own clean HTML (Parsoid), where each of those is a tagged element to remove.
 import json
 import re
 from urllib.parse import unquote, urljoin, urlsplit
-from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
-from app.core.net import BOT_UA
+from app.core.net import BOT_UA, fetch_public_text
 from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 
-# Wikimedia asks API clients to identify themselves with a contact.
 _ARTICLE = re.compile(r"^/wiki/([^:]+)$")  # no namespace: Talk:, File:, Special:…
+
+# An article's HTML past this is not an article.
+_MAX_API_BYTES = 20 * 1024 * 1024
 
 # Everything that is the page's furniture, not the article's text.
 _DROP = (
@@ -54,6 +55,10 @@ _BACK_MATTER = {
 }
 
 
+class WikipediaUnavailable(Exception):
+    """The REST API gave no article: blocked, unreachable, an error or too large."""
+
+
 def is_wikipedia_article(url: str) -> bool:
     parts = urlsplit(url)
     return (parts.hostname or "").endswith(".wikipedia.org") and bool(_ARTICLE.match(parts.path))
@@ -69,8 +74,11 @@ def scrape_wikipedia(url: str, timeout: float) -> Article:
     host = (parts.hostname or "").replace(".m.wikipedia.org", ".wikipedia.org")
     title = _ARTICLE.match(parts.path).group(1)
     api = f"https://{host}/w/rest.php/v1/page/{title}/html"
-    with urlopen(Request(api, headers={"User-Agent": BOT_UA}), timeout=timeout) as response:
-        html = response.read().decode("utf-8")
+    html = fetch_public_text(
+        api, timeout=timeout, max_bytes=_MAX_API_BYTES, headers={"User-Agent": BOT_UA}
+    )
+    if html is None:
+        raise WikipediaUnavailable(api)
     return Article(
         url=url,
         title=article_title(url),

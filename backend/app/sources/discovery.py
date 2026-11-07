@@ -6,8 +6,7 @@ from urllib.parse import unquote, urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
-from app.sources.blog import FeedUnavailable, list_feed
-from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
+from app.sources.blog import FeedUnavailable, fetch_page, list_feed
 from app.sources.models import Article, DiscoveredItem, SourceSpec, Transcript
 from app.sources.wikipedia import article_title, is_wikipedia_article
 from app.sources import podcast
@@ -246,7 +245,7 @@ def _discover_blog(
     # 2) the feed the page itself declares (<link rel="alternate">), the standard
     # way. It beats guessing: a page at /fr/ can declare /fr/index.xml, while
     # the guessed /index.xml at the host root is the English blog.
-    html = _fetch_url(url, settings.scrape_timeout_s)
+    html = fetch_page(url, settings.scrape_timeout_s)
     for feed_url in _declared_feeds(html, url) if html else []:
         declared = _feed_to_items(feed_url, source_index)
         if declared is not None:
@@ -321,7 +320,7 @@ def _single_article(
     url: str, source_index: int
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """One discovered item for a directly-pasted article URL (no crawling)."""
-    html = _fetch_url(url, settings.scrape_timeout_s)
+    html = fetch_page(url, settings.scrape_timeout_s)
     title = (_html_title(html) if html else None) or _slug_from_url(url)
     item = DiscoveredItem(
         title=title,

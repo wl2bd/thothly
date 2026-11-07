@@ -59,3 +59,13 @@ def test_a_formula_without_a_rendered_image_keeps_its_tex():
     assert '<span class="math inline">d_{\text{emb}}</span>' in html
     assert '<span class="math display">{\displaystyle a^2}</span>' in html
     assert "<math" not in html
+
+
+def test_an_unreachable_wikipedia_api_is_reported_as_unavailable(monkeypatch):
+    import pytest
+
+    from app.sources import wikipedia
+
+    monkeypatch.setattr(wikipedia, "fetch_public_text", lambda *a, **kw: None)
+    with pytest.raises(wikipedia.WikipediaUnavailable):
+        wikipedia.scrape_wikipedia("https://en.wikipedia.org/wiki/Stoicism", 5)

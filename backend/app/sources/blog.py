@@ -4,7 +4,6 @@ import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from time import struct_time
-from urllib.error import URLError
 from urllib.parse import urljoin
 
 import feedparser
@@ -14,10 +13,10 @@ from trafilatura.utils import normalize_unicode
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
-from app.core.net import BlockedURLError, assert_public_url, fetch_public
+from app.core.net import BlockedURLError, assert_public_url, fetch_public_text
 from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
-from app.sources.wikipedia import is_wikipedia_article, scrape_wikipedia
+from app.sources.wikipedia import WikipediaUnavailable, is_wikipedia_article, scrape_wikipedia
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +61,10 @@ def scrape_article(url: str) -> Article:
     if is_wikipedia_article(url):
         try:
             return scrape_wikipedia(url, settings.scrape_timeout_s)
-        except (URLError, ValueError, OSError) as exc:
+        except WikipediaUnavailable as exc:
             logger.warning("Wikipedia API failed for %s, scraping the page instead: %s", url, exc)
 
-    downloaded = _fetch_url(url, settings.scrape_timeout_s)
+    downloaded = fetch_page(url, settings.scrape_timeout_s)
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
 
@@ -307,7 +306,7 @@ def _clean_extracted_html(html: str, base_url: str) -> str:
     return str(soup)
 
 
-def _fetch_url(url: str, timeout: float) -> str | None:
+def fetch_page(url: str, timeout: float) -> str | None:
     """Download a page's HTML, robustly.
 
     trafilatura.fetch_url (no timeout of its own, so we bound it with a worker
@@ -342,14 +341,7 @@ def _fetch_url(url: str, timeout: float) -> str | None:
 
 
 def _browser_fetch(url: str, timeout: float) -> str | None:
-    fetched = fetch_public(
-        url, timeout=timeout, max_bytes=_MAX_PAGE_BYTES, headers={"Accept-Language": "fr,en;q=0.8"}
-    )
-    if fetched is None:
-        return None
-    data, headers = fetched
-    charset = headers.get("content-type", "").partition("charset=")[2].strip() or "utf-8"
-    return data.decode(charset, errors="replace")
+    return fetch_public_text(url, timeout=timeout, max_bytes=_MAX_PAGE_BYTES)
 
 
 def _extract_metadata(

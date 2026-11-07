@@ -157,3 +157,16 @@ def fetch_public(
             return None
     logger.info("Could not fetch %s: refused (403) whoever asked", url)
     return None
+
+
+def fetch_public_text(
+    url: str, *, timeout: float, max_bytes: int, headers: dict[str, str] | None = None
+) -> str | None:
+    """`fetch_public`, decoded with the charset the server declared (UTF-8 when
+    it declares none)."""
+    fetched = fetch_public(url, timeout=timeout, max_bytes=max_bytes, headers=headers)
+    if fetched is None:
+        return None
+    data, response_headers = fetched
+    charset = response_headers.get("content-type", "").partition("charset=")[2].strip() or "utf-8"
+    return data.decode(charset, errors="replace")

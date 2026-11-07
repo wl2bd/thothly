@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import httpx
 from bs4 import BeautifulSoup
 
-from app.core.net import fetch_public
+from app.core.net import fetch_public_text
 from app.sources.models import Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
@@ -196,9 +196,4 @@ def _flat(paragraphs: list[str]) -> list[TranscriptSegment]:
 
 def _get_text(url: str) -> str | None:
     """A feed or transcript file as text, or None on any failure."""
-    fetched = fetch_public(url, timeout=_TIMEOUT_S, max_bytes=_MAX_BYTES)
-    if fetched is None:
-        return None
-    data, headers = fetched
-    charset = headers.get("content-type", "").partition("charset=")[2].strip() or "utf-8"
-    return data.decode(charset, errors="replace")
+    return fetch_public_text(url, timeout=_TIMEOUT_S, max_bytes=_MAX_BYTES)

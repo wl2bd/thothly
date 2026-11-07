@@ -93,7 +93,7 @@ def test_discover_blog_uses_url_as_feed(mock_feed):
     assert items[0].estimated_size_chars == len("<p>hi</p>")
 
 
-@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.fetch_page")
 def test_discover_blog_article_url_returns_single_item(mock_fetch):
     # A directly-pasted article URL must yield just that article — not the
     # whole site or the page's next/previous/nav links.
@@ -107,7 +107,7 @@ def test_discover_blog_article_url_returns_single_item(mock_fetch):
     assert items[0].title == "My Great Article"
 
 
-@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.fetch_page")
 @patch("app.sources.discovery.list_feed")
 def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
     mock_feed.side_effect = FeedUnavailable("no feed")
@@ -124,7 +124,7 @@ def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
     assert items[0].title == "Great Article"
 
 
-@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.fetch_page")
 @patch("app.sources.discovery.list_feed")
 def test_discover_blog_follows_the_feed_the_page_declares(mock_feed, mock_fetch):
     # A /fr/ page declares /fr/index.xml; guessing paths at the host root
@@ -269,7 +269,7 @@ def test_confident_links_come_before_uncertain_ones():
     ]
 
 
-@patch("app.sources.discovery._fetch_url")
+@patch("app.sources.discovery.fetch_page")
 @patch("app.sources.discovery.list_feed")
 def test_discover_blog_marks_in_prose_links_uncertain(mock_feed, mock_fetch):
     mock_feed.side_effect = FeedUnavailable("no feed")
@@ -287,7 +287,7 @@ def test_discover_blog_marks_in_prose_links_uncertain(mock_feed, mock_fetch):
 
 
 @patch("app.sources.discovery.list_feed")
-@patch("app.sources.discovery._fetch_url", return_value="<title>Mechanical Design Engineer</title>")
+@patch("app.sources.discovery.fetch_page", return_value="<title>Mechanical Design Engineer</title>")
 def test_a_deep_page_picked_from_search_is_that_page_not_its_site(_fetch, mock_feed):
     url = "https://careers.example.com/job/berkeley/design-engineer/185/1029"
     name, items = discovery.discover_source(SourceSpec(url=url, query="q"), 0)

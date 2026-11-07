@@ -77,3 +77,12 @@ def test_a_host_that_refuses_a_browser_is_asked_again_as_thothly(web):
 
     web(lambda req: httpx.Response(200 if req.headers["user-agent"] == BOT_UA else 403, content=b"ok"))
     assert fetch_public("https://upload.example/a.png", timeout=5, max_bytes=10)[0] == b"ok"
+
+
+def test_a_body_is_decoded_with_the_charset_the_server_declared(web):
+    import httpx
+
+    from app.core.net import fetch_public_text
+
+    web(lambda req: httpx.Response(200, content="café".encode("latin-1"), headers={"content-type": "text/html; charset=latin-1"}))
+    assert fetch_public_text("https://page.example/a", timeout=5, max_bytes=100) == "café"
