@@ -8,7 +8,6 @@ import {
   type LlmConfig,
   type RoleId,
 } from "./api.ts";
-import { sourceName } from "./url.ts";
 import { plural } from "./utils.ts";
 
 // Podcast episodes are the one item whose compile has a real cost (each is
@@ -50,7 +49,9 @@ export function autoTitleForSelection(job: JobResponse, selected: Set<string>): 
   if (sources.length === 0) return null;
   if (sources.length === 1) {
     const src = job.sources[sources[0]];
-    if (src) return sourceName(src).slice(0, BOOK_TITLE_MAX);
+    // A URL is a label, not a book title.
+    const name = src?.name?.trim() || src?.title?.trim();
+    if (name) return name.slice(0, BOOK_TITLE_MAX);
   }
   return `Compilation of ${plural(sources.length, "source")}`.slice(0, BOOK_TITLE_MAX);
 }

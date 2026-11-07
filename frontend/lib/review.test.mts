@@ -64,6 +64,8 @@ test("a lone source names the book; several are counted", () => {
   assert.equal(autoTitleForSelection(job, new Set([a.id])), "Stoa Talks");
   assert.equal(autoTitleForSelection(job, new Set([a.id, b.id])), "Compilation of 2 sources");
   assert.equal(autoTitleForSelection(job, new Set()), null);
+  // An unnamed lone source is counted, never titled after its URL.
+  assert.equal(autoTitleForSelection(job, new Set([b.id])), "Compilation of 1 source");
 });
 
 test("chapters follow the visitor's source order, then the source's own", () => {

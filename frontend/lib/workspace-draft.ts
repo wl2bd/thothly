@@ -123,7 +123,9 @@ function stagedFromSource(s: Source): StagedSource {
   const staged = stagedFromUrl(s.url);
   return {
     ...staged,
-    title: sourceName(s),
+    // The title the visitor picked from the results first: the page's own
+    // name, read during discovery, is often "Article | Site".
+    title: s.title?.trim() || sourceName(s),
     ...(s.kind === "podcast"
       ? { type: "episode", source: "podcast", durationS: s.duration_s ?? null, feedUrl: s.feed_url ?? undefined }
       : {}),
