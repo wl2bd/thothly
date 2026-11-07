@@ -244,12 +244,12 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
       // w-fit plus the caption's inline-size containment: the caption wraps at
       // the image's width instead of stretching the figure past it.
       return block.caption ? (
-        <figure key={key} className="flex w-fit max-w-full flex-col gap-2">
+        <figure key={key} className="flex w-fit max-w-full flex-col gap-2 self-center">
           {img}
           <FigureCaption text={block.caption} />
         </figure>
       ) : (
-        <div key={key}>{img}</div>
+        <div key={key} className="self-center">{img}</div>
       );
     }
     case "table":
