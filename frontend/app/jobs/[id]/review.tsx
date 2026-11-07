@@ -13,6 +13,7 @@ import {
   CircleHelp,
   Eye,
   EyeOff,
+  ExternalLink,
   Minus,
   Plus,
   Search,
@@ -986,10 +987,25 @@ function ReviewItem({
             )}
           </span>
         </label>
+        {/* The original, one click away: so the user can check for themselves
+            what a source really is (a paywall, a landing page, an empty shell)
+            before trusting the tag or the preview. */}
+        <Tooltip content="Open original">
+          <Button
+            variant="nav"
+            size="icon-sm"
+            aria-label={`Open original: ${item.title}`}
+            className="ml-2 shrink-0"
+            nativeButton={false}
+            render={<a href={item.url} target="_blank" rel="noreferrer" />}
+          >
+            <ExternalLink />
+          </Button>
+        </Tooltip>
         {noPreview ? (
           // Nothing to read before compiling: the slot stays so the column of
           // eyes keeps its line.
-          <span aria-hidden="true" className="ml-2 size-8 shrink-0" />
+          <span aria-hidden="true" className="size-8 shrink-0" />
         ) : (
           <Tooltip content={open ? "Hide preview" : "Preview"}>
             <Button
@@ -999,7 +1015,7 @@ function ReviewItem({
               onClick={toggleOpen}
               aria-expanded={open}
               aria-label={open ? "Hide preview" : "Preview"}
-              className="ml-2 shrink-0"
+              className="shrink-0"
             >
               {open ? <EyeOff /> : <Eye />}
             </Button>
