@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 _NS = "{https://podcastindex.org/namespace/1.0}"
 _TIMEOUT_S = 20.0
 _MAX_BYTES = 15 * 1024 * 1024  # long-running feeds run to several MB
-_UA = "Thothly/1.0 (+https://thothly.vercel.app)"
 
 # Most structured first: timings and speakers beat timings, beat bare text.
 _PREFERENCE = ("application/json", "text/vtt", "application/srt", "application/x-subrip", "text/plain", "text/html")
@@ -197,7 +196,7 @@ def _flat(paragraphs: list[str]) -> list[TranscriptSegment]:
 
 def _get_text(url: str) -> str | None:
     """A feed or transcript file as text, or None on any failure."""
-    fetched = fetch_public(url, timeout=_TIMEOUT_S, max_bytes=_MAX_BYTES, headers={"User-Agent": _UA})
+    fetched = fetch_public(url, timeout=_TIMEOUT_S, max_bytes=_MAX_BYTES)
     if fetched is None:
         return None
     data, headers = fetched

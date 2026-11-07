@@ -92,6 +92,10 @@ BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
+# Wikimedia, among others, answers a browser User-Agent that doesn't come from a
+# browser with a 403 and a pointer to its robot policy, while it serves a client
+# that says what it is. Each is retried as the other.
+BOT_UA = "Thothly/1.0 (https://github.com/wl2bd/thothly)"
 _MAX_REDIRECTS = 5
 
 
@@ -138,9 +142,18 @@ def fetch_public(
 ) -> tuple[bytes, httpx.Headers] | None:
     """A public URL's body and headers, or None when it can't be had: blocked,
     unreachable, an error status, or over `max_bytes`."""
-    try:
-        with open_public(url, timeout=timeout, headers=headers) as response:
-            return read_capped(response, max_bytes), response.headers
-    except (httpx.HTTPError, BlockedURLError, TooLarge) as exc:
-        logger.info("Could not fetch %s: %s", url, exc)
-        return None
+    first = {"User-Agent": BROWSER_UA, **(headers or {})}
+    second = {**first, "User-Agent": BOT_UA if first["User-Agent"] != BOT_UA else BROWSER_UA}
+    for attempt in (first, second):
+        try:
+            with open_public(url, timeout=timeout, headers=attempt) as response:
+                return read_capped(response, max_bytes), response.headers
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 403:
+                logger.info("Could not fetch %s: %s", url, exc)
+                return None
+        except (httpx.HTTPError, BlockedURLError, TooLarge) as exc:
+            logger.info("Could not fetch %s: %s", url, exc)
+            return None
+    logger.info("Could not fetch %s: refused (403) whoever asked", url)
+    return None

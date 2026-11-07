@@ -14,11 +14,11 @@ from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
 
+from app.core.net import BOT_UA
 from app.pipeline.i18n import normalize_language
 from app.sources.models import Article
 
 # Wikimedia asks API clients to identify themselves with a contact.
-_UA = "Thothly/1.0 (https://github.com/wl2bd/thothly)"
 _ARTICLE = re.compile(r"^/wiki/([^:]+)$")  # no namespace: Talk:, File:, Special:…
 
 # Everything that is the page's furniture, not the article's text.
@@ -69,7 +69,7 @@ def scrape_wikipedia(url: str, timeout: float) -> Article:
     host = (parts.hostname or "").replace(".m.wikipedia.org", ".wikipedia.org")
     title = _ARTICLE.match(parts.path).group(1)
     api = f"https://{host}/w/rest.php/v1/page/{title}/html"
-    with urlopen(Request(api, headers={"User-Agent": _UA}), timeout=timeout) as response:
+    with urlopen(Request(api, headers={"User-Agent": BOT_UA}), timeout=timeout) as response:
         html = response.read().decode("utf-8")
     return Article(
         url=url,

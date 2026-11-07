@@ -68,3 +68,12 @@ def test_every_redirect_hop_is_checked(monkeypatch):
 
     assert net.fetch_public("https://cdn.example/ep.mp3", timeout=5, max_bytes=10) is None
     assert checked == ["https://cdn.example/ep.mp3", "http://169.254.169.254/x"]
+
+
+def test_a_host_that_refuses_a_browser_is_asked_again_as_thothly(web):
+    import httpx
+
+    from app.core.net import BOT_UA, fetch_public
+
+    web(lambda req: httpx.Response(200 if req.headers["user-agent"] == BOT_UA else 403, content=b"ok"))
+    assert fetch_public("https://upload.example/a.png", timeout=5, max_bytes=10)[0] == b"ok"
