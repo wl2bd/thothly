@@ -244,7 +244,7 @@ def test_verify_returns_the_models_the_key_grants(client: TestClient) -> None:
 
 
 def test_verify_reports_a_refused_key(client: TestClient) -> None:
-    from app.pipeline.llm import KeyRefused
+    from app.pipeline.providers import KeyRefused
 
     with patch("app.api.llm.list_models", side_effect=KeyRefused("nope")):
         resp = client.post("/llm/verify", json={"provider": "openai", "api_key": "sk-bad"})
@@ -285,11 +285,11 @@ class _ProviderError(Exception):
 def test_a_failed_llm_call_never_logs_the_provider_message(monkeypatch, caplog) -> None:
     import app.pipeline.llm as llm
 
-    monkeypatch.setattr(llm.time, "sleep", lambda _: None)
+    monkeypatch.setattr("app.pipeline.providers.time.sleep", lambda _: None)
     failing = SimpleNamespace(
         chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(_ProviderError(_LEAKY))))
     )
-    monkeypatch.setattr(llm, "_client", lambda *a, **k: failing)
+    monkeypatch.setattr(llm, "openai_client", lambda *a, **k: failing)
     visitor = Endpoint("https://api.openai.com/v1", "gpt-4o-mini", "sk-proj-secret-abcd")
 
     with pytest.raises(llm.LLMError) as err:
@@ -302,10 +302,10 @@ def test_a_failed_llm_call_never_logs_the_provider_message(monkeypatch, caplog) 
 def test_a_failed_transcription_never_logs_the_provider_message(monkeypatch, caplog, tmp_path) -> None:
     import app.pipeline.transcribe as transcribe
 
-    monkeypatch.setattr(transcribe.time, "sleep", lambda _: None)
+    monkeypatch.setattr("app.pipeline.providers.time.sleep", lambda _: None)
     raw = SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(_ProviderError(_LEAKY)))
     failing = SimpleNamespace(audio=SimpleNamespace(transcriptions=SimpleNamespace(with_raw_response=raw)))
-    monkeypatch.setattr(transcribe, "_client", lambda *a, **k: failing)
+    monkeypatch.setattr(transcribe, "openai_client", lambda *a, **k: failing)
     audio = tmp_path / "a.mp3"
     audio.write_bytes(b"ID3")
     visitor = Endpoint("https://api.mistral.ai/v1", "voxtral-mini-latest", "sk-proj-secret-abcd")

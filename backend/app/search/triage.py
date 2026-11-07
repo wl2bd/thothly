@@ -29,8 +29,8 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
-from app.pipeline.llm import _client
-from app.pipeline.providers import Endpoint
+
+from app.pipeline.providers import Endpoint, openai_client
 from app.search.models import SearchResult
 
 logger = logging.getLogger(__name__)
@@ -249,7 +249,7 @@ def _ask_openai(query: str, described: list[dict]) -> _Verdict:
         settings.search_triage_base_url, settings.search_triage_model, settings.search_triage_api_key
     )
     lines = "\n".join(f"[{i}] {json.dumps(_describe(r), ensure_ascii=False)}" for i, r in enumerate(results))
-    response = _client(endpoint, _TIMEOUT_S, max_retries=0).chat.completions.create(
+    response = openai_client(endpoint, _TIMEOUT_S, max_retries=0).chat.completions.create(
         model=endpoint.model,
         temperature=0,
         messages=[

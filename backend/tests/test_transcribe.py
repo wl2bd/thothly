@@ -43,7 +43,7 @@ def test_transcribe_returns_text(configured, tmp_path):
         {"text": "  hello world  "}
     )
 
-    with patch.object(transcribe, "_client", return_value=fake):
+    with patch.object(transcribe, "openai_client", return_value=fake):
         result = transcribe_file(_audio(tmp_path), language="en")
 
     assert result.text == "hello world"
@@ -65,7 +65,7 @@ def test_transcribe_parses_diarized_segments(configured, tmp_path):
         }
     )
 
-    with patch.object(transcribe, "_client", return_value=fake):
+    with patch.object(transcribe, "openai_client", return_value=fake):
         result = transcribe_file(_audio(tmp_path))
 
     assert [s.speaker for s in result.segments] == ["speaker_1", "speaker_2"]
@@ -86,7 +86,7 @@ def test_transcribe_falls_back_when_diarize_unsupported(configured, tmp_path):
     create = fake.audio.transcriptions.with_raw_response.create
     create.side_effect = [BadRequest("unknown param: diarize"), _raw({"text": "plain text"})]
 
-    with patch.object(transcribe, "_client", return_value=fake):
+    with patch.object(transcribe, "openai_client", return_value=fake):
         result = transcribe_file(_audio(tmp_path))
 
     assert result.text == "plain text"
@@ -98,7 +98,7 @@ def test_transcribe_omits_language_when_none(configured, tmp_path):
     fake = MagicMock()
     fake.audio.transcriptions.with_raw_response.create.return_value = _raw({"text": "x"})
 
-    with patch.object(transcribe, "_client", return_value=fake):
+    with patch.object(transcribe, "openai_client", return_value=fake):
         transcribe_file(_audio(tmp_path))
 
     _, kwargs = fake.audio.transcriptions.with_raw_response.create.call_args
@@ -106,11 +106,11 @@ def test_transcribe_omits_language_when_none(configured, tmp_path):
 
 
 def test_transcribe_retries_then_raises(configured, tmp_path, monkeypatch):
-    monkeypatch.setattr(transcribe.time, "sleep", lambda _: None)  # no real backoff
+    monkeypatch.setattr("app.pipeline.providers.time.sleep", lambda _: None)  # no real backoff
     fake = MagicMock()
     fake.audio.transcriptions.with_raw_response.create.side_effect = RuntimeError("503")
 
-    with patch.object(transcribe, "_client", return_value=fake):
+    with patch.object(transcribe, "openai_client", return_value=fake):
         with pytest.raises(TranscribeError):
             transcribe_file(_audio(tmp_path))
 
@@ -131,7 +131,7 @@ def _http(status: int, payload: dict | None = None):
 def test_elevenlabs_posts_its_own_request(tmp_path):
     words = {"text": "Hi.", "words": [{"text": "Hi.", "start": 0.0, "end": 0.4, "type": "word"}]}
     with patch.object(transcribe.httpx, "post", return_value=_http(200, words)) as post, \
-         patch.object(transcribe, "_client") as openai_client:
+         patch.object(transcribe, "openai_client") as openai_client:
         result = transcribe_file(_audio(tmp_path), language="fr", endpoint=ELEVENLABS)
 
     openai_client.assert_not_called()

@@ -7,22 +7,23 @@ is False and the rest of the app stays on the free zero-LLM path.
 """
 
 import logging
-import time
 from urllib.parse import urlsplit
 
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
-from app.pipeline.providers import Endpoint, describe_error
+from app.pipeline.providers import (
+    Endpoint,
+    KeyRefused,
+    describe_error,
+    openai_client,
+    with_retries,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class LLMError(Exception):
     """A cleanup-pass LLM call failed (after retries). Callers fall back."""
-
-
-class KeyRefused(Exception):
-    """The provider rejected the key (401/403) while listing models."""
 
 
 def llm_endpoint(endpoint: Endpoint | None = None) -> Endpoint | None:
@@ -38,20 +39,6 @@ def llm_endpoint(endpoint: Endpoint | None = None) -> Endpoint | None:
 def llm_available(endpoint: Endpoint | None = None) -> bool:
     """True when a call would have an endpoint to go to."""
     return llm_endpoint(endpoint) is not None
-
-
-def _client(endpoint: Endpoint, timeout: float, **kwargs):
-    """Build the OpenAI SDK client lazily so `openai` is only imported/needed
-    when an LLM is actually configured."""
-    from openai import OpenAI
-
-    return OpenAI(
-        base_url=endpoint.base_url,
-        # Some local servers (Ollama) need no key; the SDK still wants a value.
-        api_key=endpoint.api_key or "not-needed",
-        timeout=timeout,
-        **kwargs,
-    )
 
 
 def extra_body(endpoint: Endpoint) -> dict:
@@ -82,7 +69,7 @@ def list_models(endpoint: Endpoint) -> list[str]:
     from openai import AuthenticationError, PermissionDeniedError
 
     try:
-        page = _client(endpoint, 15, max_retries=0).models.list()
+        page = openai_client(endpoint, 15, max_retries=0).models.list()
     except (AuthenticationError, PermissionDeniedError) as exc:
         raise KeyRefused(str(exc)) from exc
     return [m.id for m in page]
@@ -94,40 +81,30 @@ def complete(
     """Run one chat completion and return the assistant text.
 
     Deterministic (temperature 0) since every role is a faithful transform, not
-    creative writing. Retries a couple of times with backoff on transient errors;
-    raises LLMError if it still fails so the caller can fall back gracefully.
+    creative writing. Raises LLMError once retries fail, so the caller falls back.
     """
     ep = llm_endpoint(endpoint)
     if ep is None:
         raise LLMError("LLM is not configured")
 
-    last_exc: Exception | None = None
-    for attempt in range(3):
-        try:
-            response = _client(ep, settings.llm_timeout_s).chat.completions.create(
-                model=ep.model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                temperature=0,
-                max_tokens=max_tokens,
-                extra_body=extra_body(ep),
-            )
-            cost = call_cost(response)
-            # The operator's own key only: a visitor's spend is on their invoice.
-            if endpoint is None and cost is not None:
-                capture_paid_call("openrouter", "llm", cost)
-            return (response.choices[0].message.content or "").strip()
-        except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
-            last_exc = exc
-            wait = 2**attempt
-            logger.warning(
-                "LLM call failed (attempt %d/3): %s — retrying in %ds",
-                attempt + 1,
-                describe_error(exc),
-                wait,
-            )
-            time.sleep(wait)
+    def call() -> str:
+        response = openai_client(ep, settings.llm_timeout_s).chat.completions.create(
+            model=ep.model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0,
+            max_tokens=max_tokens,
+            extra_body=extra_body(ep),
+        )
+        cost = call_cost(response)
+        # The operator's own key only: a visitor's spend is on their invoice.
+        if endpoint is None and cost is not None:
+            capture_paid_call("openrouter", "llm", cost)
+        return (response.choices[0].message.content or "").strip()
 
-    raise LLMError(f"LLM call failed after retries: {describe_error(last_exc)}") from last_exc
+    try:
+        return with_retries(call, "LLM call")
+    except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
+        raise LLMError(f"LLM call failed after retries: {describe_error(exc)}") from exc

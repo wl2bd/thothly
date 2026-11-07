@@ -20,15 +20,20 @@ the caller's job (see `app/sources/podcast.py`).
 
 import json
 import logging
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
 
 from app.core.config import settings
-from app.pipeline.llm import KeyRefused
-from app.pipeline.providers import ELEVENLABS_BASE_URL, Endpoint, describe_error
+from app.pipeline.providers import (
+    ELEVENLABS_BASE_URL,
+    Endpoint,
+    KeyRefused,
+    describe_error,
+    openai_client,
+    with_retries,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,19 +86,6 @@ def stt_endpoint(endpoint: Endpoint | None = None) -> Endpoint | None:
 def stt_available(endpoint: Endpoint | None = None) -> bool:
     """True when a transcription would have an endpoint to go to."""
     return stt_endpoint(endpoint) is not None
-
-
-def _client(endpoint: Endpoint):
-    """Build the OpenAI SDK client lazily so `openai` is only imported when an
-    STT endpoint is actually configured."""
-    from openai import OpenAI
-
-    return OpenAI(
-        base_url=endpoint.base_url,
-        # Local servers (vLLM, whisper.cpp) need no key; the SDK still wants one.
-        api_key=endpoint.api_key or "not-needed",
-        timeout=settings.stt_timeout_s,
-    )
 
 
 def transcribe_file(
@@ -149,32 +141,21 @@ def _request_with_retries(path: Path, ep: Endpoint, params: dict) -> dict:
     Uses `with_raw_response` so we read the provider's full JSON body — the
     typed SDK model drops provider extras like `speaker_id`. A 4xx is raised as
     `_UnsupportedParams` (don't retry; the caller drops the extras instead)."""
-    last_exc: Exception | None = None
-    for attempt in range(3):
-        try:
-            with open(path, "rb") as audio:
-                if _is_elevenlabs(ep):
-                    return _elevenlabs_transcribe(audio, ep, params)
-                raw = _client(ep).audio.transcriptions.with_raw_response.create(
-                    model=ep.model,
-                    file=audio,
-                    **params,
-                )
-            return json.loads(raw.text)
-        except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
-            if _is_bad_request(exc):
-                raise _UnsupportedParams(describe_error(exc)) from exc
-            last_exc = exc
-            wait = 2**attempt
-            logger.warning(
-                "Transcription failed (attempt %d/3): %s — retrying in %ds",
-                attempt + 1,
-                describe_error(exc),
-                wait,
+    def call() -> dict:
+        with open(path, "rb") as audio:
+            if _is_elevenlabs(ep):
+                return _elevenlabs_transcribe(audio, ep, params)
+            raw = openai_client(ep, settings.stt_timeout_s).audio.transcriptions.with_raw_response.create(
+                model=ep.model, file=audio, **params
             )
-            time.sleep(wait)
+        return json.loads(raw.text)
 
-    raise TranscribeError(f"Transcription failed after retries: {describe_error(last_exc)}") from last_exc
+    try:
+        return with_retries(call, "Transcription", fatal=_is_bad_request)
+    except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
+        if _is_bad_request(exc):
+            raise _UnsupportedParams(describe_error(exc)) from exc
+        raise TranscribeError(f"Transcription failed after retries: {describe_error(exc)}") from exc
 
 
 def _is_bad_request(exc: Exception) -> bool:

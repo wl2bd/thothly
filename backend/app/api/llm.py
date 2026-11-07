@@ -6,8 +6,14 @@ from pydantic import BaseModel, SecretStr
 
 from app.core.config import settings
 from app.core.posthog import get_posthog_client
-from app.pipeline.llm import KeyRefused, list_models, llm_available
-from app.pipeline.providers import PROVIDERS, ProviderRejected, get_provider, resolve_endpoint
+from app.pipeline.llm import list_models, llm_available
+from app.pipeline.providers import (
+    PROVIDERS,
+    KeyRefused,
+    ProviderRejected,
+    get_provider,
+    resolve_endpoint,
+)
 from app.pipeline.roles import ROLES
 from app.pipeline.transcribe import list_models as list_stt_models
 from app.pipeline.transcribe import stt_available

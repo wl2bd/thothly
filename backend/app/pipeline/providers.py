@@ -10,13 +10,25 @@ Each entry also carries the provider's rates, so the review screen's cost
 estimate quotes what the visitor will pay rather than the operator's config.
 """
 
+import logging
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TypeVar
 from urllib.parse import urlsplit
 
 from app.core.config import settings
 
 CUSTOM = "custom"
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
+
+
+logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
+
+class KeyRefused(Exception):
+    """The provider rejected the key (401/403)."""
 
 
 class ProviderRejected(ValueError):
@@ -64,6 +76,39 @@ def describe_error(exc: BaseException) -> str:
     message never goes into a log line or an exception text a caller logs."""
     code = getattr(exc, "status_code", None)
     return f"{type(exc).__name__} (HTTP {code})" if code else type(exc).__name__
+
+
+def openai_client(endpoint: Endpoint, timeout: float, **kwargs):
+    """The OpenAI SDK client for an endpoint, imported only when one is used."""
+    from openai import OpenAI
+
+    return OpenAI(
+        base_url=endpoint.base_url,
+        # Local servers (Ollama, vLLM, whisper.cpp) need no key; the SDK wants one.
+        api_key=endpoint.api_key or "not-needed",
+        timeout=timeout,
+        **kwargs,
+    )
+
+
+def with_retries(
+    call: Callable[[], T], what: str, *, fatal: Callable[[Exception], bool] = lambda _: False
+) -> T:
+    """Run a provider call, retrying twice with 1 s then 2 s of backoff. An
+    error `fatal` recognises is raised at once; the last error is raised as-is."""
+    for attempt in range(3):
+        try:
+            return call()
+        except Exception as exc:  # noqa: BLE001 — provider SDKs raise many types
+            if fatal(exc) or attempt == 2:
+                raise
+            wait = 2**attempt
+            logger.warning(
+                "%s failed (attempt %d/3): %s — retrying in %ds",
+                what, attempt + 1, describe_error(exc), wait,
+            )
+            time.sleep(wait)
+    raise AssertionError("unreachable")
 
 
 def get_provider(provider_id: str) -> Provider | None:

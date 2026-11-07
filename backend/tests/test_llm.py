@@ -93,7 +93,7 @@ def test_cost_is_recorded_for_the_server_key_only(monkeypatch) -> None:
     monkeypatch.setattr(llm.settings, "llm_model", "deepseek/deepseek-v4.1-flash")
     client = MagicMock()
     client.chat.completions.create.return_value = _completion(0.0007)
-    with patch.object(llm, "_client", return_value=client), patch.object(llm, "capture_paid_call") as paid:
+    with patch.object(llm, "openai_client", return_value=client), patch.object(llm, "capture_paid_call") as paid:
         assert llm.complete("s", "u") == "ok"
         paid.assert_called_once_with("openrouter", "llm", 0.0007)
         paid.reset_mock()
