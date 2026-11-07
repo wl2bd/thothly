@@ -7,6 +7,7 @@ import pytest
 from app.pipeline.html_md import html_to_markdown
 from app.sources.models import Article
 from app.sources.blog import (
+    Paywalled,
     FeedUnavailable,
     _clean_extracted_html,
     _unwrap_image_links,
@@ -339,3 +340,27 @@ def test_fetch_page_gives_up_when_the_download_hangs():
             assert time.monotonic() - start < 2
     finally:
         release.set()
+
+
+# ── paywalls ─────────────────────────────────────────────────────────────────
+
+@patch("app.sources.blog.fetch_page")
+def test_a_newsletter_paywall_is_refused_not_compiled_as_a_teaser(mock_fetch):
+    # A paid newsletter post serves its opening paragraphs, then a paywall box.
+    mock_fetch.return_value = _page('<div class="paywall"><h2>Subscribe to read</h2></div>')
+    with pytest.raises(Paywalled):
+        scrape_article("https://news.example/p/paid-post")
+
+
+@patch("app.sources.blog.fetch_page")
+def test_a_page_declared_not_free_in_its_metadata_is_refused(mock_fetch):
+    ld = '<script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":false}</script>'
+    mock_fetch.return_value = _page("").replace("<body>", f"<head>{ld}</head><body>")
+    with pytest.raises(Paywalled):
+        scrape_article("https://press.example/2026/story")
+
+
+@patch("app.sources.blog.fetch_page")
+def test_a_free_page_mentioning_paywalls_is_not_refused(mock_fetch):
+    mock_fetch.return_value = _page("<p>Why the paywall model fails readers.</p>")
+    assert scrape_article("https://blog.example/post").content_html

@@ -226,3 +226,15 @@ def test_the_preview_says_why_a_video_has_nothing_to_show(_load):
 
     assert not preview.available
     assert "no subtitles" in preview.note
+
+
+def test_a_paywalled_post_is_skipped_instead_of_compiling_its_teaser():
+    from app.sources.blog import Paywalled
+
+    item = _item(0, "blog", "https://news.example/p/paid")
+    item.preview_html = "<p>The opening of a paid post, cut&#8230;</p>"
+    job_id = confirmed_job(item)
+    with patch("app.jobs.chapters.scrape_article", side_effect=Paywalled("paywall")):
+        runner.run_compilation(job_id)
+
+    assert _outcomes(job_id) == [("i0", "skipped", "Behind a paywall, only a teaser is public.")]

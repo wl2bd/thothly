@@ -40,6 +40,21 @@ class ScrapeUnavailable(Exception):
     pass
 
 
+class Paywalled(Exception):
+    """The page loaded, but its text is for subscribers: what's public is a
+    teaser, and compiled it would pass for a whole article cut short."""
+
+
+# A paid newsletter post's subscribe box (Substack and its clones), or the
+# schema.org flag publishers set for search engines on paywalled articles.
+_PAYWALL_BOX = re.compile(r'class="paywall["\s]')
+_NOT_FREE = re.compile(r'"isAccessibleForFree"\s*:\s*(false|"false")', re.IGNORECASE)
+
+
+def _is_paywalled(html: str) -> bool:
+    return bool(_PAYWALL_BOX.search(html) or _NOT_FREE.search(html))
+
+
 def list_feed(feed_url: str) -> tuple[str | None, list[Article]]:
     """Return the (feed title, articles) for an RSS/Atom feed."""
     assert_public_url(feed_url)  # SSRF guard: never fetch an internal address
@@ -67,6 +82,8 @@ def scrape_article(url: str) -> Article:
     downloaded = fetch_page(url, settings.scrape_timeout_s)
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
+    if _is_paywalled(downloaded):
+        raise Paywalled(url)
 
     downloaded = _captions_to_titles(_unwrap_image_links(downloaded))
 

@@ -20,7 +20,7 @@ from app.pipeline.models import CompiledChapter
 from app.pipeline.providers import Endpoint
 from app.pipeline.titles import normalize_title
 from app.sources import youtube
-from app.sources.blog import ScrapeUnavailable, scrape_article
+from app.sources.blog import Paywalled, ScrapeUnavailable, scrape_article
 from app.sources.models import DiscoveredItem, Transcript
 from app.sources import transcript_cache
 from app.sources.podcast import load_episode_transcript
@@ -55,6 +55,10 @@ class SkipReason(Enum):
     NO_CONTENT = (
         "No readable content.",
         "There's no readable content here, so it would be skipped when compiling.",
+    )
+    PAYWALLED = (
+        "Behind a paywall, only a teaser is public.",
+        "This post is behind a paywall, so it would be skipped when compiling.",
     )
 
     def __init__(self, note: str, preview_note: str):
@@ -190,6 +194,9 @@ def _blog(item: DiscoveredItem, step: Step) -> Draft:
     step("Fetching the article")
     try:
         article = scrape_article(item.url)
+    except Paywalled:
+        # Not the feed's teaser either: it would read as a whole article cut short.
+        raise ItemSkipped(SkipReason.PAYWALLED)
     except ScrapeUnavailable:
         logger.info("Scrape failed for %s, using the feed's summary", item.url)
         article, html = None, item.preview_html or ""
