@@ -2,6 +2,8 @@
 
 import re
 
+from app.pipeline.i18n import normalize_language
+
 
 class YouTubeUnavailable(Exception):
     """YouTube (or the relay in front of it) refused or failed the request.
@@ -27,7 +29,7 @@ def watch_url(vid: str) -> str:
 
 
 def base_language(code: str | None) -> str:
-    return (code or "").split("-")[0]
+    return normalize_language(code) or ""
 
 
 def pick_track(

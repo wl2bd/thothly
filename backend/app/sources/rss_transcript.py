@@ -23,6 +23,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.core.net import fetch_public_text
+from app.pipeline.i18n import normalize_language
 from app.sources.models import Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def find_transcript(feed_url: str, audio_url: str, title: str | None) -> Transcr
             body = _get_text(tag.url)
             segments = parse_transcript(body, tag.type) if body else []
             if segments:
-                language = _base_lang(tag.language) or channel_lang or ""
+                language = normalize_language(tag.language) or channel_lang or ""
                 return Transcript(video_id=audio_url, language=language, segments=segments)
     except Exception as exc:  # noqa: BLE001 - Exa and transcription still get their turn
         logger.warning("RSS transcript lookup failed for %s: %s", audio_url, exc)
@@ -73,7 +74,7 @@ def transcript_tags(feed: str, audio_url: str, title: str | None) -> tuple[list[
     channel = root.find("channel")
     if channel is None:
         return [], None
-    channel_lang = _base_lang(channel.findtext("language"))
+    channel_lang = normalize_language(channel.findtext("language"))
     items = channel.findall("item")
     item = _match_item(items, audio_url, title)
     if item is None:
@@ -118,10 +119,6 @@ def _file_key(url: str) -> str | None:
 def _norm_title(title: str) -> str:
     t = unicodedata.normalize("NFKC", title).casefold()
     return " ".join(re.sub(r"[^\w]+", " ", t).split())
-
-
-def _base_lang(lang: str | None) -> str | None:
-    return lang.strip().split("-")[0].split("_")[0].lower() or None if lang else None
 
 
 # --- parsing --------------------------------------------------------------------

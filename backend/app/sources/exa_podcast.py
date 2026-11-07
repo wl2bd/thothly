@@ -22,6 +22,7 @@ from difflib import SequenceMatcher
 from app.core import gateway
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
+from app.pipeline.i18n import normalize_language
 from app.sources.models import Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ def parse_episode_page(text: str) -> tuple[str | None, float | None, list[Transc
     start = text.find("\n## Transcript")
     header = text if start < 0 else text[:start]
     fields = {m["key"].strip().lower(): m["value"].strip() for m in _FIELD_RE.finditer(header)}
-    language = (fields.get("language") or "").split("-")[0].lower() or None
+    language = normalize_language(fields.get("language"))
     duration = _seconds(fields.get("duration") or "")
 
     if start < 0:

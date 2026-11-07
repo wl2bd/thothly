@@ -14,6 +14,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
+from app.pipeline.i18n import normalize_language
+
 # Role ids — stable identifiers stored on the job and sent by the frontend.
 PUNCTUATE = "punctuate"
 COPYEDIT = "copyedit"
@@ -87,8 +89,7 @@ def language_name(tag: str | None) -> str | None:
     text' instruction rather than name a language they aren't sure of."""
     if not tag:
         return None
-    base = tag.split("-")[0].strip().lower()
-    return _LANGUAGE_NAMES.get(base)
+    return _LANGUAGE_NAMES.get(normalize_language(tag) or "")
 
 
 def sections_prompt(language: str | None) -> str:
