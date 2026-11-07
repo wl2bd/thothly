@@ -20,6 +20,7 @@ default and is documented as "do not expose to the public internet"):
   failing open here keeps offline / hermetic test runs working.
 """
 
+from email.message import Message
 import ipaddress
 import logging
 import socket
@@ -168,5 +169,10 @@ def fetch_public_text(
     if fetched is None:
         return None
     data, response_headers = fetched
-    charset = response_headers.get("content-type", "").partition("charset=")[2].strip() or "utf-8"
-    return data.decode(charset, errors="replace")
+    content_type = Message()
+    content_type["content-type"] = response_headers.get("content-type", "")
+    charset = content_type.get_content_charset() or "utf-8"
+    try:
+        return data.decode(charset, errors="replace")
+    except LookupError:
+        return data.decode("utf-8", errors="replace")

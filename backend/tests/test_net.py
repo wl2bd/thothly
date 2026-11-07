@@ -86,3 +86,20 @@ def test_a_body_is_decoded_with_the_charset_the_server_declared(web):
 
     web(lambda req: httpx.Response(200, content="café".encode("latin-1"), headers={"content-type": "text/html; charset=latin-1"}))
     assert fetch_public_text("https://page.example/a", timeout=5, max_bytes=100) == "café"
+
+
+@pytest.mark.parametrize(
+    "content_type",
+    [
+        'text/html; charset=utf-8; profile="https://www.mediawiki.org/wiki/Specs/HTML/2.8.0"',
+        'text/html; charset="utf-8"',
+        "text/html; charset=no-such-codec",
+    ],
+)
+def test_a_charset_with_parameters_quotes_or_an_unknown_name_still_decodes(web, content_type):
+    import httpx
+
+    from app.core.net import fetch_public_text
+
+    web(lambda req: httpx.Response(200, content="café".encode(), headers={"content-type": content_type}))
+    assert fetch_public_text("https://page.example/a", timeout=5, max_bytes=100) == "café"
