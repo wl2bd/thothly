@@ -564,3 +564,25 @@
 .skeleton-quiet *::after {
   opacity: 0 !important;
 }
+
+/* The source count answering a click on a row the full compilation can't take:
+   one dip and back, so the eye finds why. */
+.count-flash {
+  animation: count-flash 700ms var(--ease-out-quint);
+}
+
+@keyframes count-flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .count-flash {
+    animation: none;
+  }
+}

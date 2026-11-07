@@ -447,6 +447,9 @@ function ComposeWorkspace({
   // results, the compilation and the count never drift apart.
   const stagedUrls = new Set(staged.map((s) => s.url));
   const full = staged.length >= MAX_SOURCES;
+  // Bumped by a click on a row the full compilation can't take: the count,
+  // which says why, flashes once in answer.
+  const [blockedTick, setBlockedTick] = useState(0);
   // No row for the live query yet: the debounce hasn't fired, or providers are
   // still out (a batch can land empty, say no podcast for this query, while the
   // others run), so "No results" only shows once every provider has answered.
@@ -789,6 +792,7 @@ function ComposeWorkspace({
               stagedUrls={stagedUrls}
               full={full}
               onToggle={toggleResultStaged}
+              onBlocked={() => setBlockedTick((t) => t + 1)}
               onPointerPick={() => (pickedByPointer.current = true)}
             />
           )}
@@ -814,7 +818,7 @@ function ComposeWorkspace({
           title={staged.length > 0 ? title : "No sources yet"}
           titleClassName={staged.length > 0 ? undefined : "text-muted-foreground"}
           onTitleChange={staged.length > 0 ? setTypedTitle : undefined}
-          meta={<SourceCount count={staged.length} />}
+          meta={<SourceCount count={staged.length} tick={blockedTick} />}
           className={cn(showResults && "max-lg:hidden")}
           // Search runs transitions on every keystroke and every result
           // batch; only the pane opening or closing morphs the card.
@@ -875,7 +879,7 @@ function ComposeWorkspace({
           {compileError && <Notice variant="error">{compileError}</Notice>}
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground text-sm">
-              <SourceCount count={staged.length} />
+              <SourceCount count={staged.length} tick={blockedTick} />
             </span>
             <Button onClick={onCompile} disabled={submitting}>
               {reviewLabel}
@@ -950,6 +954,8 @@ interface SearchResultsProps {
   // The compilation holds MAX_SOURCES already: unpicked rows can't be checked.
   full: boolean;
   onToggle: (result: SearchResult) => void;
+  // A click on a row the full compilation can't take.
+  onBlocked: () => void;
   // Fired on a pointer press of a row, so the parent can tell a click pick from
   // a keyboard pick and only return focus to the bar for the former.
   onPointerPick: () => void;
@@ -964,6 +970,7 @@ function SearchResults({
   stagedUrls,
   full,
   onToggle,
+  onBlocked,
   onPointerPick,
 }: SearchResultsProps) {
   // The list scrolls inside the card between the filter row and the sources
@@ -998,7 +1005,7 @@ function SearchResults({
     );
   }
 
-  const rowProps = { query, stagedUrls, full, onToggle, onPointerPick };
+  const rowProps = { query, stagedUrls, full, onToggle, onBlocked, onPointerPick };
 
   // While a new query is in flight the old rows stay put but dim, so the list
   // reads as "updating" instead of flickering empty. Rows of the live query
@@ -1075,6 +1082,7 @@ interface ResultRowProps {
   stagedUrls: Set<string>;
   full: boolean;
   onToggle: (result: SearchResult) => void;
+  onBlocked: () => void;
   onPointerPick: () => void;
 }
 
@@ -1084,21 +1092,30 @@ function ResultRow({
   stagedUrls,
   full,
   onToggle,
+  onBlocked,
   onPointerPick,
 }: ResultRowProps) {
   const checked = stagedUrls.has(r.url);
+  // The compilation is full and this row isn't in it: the whole row reads as
+  // out of reach, not just its checkbox, so it never looks clickable.
+  const blocked = full && !checked;
   const kind = kindFromResultType(r.type);
   return (
     <li>
       <label
         onPointerDown={onPointerPick}
+        onClick={blocked ? onBlocked : undefined}
+        aria-disabled={blocked || undefined}
         // No fill when picked: the checkbox says it, the row doesn't
         // say it twice.
-        className="hover:bg-muted/50 flex cursor-pointer items-center gap-4 rounded-lg px-3.5 py-4 transition-colors"
+        className={cn(
+          "flex items-center gap-4 rounded-lg px-3.5 py-4 transition-[background-color,opacity]",
+          blocked ? "cursor-not-allowed opacity-40" : "hover:bg-muted/50 cursor-pointer",
+        )}
       >
         <Checkbox
           checked={checked}
-          disabled={full && !checked}
+          disabled={blocked}
           onCheckedChange={() => onToggle(r)}
         />
         {/* One block in the skeleton: the article placeholder's drawn lines
@@ -1317,13 +1334,19 @@ const USES: {
 // the count already sits (pane header on a desktop, bottom bar on a phone): a
 // banner above the results would push them down under the pointer at the
 // very click that fills the last slot.
-function SourceCount({ count }: { count: number }) {
+// `tick` changes on each click on a row it can't take: the new key restarts
+// its one flash.
+function SourceCount({ count, tick = 0 }: { count: number; tick?: number }) {
   if (count < MAX_SOURCES) {
     return <span className="tabular-nums">{`${count} of ${MAX_SOURCES} sources`}</span>;
   }
   return (
-    <span className="text-primary tabular-nums" title={SOURCES_FULL}>
-      {`${count} of ${MAX_SOURCES} · limit reached`}
+    <span
+      key={tick}
+      className={cn("text-primary tabular-nums", tick > 0 && "count-flash")}
+      title={SOURCES_FULL}
+    >
+      {`${count} of ${MAX_SOURCES} · Full`}
     </span>
   );
 }
