@@ -213,16 +213,22 @@ function ComposeWorkspace({
     const term = searchTerm;
     const isReset = term === "" || looksLikeUrl(term);
 
+    // The query's first answer: its results replace the last query's, with the
+    // filter and sort back to their defaults.
+    const settle = (rows: SearchResult[], failed: string[]) => {
+      setResults(rows);
+      setFailedProviders(failed);
+      setTypeFilter("all");
+      setSortBy("relevance");
+      setSettledQuery(term);
+    };
+
     const timer = setTimeout(async () => {
       if (isReset) {
         // Clearing the bar folds the card back to its pristine state through the
         // same flow-card transition as every other phase change.
         startTransition(() => {
-          setResults([]);
-          setFailedProviders([]);
-          setTypeFilter("all");
-          setSortBy("relevance");
-          setSettledQuery(term);
+          settle([], []);
           setSearching(false);
         });
         return;
@@ -248,11 +254,7 @@ function ComposeWorkspace({
             startTransition(() => {
               const failed = batch.error ? [batch.provider] : [];
               if (isFirst) {
-                setResults(batch.results);
-                setFailedProviders(failed);
-                setTypeFilter("all");
-                setSortBy("relevance");
-                setSettledQuery(term);
+                settle(batch.results, failed);
               } else {
                 setResults((prev) => {
                   const seen = new Set(prev.map((r) => r.id));
@@ -267,22 +269,15 @@ function ComposeWorkspace({
         if (cancelled) return;
         startTransition(() => {
           // A stream that ended without a single batch still settles the query.
-          if (first) {
-            setResults([]);
-            setFailedProviders([]);
-            setSettledQuery(term);
-          }
+          if (first) settle([], []);
           setSearching(false);
         });
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
         setError(err instanceof Error ? err.message : String(err));
         startTransition(() => {
-          if (first) {
-            setResults([]);
-            setFailedProviders([]);
-          }
-          setSettledQuery(term);
+          if (first) settle([], []);
+          else setSettledQuery(term);
           setSearching(false);
         });
       }
@@ -452,8 +447,11 @@ function ComposeWorkspace({
   // results, the compilation and the count never drift apart.
   const stagedUrls = new Set(staged.map((s) => s.url));
   const full = staged.length >= MAX_SOURCES;
-  // No row for the live query yet: the debounce hasn't fired, or every
-  // provider that answered came back empty while others are still out.
+  // No row for the live query yet: the debounce hasn't fired, or providers are
+  // still out (a batch can land empty, say no podcast for this query, while the
+  // others run), so "No results" only shows once every provider has answered.
+  // Skullet measures real rows built from sample results, so the skeleton has the
+  // exact geometry of what lands.
   const pendingFirst = (!settled || searching) && results.length === 0;
   const reviewLabel = submitting
     ? "Starting…"
@@ -785,6 +783,7 @@ function ComposeWorkspace({
             <SearchResults
               searching={searching}
               settled={settled}
+              pendingFirst={pendingFirst}
               query={trimmed}
               results={visibleResults}
               stagedUrls={stagedUrls}
@@ -943,6 +942,8 @@ interface SearchResultsProps {
   // Whether a search has actually settled for the live query. Until it has, the
   // list shows the skeleton rather than the empty state.
   settled: boolean;
+  // Nothing on screen yet for this query (see Compose): the skeleton shows.
+  pendingFirst: boolean;
   query: string;
   results: SearchResult[];
   stagedUrls: Set<string>;
@@ -957,6 +958,7 @@ interface SearchResultsProps {
 function SearchResults({
   searching,
   settled,
+  pendingFirst,
   query,
   results,
   stagedUrls,
@@ -973,13 +975,6 @@ function SearchResults({
     results.length,
   ]);
 
-  // Nothing on screen yet for this query: either the debounce hasn't fired, or
-  // providers are still out (a batch can land empty, say no podcast for this
-  // query, while the others run), so "No results" only shows once every
-  // provider has answered. Skullet measures real rows built from sample
-  // results, so the skeleton has the exact geometry of what lands, and the
-  // same wrapper reveals the real rows over it.
-  const pendingFirst = (!settled || searching) && results.length === 0;
 
   // Settled and empty: a centered, deliberate state (not a stray line). The
   // query is echoed back and the next move is spelled out, including the
