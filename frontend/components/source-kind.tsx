@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import {
+  BookOpenIcon,
+  FileIcon,
+  MessagesSquareIcon,
   FileTextIcon,
+  GlobeIcon,
   ListVideoIcon,
   MicIcon,
   PlayIcon,
@@ -36,6 +40,11 @@ const KIND_META: Record<Kind, KindMeta> = {
   video: { label: "Video", Icon: PlayIcon, text: false, container: false },
   episode: { label: "Episode", Icon: MicIcon, text: false, container: false },
   article: { label: "Article", Icon: FileTextIcon, text: true, container: false },
+  encyclopedia: { label: "Encyclopedia", Icon: BookOpenIcon, text: true, container: false },
+  discussion: { label: "Discussion", Icon: MessagesSquareIcon, text: true, container: false },
+  page: { label: "Page", Icon: FileIcon, text: true, container: false },
+  // A site's home: discovery reads its feed and unfolds it into posts.
+  site: { label: "Site", Icon: GlobeIcon, text: true, container: true },
   playlist: { label: "Playlist", Icon: ListVideoIcon, text: false, container: true },
   channel: { label: "Channel", Icon: TvIcon, text: false, container: true },
 };
@@ -48,7 +57,7 @@ export function isContainerKind(kind: Kind): boolean {
 }
 
 // The type label: small tracked capitals, no chip around it. The word alone disambiguates the
-// kind — these labels are content-type terms (Video / Episode / Article), not
+// kind — these labels are content-type terms (Video / Episode / Article / Page), not
 // provider names, so they generalize as new platforms are added and read the
 // same wherever they appear: the chip here, the filter above the results.
 export function SourceTypePill({

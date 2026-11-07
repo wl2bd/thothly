@@ -441,7 +441,7 @@ function ComposeWorkspace({
   const filteredResults =
     typeFilter === "all"
       ? results
-      : results.filter((r) => kindFromResultType(r.type) === typeFilter);
+      : results.filter((r) => kindFromResultType(r.type, r.url) === typeFilter);
   const visibleResults = sortResults(filteredResults, sortBy);
   // Checkbox state for each result is read from the staged list (by URL), so the
   // results, the compilation and the count never drift apart.
@@ -1099,7 +1099,7 @@ function ResultRow({
   // The compilation is full and this row isn't in it: the whole row reads as
   // out of reach, not just its checkbox, so it never looks clickable.
   const blocked = full && !checked;
-  const kind = kindFromResultType(r.type);
+  const kind = kindFromResultType(r.type, r.url);
   return (
     <li>
       <label
@@ -1170,7 +1170,7 @@ function TypeFilter({
 }) {
   const counts: Record<string, number> = {};
   for (const r of results) {
-    const k = kindFromResultType(r.type);
+    const k = kindFromResultType(r.type, r.url);
     counts[k] = (counts[k] ?? 0) + 1;
   }
   const kinds = KIND_ORDER.filter((k) => counts[k]);

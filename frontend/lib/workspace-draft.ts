@@ -77,7 +77,7 @@ export function stagedFromResult(r: SearchResult, query: string | undefined): St
   return {
     url: r.url,
     title: r.title,
-    type: kindFromResultType(r.type),
+    type: kindFromResultType(r.type, r.url),
     source: r.source,
     thumbnail: r.thumbnail ?? null,
     durationS: r.duration_s ?? null,

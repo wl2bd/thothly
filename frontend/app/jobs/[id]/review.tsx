@@ -377,7 +377,7 @@ export function ReviewView({
     // Wikipedia page of articles, a podcast of episodes), the per-row type pill
     // repeats what the group already is — so we show the kind ONCE in the header
     // and drop it from each row. A mixed group keeps its per-row pills.
-    const kinds = new Set(groupItems.map((it) => kindFromItemType(it.item_type)));
+    const kinds = new Set(groupItems.map((it) => kindFromItemType(it.item_type, it.url)));
     const uniformKind = kinds.size === 1 ? [...kinds][0] : null;
     // The header reads like a source on the home page (a name in normal case,
     // its favicon + domain, its type), so the two screens speak the same visual
