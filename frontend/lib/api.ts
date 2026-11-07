@@ -15,6 +15,7 @@ export type ItemType = DiscoveredItem["item_type"];
 export type CompileState = NonNullable<DiscoveredItem["compile_state"]>;
 export type ItemPreview = Schemas["ItemPreview"];
 export type LlmConfig = Schemas["LLMConfig"];
+export type RoleId = Schemas["RoleInfo"]["id"];
 export type VisitorEndpoint = Schemas["VisitorEndpoint"];
 export type SearchResult = Schemas["SearchResult"];
 export type ResultType = SearchResult["type"];

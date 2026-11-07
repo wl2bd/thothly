@@ -14,7 +14,7 @@ from app.pipeline.providers import (
     get_provider,
     resolve_endpoint,
 )
-from app.pipeline.roles import ROLES
+from app.pipeline.roles import ROLES, RoleId
 from app.pipeline.transcribe import elevenlabs_models, stt_available
 from app.sources import exa_podcast
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/llm", tags=["llm"])
 
 
 class RoleInfo(BaseModel):
-    id: str
+    id: RoleId
     label: str
     description: str
     scope: Literal["item", "book"]

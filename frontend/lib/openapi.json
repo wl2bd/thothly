@@ -1044,6 +1044,12 @@
         "properties": {
           "id": {
             "type": "string",
+            "enum": [
+              "punctuate",
+              "copyedit",
+              "sections",
+              "preface"
+            ],
             "title": "Id"
           },
           "label": {

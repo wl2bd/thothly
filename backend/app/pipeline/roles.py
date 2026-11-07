@@ -21,11 +21,14 @@ PUNCTUATE = "punctuate"
 COPYEDIT = "copyedit"
 SECTIONS = "sections"
 PREFACE = "preface"
+# The same ids as a type: the API schema carries it to the frontend, so a
+# renamed role fails the frontend's type check instead of zeroing its estimate.
+RoleId = Literal["punctuate", "copyedit", "sections", "preface"]
 
 
 @dataclass(frozen=True)
 class Role:
-    id: str
+    id: RoleId
     label: str
     description: str
     scope: Literal["item", "book"]  # per chapter, or once on the whole book

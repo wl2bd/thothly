@@ -6,6 +6,7 @@ import {
   type DiscoveredItem,
   type JobResponse,
   type LlmConfig,
+  type RoleId,
 } from "./api.ts";
 import { sourceName } from "./url.ts";
 import { plural } from "./utils.ts";
@@ -116,8 +117,7 @@ export function isPolishOn(llm: LlmConfig | null, roles: Set<string>): boolean {
 // ── Cost estimate ────────────────────────────────────────────────────────────
 // A ballpark of the metered calls the compile will make: an episode without a
 // transcript is transcribed, and each item role is one pass over a text, which
-// comes out about as long as it went in. Punctuation only runs on raw captions,
-// and sections only where the text has no headings of its own.
+// comes out about as long as it went in.
 
 export const TOKENS_PER_WORD = 1.33;
 const CHARS_PER_WORD = 6;
@@ -133,6 +133,18 @@ export function episodeCost(item: DiscoveredItem, pricing: LlmConfig["pricing"])
   if (!needsTranscription(item)) return 0;
   return ((item.estimated_duration_s ?? 0) / 60) * pricing.stt_per_minute;
 }
+
+// Which items each role makes a metered pass over. Keyed by every role id, so a
+// role added or renamed on the backend fails the type check here.
+const ROLE_PASSES: Record<RoleId, (item: DiscoveredItem) => boolean> = {
+  punctuate: isRawCaptions,
+  copyedit: () => true,
+  // Counted on every item: chapters make it a no-op on a video, but the review
+  // doesn't know which videos have chapters.
+  sections: () => true,
+  // One short call on the chapter titles, too small to show.
+  preface: () => false,
+};
 
 export function estimateCost(
   items: DiscoveredItem[],
@@ -156,9 +168,9 @@ export function estimateCost(
     if (!llm.available || it.has_transcript === false) continue;
     const words =
       it.item_type === "youtube" ? (it.word_count ?? 0) : (it.estimated_size_chars ?? 0) / CHARS_PER_WORD;
-    if (roles.has("punctuate") && isRawCaptions(it)) llmCost += pass(words);
-    if (roles.has("copyedit")) llmCost += pass(words);
-    if (roles.has("sections")) llmCost += pass(words);
+    for (const id of roles) {
+      if (ROLE_PASSES[id as RoleId]?.(it)) llmCost += pass(words);
+    }
   }
   return { stt, llm: llmCost };
 }

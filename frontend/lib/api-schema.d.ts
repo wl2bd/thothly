@@ -427,8 +427,11 @@ export interface components {
         };
         /** RoleInfo */
         RoleInfo: {
-            /** Id */
-            id: string;
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "punctuate" | "copyedit" | "sections" | "preface";
             /** Label */
             label: string;
             /** Description */
