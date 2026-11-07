@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
+import { ApiError, fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
 import { maskKey, parseModels, readModelsRaw, writeModels, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 
@@ -227,22 +227,11 @@ function EndpointForm({
     if (checked.current === sig) return;
     checked.current = sig;
     setStatus("checking");
-    let list: string[] | null = null;
-    try {
-      list = modelsFor(
-        await verifyKey(provider, value.apiKey.trim(), isCustom ? value.baseUrl.trim() : undefined),
-        kind,
-      );
-    } catch {
-      list = null;
-    }
+    const result = await checkKey(provider, value.apiKey.trim(), value.baseUrl.trim());
     if (checked.current !== sig) return;
-    setStatus(list ? "valid" : "invalid");
-    setModels(list);
+    setStatus(result.status);
+    setModels(result.status === "valid" ? modelsFor(result.models, kind) : null);
   }
-
-  const pasted = (e: FormEvent<HTMLInputElement>) =>
-    (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
 
   if (options.length === 0) {
     return <p className="text-muted-foreground text-sm">No provider offers this here yet.</p>;
@@ -433,7 +422,25 @@ function withoutKeyLine(config: LlmConfig): string {
   return "Without a key, compilations are free: transcripts and articles stay as they are, and podcast episodes without a transcript are skipped.";
 }
 
-type KeyStatus = "idle" | "checking" | "valid" | "invalid";
+// "unreachable": the provider or this server didn't answer, which says nothing
+// about the key.
+type KeyStatus = "idle" | "checking" | "valid" | "invalid" | "unreachable";
+
+// One key check, through the backend (providers refuse browser calls): the
+// models it grants, or why there are none.
+async function checkKey(
+  provider: string,
+  apiKey: string,
+  baseUrl: string,
+): Promise<{ status: "valid"; models: string[] } | { status: "invalid" | "unreachable" }> {
+  try {
+    const models = await verifyKey(provider, apiKey, provider === "custom" ? baseUrl : undefined);
+    return { status: "valid", models };
+  } catch (err) {
+    const refused = err instanceof ApiError && err.status >= 400 && err.status < 500;
+    return { status: refused ? "invalid" : "unreachable" };
+  }
+}
 
 interface ProviderKey {
   apiKey: string;
@@ -444,6 +451,10 @@ interface ProviderKey {
 
 const KINDS = ["llm", "stt"] as const;
 const signature = (k: { apiKey: string; baseUrl: string }) => `${k.apiKey.trim()}\n${k.baseUrl.trim()}`;
+
+// A paste checks the key at once; typing waits for the field to lose focus.
+const pasted = (e: FormEvent<HTMLInputElement>) =>
+  (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
 
 // Settings: a key belongs to a provider and is entered once; each task picks a
 // provider and one of its models. Transcription follows the text model's
@@ -499,16 +510,11 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
     const sig = signature(value);
     const apiKey = value.apiKey.trim();
     const baseUrl = value.baseUrl.trim();
-    let models: string[] | null = null;
-    try {
-      models = await verifyKey(provider, apiKey, provider === "custom" ? baseUrl : undefined);
-    } catch {
-      models = null;
-    }
+    const result = await checkKey(provider, apiKey, baseUrl);
     // A later edit has its own check under way: this answer is stale.
     if (checked.current[provider] !== sig) return;
-    patch(provider, { status: models ? "valid" : "invalid", models: models ?? [] });
-    if (!models) return;
+    patch(provider, { status: result.status, models: result.status === "valid" ? result.models : [] });
+    if (result.status !== "valid") return;
     // A new valid key replaces the old one on every task that uses the provider.
     const now = parseModels(readModelsRaw());
     const next = { ...now };
@@ -584,8 +590,6 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
     const isCustom = provider === "custom";
     const isStored = KINDS.some((kind) => stored[kind]?.provider === provider);
     const blur = () => void check(provider, keyOf(provider));
-    const pasted = (e: FormEvent<HTMLInputElement>) =>
-      (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
     return (
       <div className="flex flex-col gap-3">
         {isCustom && (
@@ -716,10 +720,18 @@ function KeyStatusText({ status }: { status: KeyStatus }) {
       aria-live="polite"
       className={cn(
         "text-xs",
-        status === "invalid" ? "text-destructive" : "text-muted-foreground",
+        status === "invalid" || status === "unreachable" ? "text-destructive" : "text-muted-foreground",
       )}
     >
-      {status === "checking" ? "Checking…" : status === "valid" ? "Valid" : status === "invalid" ? "Invalid key" : ""}
+      {
+        {
+          idle: "",
+          checking: "Checking…",
+          valid: "Valid",
+          invalid: "Invalid key",
+          unreachable: "Couldn't check it. Try again.",
+        }[status]
+      }
     </span>
   );
 }
