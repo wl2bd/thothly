@@ -1,0 +1,4 @@
+# The shadcn registry embeds these files' text in public/r; LF everywhere keeps
+# a Windows build identical to the one CI checks.
+components/ui/** text eol=lf
+public/r/** text eol=lf
