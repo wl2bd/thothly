@@ -319,6 +319,161 @@
         }
       }
     },
+    "/jobs/{job_id}/cover/image": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Upload Cover Image",
+        "description": "The visitor's own cover image, sent as the raw request body. It becomes\nthe cover's ground, with the title laid over it.",
+        "operationId": "upload_cover_image_jobs__job_id__cover_image_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Delete Cover Image",
+        "operationId": "delete_cover_image_jobs__job_id__cover_image_delete",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}/cover/preview": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Preview Cover",
+        "description": "The cover as it would be drawn now, for the review screen's thumbnail.",
+        "operationId": "preview_cover_jobs__job_id__cover_preview_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverPreview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/{job_id}/download": {
       "get": {
         "tags": [
@@ -503,6 +658,88 @@
   },
   "components": {
     "schemas": {
+      "CoverPreview": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Title"
+          },
+          "cover": {
+            "$ref": "#/components/schemas/CoverSettings",
+            "default": {
+              "emblem": "source",
+              "tint": "cream"
+            }
+          },
+          "selected_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Selected Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "CoverPreview",
+        "description": "What the review screen renders a cover thumbnail from, as it stands."
+      },
+      "CoverSettings": {
+        "properties": {
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "emblem": {
+            "type": "string",
+            "enum": [
+              "source",
+              "thothly",
+              "none"
+            ],
+            "title": "Emblem",
+            "default": "source"
+          },
+          "tint": {
+            "type": "string",
+            "enum": [
+              "cream",
+              "stone",
+              "ink",
+              "gold"
+            ],
+            "title": "Tint",
+            "default": "cream"
+          }
+        },
+        "type": "object",
+        "title": "CoverSettings",
+        "description": "The cover as the visitor set it at review. The image they may upload\nlives apart (POST /jobs/{id}/cover/image) and, when there, wins over `tint`."
+      },
       "DiscoveredItemResponse": {
         "properties": {
           "title": {
@@ -858,6 +1095,16 @@
                 "type": "null"
               }
             ]
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoverSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -956,6 +1203,11 @@
               }
             ],
             "title": "Epub Bytes"
+          },
+          "cover_image": {
+            "type": "boolean",
+            "title": "Cover Image",
+            "default": false
           },
           "error": {
             "anyOf": [

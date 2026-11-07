@@ -137,6 +137,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/{job_id}/cover/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Cover Image
+         * @description The visitor's own cover image, sent as the raw request body. It becomes
+         *     the cover's ground, with the title laid over it.
+         */
+        post: operations["upload_cover_image_jobs__job_id__cover_image_post"];
+        /** Delete Cover Image */
+        delete: operations["delete_cover_image_jobs__job_id__cover_image_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}/cover/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Cover
+         * @description The cover as it would be drawn now, for the review screen's thumbnail.
+         */
+        post: operations["preview_cover_jobs__job_id__cover_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}/download": {
         parameters: {
             query?: never;
@@ -236,6 +278,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * CoverPreview
+         * @description What the review screen renders a cover thumbnail from, as it stands.
+         */
+        CoverPreview: {
+            /** Title */
+            title: string;
+            /**
+             * @default {
+             *       "emblem": "source",
+             *       "tint": "cream"
+             *     }
+             */
+            cover: components["schemas"]["CoverSettings"];
+            /**
+             * Selected Ids
+             * @default []
+             */
+            selected_ids: string[];
+        };
+        /**
+         * CoverSettings
+         * @description The cover as the visitor set it at review. The image they may upload
+         *     lives apart (POST /jobs/{id}/cover/image) and, when there, wins over `tint`.
+         */
+        CoverSettings: {
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Authors */
+            authors?: string | null;
+            /**
+             * Emblem
+             * @default source
+             * @enum {string}
+             */
+            emblem: "source" | "thothly" | "none";
+            /**
+             * Tint
+             * @default cream
+             * @enum {string}
+             */
+            tint: "cream" | "stone" | "ink" | "gold";
+        };
         /** DiscoveredItemResponse */
         DiscoveredItemResponse: {
             /** Title */
@@ -364,6 +449,7 @@ export interface components {
             llm_roles: string[];
             llm?: components["schemas"]["VisitorEndpoint"] | null;
             stt?: components["schemas"]["VisitorEndpoint"] | null;
+            cover?: components["schemas"]["CoverSettings"] | null;
         };
         /** JobCreate */
         JobCreate: {
@@ -402,6 +488,11 @@ export interface components {
             title_named: boolean;
             /** Epub Bytes */
             epub_bytes?: number | null;
+            /**
+             * Cover Image
+             * @default false
+             */
+            cover_image: boolean;
             /** Error */
             error?: string | null;
             /**
@@ -864,6 +955,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiscoveredItemResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_cover_image_jobs__job_id__cover_image_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+                "image/png": string;
+                "image/webp": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_cover_image_jobs__job_id__cover_image_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_cover_jobs__job_id__cover_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoverPreview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
                 };
             };
             /** @description Validation Error */

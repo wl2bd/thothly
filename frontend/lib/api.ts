@@ -20,6 +20,9 @@ export type VisitorEndpoint = Schemas["VisitorEndpoint"];
 export type SearchResult = Schemas["SearchResult"];
 export type ResultType = SearchResult["type"];
 export type ProviderBatch = Schemas["ProviderBatch"];
+export type CoverSettings = Schemas["CoverSettings"];
+export type CoverTint = NonNullable<CoverSettings["tint"]>;
+export type CoverEmblem = NonNullable<CoverSettings["emblem"]>;
 
 const limits = openapi.components.schemas;
 // Most sources a compilation can hold, and the longest title.
@@ -87,6 +90,7 @@ export async function confirmJob(
   bookTitle: string | undefined,
   llmRoles: string[],
   visitor: { llm?: VisitorEndpoint; stt?: VisitorEndpoint },
+  cover?: CoverSettings,
 ): Promise<JobResponse> {
   const body: Schemas["JobConfirm"] = {
     selected_ids: selectedIds,
@@ -94,6 +98,7 @@ export async function confirmJob(
     llm_roles: llmRoles,
     llm: visitor.llm,
     stt: visitor.stt,
+    cover,
   };
   const res = await fetch(`/api/jobs/${id}/confirm`, {
     method: "POST",
@@ -155,6 +160,40 @@ export async function chooseItemLanguage(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (!res.ok) return parseError(res);
+  return res.json();
+}
+
+// The cover as it would be drawn now, as a JPEG blob for the review thumbnail.
+export async function fetchCoverPreview(
+  jobId: string,
+  body: Schemas["CoverPreview"],
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const res = await fetch(`/api/jobs/${jobId}/cover/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) return parseError(res);
+  return res.blob();
+}
+
+// The visitor's own cover image, sent as the raw body (already scaled down in
+// the browser, so it stays far under the proxy's body limit).
+export async function uploadCoverImage(jobId: string, image: Blob): Promise<JobResponse> {
+  const res = await fetch(`/api/jobs/${jobId}/cover/image`, {
+    method: "POST",
+    headers: { "Content-Type": image.type || "image/jpeg" },
+    body: image,
+  });
+  if (!res.ok) return parseError(res);
+  return res.json();
+}
+
+export async function removeCoverImage(jobId: string): Promise<JobResponse> {
+  const res = await fetch(`/api/jobs/${jobId}/cover/image`, { method: "DELETE" });
   if (!res.ok) return parseError(res);
   return res.json();
 }

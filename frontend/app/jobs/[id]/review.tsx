@@ -92,10 +92,12 @@ import {
   confirmJob,
   fetchItemPreview,
   type DiscoveredItem,
+  type CoverSettings,
   type ItemPreview,
   type JobResponse,
   type LlmConfig,
 } from "@/lib/api";
+import { CoverEditor } from "./cover";
 import { BackToSources, DragGrip } from "./shared";
 
 
@@ -121,6 +123,8 @@ function useReview(
   const [sourceOrder, setSourceOrder] = useState(() =>
     [...new Set(job.discovered_items.map((it) => it.source_index))].sort((a, b) => a - b),
   );
+  const [cover, setCover] = useState<CoverSettings>({ emblem: "source", tint: "cream" });
+  const [coverImage, setCoverImage] = useState(!!job.cover_image);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const storedModels = useStoredModels();
@@ -175,6 +179,7 @@ function useReview(
         title.trim() || undefined,
         [...roles],
         visitor,
+        cover,
       );
       onConfirmed(updated);
     } catch (err) {
@@ -199,6 +204,10 @@ function useReview(
     toggleRole,
     setRolesMany,
     setSourceOrder,
+    cover,
+    setCover,
+    coverImage,
+    setCoverImage,
     confirm,
   };
 }
@@ -244,9 +253,14 @@ export function ReviewView({
     toggleRole,
     setRolesMany,
     setSourceOrder,
+    cover,
+    setCover,
+    coverImage,
+    setCoverImage,
     confirm,
   } = useReview(job, onConfirmed);
   const [query, setQuery] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
   const [connecting, setConnecting] = useState<ModelKind | null>(null);
   const masterItems = sureItems(items);
   const masterSelected = masterItems.filter((it) => selected.has(it.id)).length;
@@ -293,7 +307,7 @@ export function ReviewView({
   useShortcut(
     "mod+enter",
     () => void confirm(),
-    !confirming && switching === 0 && includedCount > 0 && title.trim() !== "",
+    !confirming && switching === 0 && !coverUploading && includedCount > 0 && title.trim() !== "",
   );
   const connectStt = llm && !sttAvailable ? () => setConnecting("stt") : undefined;
   // Raw-caption rows offer AI polish themselves, while it's available and off.
@@ -307,6 +321,14 @@ export function ReviewView({
   const polishableSelected = items.filter(
     (it) => selected.has(it.id) && isPolishable(it),
   ).length;
+
+  // What the cover's emblem and default authors are read from: the items that
+  // will actually be compiled, in a stable order.
+  const coverSelection = useMemo(
+    () => items.filter((it) => selected.has(it.id) && !leftOut(it)).map((it) => it.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- leftOut only moves with sttMissing
+    [items, selected, sttMissing],
+  );
 
   const cost = useMemo(
     () => estimateCost(items, selected, roles, llm),
@@ -730,7 +752,7 @@ export function ReviewView({
                 the message is where the click is. */}
             <Button
               onClick={confirm}
-              disabled={confirming || switching > 0 || includedCount === 0 || title.trim() === ""}
+              disabled={confirming || switching > 0 || coverUploading || includedCount === 0 || title.trim() === ""}
               aria-keyshortcuts="Control+Enter Meta+Enter"
               className="w-full"
             >
@@ -770,6 +792,18 @@ export function ReviewView({
             {sourceOrder.length > 1 &&
               " Drag a source to change its place in the compilation."}
           </p>
+        )}
+        {!connecting && (
+          <CoverEditor
+            jobId={jobId}
+            title={title}
+            selectedIds={coverSelection}
+            cover={cover}
+            onCoverChange={setCover}
+            hasImage={coverImage}
+            onHasImageChange={setCoverImage}
+            onUploadingChange={setCoverUploading}
+          />
         )}
       </CompilationPane>
 

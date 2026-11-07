@@ -19,7 +19,8 @@ async function proxy(request: Request, ctx: RouteContext<"/api/[...path]">) {
     res = await fetch(`${BACKEND_URL}/${path.map(encodeURIComponent).join("/")}${search}`, {
       method: request.method,
       headers,
-      body: request.method === "GET" ? undefined : await request.text(),
+      // Bytes, not text: a cover image is sent as its raw body.
+      body: request.method === "GET" ? undefined : await request.arrayBuffer(),
       cache: "no-store",
       signal: request.signal,
     });
@@ -42,3 +43,4 @@ async function proxy(request: Request, ctx: RouteContext<"/api/[...path]">) {
 
 export const GET = proxy;
 export const POST = proxy;
+export const DELETE = proxy;
