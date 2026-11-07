@@ -727,6 +727,12 @@ function ComposeWorkspace({
 
           {error && <Notice variant="error">{error}</Notice>}
 
+          {/* Full: why the remaining results can't be added, at the top like
+              every alert (the count in the pane says it too). */}
+          {showResults && full && error !== SOURCES_FULL && (
+            <Notice variant="info">{SOURCES_FULL}</Notice>
+          )}
+
           {/* Phone, while a search runs: the pane that carries this error on a
               desktop is hidden, so it opens the results instead. */}
           {showResults && staged.length > 0 && compileError && (
