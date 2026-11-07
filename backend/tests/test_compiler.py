@@ -328,3 +328,22 @@ def test_an_indent_with_no_term_is_its_content_not_a_definition_list():
     # made the paragraph above it a definition term.
     html = "<p>It would split</p><dl><dd><code>a -> b</code></dd></dl><p>as</p>"
     assert html_to_markdown(html) == "It would split\n\n`a -> b`\n\nas"
+
+
+def test_an_image_wrapped_in_a_link_to_itself_stays_a_bare_figure():
+    # Newsletter platforms wrap each image in a link to its full-size copy.
+    # Written as "[![](src)](href)" it is no longer a figure, and a CDN URL
+    # holding "$" then reads as TeX math in the reader.
+    src = "https://cdn.example/image/fetch/$s_!a!,w_1456/https%3A%2F%2Fcdn.example%2F$s_!b!/x.png"
+    html = (
+        "<p>Before</p><figure>"
+        f'<a class="image-link" href="{src}"><div><picture>'
+        f'<source srcset="{src} 424w"><img src="{src}" alt="A chart"></picture></div></a>'
+        "</figure><p>After</p>"
+    )
+    assert html_to_markdown(html) == f"Before\n\n![A chart]({src})\n\nAfter"
+
+
+def test_a_linked_image_pointing_elsewhere_keeps_its_link():
+    html = '<a href="https://example.com/post"><img src="https://example.com/a.png" alt=""></a>'
+    assert html_to_markdown(html) == "[![](https://example.com/a.png)](https://example.com/post)"

@@ -1,6 +1,7 @@
 """An article's HTML as chapter Markdown."""
 
 import re
+from urllib.parse import unquote
 
 from bs4 import BeautifulSoup, Tag
 from markdownify import MarkdownConverter
@@ -16,6 +17,9 @@ def html_to_markdown(html: str) -> str:
     # parentheses are the same URL to every browser and e-reader.
     soup = BeautifulSoup(html, "html.parser")
     for a in soup.find_all("a", href=True):
+        if _links_to_its_own_image(a):
+            a.unwrap()
+            continue
         a["href"] = a["href"].replace("(", "%28").replace(")", "%29")
     # A <dl> with no term is an indent (Wikipedia's ":"): written as a
     # definition, Pandoc would make the paragraph above it the term.
@@ -31,6 +35,20 @@ def html_to_markdown(html: str) -> str:
     return _Converter(
         heading_style="ATX", bullets="-", sup_symbol="<sup>", sub_symbol="<sub>"
     ).convert(str(soup)).strip()
+
+
+_IMAGE_FILE = re.compile(r"\.(png|jpe?g|gif|webp|avif|svg)$", re.IGNORECASE)
+
+
+def _links_to_its_own_image(a) -> bool:
+    """An image wrapped in a link to its full-size copy (newsletter platforms
+    do it to every image). Kept, it writes "[![](src)](href)": no longer a
+    figure, and every reader shows it as a clickable thumbnail of itself."""
+    imgs = a.find_all("img")
+    if len(imgs) != 1 or a.get_text(strip=True):
+        return False
+    href = a["href"]
+    return href == imgs[0].get("src") or bool(_IMAGE_FILE.search(unquote(href).split("?")[0]))
 
 
 class _Converter(MarkdownConverter):
