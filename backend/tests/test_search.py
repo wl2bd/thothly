@@ -7,12 +7,10 @@ from fastapi.testclient import TestClient
 from yt_dlp.utils import DownloadError
 
 import app.search.service as service
-from app.search.brave_provider import BraveProvider
 from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import SearchResult
 from app.search.podcast_provider import PodcastProvider
-from app.search.web import is_article_like, tidy
-from app.search.web_provider import WebProvider
+from app.search.web import is_article_like, tidy, web_result
 from app.search.youtube_provider import YouTubeProvider
 
 
@@ -161,24 +159,10 @@ def test_youtube_provider_caches_oembed_titles(mock_cls, mock_oembed):
     assert mock_oembed.call_count == 1  # second lookup served from the title cache
 
 
-# ── Web rules, through the DuckDuckGo HTML provider ────────────────────────────────────
+# ── Web rules (app/search/web.py), applied to every engine's hits ─────────────
 
-# A trimmed DuckDuckGo HTML results page: one normal hit (via the /l/ redirect),
-# one sponsored hit that must be skipped, and a duplicate of the first.
-_DDG_HTML = """
-<div class="result results_links results_links_deep web-result">
-  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fpost&rut=x">
-    Example Post
-  </a>
-  <a class="result__snippet">A snippet about the post.</a>
-</div>
-<div class="result result--ad">
-  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fad.example%2Fbuy">Ad</a>
-</div>
-<div class="result web-result">
-  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fpost">Dup</a>
-</div>
-"""
+def _hits(*urls: str) -> list[SearchResult]:
+    return [web_result(u, u) for u in urls]
 
 
 def _httpx_response(text: str, status: int = 200) -> MagicMock:
@@ -188,164 +172,58 @@ def _httpx_response(text: str, status: int = 200) -> MagicMock:
     return resp
 
 
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_parses_results(mock_post):
-    mock_post.return_value = _httpx_response(_DDG_HTML)
-
-    results = tidy(WebProvider().search("example", limit=5))
-
-    # Ad skipped, duplicate collapsed → one normalized hit.
-    assert len(results) == 1
-    r = results[0]
-    assert r.id == "web:https://example.com/post"
-    assert r.type == "web"
-    assert r.source == "web"
-    assert r.title == "Example Post"
-    assert r.url == "https://example.com/post"
-    assert r.author is None
-    assert r.meta["snippet"] == "A snippet about the post."
+def test_tidy_collapses_duplicate_urls():
+    assert [r.url for r in tidy(_hits("https://example.com/post", "https://example.com/post"))] == [
+        "https://example.com/post"
+    ]
 
 
-# A brand query returning a site's bare home and its localized mirrors: the same
-# source, which discovery expands into the same feed — one card, not three.
-_DDG_LOCALE_HTML = """
-<div class="result"><a class="result__a"
-  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fquillnotes.example%2F">QuillNotes</a></div>
-<div class="result"><a class="result__a"
-  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fquillnotes.example%2Ffr">QuillNotes FR</a></div>
-<div class="result"><a class="result__a"
-  href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.quillnotes.example%2Fen-us%3Futm%3Dx">QuillNotes EN</a></div>
-"""
-
-
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_collapses_locale_home_variants(mock_post):
-    mock_post.return_value = _httpx_response(_DDG_LOCALE_HTML)
-
-    results = tidy(WebProvider().search("quillnotes", limit=5))
-
-    # All three are the same blog home (bare, /fr, /en-us + tracking) → one hit,
-    # the first (best-ranked) bare-home URL kept.
+def test_tidy_collapses_locale_home_variants():
+    # A brand query returning a site's bare home and its localized mirrors: the
+    # same source, which discovery expands into the same feed — one card, not three.
+    results = tidy(_hits(
+        "https://quillnotes.example/",
+        "https://quillnotes.example/fr",
+        "https://www.quillnotes.example/en-us?utm=x",
+    ))
     assert [r.url for r in results] == ["https://quillnotes.example/"]
 
 
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_keeps_distinct_articles(mock_post):
-    html = """
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.com%2Fpost-a">A</a></div>
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.com%2Fpost-b">B</a></div>
-    """
-    mock_post.return_value = _httpx_response(html)
-
+def test_tidy_keeps_distinct_articles():
     # Different article paths on the same host are NOT the same source.
-    assert len(tidy(WebProvider().search("blog", limit=5))) == 2
+    assert len(tidy(_hits("https://blog.com/post-a", "https://blog.com/post-b"))) == 2
 
 
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_respects_limit(mock_post):
-    # Distinct hosts (one deep article each) so the per-domain cap never bites —
-    # this test isolates the `limit` truncation alone.
-    rows = "".join(
-        f'<div class="result"><a class="result__a" '
-        f'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fe{i}.com%2Fpost">T{i}</a></div>'
-        for i in range(10)
-    )
-    mock_post.return_value = _httpx_response(rows)
-
-    assert len(tidy(WebProvider().search("q", limit=3))) == 3
-
-
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_drops_non_article_shapes(mock_post):
+def test_tidy_drops_non_article_shapes():
     # A product page, a taxonomy listing and a forum thread are non-article URL
     # shapes; the real article (whose slug merely contains "widget") survives.
-    html = """
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fshop.example%2Fproduct%2Fwidget">Buy</a></div>
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fnews.example%2Ftag%2Ffinance">Tag</a></div>
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fforum.example%2Fviewtopic%3Ft%3D9">Thread</a></div>
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.example%2Fhow-the-widget-works">Article</a></div>
-    """
-    mock_post.return_value = _httpx_response(html)
-
-    assert [r.url for r in tidy(WebProvider().search("widget", limit=5))] == [
-        "https://blog.example/how-the-widget-works"
-    ]
+    assert [r.url for r in tidy(_hits(
+        "https://shop.example/product/widget",
+        "https://news.example/tag/finance",
+        "https://forum.example/viewtopic?t=9",
+        "https://blog.example/how-the-widget-works",
+    ))] == ["https://blog.example/how-the-widget-works"]
 
 
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_drops_on_site_search_query(mock_post):
+def test_tidy_drops_on_site_search_query():
     # A URL carrying an on-site search/listing query param is not an article.
-    html = """
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fsite.example%2F%3Fs%3Dwidget">Search</a></div>
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fsite.example%2Fthe-widget-guide">Guide</a></div>
-    """
-    mock_post.return_value = _httpx_response(html)
-
-    assert [r.url for r in tidy(WebProvider().search("widget", limit=5))] == [
-        "https://site.example/the-widget-guide"
-    ]
+    assert [r.url for r in tidy(_hits(
+        "https://site.example/?s=widget", "https://site.example/the-widget-guide"
+    ))] == ["https://site.example/the-widget-guide"]
 
 
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_drops_home_when_deeper_article_present(mock_post):
-    html = """
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.example%2F">Home</a></div>
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.example%2Fdeep-post">Deep</a></div>
-    """
-    mock_post.return_value = _httpx_response(html)
-
-    # The bare home is redundant when a deeper article from the same site is
-    # present → only the article survives.
-    assert [r.url for r in tidy(WebProvider().search("blog", limit=5))] == [
+def test_tidy_drops_home_when_deeper_article_present():
+    # The bare home is redundant when a deeper article from the same site is present.
+    assert [r.url for r in tidy(_hits("https://blog.example/", "https://blog.example/deep-post"))] == [
         "https://blog.example/deep-post"
     ]
 
 
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_keeps_lone_home(mock_post):
-    html = """
-    <div class="result"><a class="result__a"
-      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fquillnotes.example%2F">QuillNotes</a></div>
-    """
-    mock_post.return_value = _httpx_response(html)
-
+def test_tidy_keeps_lone_home():
     # A home with no deeper sibling is a valid source (discovery expands it).
-    assert [r.url for r in tidy(WebProvider().search("quillnotes", limit=5))] == [
+    assert [r.url for r in tidy(_hits("https://quillnotes.example/"))] == [
         "https://quillnotes.example/"
     ]
-
-
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_caps_results_per_domain(mock_post):
-    rows = "".join(
-        f'<div class="result"><a class="result__a" '
-        f'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fbig.example%2Fpost-{i}">P{i}</a></div>'
-        for i in range(6)
-    )
-    mock_post.return_value = _httpx_response(rows)
-
-    # One domain shouldn't flood the list: capped even with room under the limit.
-    results = tidy(WebProvider().search("q", limit=10))
-    assert len(results) == 3
-    assert all("big.example" in r.url for r in results)
-
-
-@patch("app.search.web_provider.httpx.post")
-def test_web_provider_raises_on_http_error(mock_post):
-    mock_post.side_effect = httpx.ConnectError("boom")
-
-    with pytest.raises(RuntimeError):
-        WebProvider().search("q", limit=5)
 
 
 # ── MarginaliaProvider (default web backend) mapping ─────────────────────────
@@ -406,74 +284,20 @@ def test_marginalia_provider_raises_on_http_error(mock_get):
         MarginaliaProvider().search("q", limit=5)
 
 
-# ── BraveProvider (commercial web backend) mapping ───────────────────────────
-
-_BRAVE_PAYLOAD = {
-    "web": {
-        "results": [
-            {
-                "url": "https://example.com/post",
-                "title": "An <strong>example</strong> post",
-                "description": "A <strong>snippet</strong> with markup.",
-            },
-            {"title": "Dropped — no url"},
-        ]
-    }
-}
-
-
-@patch("app.search.brave_provider.httpx.get")
-def test_brave_provider_maps_and_strips_markup(mock_get):
-    mock_get.return_value = _httpx_response("")
-    mock_get.return_value.json.return_value = _BRAVE_PAYLOAD
-
-    results = BraveProvider().search("example", limit=5)
-
-    assert len(results) == 1  # url-less entry dropped
-    r = results[0]
-    assert r.id == "web:https://example.com/post"
-    assert r.type == "web"
-    assert r.source == "web"
-    assert r.title == "An example post"  # <strong> stripped
-    assert r.meta["snippet"] == "A snippet with markup."
-    assert r.author is None
-
-
-@patch("app.search.brave_provider.httpx.get")
-def test_brave_provider_raises_on_http_error(mock_get):
-    mock_get.side_effect = httpx.ConnectError("boom")
-
-    with pytest.raises(RuntimeError):
-        BraveProvider().search("q", limit=5)
-
-
 # ── web backend selection (config-driven) ────────────────────────────────────
 
 # The factory wraps the chosen backend in a filter and a cache, so these tests
 # assert the selection on `_pick_web_provider`, which returns it bare.
 
-def test_web_backend_defaults_to_marginalia(monkeypatch):
-    monkeypatch.setattr(service.settings, "web_search_backend", "marginalia")
+def test_web_search_uses_the_gateway_when_a_key_is_set(monkeypatch):
+    monkeypatch.setattr(service.gateway, "available", lambda route: True)
+    assert isinstance(service._pick_web_provider(), service.ExaProvider)
+
+
+def test_web_search_falls_back_to_marginalia_without_a_key(monkeypatch):
+    # A fresh clone with no TREG_TOKEN or MONID_API_KEY still searches the web.
+    monkeypatch.setattr(service.gateway, "available", lambda route: False)
     assert isinstance(service._pick_web_provider(), MarginaliaProvider)
-
-
-def test_web_backend_unknown_falls_back_to_marginalia(monkeypatch):
-    monkeypatch.setattr(service.settings, "web_search_backend", "nonsense")
-    assert isinstance(service._pick_web_provider(), MarginaliaProvider)
-
-
-def test_web_backend_ddg_selectable(monkeypatch):
-    monkeypatch.setattr(service.settings, "web_search_backend", "ddg")
-    assert isinstance(service._pick_web_provider(), WebProvider)
-
-
-def test_web_backend_brave_requires_key(monkeypatch):
-    monkeypatch.setattr(service.settings, "web_search_backend", "brave")
-    monkeypatch.setattr(service.settings, "brave_api_key", None)
-    # Selected without a key → falls back rather than breaking search.
-    assert isinstance(service._pick_web_provider(), MarginaliaProvider)
-    monkeypatch.setattr(service.settings, "brave_api_key", "test-key")
-    assert isinstance(service._pick_web_provider(), BraveProvider)
 
 
 def test_cached_web_provider_caches_and_skips_short_queries():
@@ -676,11 +500,10 @@ def _web(url: str) -> SearchResult:
     return SearchResult(id=url, type="web", title=url, url=url, source="web")
 
 
-@pytest.mark.parametrize("backend", ["marginalia", "brave", "exa"])
-def test_every_web_backend_drops_social_video_and_shop_hits(backend):
-    # Only the DuckDuckGo provider filtered these, so on Exa, Brave or
-    # Marginalia a YouTube video or an Instagram profile came back labelled
-    # "Article".
+@pytest.mark.parametrize("keyed", [True, False])
+def test_every_web_backend_drops_social_video_and_shop_hits(keyed):
+    # A YouTube video or an Instagram profile must not come back labelled
+    # "Article", whichever engine answered.
     hits = [
         _web("https://www.instagram.com/quillnotes/"),
         _web("https://www.youtube.com/@quillnotes"),
@@ -689,11 +512,8 @@ def test_every_web_backend_drops_social_video_and_shop_hits(backend):
         _web("https://en.wikipedia.org/wiki/Quill_notes"),
     ]
     with (
-        patch.object(service.settings, "web_search_backend", backend),
-        patch.object(service.settings, "brave_api_key", "k"),
-        patch.object(service.gateway, "available", return_value=True),
+        patch.object(service.gateway, "available", return_value=keyed),
         patch.object(MarginaliaProvider, "search", return_value=hits),
-        patch.object(BraveProvider, "search", return_value=hits),
         patch.object(service.ExaProvider, "search", return_value=hits),
     ):
         provider = service._build_web_provider()

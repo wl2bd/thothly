@@ -23,27 +23,11 @@ class Settings(BaseSettings):
     youtube_discovery_probe_limit: int = 50
 
     # ── Web article search ───────────────────────────────────────────────────
-    # Which backend finds article URLs for a query. Pluggable so a self-hoster
-    # can bring their own — see the README "Web search backends" table.
-    #   marginalia — DEFAULT. Keyless, no signup. Indexes the independent "small
-    #                web" (blogs, docs, long-form) and downranks SEO/commercial
-    #                pages, which suits a reading compiler — and unlike scraping
-    #                DuckDuckGo it isn't rate-limited to death after a couple of
-    #                queries. Free keys carry a non-commercial data licence
-    #                (CC-BY-NC-SA); a paid commercial key lifts that.
-    #   exa        — Exa (search by meaning, best for reading queries), with
-    #                TinyFish (free) as fallback. Both go through the data
-    #                gateway, so it needs TREG_TOKEN or MONID_API_KEY, no key of
-    #                its own. ~$0.007 a search.
-    #   tinyfish   — The same pair the other way round: TinyFish (free) first,
-    #                Exa only when TinyFish fails. Suits search-as-you-type,
-    #                where each typed query would otherwise bill an Exa call.
-    #   brave      — General-web index, commercial-friendly, but needs an API key
-    #                (card on file) and is metered. Set BRAVE_API_KEY + this.
-    #   ddg        — Legacy DuckDuckGo HTML scrape. Rate-limited hard (works a
-    #                couple of times, then returns nothing) — kept only as a
-    #                last-resort fallback.
-    web_search_backend: str = "marginalia"
+    # No setting picks the engine: with TREG_TOKEN or MONID_API_KEY set, web
+    # search goes to TinyFish (free) with Exa as its fallback, through the data
+    # gateway. With neither key, it falls back to Marginalia, which is keyless
+    # and indexes the independent "small web". Its free keys carry a
+    # non-commercial data licence (CC-BY-NC-SA).
 
     # Marginalia: the "public" key works with no signup but shares one tight rate
     # limit across every caller — request a free personal key (email
@@ -51,11 +35,6 @@ class Settings(BaseSettings):
     # the non-commercial restriction. https://about.marginalia-search.com/article/api/
     marginalia_api_key: str = "public"
     marginalia_base_url: str = "https://api.marginalia.nu"
-
-    # Brave Search API. Unset unless web_search_backend="brave" (the service
-    # falls back to Marginalia when brave is selected without a key).
-    brave_api_key: str | None = None
-    brave_base_url: str = "https://api.search.brave.com/res/v1/web/search"
 
     # treg token (https://treg.to). When set, YouTube transcripts come from
     # ScrapeCreators through treg instead of yt-dlp, which YouTube IP-blocks from
@@ -156,9 +135,8 @@ class Settings(BaseSettings):
     llm_price_per_mtok_out: float = 0.60
     # Per-call prices of the metered search and transcript providers, sent with
     # each `paid_call` analytics event. ScrapeCreators is treg's rate card
-    # (1 credit); Brave is its Search plan ($5 per 1,000 requests).
+    # (1 credit).
     scrapecreators_price_per_call: float = 0.00188
-    brave_price_per_call: float = 0.005
     # Exa: $0.007 per search of up to 10 results, the same through treg or Monid.
     exa_price_per_call: float = 0.007
 

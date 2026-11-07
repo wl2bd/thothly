@@ -10,14 +10,12 @@ from app.core import gateway
 from app.core.config import settings
 from app.core.posthog import capture
 from app.search.base import Provider
-from app.search.brave_provider import BraveProvider
 from app.search.exa_provider import EXA, ExaProvider
 from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import ProviderBatch, SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.triage import triage, triage_enabled
 from app.search.web import host, tidy
-from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider, paid_search
 
 logger = logging.getLogger(__name__)
@@ -29,7 +27,7 @@ class _CachedProvider:
     The home bar fires a search per keystroke, so without this every prefix of a
     query ("o", "op", "ope"…) and every re-search hits the backend. yt-dlp and
     iTunes shrug it off, but a web engine doesn't: Marginalia's shared key throttles
-    and Brave's calls are metered. The cache collapses exact repeats (re-search,
+    and Exa's calls are metered. The cache collapses exact repeats (re-search,
     delete-and-retype, back navigation) within the TTL, and the min length skips
     the noisy first keystrokes that can't make a useful query anyway. Failures are
     NOT cached — a timed-out call is retried next time and still surfaces as an
@@ -87,33 +85,11 @@ def _build_web_provider() -> Provider:
 
 
 def _pick_web_provider() -> Provider:
-    """Pick the web-article backend from config (see Settings.web_search_backend).
-
-    All backends emit `web` results, so the rest of the app is backend-agnostic.
-    Selecting "brave" without a key falls back to Marginalia rather than silently
-    returning nothing, and an unknown value falls back too.
-    """
-    backend = (settings.web_search_backend or "marginalia").strip().lower()
-    if backend in ("exa", "tinyfish"):
-        if gateway.available(EXA):
-            return ExaProvider(free_first=backend == "tinyfish")
-        logger.warning(
-            "web_search_backend=%s but neither TREG_TOKEN nor MONID_API_KEY is set — "
-            "falling back to Marginalia.", backend
-        )
-        return MarginaliaProvider()
-    if backend == "brave":
-        if settings.brave_api_key:
-            return BraveProvider()
-        logger.warning(
-            "web_search_backend=brave but BRAVE_API_KEY is unset — "
-            "falling back to Marginalia."
-        )
-        return MarginaliaProvider()
-    if backend == "ddg":
-        return WebProvider()
-    if backend != "marginalia":
-        logger.warning("Unknown web_search_backend=%r — using Marginalia.", backend)
+    """TinyFish (Exa as fallback) through the data gateway when TREG_TOKEN or
+    MONID_API_KEY is set; otherwise Marginalia, the keyless engine, so a fresh
+    clone with no key still searches the web. Both emit `web` results."""
+    if gateway.available(EXA):
+        return ExaProvider()
     return MarginaliaProvider()
 
 

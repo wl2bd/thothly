@@ -171,10 +171,8 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | --- | --- | --- |
 | `DATA_DIR` | `/data` | SQLite DB + generated files (mounted from `./data` in Compose) |
 | `BACKEND_URL` | `http://backend:8000` | Frontend to backend (set by Compose; override only outside it) |
-| `WEB_SEARCH_BACKEND` | `marginalia` | Which engine finds article URLs (see below) |
-| `MARGINALIA_API_KEY` | `public` | Marginalia key; `public` works keyless, personal/commercial keys lift the rate limit / licence |
-| `BRAVE_API_KEY` | empty | Brave Search API key (required when `WEB_SEARCH_BACKEND=brave`) |
-| `TREG_TOKEN` / `MONID_API_KEY` | empty | Pay-per-call data gateways (treg first, Monid as fallback): YouTube transcripts (and search, when triage is on) through ScrapeCreators (yt-dlp is IP-blocked from data centers), the `exa` and `tinyfish` web backends, and published podcast transcripts looked up before any speech-to-text. Answers are cached, so the same call is paid once |
+| `MARGINALIA_API_KEY` | `public` | Marginalia key, used only when no gateway key is set; `public` works keyless, personal/commercial keys lift the rate limit / licence |
+| `TREG_TOKEN` / `MONID_API_KEY` | empty | Pay-per-call data gateways (treg first, Monid as fallback): YouTube transcripts (and search, when triage is on) through ScrapeCreators (yt-dlp is IP-blocked from data centers), web search (TinyFish, then Exa), and published podcast transcripts looked up before any speech-to-text. Answers are cached, so the same call is paid once |
 | `SEARCH_TRIAGE_API_KEY` / `_BASE_URL` / `_MODEL` | empty / OpenRouter / Mistral Small | Optional search triage through any OpenAI-compatible endpoint: one small call per search drops what can't be compiled or is off topic, then re-ranks |
 | `TYPESAFE_API_KEY` / `_BASE_URL` / `_MODEL` | empty / OpenRouter / Perplexity Decider | Triage through a decision model instead; takes over from the setting above when set |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
@@ -183,21 +181,15 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
 | `POSTHOG_PROJECT_TOKEN` / `POSTHOG_HOST` | empty | Optional product analytics (jobs created, compiles finished or failed, downloads, paid calls), sent without person profiles. Unset sends nothing |
 
-### Web search backends
+### Web search
 
-YouTube and podcasts have one backend each; the **web/article** search is
-pluggable so you can self-host with whatever fits your use and licence:
+YouTube and podcasts have one backend each. Web/article search picks its engine
+from the keys you set; there is nothing to configure:
 
-| Backend | Key? | Commercial use | Notes |
+| Keys | Engine | Commercial use | Notes |
 | --- | --- | --- | --- |
-| **`marginalia`** (default) | keyless | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Independent "small web": blogs, docs, long-form; downranks SEO/commercial pages. Not rate-limited to death like scraping DuckDuckGo. `public` key shares a tight limit; email `contact@marginalia-search.com` for a free personal key. |
-| **`exa`** | `TREG_TOKEN` or `MONID_API_KEY` | yes (metered, ~$0.007 a search) | Searches by meaning, so reading queries return course notes, essays and reviews rather than vendor pages. Falls back to TinyFish (free) when Exa can't answer. |
-| **`tinyfish`** | `TREG_TOKEN` or `MONID_API_KEY` | free (Exa, metered, only when TinyFish fails) | Keyword-ranked, roughly Brave's quality. Every query is free, which matters because the search runs as you type. |
-| **`brave`** | `BRAVE_API_KEY` | yes (metered) | Broad general-web index. Card on file required even on the free credits. The commercial path for a hosted deployment. |
-| **`ddg`** | keyless | n/a | Legacy DuckDuckGo HTML scrape. Rate-limited hard (a couple of queries, then nothing). Last-resort fallback only. |
-
-Selecting `brave` without a key falls back to Marginalia rather than breaking
-search.
+| `TREG_TOKEN` or `MONID_API_KEY` | TinyFish, then Exa | yes (TinyFish free; Exa metered, ~$0.007 a search, only when TinyFish fails) | TinyFish answers every query for free, which matters because the search runs as you type. Exa searches by meaning and takes over when TinyFish can't answer. |
+| none | Marginalia | free key is **non-commercial** (CC-BY-NC-SA); paid commercial key available | Keyless. Independent "small web": blogs, docs, long-form. `public` key shares a tight limit; email `contact@marginalia-search.com` for a free personal key. |
 
 ## ▸ Running without Docker
 
