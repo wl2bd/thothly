@@ -7,7 +7,10 @@ from bs4 import BeautifulSoup
 
 from app.core.config import settings
 from app.search.web import is_locale_segment
-from app.sources.blog import FeedUnavailable, fetch_page, list_feed
+from app.pipeline.html_md import html_to_markdown
+from app.sources.blog import (
+    FeedUnavailable, Paywalled, ScrapeUnavailable, fetch_page, list_feed, scrape_article,
+)
 from app.sources.models import Article, DiscoveredItem, SourceSpec, Transcript
 from app.sources.wikipedia import article_title, is_wikipedia_article
 from app.sources import podcast
@@ -87,7 +90,7 @@ def discover_source(
     # its site's whole feed (one job ad once came back as 250). A home or
     # section still unfolds.
     if source.query and _is_deep_page(url):
-        return _single_article(url, source_index)
+        return _single_article(url, source_index, source.title)
     return _discover_blog(url, source_index)
 
 
@@ -317,17 +320,39 @@ def _try_autodetect_rss(
 
 
 def _single_article(
-    url: str, source_index: int
+    url: str, source_index: int, known_title: str | None = None
 ) -> tuple[str | None, list[DiscoveredItem]]:
-    """One discovered item for a directly-pasted article URL (no crawling)."""
+    """One discovered item for a directly-pasted article URL (no crawling).
+
+    The page is read now, the way the compile will read it, so review knows
+    whether it holds any text: one that won't load, is paid or has nothing in
+    it starts left out instead of failing later. The title is the article's
+    own, then the one the search showed, then the page's, then the URL's.
+    """
     html = fetch_page(url, settings.scrape_timeout_s)
-    title = (_html_title(html) if html else None) or _slug_from_url(url)
+    article, paywalled = None, False
+    if html:
+        try:
+            article = scrape_article(url, html)
+        except Paywalled:
+            paywalled = True
+        except ScrapeUnavailable:
+            pass
+    readable = article is not None and html_to_markdown(article.content_html).strip() != ""
+    title = (
+        (article.title if article else None)
+        or known_title
+        or (_html_title(html) if html else None)
+        or _slug_from_url(url)
+    )
     item = DiscoveredItem(
         title=title,
         url=url,
         item_type="blog",
         source_index=source_index,
         item_index=0,
+        paywalled=paywalled,
+        unreadable=not readable and not paywalled,
     )
     return title, [item]
 
@@ -454,8 +479,16 @@ def _episode_title_from_url(url: str) -> str:
     return stem.replace("-", " ").replace("_", " ").strip().title() or url
 
 
+# A CMS's article id at the end of a slug ("...-du-debat-1706096"), or a file
+# extension ("...-debat.html").
+_SLUG_ID = re.compile(r"([-_]\d{4,})+$")
+_SLUG_EXT = re.compile(r"\.(html?|php|aspx?|jsp)$", re.IGNORECASE)
+
+
 def _slug_from_url(url: str) -> str:
     path = urlparse(url).path.rstrip("/")
     if not path:
         return url
-    return path.split("/")[-1].replace("-", " ").replace("_", " ").title()
+    slug = _SLUG_EXT.sub("", unquote(path.split("/")[-1]))
+    slug = _SLUG_ID.sub("", slug) or slug
+    return slug.replace("-", " ").replace("_", " ").strip().title() or url

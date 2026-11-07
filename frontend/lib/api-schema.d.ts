@@ -288,6 +288,11 @@ export interface components {
              * @default false
              */
             paywalled: boolean;
+            /**
+             * Unreadable
+             * @default false
+             */
+            unreadable: boolean;
             /** Id */
             id: string;
             /**

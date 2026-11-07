@@ -296,6 +296,52 @@ def test_a_deep_page_picked_from_search_is_that_page_not_its_site(_fetch, mock_f
     mock_feed.assert_not_called()
 
 
+_ARTICLE = (
+    "<html><head><title>The piece | The Magazine</title>"
+    '<meta property="og:title" content="The piece"></head><body><article><h1>The piece</h1>'
+    + "<p>" + "A sentence that makes this page an article. " * 40 + "</p>"
+    + "</article></body></html>"
+)
+
+
+@patch("app.sources.discovery.fetch_page", return_value=None)
+def test_a_page_that_wont_load_is_unreadable_and_keeps_the_search_title(_fetch):
+    url = "https://news.example.com/region/lidentite-etait-le-theme-du-debat-1706096"
+    _, [item] = discovery.discover_source(SourceSpec(url=url, query="q", title="L’identité était le thème"), 0)
+    assert item.unreadable
+    assert item.title == "L’identité était le thème"
+
+
+@patch("app.sources.discovery.fetch_page", return_value=None)
+def test_a_title_made_from_the_url_drops_its_numeric_id(_fetch):
+    url = "https://news.example.com/region/lidentite-etait-le-theme-du-debat-1706096.html"
+    _, [item] = discovery.discover_source(SourceSpec(url=url, query="q"), 0)
+    assert item.title == "Lidentite Etait Le Theme Du Debat"
+
+
+@patch("app.sources.blog.fetch_page")
+@patch("app.sources.discovery.fetch_page", return_value=_ARTICLE)
+def test_a_readable_page_is_titled_from_the_article(_fetch, blog_fetch):
+    url = "https://mag.example.com/articles/the-piece/11553"
+    _, [item] = discovery.discover_source(SourceSpec(url=url, query="q", title="The piece | The Magazine"), 0)
+    assert not item.unreadable and not item.paywalled
+    assert item.title == "The piece"
+    blog_fetch.assert_not_called()  # the page discovery loaded is the one read
+
+
+@patch("app.sources.discovery.fetch_page")
+def test_a_paid_page_is_flagged_at_discovery(fetch):
+    fetch.return_value = _ARTICLE.replace("<article>", '<article><div class="paywall">')
+    _, [item] = discovery.discover_source(SourceSpec(url="https://mag.example.com/a/b-c", query="q"), 0)
+    assert item.paywalled
+
+
+@patch("app.sources.discovery.fetch_page", return_value="<html><body><nav>Menu</nav></body></html>")
+def test_a_page_with_no_text_is_unreadable(_fetch):
+    _, [item] = discovery.discover_source(SourceSpec(url="https://mag.example.com/a/b-c", query="q"), 0)
+    assert item.unreadable
+
+
 @patch("app.sources.discovery.list_feed")
 def test_a_site_home_picked_from_search_still_unfolds(mock_feed):
     mock_feed.return_value = ("A blog", [

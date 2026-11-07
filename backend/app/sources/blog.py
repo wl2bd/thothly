@@ -82,11 +82,12 @@ def list_feed(feed_url: str) -> tuple[str | None, list[Article]]:
     return title, articles
 
 
-def scrape_article(url: str) -> Article:
+def scrape_article(url: str, downloaded: str | None = None) -> Article:
     """Extract a single article's content from its page via trafilatura.
 
     Used for blogs without an RSS feed, or to recover the full text of an
-    article whose feed only provided a truncated summary.
+    article whose feed only provided a truncated summary. `downloaded` is the
+    page when the caller already has it.
     """
     if is_wikipedia_article(url):
         try:
@@ -94,7 +95,7 @@ def scrape_article(url: str) -> Article:
         except WikipediaUnavailable as exc:
             logger.warning("Wikipedia API failed for %s, scraping the page instead: %s", url, exc)
 
-    downloaded = fetch_page(url, settings.scrape_timeout_s)
+    downloaded = downloaded or fetch_page(url, settings.scrape_timeout_s)
     if not downloaded:
         raise ScrapeUnavailable(f"Failed to download page: {url}")
     if _is_paywalled(downloaded):

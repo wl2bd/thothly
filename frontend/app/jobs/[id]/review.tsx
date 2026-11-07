@@ -1320,6 +1320,14 @@ function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
       </Tag>
     );
   }
+  if (item.item_type === "blog" && item.unreadable) {
+    return (
+      <Tag className="text-destructive">
+        <Ban />
+        No readable text, will be left out
+      </Tag>
+    );
+  }
   if (item.item_type === "blog") {
     return <Tag>Full article</Tag>;
   }

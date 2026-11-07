@@ -669,6 +669,11 @@
             "title": "Paywalled",
             "default": false
           },
+          "unreadable": {
+            "type": "boolean",
+            "title": "Unreadable",
+            "default": false
+          },
           "id": {
             "type": "string",
             "title": "Id"

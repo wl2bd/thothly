@@ -134,6 +134,9 @@ class DiscoveredItem(BaseModel):
     # A paid post (its feed only carries a teaser): left out at review, the
     # compile would skip it anyway.
     paywalled: bool = False
+    # A page that gave no text when discovery read it (refused, empty or not
+    # an article): left out at review, the compile would skip it anyway.
+    unreadable: bool = False
 
 
 class SourceSpec(BaseModel):

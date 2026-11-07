@@ -24,7 +24,7 @@ function item(fields: Partial<DiscoveredItem>): DiscoveredItem {
   n += 1;
   return {
     id: `i${n}`, title: `Item ${n}`, url: `https://x/${n}`, item_type: "youtube",
-    source_index: 0, item_index: n, uncertain: false, paywalled: false, selected: false,
+    source_index: 0, item_index: n, uncertain: false, paywalled: false, unreadable: false, selected: false,
     transcript_tracks: [], ...fields,
   };
 }
@@ -142,4 +142,5 @@ test("a source is called by its name, else its title, else its URL", () => {
 test("a paid post is left out, a free one is not", () => {
   assert.equal(isLeftOut(item({ item_type: "blog", paywalled: true }), false), true);
   assert.equal(isLeftOut(item({ item_type: "blog" }), false), false);
+  assert.equal(isLeftOut(item({ item_type: "blog", unreadable: true }), false), true);
 });
