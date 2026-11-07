@@ -727,6 +727,12 @@ function ComposeWorkspace({
 
           {error && <Notice variant="error">{error}</Notice>}
 
+          {/* Phone, while a search runs: the pane that carries this error on a
+              desktop is hidden, so it opens the results instead. */}
+          {showResults && staged.length > 0 && compileError && (
+            <Notice variant="error" className="lg:hidden">{compileError}</Notice>
+          )}
+
           {/* A provider that failed is said above the list, like every other
               alert in the app (the review screen keeps its states on the rows
               and nothing at the bottom), so alerts are always looked for in
@@ -823,9 +829,9 @@ function ComposeWorkspace({
           // Search runs transitions on every keystroke and every result
           // batch; only the pane opening or closing morphs the card.
           morphOn={[PANE_TOGGLE]}
+          notice={compileError && <Notice variant="error">{compileError}</Notice>}
           footer={
             <>
-              {compileError && <Notice variant="error">{compileError}</Notice>}
               <div className="flex gap-2">
                 {staged.length > 0 && (
                   <Button
@@ -875,8 +881,6 @@ function ComposeWorkspace({
           and its action, pinned at the bottom of the screen. */}
       {showResults && staged.length > 0 && (
         <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 flex flex-col gap-3 border-t px-4 py-3 backdrop-blur lg:hidden">
-          {/* The pane, where this error lives on a desktop, is hidden here. */}
-          {compileError && <Notice variant="error">{compileError}</Notice>}
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground text-sm">
               <SourceCount count={staged.length} tick={blockedTick} />

@@ -722,9 +722,9 @@ export function ReviewView({
         title={title}
         onTitleChange={onTitleChange}
         meta={`${includedCount} of ${items.length} included`}
+        notice={error && <Notice variant="error">{error}</Notice>}
         footer={
           <>
-            {error && <Notice variant="error">{error}</Notice>}
             {includedCount > 0 && <CostEstimate cost={cost} />}
             {/* The button says what's blocking it (no item / no title), so
                 the message is where the click is. */}

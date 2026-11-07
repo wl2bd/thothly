@@ -116,7 +116,8 @@ export default function RootLayout({
           className="glow-layer pointer-events-none fixed inset-x-0 top-header bottom-0 -z-10 bg-no-repeat"
         />
         <PageTransition>{children}</PageTransition>
-        <Toaster position="bottom-center" />
+        {/* Top, like every alert in the app, just under the header. */}
+        <Toaster position="top-center" offset={{ top: "calc(var(--spacing-header) + 0.75rem)" }} mobileOffset={{ top: "calc(var(--spacing-header) + 0.75rem)" }} />
       </body>
     </html>
   );

@@ -24,7 +24,10 @@ export function PaneFrame({
   footerRef,
   onBack,
   action,
+  notice,
 }: {
+  // An alert about the pane's contents or its action, shown at the top.
+  notice?: ReactNode;
   // A quiet way out, at the header's right edge, level with the eyebrow.
   action?: ReactNode;
   // Present: a Back link above the header, for a view that saves as it goes
@@ -89,7 +92,11 @@ export function PaneFrame({
         {meta && <span className="text-muted-foreground text-xs tabular-nums">{meta}</span>}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6 lg:px-8">{children}</div>
+      {/* Alerts always open the pane, right under its header and outside the
+          scroll, like every alert in the app: never next to the action below. */}
+      {notice && <div className="flex flex-col gap-3 px-6 pt-6 lg:px-8">{notice}</div>}
+
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6 lg:px-8", notice && "pt-4")}>{children}</div>
 
       {footer && (
         // On a phone the pane sits under a long list, so its action stays

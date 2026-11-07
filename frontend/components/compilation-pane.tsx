@@ -25,7 +25,10 @@ export function CompilationPane({
   titleClassName,
   morphOn,
   action,
+  notice,
 }: {
+  // See PaneFrame.
+  notice?: ReactNode;
   eyebrow: ReactNode;
   // See PaneFrame.
   action?: ReactNode;
@@ -87,6 +90,7 @@ export function CompilationPane({
             footer={footer}
             footerRef={footerRef}
             action={action}
+            notice={notice}
           >
             {children}
           </PaneFrame>
