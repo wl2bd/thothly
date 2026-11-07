@@ -15,6 +15,9 @@ const alertVariants = cva(
         warning:
           "border-warning/30 bg-warning/10 text-warning *:data-[slot=alert-description]:text-warning",
         info: "border-info/30 bg-info/10 text-info *:data-[slot=alert-description]:text-info",
+        // A limit the user reached: the brand gold, the colour the count in
+        // the pane already wears for the same state.
+        accent: "border-primary/30 bg-primary/10 text-primary *:data-[slot=alert-description]:text-primary",
       },
     },
     defaultVariants: {

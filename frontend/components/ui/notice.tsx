@@ -13,12 +13,15 @@ const tone = {
   // (Wael, 2026-10-22, reversing the neutral notices of 2026-09-28).
   warning: "warning",
   info: "info",
+  // A limit reached (the source cap): gold, like the pane's own count.
+  limit: "accent",
 } as const
 
 const icon = {
   error: CircleAlertIcon,
   warning: TriangleAlertIcon,
   info: InfoIcon,
+  limit: InfoIcon,
 } as const
 
 function Notice({

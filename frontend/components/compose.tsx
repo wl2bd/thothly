@@ -730,7 +730,7 @@ function ComposeWorkspace({
           {/* Full: why the remaining results can't be added, at the top like
               every alert (the count in the pane says it too). */}
           {showResults && full && error !== SOURCES_FULL && (
-            <Notice variant="info">{SOURCES_FULL}</Notice>
+            <Notice variant="limit">{SOURCES_FULL}</Notice>
           )}
 
           {/* Phone, while a search runs: the pane that carries this error on a
