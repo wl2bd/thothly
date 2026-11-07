@@ -700,7 +700,7 @@
           "available"
         ],
         "title": "ItemPreview",
-        "description": "The no-LLM content a discovered item would contribute, for the review\nscreen. Mirrors the compiler's zero-LLM path exactly, so `content_md` is what\nactually lands in the EPUB when no AI cleanup role is chosen — not a guess.\n\n`available` is False when there's nothing free to show (a podcast awaiting\ntranscription, a video without subtitles, an unscrapable page); `note` then\nexplains why. `note` is also set on an *available* preview to flag a caveat\n(e.g. raw captions the final compile would punctuate). `truncated` marks a\nlong body clipped for transport — the compile still uses the full text."
+        "description": "The no-LLM content a discovered item would contribute, for the review\nscreen. Mirrors the compiler's zero-LLM path exactly, so `content_md` is what\nactually lands in the EPUB when no AI cleanup role is chosen — not a guess.\n\n`available` is False when there's nothing free to show (a podcast awaiting\ntranscription, a video without subtitles, an unscrapable page); `note` then\nexplains why. `note` is also set on an *available* preview to flag a caveat\n(e.g. an article that fell back to its feed summary). `truncated` marks a\nlong body clipped for transport — the compile still uses the full text."
       },
       "JobConfirm": {
         "properties": {
