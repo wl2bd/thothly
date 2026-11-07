@@ -65,7 +65,7 @@ def find_published_transcript(item: DiscoveredItem) -> Transcript | None:
 
     The show's feed is read first (free), then Exa's podcast index: one
     flat-priced lookup instead of a per-minute bill. A hit is cached."""
-    cached = cached_episode_transcript(item.url)
+    cached = transcript_cache.get(item.url)
     if cached is not None:
         return cached
     transcript = None
@@ -78,10 +78,6 @@ def find_published_transcript(item: DiscoveredItem) -> Transcript | None:
     if transcript is not None:
         transcript_cache.put(transcript.video_id, transcript)
     return transcript
-
-
-def cached_episode_transcript(audio_url: str) -> Transcript | None:
-    return transcript_cache.get(audio_url)
 
 
 def _transcribe_episode(audio_url: str, stt: Endpoint | None) -> Transcript | None:

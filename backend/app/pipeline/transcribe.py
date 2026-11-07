@@ -91,8 +91,6 @@ def stt_available(endpoint: Endpoint | None = None) -> bool:
 def transcribe_file(
     path: Path,
     *,
-    language: str | None = None,
-    diarize: bool | None = None,
     endpoint: Endpoint | None = None,
 ) -> STTResult:
     """Transcribe one audio file into an STTResult.
@@ -107,16 +105,11 @@ def transcribe_file(
     if ep is None:
         raise TranscribeError("Speech-to-text is not configured")
 
-    want_diarize = settings.stt_diarize if diarize is None else diarize
-    # `language` is an ISO-639-1 hint; omit it rather than pass None/"" so the
-    # provider auto-detects when we don't have a preference.
-    base = {"language": language} if language else {}
-
     # Param sets from richest to plainest. A 4xx on the rich set (a provider
     # that doesn't know `diarize`/timestamps) drops to the next; transient
     # errors retry in place.
     param_sets: list[dict] = []
-    if want_diarize:
+    if settings.stt_diarize:
         param_sets.append(
             {"timestamp_granularities": ["segment"], "extra_body": {"diarize": True}}
         )
@@ -125,7 +118,7 @@ def transcribe_file(
     last_exc: Exception | None = None
     for params in param_sets:
         try:
-            data = _request_with_retries(path, ep, {**base, **params})
+            data = _request_with_retries(path, ep, params)
         except _UnsupportedParams as exc:
             logger.info("STT endpoint rejected extras %s; retrying simpler", list(params))
             last_exc = exc
@@ -203,8 +196,6 @@ def _is_elevenlabs(ep: Endpoint) -> bool:
 def _elevenlabs_transcribe(audio, ep: Endpoint, params: dict) -> dict:
     """One Scribe call, taking the same params as the OpenAI path."""
     data = {"model_id": ep.model}
-    if params.get("language"):
-        data["language_code"] = params["language"]
     if params.get("extra_body", {}).get("diarize"):
         data["diarize"] = "true"
     response = httpx.post(

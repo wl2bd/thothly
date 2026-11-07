@@ -44,12 +44,11 @@ def test_transcribe_returns_text(configured, tmp_path):
     )
 
     with patch.object(transcribe, "openai_client", return_value=fake):
-        result = transcribe_file(_audio(tmp_path), language="en")
+        result = transcribe_file(_audio(tmp_path))
 
     assert result.text == "hello world"
-    # The language hint is forwarded; the model comes from settings.
+    # The model comes from settings.
     _, kwargs = fake.audio.transcriptions.with_raw_response.create.call_args
-    assert kwargs["language"] == "en"
     assert kwargs["model"] == "voxtral-mini-latest"
 
 
@@ -132,14 +131,14 @@ def test_elevenlabs_posts_its_own_request(tmp_path):
     words = {"text": "Hi.", "words": [{"text": "Hi.", "start": 0.0, "end": 0.4, "type": "word"}]}
     with patch.object(transcribe.httpx, "post", return_value=_http(200, words)) as post, \
          patch.object(transcribe, "openai_client") as openai_client:
-        result = transcribe_file(_audio(tmp_path), language="fr", endpoint=ELEVENLABS)
+        result = transcribe_file(_audio(tmp_path), endpoint=ELEVENLABS)
 
     openai_client.assert_not_called()
     assert result.text == "Hi."
     args, kwargs = post.call_args
     assert args[0] == "https://api.elevenlabs.io/v1/speech-to-text"
     assert kwargs["headers"] == {"xi-api-key": "xi-key"}
-    assert kwargs["data"] == {"model_id": "scribe_v2", "language_code": "fr", "diarize": "true"}
+    assert kwargs["data"] == {"model_id": "scribe_v2", "diarize": "true"}
     assert "file" in kwargs["files"]
 
 

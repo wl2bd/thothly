@@ -4,6 +4,7 @@ import pytest
 
 import app.sources.podcast as podcast
 from app.jobs.models import DiscoveredItemResponse
+from app.sources import transcript_cache
 from app.sources.models import DiscoveredItem, SourceSpec
 from app.pipeline.transcribe import STTResult, STTSegment
 from app.sources.discovery import detect_kind, discover_source
@@ -219,4 +220,4 @@ def test_discovery_reads_the_feeds_own_transcript_before_exa(db, monkeypatch):
     assert seen["args"] == ("https://feed.example/rss", AUDIO_URL, "Ep 1")
     assert items[0].has_transcript
     # Cached: the compile reuses it without another lookup.
-    assert podcast.cached_episode_transcript(AUDIO_URL).language == "fr"
+    assert transcript_cache.get(AUDIO_URL).language == "fr"

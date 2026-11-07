@@ -22,7 +22,8 @@ from app.pipeline.titles import normalize_title
 from app.sources import youtube
 from app.sources.blog import ScrapeUnavailable, scrape_article
 from app.sources.models import DiscoveredItem, Transcript
-from app.sources.podcast import cached_episode_transcript, load_episode_transcript
+from app.sources import transcript_cache
+from app.sources.podcast import load_episode_transcript
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +165,7 @@ def _podcast(
 ) -> Draft:
     step("Getting the transcript")
     transcript = (
-        load_episode_transcript(item, stt) if transcribe else cached_episode_transcript(item.url)
+        load_episode_transcript(item, stt) if transcribe else transcript_cache.get(item.url)
     )
     if transcript is None:
         raise ItemSkipped(SkipReason.NO_TRANSCRIPTION)
