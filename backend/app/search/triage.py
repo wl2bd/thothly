@@ -248,7 +248,7 @@ def _ask_openai(query: str, described: list[dict]) -> _Verdict:
     endpoint = Endpoint(
         settings.search_triage_base_url, settings.search_triage_model, settings.search_triage_api_key
     )
-    lines = "\n".join(f"[{i}] {json.dumps(_describe(r), ensure_ascii=False)}" for i, r in enumerate(results))
+    lines = "\n".join(f"[{i}] {json.dumps(d, ensure_ascii=False)}" for i, d in enumerate(described))
     response = openai_client(endpoint, _TIMEOUT_S, max_retries=0).chat.completions.create(
         model=endpoint.model,
         temperature=0,

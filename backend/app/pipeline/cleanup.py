@@ -224,11 +224,11 @@ def generate_preface(
     role = get_role(PREFACE)
     if role is None:
         return None
-    user = "Titre du livre : {}\n\nChapitres :\n{}".format(
+    user = "Book title: {}\n\nChapters:\n{}".format(
         book_title, "\n".join(f"- {t}" for t in chapter_titles)
     )
     try:
-        return complete(preface_prompt(language), user, endpoint=endpoint)
+        return complete(role.prompt(language), user, endpoint=endpoint)
     except LLMError as exc:
         logger.warning("Preface generation failed: %s", exc)
         return None
@@ -252,7 +252,8 @@ def _build_transcript(
     if transcript.chapters:
         # Chapters already give structure, so the `sections` role is a no-op here.
         sections_out: list[str] = []
-        for title, texts in _bucket_by_chapter(transcript):
+        for chapter, segments in chapter_buckets(transcript):
+            title, texts = escape_tags(chapter.title), [seg.text for seg in segments]
             body, body_ok = _body_from_texts(texts, do_punct, do_copyedit, endpoint, should_stop)
             ok = ok and body_ok
             if body:

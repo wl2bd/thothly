@@ -165,3 +165,25 @@ def test_stop_also_ends_article_polishing(monkeypatch):
             "Some text here.", [COPYEDIT], content_key="k", should_stop=lambda: True
         )
     assert calls == []
+
+
+def test_chaptered_video_is_polished_chapter_by_chapter(monkeypatch):
+    monkeypatch.setattr(cleanup, "complete", lambda s, u, **k: u)
+    from app.sources.models import Chapter
+
+    words = " ".join(f"mot{i}" for i in range(40))
+    transcript = Transcript(
+        video_id="chap1",
+        language="fr",
+        segments=[_seg(words, 0.0), _seg(words, 60.0)],
+        chapters=[Chapter(title="Début", start_s=0.0, end_s=50.0), Chapter(title="Fin <b>", start_s=50.0, end_s=99.0)],
+    )
+    md = cleanup.clean_transcript(transcript, [PUNCTUATE])
+    assert "## Début" in md and "## Fin \<b>" in md
+
+
+def test_preface_is_written_in_the_book_language(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(cleanup, "complete", lambda s, u, **k: (seen.update(system=s), "Une préface.")[1])
+    assert cleanup.generate_preface("Livre", ["Un", "Deux"], language="fr") == "Une préface."
+    assert language_name("fr") in seen["system"]
