@@ -6,7 +6,6 @@ from datetime import datetime
 from time import struct_time
 from urllib.error import URLError
 from urllib.parse import urljoin
-from urllib.request import Request, urlopen
 
 import feedparser
 import trafilatura

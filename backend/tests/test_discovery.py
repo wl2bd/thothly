@@ -6,7 +6,7 @@ from app.sources.models import Article, SourceSpec
 from app.sources.youtube import video_id
 from app.sources import discovery
 from app.sources.blog import FeedUnavailable
-from app.sources.models import Article, VideoMeta
+from app.sources.models import VideoMeta
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,6 @@
 import io
 
 import httpx
-import pytest
 
 from app.render import images
 

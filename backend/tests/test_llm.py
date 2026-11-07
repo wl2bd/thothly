@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.jobs import repository
 from app.jobs.models import DiscoveredItemResponse
-from app.pipeline.roles import ROLES, selected_item_roles
+from app.pipeline.roles import selected_item_roles
 
 VALID_SOURCE = {"url": "https://youtube.com/playlist?list=PLtest123"}
 

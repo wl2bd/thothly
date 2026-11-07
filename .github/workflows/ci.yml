@@ -38,6 +38,7 @@ jobs:
       # quietly resolving something new, so CI tests the dependency set the repo
       # actually pins. --no-sync then keeps pytest from re-resolving.
       - run: uv sync --locked
+      - run: uv run --no-sync ruff check .
       - run: uv run --no-sync pytest -q
 
   frontend:

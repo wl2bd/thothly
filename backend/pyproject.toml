@@ -33,4 +33,10 @@ packages = ["app"]
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.0.3",
+    "ruff>=0.17.4",
 ]
+
+[tool.ruff.lint]
+# Undefined and unused names only: a refactor that drops an import fails CI
+# instead of failing the item at run time.
+select = ["F"]
