@@ -29,6 +29,12 @@ _TITLE_CACHE_MAX = 2000
 _SCRAPECREATORS_TIMEOUT_S = 10.0
 
 
+def paid_search() -> bool:
+    """Whether YouTube search runs on the paid ScrapeCreators backend, which is
+    also the one whose results are worth caching."""
+    return bool(settings.treg_token) and triage_enabled()
+
+
 class YouTubeProvider:
     """YouTube search via yt-dlp's `ytsearch`.
 
@@ -53,7 +59,7 @@ class YouTubeProvider:
         # title is the oEmbed original applied below.
         # Paid search only feeds the triage (description + date); without it,
         # the free yt-dlp search is just as good.
-        if settings.treg_token and triage_enabled():
+        if paid_search():
             results = self._search_scrapecreators(query, limit)
             self._apply_original_titles(results)
             return results

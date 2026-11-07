@@ -18,7 +18,7 @@ from app.search.podcast_provider import PodcastProvider
 from app.search.triage import triage, triage_enabled
 from app.search.web import host, tidy
 from app.search.web_provider import WebProvider
-from app.search.youtube_provider import YouTubeProvider
+from app.search.youtube_provider import YouTubeProvider, paid_search
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ def _pick_web_provider() -> Provider:
 # YouTube is cached too when it's the paid ScrapeCreators search (see YouTubeProvider).
 PROVIDERS: list[Provider] = [
     _CachedProvider(YouTubeProvider())
-    if settings.treg_token and triage_enabled()
+    if paid_search()
     else YouTubeProvider(),
     _build_web_provider(),
     PodcastProvider(),
