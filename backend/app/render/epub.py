@@ -6,14 +6,12 @@ import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
-from urllib.parse import urlparse
 
 from app.core.config import settings
 from app.pipeline.i18n import chrome
 from app.pipeline.models import CompiledBook
 from app.render.cover import generate_cover
-from app.render.images import fetch_favicon, fetch_remote_icon, localize_images
-from app.sources.youtube import fetch_channel_avatar_url
+from app.render.images import fetch_remote_icon, localize_images
 
 logger = logging.getLogger(__name__)
 
@@ -69,48 +67,16 @@ def _chapter_authors(book: CompiledBook) -> list[str]:
 def _make_cover(book: CompiledBook, media_dir: Path) -> Path | None:
     """Render the editorial cover; None (no cover) if generation fails."""
     try:
-        emblem = _source_emblem(book, media_dir)
+        dest = media_dir / "emblem_source.png"
+        emblem = next(
+            (path for url in book.emblem_urls if (path := fetch_remote_icon(url, dest))), None
+        )
         return generate_cover(
             book.title, _chapter_authors(book), media_dir / "cover.png", emblem
         )
     except Exception as exc:  # never let a cover problem block the EPUB
         logger.warning("Cover generation failed; rendering without a cover: %s", exc)
         return None
-
-
-def _source_emblem(book: CompiledBook, media_dir: Path) -> Path | None:
-    """The cover emblem from a single source: a blog's favicon or a YouTube
-    channel's avatar, else the bundled default.
-
-    When every chapter comes from one origin, that origin's own mark is the most
-    fitting emblem — a website's favicon, or a YouTube channel's avatar. With
-    several distinct origins, or a mix of blog and video, we fall back to the
-    bundled Thothly emblem (generate_cover's default).
-    """
-    dest = media_dir / "emblem_source.png"
-    blog_domains = {
-        urlparse(c.source_url).netloc
-        for c in book.chapters
-        if c.source_type == "blog" and c.source_url
-    }
-    channels = {
-        c.channel_url
-        for c in book.chapters
-        if c.source_type == "youtube" and c.channel_url
-    }
-    has_blog = any(c.source_type == "blog" for c in book.chapters)
-    has_youtube = any(c.source_type == "youtube" for c in book.chapters)
-
-    try:
-        if has_blog and not has_youtube and len(blog_domains) == 1:
-            page_url = next(c.source_url for c in book.chapters if c.source_type == "blog")
-            return fetch_favicon(page_url, dest)
-        if has_youtube and not has_blog and len(channels) == 1:
-            avatar_url = fetch_channel_avatar_url(next(iter(channels)))
-            return fetch_remote_icon(avatar_url, dest) if avatar_url else None
-    except Exception as exc:
-        logger.info("Source emblem fetch failed; using default emblem: %s", exc)
-    return None
 
 
 def _metadata_yaml(book: CompiledBook) -> str:

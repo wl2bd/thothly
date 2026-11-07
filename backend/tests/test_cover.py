@@ -3,7 +3,9 @@ from pathlib import Path
 
 from PIL import Image
 
-from app.render import epub as epub_module
+import pytest
+
+from app.jobs import emblem
 from app.render.cover import _font, _oklch_to_rgb, _strip_unrenderable, generate_cover
 from app.render.images import _parse_icon_size
 from app.pipeline.models import CompiledBook, CompiledChapter
@@ -29,60 +31,43 @@ def test_parse_icon_size():
     assert _parse_icon_size("any") == 0
 
 
-def test_source_emblem_uses_favicon_for_single_blog(tmp_path, monkeypatch):
-    called = {}
-
-    def fake_fetch(url, dest, timeout=15.0):
-        called["url"] = url
-        dest.write_bytes(b"x")
-        return dest
-
-    monkeypatch.setattr(epub_module, "fetch_favicon", fake_fetch)
-    book = _book([_ch("blog", "https://learnweb3.design/notes/a")])
-    out = epub_module._source_emblem(book, tmp_path)
-    assert out is not None and called["url"].startswith("https://learnweb3.design")
-
-
-def test_source_emblem_none_for_multiple_domains(tmp_path, monkeypatch):
-    monkeypatch.setattr(epub_module, "fetch_favicon", lambda *a, **k: 1 / 0)
-    book = _book([_ch("blog", "https://a.com/x"), _ch("blog", "https://b.com/y")])
-    assert epub_module._source_emblem(book, tmp_path) is None
-
-
-def test_source_emblem_none_for_mixed_blog_and_youtube(tmp_path, monkeypatch):
-    monkeypatch.setattr(epub_module, "fetch_favicon", lambda *a, **k: 1 / 0)
-    monkeypatch.setattr(epub_module, "fetch_channel_avatar_url", lambda *a, **k: 1 / 0)
-    book = _book([
-        _ch("blog", "https://a.com/x"),
-        _ch("youtube", "https://youtube.com/watch?v=1", channel_url="https://youtube.com/channel/C"),
-    ])
-    assert epub_module._source_emblem(book, tmp_path) is None
-
-
-def test_source_emblem_uses_avatar_for_single_channel(tmp_path, monkeypatch):
+@pytest.fixture
+def lookups(monkeypatch):
+    """Records which origin's mark was looked up, answering with a fake URL."""
+    seen = []
+    monkeypatch.setattr(emblem, "favicon_candidates", lambda url: seen.append(url) or [f"{url}/icon"])
     monkeypatch.setattr(
-        epub_module, "fetch_channel_avatar_url", lambda url: "https://yt3/avatar.png"
+        emblem, "fetch_channel_avatar_url", lambda url: seen.append(url) or "https://yt3/avatar.png"
     )
-
-    def fake_icon(url, dest, *a, **k):
-        dest.write_bytes(b"x")
-        return dest
-
-    monkeypatch.setattr(epub_module, "fetch_remote_icon", fake_icon)
-    book = _book([
-        _ch("youtube", "https://youtube.com/watch?v=1", channel_url="https://youtube.com/channel/C"),
-        _ch("youtube", "https://youtube.com/watch?v=2", channel_url="https://youtube.com/channel/C"),
-    ])
-    assert epub_module._source_emblem(book, tmp_path) is not None
+    return seen
 
 
-def test_source_emblem_none_for_multiple_channels(tmp_path, monkeypatch):
-    monkeypatch.setattr(epub_module, "fetch_channel_avatar_url", lambda *a, **k: 1 / 0)
-    book = _book([
-        _ch("youtube", "https://youtube.com/watch?v=1", channel_url="https://youtube.com/channel/A"),
-        _ch("youtube", "https://youtube.com/watch?v=2", channel_url="https://youtube.com/channel/B"),
-    ])
-    assert epub_module._source_emblem(book, tmp_path) is None
+VIDEO_A = ("youtube", "https://youtube.com/watch?v=1", "https://youtube.com/channel/A")
+
+
+def test_one_site_gives_its_icon(lookups):
+    book = _book([_ch("blog", "https://site.example/notes/a"), _ch("blog", "https://site.example/b")])
+    assert emblem.emblem_urls(book) == ["https://site.example/notes/a/icon"]
+
+
+def test_one_channel_gives_its_avatar(lookups):
+    book = _book([_ch(*VIDEO_A), _ch("youtube", "https://youtube.com/watch?v=2", VIDEO_A[2])])
+    assert emblem.emblem_urls(book) == ["https://yt3/avatar.png"]
+
+
+def test_episodes_do_not_count_against_a_single_origin(lookups):
+    book = _book([_ch(*VIDEO_A), _ch("podcast", "https://cdn.example/ep.mp3")])
+    assert emblem.emblem_urls(book) == ["https://yt3/avatar.png"]
+
+
+@pytest.mark.parametrize("chapters", [
+    [("blog", "https://a.com/x"), ("blog", "https://b.com/y")],
+    [("blog", "https://a.com/x"), VIDEO_A],
+    [VIDEO_A, ("youtube", "https://youtube.com/watch?v=2", "https://youtube.com/channel/B")],
+])
+def test_several_origins_keep_the_default_emblem(lookups, chapters):
+    assert emblem.emblem_urls(_book([_ch(*c) for c in chapters])) == []
+    assert lookups == []
 
 
 def test_generate_cover_produces_portrait_png(tmp_path):

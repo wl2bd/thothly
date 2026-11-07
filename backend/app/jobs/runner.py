@@ -5,6 +5,7 @@ from collections import Counter
 from app.core.posthog import capture
 from app.jobs import credentials
 from app.jobs.chapters import YOUTUBE_BUSY, ItemSkipped, draft, polish
+from app.jobs.emblem import emblem_urls
 from app.jobs.models import DiscoveredItemResponse
 from app.jobs.outputs import output_file
 from app.jobs.repository import (
@@ -97,6 +98,7 @@ def run_compilation(job_id: str) -> None:
             book.preface = generate_preface(
                 book.title, [c.title for c in book.chapters], llm, book.language
             )
+        book.emblem_urls = emblem_urls(book)
         _render(book, job_id)
         update_job_status(job_id, "completed", book_title=book.title)
         logger.info("Compilation done for job %s: %d chapters", job_id, len(book.chapters))

@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.pipeline.i18n import FALLBACK, chrome
+from app.sources.models import ItemType
 
 
 # A "<" that could open a tag or an autolink.
@@ -18,7 +19,7 @@ def escape_tags(text: str) -> str:
 
 class CompiledChapter(BaseModel):
     title: str
-    source_type: str  # "youtube" | "blog"
+    source_type: ItemType
     source_url: str
     author: str | None = None
     published_at: datetime | None = None
@@ -40,6 +41,8 @@ class CompiledBook(BaseModel):
     # The dominant content language: the EPUB's declared language, and the
     # language of the chrome written here (Sources, Preface, labels).
     language: str = FALLBACK
+    # Images for the cover emblem, best first; none = the bundled emblem.
+    emblem_urls: list[str] = []
 
     def to_markdown(self) -> str:
         # No book-level heading: Pandoc already builds a title page from the

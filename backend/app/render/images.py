@@ -162,14 +162,10 @@ def _http_bytes(url: str, timeout: float) -> bytes | None:
         return None
 
 
-def fetch_favicon(page_url: str, dest_path: Path, timeout: float = 15.0) -> Path | None:
-    """Download a site's favicon to use as a cover emblem; None on failure.
-
-    Prefers the largest declared icon (apple-touch-icon / <link rel=icon>) so
-    the emblem isn't a blurry 16px upscale, falling back to /favicon.ico. The
-    icon is normalised to PNG; anything smaller than 48px is rejected as too
-    low-res to look good on the cover.
-    """
+def favicon_candidates(page_url: str, timeout: float = 15.0) -> list[str]:
+    """A site's icon URLs, best first: the largest declared icon
+    (apple-touch-icon / <link rel=icon>) so an emblem isn't a blurry 16px
+    upscale, then /favicon.ico."""
     from bs4 import BeautifulSoup
 
     parsed = urlparse(page_url)
@@ -185,23 +181,12 @@ def fetch_favicon(page_url: str, dest_path: Path, timeout: float = 15.0) -> Path
             if "icon" in rels and href:
                 candidates.append((_parse_icon_size(link.get("sizes")), urljoin(root, href)))
     candidates.sort(key=lambda c: c[0], reverse=True)
-    candidates.append((0, urljoin(root, "/favicon.ico")))
-
-    for _, icon_url in candidates:
-        if fetch_remote_icon(icon_url, dest_path, timeout):
-            return dest_path
-    logger.info("No usable favicon found for %s", root)
-    return None
+    return [url for _, url in candidates] + [urljoin(root, "/favicon.ico")]
 
 
-def fetch_remote_icon(
-    url: str, dest_path: Path, timeout: float = 15.0, min_px: int = 48
-) -> Path | None:
-    """Download a single image URL and save it to *dest_path* as PNG; None on
-    failure or if it's too small (< *min_px*) to render well as a cover emblem.
-
-    Shared by the blog favicon path and the YouTube channel-avatar path.
-    """
+def fetch_remote_icon(url: str, dest_path: Path, timeout: float = 15.0) -> Path | None:
+    """Download an image URL to *dest_path* as PNG; None on failure, or when
+    it's under 48px, too low-res to look good on a cover."""
     from PIL import Image
 
     data = _http_bytes(url, timeout)
@@ -212,7 +197,7 @@ def fetch_remote_icon(
         image.load()
     except Exception:
         return None
-    if max(image.size) < min_px:
+    if max(image.size) < 48:
         return None
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     image.convert("RGBA").save(dest_path, format="PNG")
