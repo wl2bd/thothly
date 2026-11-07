@@ -75,7 +75,17 @@ def test_init_drops_video_transcripts_cached_in_a_preferred_language_once():
     for key, lang in (("vidEN", "en-GB"), ("vidFR", "fr"), ("https://cdn.example/ep.mp3", "en")):
         transcript_cache.put(key, Transcript(video_id=key, language=lang, segments=[]))
 
+    with database.get_connection() as conn:
+        for key in ("vidEN", "vidFR"):
+            conn.execute(
+                "INSERT INTO transcript_llm_cache VALUES (?, 'roles', 'model', 'polished', 'x')", (key,)
+            )
+        conn.commit()
+
     database.init_db()
+    with database.get_connection() as conn:
+        polished = [r[0] for r in conn.execute("SELECT content_key FROM transcript_llm_cache")]
+    assert polished == ["vidFR"]  # the English polish was written from the wrong text
     assert transcript_cache.get("vidEN") is None
     assert transcript_cache.get("vidFR") is not None
     assert transcript_cache.get("https://cdn.example/ep.mp3") is not None

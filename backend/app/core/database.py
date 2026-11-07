@@ -56,7 +56,6 @@ def init_db() -> None:
             )
         """)
         _merge_legacy_transcript_caches(conn)
-        _drop_translated_video_transcripts(conn)
         # Cleaned-content cache for the LLM roles, keyed by the content (video id
         # or blog url), the applied role set, and the model — so a re-compile with
         # the same choices never re-calls the LLM.
@@ -81,6 +80,7 @@ def init_db() -> None:
                 stored_at REAL NOT NULL
             )
         """)
+        _drop_translated_video_transcripts(conn)
         conn.commit()
 
 
@@ -178,18 +178,19 @@ def _drop_translated_video_transcripts(conn: sqlite3.Connection) -> None:
     captions of YouTube's English auto-dub, which it plays by default to an
     English locale (fixed in version 2). Those videos are fetched again under
     the fixed rule; a transcript in any other language was the spoken one and
-    is kept. Episodes (keyed by URL) never went through that rule."""
+    is kept, and so is its AI polish; the polish of a dropped one goes with it,
+    since it was written from the wrong text. Episodes (keyed by URL) never
+    went through that rule."""
     if conn.execute("PRAGMA user_version").fetchone()[0] >= _TRANSCRIPT_RULE_VERSION:
         return
     for lang in {code.split("-")[0].lower() for code in settings.preferred_languages}:
-        conn.execute(
-            """
-            DELETE FROM transcripts WHERE key NOT LIKE 'http%'
+        stale = """
+            SELECT key FROM transcripts WHERE key NOT LIKE 'http%'
             AND (json_extract(transcript, '$.language') = ?
                  OR json_extract(transcript, '$.language') LIKE ? || '-%')
-            """,
-            (lang, lang),
-        )
+        """
+        conn.execute(f"DELETE FROM transcript_llm_cache WHERE content_key IN ({stale})", (lang, lang))
+        conn.execute(f"DELETE FROM transcripts WHERE key IN ({stale})", (lang, lang))
     conn.execute(f"PRAGMA user_version = {_TRANSCRIPT_RULE_VERSION}")
 
 
