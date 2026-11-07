@@ -15,20 +15,12 @@ import type { Kind } from "@/lib/kinds";
 import { faviconUrl } from "@/lib/url";
 
 // ── Source presentation, shared across screens ───────────────────────────────
-// One vocabulary for "what kind of thing is this source" that search, review and
-// (later) compilation all read from, so a type always looks the same wherever it
-// appears: same label, same icon, same text-vs-media treatment, same "weight"
-// metric. Two rules the brand pins down:
-//   1. Types are told apart by ICON, never by colour. The identity carries ONE
-//      accent (desert gold), reserved for selection/action; multi-coloured type
-//      chips would break it. The glyph alone disambiguates Video / Episode /
-//      Article / Playlist.
-//   2. The weight metric is icon-led so it is never ambiguous when listen-time
-//      and read-time coexist: a CLOCK means time you spend playing it (video,
-//      podcast), a DOC means time you spend reading it (article). Eight minutes
-//      of video must never read like eight minutes of text.
-
-export type SourceKind = Kind;
+// One vocabulary for "what kind of thing is this source" that search and review
+// read from, so a type always looks the same wherever it appears: same label,
+// same icon, same text-vs-media treatment. The brand pins one rule down:
+// types are told apart by ICON, never by colour. The identity carries ONE accent
+// (desert gold), reserved for selection/action; multi-coloured type chips would
+// break it. The glyph alone disambiguates Video / Episode / Article / Playlist.
 
 interface KindMeta {
   label: string;
@@ -40,7 +32,7 @@ interface KindMeta {
   container: boolean;
 }
 
-const KIND_META: Record<SourceKind, KindMeta> = {
+const KIND_META: Record<Kind, KindMeta> = {
   video: { label: "Video", Icon: PlayIcon, text: false, container: false },
   episode: { label: "Episode", Icon: MicIcon, text: false, container: false },
   article: { label: "Article", Icon: FileTextIcon, text: true, container: false },
@@ -49,9 +41,9 @@ const KIND_META: Record<SourceKind, KindMeta> = {
 };
 
 // The one display order for kinds, wherever they are listed side by side.
-export const KIND_ORDER = Object.keys(KIND_META) as SourceKind[];
+export const KIND_ORDER = Object.keys(KIND_META) as Kind[];
 
-export function isContainerKind(kind: SourceKind): boolean {
+export function isContainerKind(kind: Kind): boolean {
   return KIND_META[kind].container;
 }
 
@@ -63,7 +55,7 @@ export function SourceTypePill({
   kind,
   className,
 }: {
-  kind: SourceKind;
+  kind: Kind;
   className?: string;
 }) {
   return (
@@ -78,11 +70,11 @@ export function SourceTypePill({
   );
 }
 
-export function kindLabel(kind: SourceKind): string {
+export function kindLabel(kind: Kind): string {
   return KIND_META[kind].label;
 }
 
-// A discreet vertical hairline between meta fields (type · domain · weight) so
+// A discreet vertical hairline between meta fields (type · domain) so
 // they don't run together. Same separator on every screen.
 export function MetaSep() {
   return (
@@ -109,7 +101,7 @@ export function SourceMedia({
   url,
   className = "h-12 w-20",
 }: {
-  kind: SourceKind;
+  kind: Kind;
   thumbnail?: string | null;
   duration?: string | null;
   // A text source shows its site's mark when given, so ten articles from ten

@@ -150,9 +150,6 @@ export function getHistoryServerSnapshot(): CompilationSnapshot[] | null {
   return null;
 }
 
-// Upsert, newest first. Called when a compilation is created AND whenever a job
-// screen loads, so a link someone shared with you joins your history the way a
-// browser would treat a page you visited.
 type JobSummary = Pick<JobResponse, "id" | "book_title" | "created_at" | "status" | "sources">;
 
 export function snapshotOf(job: JobSummary): CompilationSnapshot {
@@ -165,6 +162,9 @@ export function snapshotOf(job: JobSummary): CompilationSnapshot {
   };
 }
 
+// Upsert, newest first. Called when a compilation is created AND whenever a job
+// screen loads, so a link someone shared with you joins your history the way a
+// browser would treat a page you visited.
 export function recordCompilation(job: JobSummary): void {
   write([snapshotOf(job), ...readHistory().filter((e) => e.id !== job.id)]);
 }

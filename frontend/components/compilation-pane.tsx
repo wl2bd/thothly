@@ -92,11 +92,11 @@ export function CompilationPane({
   );
 }
 
-// The left-hand pane: whatever the current step is working on. Capped and
-// centred so a wide screen doesn't stretch a row across 2000px.
 // The transition type of the compilation pane opening or closing beside the work.
 export const PANE_TOGGLE = "pane-toggle";
 
+// The left-hand pane: whatever the current step is working on. Capped and
+// centred so a wide screen doesn't stretch a row across 2000px.
 export function WorkPane({
   children,
   className,

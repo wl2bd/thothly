@@ -69,6 +69,7 @@ import {
   type StagedSource,
 } from "@/lib/workspace-draft";
 import { Skeleton } from "skullet/react";
+import { examplePath } from "@/lib/examples";
 import { cn, plural } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -1214,9 +1215,6 @@ function sortResults(results: SearchResult[], sortBy: string): SearchResult[] {
   return sorted;
 }
 
-// Pushed to the far end of the chip row where the two share one, but only
-// there: on its own stacked line the auto margin would strand it against the
-// right edge, away from the chips it belongs with.
 const SORT_OPTIONS = [
   { value: "relevance", label: "Relevance" },
   { value: "duration-asc", label: "Shortest" },
@@ -1232,6 +1230,9 @@ function SortSelect({
   onChange: (value: string) => void;
 }) {
   return (
+    // Pushed to the far end of the chip row where the two share one, but only
+    // there: on its own stacked line the auto margin would strand it against the
+    // right edge, away from the chips it belongs with.
     <div className="flex shrink-0 items-center gap-2 text-sm sm:ml-auto">
       <span className="text-muted-foreground">Sort</span>
       <Select
@@ -1298,7 +1299,7 @@ const USES: {
     ),
     marksLabel: "From YouTube, podcasts, Wikipedia, Substack and more",
     topics: ["Stoicism", "The fall of Rome"],
-    example: "/examples/stoicism",
+    example: examplePath("stoicism"),
   },
   {
     eyebrow: "Markdown",
@@ -1313,7 +1314,7 @@ const USES: {
     ),
     marksLabel: "Works with Claude, ChatGPT, Gemini, Grok and other AIs",
     topics: ["Next.js App Router", "How transformers work"],
-    example: "/examples/how-transformers-work",
+    example: examplePath("how-transformers-work"),
   },
 ];
 

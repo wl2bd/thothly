@@ -12,22 +12,13 @@ import { countWords, splitBook } from "@/lib/book-md";
 import { CompilationPane, WorkPane, Workspace } from "@/components/compilation-pane";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EXAMPLES, type ExampleSlug } from "@/lib/examples";
 import { cn } from "@/lib/utils";
-
-// What a compilation gives, for each use on the home page: a real one, made by
-// the app from three Wikipedia articles (free to republish) and shipped as
-// files in /public/examples. The reading one opens as a book; the AI one shows
-// the Markdown file exactly as an AI would get it, with a formatted view beside
-// it, since raw Markdown doesn't show at a glance that the content came through.
-const EXAMPLES: Record<string, { title: string; view: "book" | "markdown" }> = {
-  stoicism: { title: "Stoicism", view: "book" },
-  "how-transformers-work": { title: "How transformers work", view: "markdown" },
-};
 
 export default function ExamplePage() {
   const { slug } = useParams<{ slug: string }>();
-  const example = EXAMPLES[slug];
-  if (!example) notFound();
+  if (!Object.hasOwn(EXAMPLES, slug)) notFound();
+  const example: { title: string; view: "book" | "markdown" } = EXAMPLES[slug as ExampleSlug];
 
   const mdUrl = `/examples/${slug}.md`;
   const epubUrl = `/examples/${slug}.epub`;
