@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { Check, Copy } from "lucide-react";
 
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
-import { BookActions } from "@/components/book-actions";
+import { buttonVariants } from "@/components/ui/button";
+import { BookActions, CopyMarkdownButton } from "@/components/book-actions";
 import { Notice } from "@/components/ui/notice";
 import { Logomark } from "@/components/brand";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
@@ -35,7 +33,6 @@ function builtChapterItems(items: DiscoveredItem[]): DiscoveredItem[] {
 // the target LLM, so we inform rather than hide.
 export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse }) {
   const [md, setMd] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetch(getDownloadUrl(jobId, "md"))
@@ -86,20 +83,8 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
     a.download = "";
     a.click();
   });
-  useShortcut("c", () => void copy(), !!md);
   useShortcut("arrowleft", () => setAt((i) => Math.max(0, i - 1)), chapters.length > 1);
   useShortcut("arrowright", () => setAt((i) => Math.min(chapters.length - 1, i + 1)), chapters.length > 1);
-
-  async function copy() {
-    if (!md) return;
-    try {
-      await navigator.clipboard.writeText(md);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard blocked; Download remains the fallback */
-    }
-  }
 
   const shownWords = useCountUp(words);
   const meta = `${plural(sourceCount, "source")}${
@@ -149,18 +134,7 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
               }
             />
             <div className="flex w-full gap-2">
-              <Tooltip content="Copy the Markdown, to paste into an AI">
-                  {/* Both labels share one grid cell, the idle one hidden, so
-                      "Copied" never widens the button or shifts its row. */}
-                  <Button type="button" variant="outline" onClick={copy} disabled={!md} aria-keyshortcuts="C" className="flex-1">
-                    {copied ? <Check /> : <Copy />}
-                    <span className="grid">
-                      <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy Markdown</span>
-                      <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Markdown copied</span>
-                    </span>
-                    <Kbd>C</Kbd>
-                  </Button>
-                </Tooltip>
+              <CopyMarkdownButton md={md} shortcut tip="Copy the Markdown, to paste into an AI" />
               <Link
                 href="/"
                 onClick={clearDraft}

@@ -3,15 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { Check, Copy } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
-import { BookActions } from "@/components/book-actions";
+import { BookActions, CopyMarkdownButton } from "@/components/book-actions";
 import { BookContents, BookReader } from "@/components/book";
 import { countWords, splitBook } from "@/lib/book-md";
 import { CompilationPane, WorkPane, Workspace } from "@/components/compilation-pane";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +33,6 @@ export default function ExamplePage() {
   const epubUrl = `/examples/${slug}.epub`;
   const [md, setMd] = useState<string | null>(null);
   const [at, setAt] = useState(0);
-  const [copied, setCopied] = useState(false);
   const [view, setView] = useState<"markdown" | "formatted">("markdown");
   const asBook = example.view === "book" || view === "formatted";
   useEffect(() => {
@@ -45,17 +43,6 @@ export default function ExamplePage() {
   }, [mdUrl]);
   const chapters = useMemo(() => (md ? splitBook(md) : []), [md]);
   const words = md ? countWords(md) : null;
-
-  async function copy() {
-    if (!md) return;
-    try {
-      await navigator.clipboard.writeText(md);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard blocked; the download remains */
-    }
-  }
 
   return (
     <div className="flex min-h-svh flex-col lg:h-svh">
@@ -95,13 +82,7 @@ export default function ExamplePage() {
                 mdNote="For an AI"
               />
               <div className="flex w-full gap-2">
-                <Button type="button" variant="outline" onClick={copy} disabled={!md} className="flex-1">
-                  {copied ? <Check /> : <Copy />}
-                  <span className="grid">
-                    <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy Markdown</span>
-                    <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Markdown copied</span>
-                  </span>
-                </Button>
+                <CopyMarkdownButton md={md} />
                 <Link href="/" className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground flex-1")}>
                   Make your own
                 </Link>

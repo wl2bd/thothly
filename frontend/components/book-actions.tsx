@@ -2,9 +2,11 @@
 
 import { Kbd } from "@/components/ui/kbd";
 import { useState, useSyncExternalStore } from "react";
-import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
+import { Check, ChevronDownIcon, Copy, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useShortcut } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -22,6 +24,52 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Copies the book's Markdown, to paste into an AI. With `shortcut`, C does the
+// same and the button says so. A blocked clipboard changes nothing: Download
+// remains the way out.
+export function CopyMarkdownButton({
+  md,
+  shortcut = false,
+  tip,
+}: {
+  md: string | null;
+  shortcut?: boolean;
+  tip?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    if (!md) return;
+    try {
+      await navigator.clipboard.writeText(md);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked; Download remains the fallback */
+    }
+  }
+  useShortcut("c", () => void copy(), shortcut && !!md);
+  const button = (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={copy}
+      disabled={!md}
+      aria-keyshortcuts={shortcut ? "C" : undefined}
+      className="flex-1"
+    >
+      {copied ? <Check /> : <Copy />}
+      {/* Both labels share one grid cell, the idle one hidden, so "Copied" never
+          widens the button or shifts its row. */}
+      <span className="grid">
+        <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy Markdown</span>
+        <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Markdown copied</span>
+      </span>
+      {shortcut && <Kbd>C</Kbd>}
+    </Button>
+  );
+  return tip ? <Tooltip content={tip}>{button}</Tooltip> : button;
+}
 
 // The finished book's one primary action: a menu that downloads it (EPUB or
 // Markdown) or sends it to an e-reader. There is no one standard for that last
@@ -53,8 +101,7 @@ export function BookActions({
   mdNote,
 }: {
   epubUrl: string;
-  // Absent: the job has no Markdown (older compilations).
-  mdUrl?: string;
+  mdUrl: string;
   title: string;
   epubNote: string;
   mdNote: string;
@@ -105,20 +152,16 @@ export function BookActions({
             <ChevronDownIcon />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-60">
-            {mdUrl && (
-              <>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Download</DropdownMenuLabel>
-                  <DropdownMenuItem className="py-2" render={<a href={mdUrl} download />}>
-                    <span className="flex flex-col">
-                      <span>Markdown</span>
-                      <span className="text-muted-foreground text-xs">{mdNote}</span>
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-              </>
-            )}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Download</DropdownMenuLabel>
+              <DropdownMenuItem className="py-2" render={<a href={mdUrl} download />}>
+                <span className="flex flex-col">
+                  <span>Markdown</span>
+                  <span className="text-muted-foreground text-xs">{mdNote}</span>
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel>Send to an e-reader</DropdownMenuLabel>
             {shareable && (
