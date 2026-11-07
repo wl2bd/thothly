@@ -136,8 +136,69 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
           : "text-muted-foreground gap-2 text-sm leading-relaxed",
       )}
     >
-      {parseBlocks(md).map((block, i) => renderBlock(block, i, reading))}
+      {groupFigures(parseBlocks(md)).map((block, i) =>
+        Array.isArray(block) ? (
+          // Figures in a row at the source (a gallery, an article's run of
+          // examples) sit side by side, not stacked as a strip of thumbnails.
+          <div key={i} className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2">
+            {block.map((f, j) => (
+              <figure key={j} className="flex flex-col gap-2">
+                <FigureImage src={f.src} className="h-auto w-full" />
+                {f.caption && <FigureCaption text={f.caption} />}
+              </figure>
+            ))}
+          </div>
+        ) : (
+          renderBlock(block, i, reading)
+        ),
+      )}
     </div>
+  );
+}
+
+type FigureBlock = Extract<Block, { t: "figure" }>;
+
+// Runs of two or more figures become one group; everything else passes through.
+function groupFigures(blocks: Block[]): (Block | FigureBlock[])[] {
+  const out: (Block | FigureBlock[])[] = [];
+  let run: FigureBlock[] = [];
+  const flush = () => {
+    if (run.length > 1) out.push(run);
+    else out.push(...run);
+    run = [];
+  };
+  for (const b of blocks) {
+    if (b.t === "figure") run.push(b);
+    else {
+      flush();
+      out.push(b);
+    }
+  }
+  flush();
+  return out;
+}
+
+// A faint rim: a photo shot on white would otherwise sit on the dark page
+// like a sticker.
+function FigureImage({ src, className }: { src: string; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      className={cn("ring-foreground/10 rounded-sm ring-1", className)}
+    />
+  );
+}
+
+// Set under its image, as wide as it and no wider, in the page's own muted
+// voice: links stay links but drop the underline that made every name shout.
+function FigureCaption({ text }: { text: string }) {
+  return (
+    <figcaption className="text-muted-foreground [contain:inline-size] text-sm leading-snug [&_a]:no-underline [&_a:hover]:underline">
+      {renderInline(text)}
+    </figcaption>
   );
 }
 
@@ -179,16 +240,13 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
       );
     }
     case "figure": {
-      const img = (
-        // eslint-disable-next-line @next/next/no-img-element -- remote figures from the source, shown as-is
-        <img src={block.src} alt="" loading="lazy" className="max-h-80 max-w-full rounded-sm object-contain" />
-      );
+      const img = <FigureImage src={block.src} className="max-h-96 max-w-full object-contain" />;
+      // w-fit plus the caption's inline-size containment: the caption wraps at
+      // the image's width instead of stretching the figure past it.
       return block.caption ? (
-        <figure key={key} className="flex flex-col items-center gap-2">
+        <figure key={key} className="flex w-fit max-w-full flex-col gap-2">
           {img}
-          <figcaption className="text-muted-foreground text-center text-sm italic">
-            {renderInline(block.caption)}
-          </figcaption>
+          <FigureCaption text={block.caption} />
         </figure>
       ) : (
         <div key={key}>{img}</div>
