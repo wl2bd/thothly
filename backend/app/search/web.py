@@ -92,7 +92,7 @@ _LOCALE_CODES = frozenset(
 )
 
 
-def _is_locale_segment(segment: str) -> bool:
+def is_locale_segment(segment: str) -> bool:
     """True for a path segment that is a language tag (`fr`, `en-us`, `pt-br`)."""
     parts = segment.lower().split("-")
     return len(parts) <= 2 and parts[0] in _LOCALE_CODES
@@ -116,7 +116,7 @@ def canonical_key(url: str) -> str:
     distinct paths, so they're never collapsed. First (best-ranked) hit wins.
     """
     segments = [s for s in urlparse(url).path.split("/") if s]
-    if segments and _is_locale_segment(segments[0]):
+    if segments and is_locale_segment(segments[0]):
         segments = segments[1:]
     return f"{host(url)}/{'/'.join(segments)}"
 
@@ -160,7 +160,7 @@ def is_home(url: str) -> bool:
     `https://site.com/`, `/fr`, `/en-us/` are all the home; `/post` is not.
     """
     segments = [s for s in urlparse(url).path.split("/") if s]
-    if segments and _is_locale_segment(segments[0]):
+    if segments and is_locale_segment(segments[0]):
         segments = segments[1:]
     return not segments
 

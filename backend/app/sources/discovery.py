@@ -6,6 +6,7 @@ from urllib.parse import unquote, urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
+from app.search.web import is_locale_segment
 from app.sources.blog import FeedUnavailable, fetch_page, list_feed
 from app.sources.models import Article, DiscoveredItem, SourceSpec, Transcript
 from app.sources.wikipedia import article_title, is_wikipedia_article
@@ -94,12 +95,10 @@ def _is_deep_page(url: str) -> bool:
     """Two or more path segments once a locale prefix is set aside: a page, not
     a home (`/`, `/fr/`) or a section (`/blog`)."""
     segments = [s for s in urlparse(url).path.split("/") if s]
-    if segments and _LOCALE_SEGMENT_RE.fullmatch(segments[0].lower()):
+    if segments and is_locale_segment(segments[0]):
         segments = segments[1:]
     return len(segments) >= 2
 
-
-_LOCALE_SEGMENT_RE = re.compile(r"[a-z]{2}(?:-[a-z]{2})?")
 
 
 def _discover_podcast(
