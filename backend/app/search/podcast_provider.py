@@ -1,10 +1,7 @@
-import logging
 
 import httpx
 
 from app.search.models import SearchResult
-
-logger = logging.getLogger(__name__)
 
 # Apple's iTunes Search API: keyless, no registration, no quota — the same
 # spirit as the yt-dlp YouTube provider. We query episodes (not shows) so each
@@ -42,7 +39,6 @@ class PodcastProvider:
             response.raise_for_status()
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            # Surfaced by the service layer as a per-provider error.
             raise RuntimeError(f"Podcast search failed: {exc}") from exc
 
         results: list[SearchResult] = []
@@ -73,7 +69,6 @@ class PodcastProvider:
             meta={
                 "feed_url": entry.get("feedUrl"),
                 "release_date": entry.get("releaseDate"),
-                "episode_page": entry.get("trackViewUrl"),
                 # For the triage: without them an episode is judged on its title
                 # alone, and a self-help show about "transformation" passes for
                 # a talk on transformers.

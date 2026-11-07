@@ -1,21 +1,14 @@
-import logging
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import httpx
 
 from app.core.config import settings
 from app.search.models import SearchResult
+from app.search.web import web_result
 
-logger = logging.getLogger(__name__)
-
-# Kept short: search_all awaits every provider, so a hung web call would stall
-# the whole result set (YouTube + podcasts included). Better to fail the web
-# slot fast than make the user wait on Marginalia's intermittent slow responses.
+# Kept short: Marginalia answers slowly at times, and the web slot would rather
+# fail fast than hold its results back.
 _TIMEOUT_S = 6.0
-
-# Most results one domain may contribute, so a single prolific site (a Substack
-# with dozens of indexed posts) can't crowd out the rest of a topic search.
-_MAX_PER_DOMAIN = 3
 
 
 class MarginaliaProvider:
@@ -44,43 +37,11 @@ class MarginaliaProvider:
             response.raise_for_status()
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            # Surfaced by the service layer as a per-provider error.
             raise RuntimeError(f"Web search failed: {exc}") from exc
 
-        results: list[SearchResult] = []
-        for entry in payload.get("results", []):
-            result = self._to_result(entry)
-            if result is not None:
-                results.append(result)
-        return self._cap_per_domain(results)[:limit]
-
-    def _to_result(self, entry: dict) -> SearchResult | None:
-        url = entry.get("url")
-        if not url:
-            return None
-        # `description` is Marginalia's snippet. No author is set: for a web hit
-        # the site IS the identity, and it's already carried by the URL (shown as
-        # favicon + domain) — a separate author field would just repeat it.
-        description = entry.get("description")
-        return SearchResult(
-            id=f"web:{url}",
-            type="web",
-            title=entry.get("title") or url,
-            url=url,
-            source="web",
-            meta={"snippet": description} if description else {},
-        )
-
-    @staticmethod
-    def _cap_per_domain(results: list[SearchResult]) -> list[SearchResult]:
-        """Keep at most `_MAX_PER_DOMAIN` hits per host, preserving rank order, so
-        one prolific domain can't flood the list on a topic search."""
-        kept: list[SearchResult] = []
-        per_host: dict[str, int] = {}
-        for r in results:
-            host = (urlparse(r.url).netloc or "").lower().removeprefix("www.")
-            if per_host.get(host, 0) >= _MAX_PER_DOMAIN:
-                continue
-            per_host[host] = per_host.get(host, 0) + 1
-            kept.append(r)
-        return kept
+        # `description` is Marginalia's snippet.
+        return [
+            web_result(e["url"], e.get("title"), e.get("description"))
+            for e in payload.get("results", [])[:limit]
+            if e.get("url")
+        ]

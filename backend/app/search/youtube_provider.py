@@ -1,5 +1,4 @@
 import concurrent.futures
-import logging
 
 import httpx
 from yt_dlp import YoutubeDL
@@ -10,8 +9,6 @@ from app.core import gateway
 from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
 from app.search.triage import triage_enabled
-
-logger = logging.getLogger(__name__)
 
 # YouTube's keyless oEmbed endpoint returns a video's TRUE ORIGINAL title — the
 # creator's own, never auto-translated (it takes no language parameter). yt-dlp's
@@ -71,7 +68,6 @@ class YouTubeProvider:
             try:
                 info = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
             except YoutubeDLError as exc:
-                # Let the service layer record this as a per-provider error.
                 raise RuntimeError(f"YouTube search failed: {exc}") from exc
 
         entries = (info or {}).get("entries") or []
@@ -112,8 +108,6 @@ class YouTubeProvider:
                 author=channel.get("title"),
                 source="youtube",
                 meta={
-                    "channel_url": f"https://www.youtube.com/channel/{channel['id']}" if channel.get("id") else None,
-                    "view_count": v.get("viewCountInt"),
                     "snippet": (v.get("description") or "")[:500] or None,
                     "published_at": v.get("publishDate") or v.get("publishedTime"),
                 },
@@ -154,7 +148,6 @@ class YouTubeProvider:
 
     def _to_result(self, entry: dict) -> SearchResult:
         vid = entry.get("id", "")
-        channel_url = entry.get("channel_url") or entry.get("uploader_url")
         return SearchResult(
             id=f"youtube:{vid}",
             type="video",
@@ -166,10 +159,6 @@ class YouTubeProvider:
             duration_s=int(entry["duration"]) if entry.get("duration") else None,
             author=entry.get("channel") or entry.get("uploader"),
             source="youtube",
-            meta={
-                "channel_url": channel_url,
-                "view_count": entry.get("view_count"),
-            },
         )
 
     @staticmethod

@@ -1,4 +1,3 @@
-import logging
 import re
 
 import httpx
@@ -6,8 +5,7 @@ import httpx
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
-
-logger = logging.getLogger(__name__)
+from app.search.web import web_result
 
 _TIMEOUT_S = 10.0
 
@@ -45,33 +43,17 @@ class BraveProvider:
             capture_paid_call("brave", "web_search", settings.brave_price_per_call)
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            # Surfaced by the service layer as a per-provider error.
             raise RuntimeError(f"Web search failed: {exc}") from exc
 
         web = (payload.get("web") or {}).get("results") or []
-        results: list[SearchResult] = []
-        for entry in web[:limit]:
-            result = self._to_result(entry)
-            if result is not None:
-                results.append(result)
-        return results
-
-    def _to_result(self, entry: dict) -> SearchResult | None:
-        url = entry.get("url")
-        if not url:
-            return None
-        # No author: the site is the identity and the URL already carries it
-        # (favicon + domain), so a separate field would just repeat the host.
-        description = _strip_tags(entry.get("description"))
-        return SearchResult(
-            id=f"web:{url}",
-            type="web",
-            title=_strip_tags(entry.get("title")) or url,
-            url=url,
-            source="web",
-            # page_age (ISO) feeds the triage's freshness criterion.
-            meta={k: v for k, v in (("snippet", description), ("published_at", entry.get("page_age"))) if v},
-        )
+        return [
+            web_result(
+                e["url"], _strip_tags(e.get("title")), _strip_tags(e.get("description")),
+                e.get("page_age"),
+            )
+            for e in web[:limit]
+            if e.get("url")
+        ]
 
 
 def _strip_tags(text: str | None) -> str:

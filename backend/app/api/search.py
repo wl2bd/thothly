@@ -4,29 +4,11 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Header, Query
 from fastapi.responses import StreamingResponse
 
-from app.search.models import SearchResponse
-from app.search.service import search_all, search_batches
+from app.search.service import search_batches
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["search"])
-
-
-@router.get("/search", response_model=SearchResponse)
-async def search(
-    q: str = Query("", description="Free-text search query"),
-    accept_language: str | None = Header(default=None),
-) -> SearchResponse:
-    """Multi-provider search. Returns an empty result set for a blank query so
-    the frontend can call it freely while the user is still typing.
-
-    The browser's Accept-Language localizes result titles (YouTube) the way an
-    anonymous visit would — a French browser gets French titles, etc.
-    """
-    query = q.strip()
-    if not query:
-        return SearchResponse()
-    return await search_all(query, hl=_primary_language(accept_language))
 
 
 @router.get("/search/stream")
@@ -34,9 +16,13 @@ async def search_stream(
     q: str = Query("", description="Free-text search query"),
     accept_language: str | None = Header(default=None),
 ) -> StreamingResponse:
-    """The same search, streamed: one JSON line per provider (NDJSON), each sent
-    the moment that provider answers, so fast sources show up without waiting
-    for the slowest. A line is a `ProviderBatch`. A blank query sends nothing."""
+    """Multi-provider search, streamed: one JSON line per provider (NDJSON), each
+    sent the moment that provider answers, so fast sources show up without
+    waiting for the slowest. A line is a `ProviderBatch`. A blank query sends
+    nothing, so the frontend can call it while the visitor is still typing.
+
+    The browser's Accept-Language localizes YouTube's fallback titles the way an
+    anonymous visit would."""
     query = q.strip()
     hl = _primary_language(accept_language)
 

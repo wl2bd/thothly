@@ -5,7 +5,6 @@ import re
 import time
 from collections import Counter
 from collections.abc import AsyncIterator
-from urllib.parse import urlparse
 
 from app.core import gateway
 from app.core.config import settings
@@ -14,10 +13,11 @@ from app.search.base import Provider
 from app.search.brave_provider import BraveProvider
 from app.search.exa_provider import EXA, ExaProvider
 from app.search.marginalia_provider import MarginaliaProvider
-from app.search.models import ProviderBatch, ProviderError, SearchResponse, SearchResult
+from app.search.models import ProviderBatch, SearchResult
 from app.search.podcast_provider import PodcastProvider
 from app.search.triage import triage, triage_enabled
-from app.search.web_provider import WebProvider, is_article_like
+from app.search.web import host, tidy
+from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider
 
 logger = logging.getLogger(__name__)
@@ -67,26 +67,23 @@ class _CachedProvider:
         return results
 
 
-class _ArticlesOnly:
-    """Drops web hits that are never a readable article (social, video, shop…).
-
-    The host and URL-shape rules live with the DuckDuckGo provider, which was
-    the only backend applying them. Applied here, every web backend gets them,
-    so a YouTube channel or an Instagram profile never comes back as "Article".
-    """
+class _WebPolicy:
+    """Every web backend's hits go through the same rules (app/search/web.py),
+    so a YouTube channel or an Instagram profile never comes back as "Article",
+    whichever engine found it."""
 
     def __init__(self, inner: Provider):
         self._inner = inner
         self.name = inner.name
 
     def search(self, query: str, limit: int, hl: str | None = None) -> list[SearchResult]:
-        return [r for r in self._inner.search(query, limit, hl) if is_article_like(r.url)]
+        return tidy(self._inner.search(query, limit, hl))
 
 
 def _build_web_provider() -> Provider:
-    """The configured web backend, filtered to articles, behind the per-keystroke
-    cache (see `_ArticlesOnly` and `_CachedProvider`)."""
-    return _CachedProvider(_ArticlesOnly(_pick_web_provider()))
+    """The configured web backend, behind the shared web rules and the
+    per-keystroke cache."""
+    return _CachedProvider(_WebPolicy(_pick_web_provider()))
 
 
 def _pick_web_provider() -> Provider:
@@ -145,50 +142,6 @@ _EXECUTOR = ThreadPoolExecutor(max_workers=32, thread_name_prefix="search")
 _DEFAULT_LIMIT = 12
 
 
-async def search_all(
-    query: str, limit: int = _DEFAULT_LIMIT, hl: str | None = None
-) -> SearchResponse:
-    """Query every provider in parallel and merge into one unified list.
-
-    Each provider's `search` is sync and blocking, so it runs in a worker thread
-    under its own timeout. A provider that raises or times out is recorded in
-    `errors` and contributes no results; the providers that succeeded are
-    returned regardless, so one provider being down never blanks the search.
-
-    `hl` is the caller's browser language (Accept-Language); providers that
-    localize results (YouTube) use it, the rest ignore it.
-    """
-    loop = asyncio.get_running_loop()
-    outcomes = await asyncio.gather(*(_run(p, query, limit, hl) for p in PROVIDERS))
-
-    # Flatten into (provider_index, within-provider rank, result). The two
-    # indices are kept so ranking can fall back to a fair round-robin when no
-    # textual signal separates results (see `_rank`).
-    ranked_inputs: list[tuple[int, int, SearchResult]] = []
-    errors: list[ProviderError] = []
-    for provider_index, (name, provider_results, error) in enumerate(outcomes):
-        for rank, result in enumerate(provider_results):
-            ranked_inputs.append((provider_index, rank, result))
-        if error is not None:
-            errors.append(ProviderError(provider=name, message=error))
-
-    results = _rank(ranked_inputs, query)
-    found = len(results)
-    if triage_enabled():
-        results = await loop.run_in_executor(_EXECUTOR, triage, query, results)
-    capture(
-        "search_completed",
-        {
-            "found_count": found,
-            "shown_count": len(results),
-            "result_types": dict(Counter(r.type for r in results)),
-            "failed_providers": [e.provider for e in errors],
-            "triaged": triage_enabled(),
-        },
-    )
-    return SearchResponse(results=results, errors=errors)
-
-
 async def _run(
     provider: Provider, query: str, limit: int, hl: str | None
 ) -> tuple[str, list[SearchResult], str | None]:
@@ -214,7 +167,7 @@ async def _run(
 async def search_batches(
     query: str, limit: int = _DEFAULT_LIMIT, hl: str | None = None
 ) -> AsyncIterator[ProviderBatch]:
-    """Like `search_all`, but yields each provider's results the moment it finishes.
+    """Search every provider, yielding each one's results the moment it finishes.
 
     Providers answer at very different speeds (podcasts well under a second, the
     paid YouTube search several seconds, the web up to its timeout), so waiting
@@ -236,7 +189,7 @@ async def search_batches(
             name, results, error = await next_done
             answered += 1
             found += len(results)
-            results = _rank([(0, rank, r) for rank, r in enumerate(results)], query)
+            results = _rank(results, query)
             if results and triage_enabled():
                 results = await loop.run_in_executor(_EXECUTOR, triage, query, results)
             shown.update(r.type for r in results)
@@ -265,35 +218,14 @@ async def search_batches(
         )
 
 
-def _rank(
-    items: list[tuple[int, int, SearchResult]], query: str
-) -> list[SearchResult]:
-    """Order results across providers by a cheap query-relevance score.
-
-    Providers each return their own hits already sorted by relevance, but those
-    scores aren't comparable across providers, so we can't just concatenate (it
-    buries every provider but the first) nor blindly round-robin (it puts the #1
-    YouTube hit ahead of an exact-match blog). Instead we compute one
-    cross-provider score per result from the query text and sort by:
-
-      1. relevance score, descending — a brand/domain or title match wins
-         regardless of which provider produced it;
-      2. within-provider rank, ascending — ties degrade to a round-robin
-         (every provider's #1, then every provider's #2, …);
-      3. provider index — a stable, deterministic final tiebreak.
-
-    The result: a query like "quillnotes" surfaces the quillnotes.example blog
-    first, while a generic query keeps the fair round-robin behaviour.
-    """
+def _rank(results: list[SearchResult], query: str) -> list[SearchResult]:
+    """Order one provider's results by a cheap query-relevance score, keeping the
+    provider's own order between equals. A query like "quillnotes" puts the
+    quillnotes.example blog first; a generic one keeps the provider's ranking."""
     q_norm = query.strip().lower()
     q_tokens = re.findall(r"\w+", q_norm)
     q_compact = re.sub(r"\W+", "", q_norm)
-
-    ordered = sorted(
-        items,
-        key=lambda it: (-_relevance(it[2], q_compact, q_tokens), it[1], it[0]),
-    )
-    return [result for _, _, result in ordered]
+    return sorted(results, key=lambda r: -_relevance(r, q_compact, q_tokens))
 
 
 def _relevance(result: SearchResult, q_compact: str, q_tokens: list[str]) -> int:
@@ -312,8 +244,7 @@ def _relevance(result: SearchResult, q_compact: str, q_tokens: list[str]) -> int
 
     score = 0
 
-    host = (urlparse(result.url).netloc or "").lower().removeprefix("www.").split(":")[0]
-    labels = host.split(".")
+    labels = host(result.url).split(".")
     domain_label = labels[-2] if len(labels) >= 2 else (labels[0] if labels else "")
     if q_compact and domain_label and q_compact == domain_label:
         score += 100

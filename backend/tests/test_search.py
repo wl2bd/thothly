@@ -7,11 +7,11 @@ from fastapi.testclient import TestClient
 from yt_dlp.utils import DownloadError
 
 import app.search.service as service
-import app.search.web_provider as web_provider
 from app.search.brave_provider import BraveProvider
 from app.search.marginalia_provider import MarginaliaProvider
 from app.search.models import SearchResult
 from app.search.podcast_provider import PodcastProvider
+from app.search.web import is_article_like, tidy
 from app.search.web_provider import WebProvider
 from app.search.youtube_provider import YouTubeProvider
 
@@ -82,7 +82,6 @@ def test_youtube_provider_maps_entries(mock_cls, _mock_oembed):
     assert r.duration_s == 615
     assert r.author == "3Blue1Brown"
     assert r.thumbnail == "http://large.jpg"  # last (largest) thumbnail
-    assert r.meta["channel_url"] == "https://www.youtube.com/channel/UCYO"
 
 
 @patch.object(YouTubeProvider, "_oembed_title", return_value=None)
@@ -162,7 +161,7 @@ def test_youtube_provider_caches_oembed_titles(mock_cls, mock_oembed):
     assert mock_oembed.call_count == 1  # second lookup served from the title cache
 
 
-# ── WebProvider (DuckDuckGo HTML) mapping ────────────────────────────────────
+# ── Web rules, through the DuckDuckGo HTML provider ────────────────────────────────────
 
 # A trimmed DuckDuckGo HTML results page: one normal hit (via the /l/ redirect),
 # one sponsored hit that must be skipped, and a duplicate of the first.
@@ -193,7 +192,7 @@ def _httpx_response(text: str, status: int = 200) -> MagicMock:
 def test_web_provider_parses_results(mock_post):
     mock_post.return_value = _httpx_response(_DDG_HTML)
 
-    results = WebProvider().search("example", limit=5)
+    results = tidy(WebProvider().search("example", limit=5))
 
     # Ad skipped, duplicate collapsed → one normalized hit.
     assert len(results) == 1
@@ -203,7 +202,7 @@ def test_web_provider_parses_results(mock_post):
     assert r.source == "web"
     assert r.title == "Example Post"
     assert r.url == "https://example.com/post"
-    assert r.author == "example.com"
+    assert r.author is None
     assert r.meta["snippet"] == "A snippet about the post."
 
 
@@ -223,7 +222,7 @@ _DDG_LOCALE_HTML = """
 def test_web_provider_collapses_locale_home_variants(mock_post):
     mock_post.return_value = _httpx_response(_DDG_LOCALE_HTML)
 
-    results = WebProvider().search("quillnotes", limit=5)
+    results = tidy(WebProvider().search("quillnotes", limit=5))
 
     # All three are the same blog home (bare, /fr, /en-us + tracking) → one hit,
     # the first (best-ranked) bare-home URL kept.
@@ -241,7 +240,7 @@ def test_web_provider_keeps_distinct_articles(mock_post):
     mock_post.return_value = _httpx_response(html)
 
     # Different article paths on the same host are NOT the same source.
-    assert len(WebProvider().search("blog", limit=5)) == 2
+    assert len(tidy(WebProvider().search("blog", limit=5))) == 2
 
 
 @patch("app.search.web_provider.httpx.post")
@@ -255,7 +254,7 @@ def test_web_provider_respects_limit(mock_post):
     )
     mock_post.return_value = _httpx_response(rows)
 
-    assert len(WebProvider().search("q", limit=3)) == 3
+    assert len(tidy(WebProvider().search("q", limit=3))) == 3
 
 
 @patch("app.search.web_provider.httpx.post")
@@ -274,7 +273,7 @@ def test_web_provider_drops_non_article_shapes(mock_post):
     """
     mock_post.return_value = _httpx_response(html)
 
-    assert [r.url for r in WebProvider().search("widget", limit=5)] == [
+    assert [r.url for r in tidy(WebProvider().search("widget", limit=5))] == [
         "https://blog.example/how-the-widget-works"
     ]
 
@@ -290,7 +289,7 @@ def test_web_provider_drops_on_site_search_query(mock_post):
     """
     mock_post.return_value = _httpx_response(html)
 
-    assert [r.url for r in WebProvider().search("widget", limit=5)] == [
+    assert [r.url for r in tidy(WebProvider().search("widget", limit=5))] == [
         "https://site.example/the-widget-guide"
     ]
 
@@ -307,7 +306,7 @@ def test_web_provider_drops_home_when_deeper_article_present(mock_post):
 
     # The bare home is redundant when a deeper article from the same site is
     # present → only the article survives.
-    assert [r.url for r in WebProvider().search("blog", limit=5)] == [
+    assert [r.url for r in tidy(WebProvider().search("blog", limit=5))] == [
         "https://blog.example/deep-post"
     ]
 
@@ -321,7 +320,7 @@ def test_web_provider_keeps_lone_home(mock_post):
     mock_post.return_value = _httpx_response(html)
 
     # A home with no deeper sibling is a valid source (discovery expands it).
-    assert [r.url for r in WebProvider().search("quillnotes", limit=5)] == [
+    assert [r.url for r in tidy(WebProvider().search("quillnotes", limit=5))] == [
         "https://quillnotes.example/"
     ]
 
@@ -336,8 +335,8 @@ def test_web_provider_caps_results_per_domain(mock_post):
     mock_post.return_value = _httpx_response(rows)
 
     # One domain shouldn't flood the list: capped even with room under the limit.
-    results = WebProvider().search("q", limit=10)
-    assert len(results) == web_provider._MAX_PER_DOMAIN
+    results = tidy(WebProvider().search("q", limit=10))
+    assert len(results) == 3
     assert all("big.example" in r.url for r in results)
 
 
@@ -384,7 +383,7 @@ def test_marginalia_provider_maps_results(mock_get):
 
 
 @patch("app.search.marginalia_provider.httpx.get")
-def test_marginalia_provider_caps_results_per_domain(mock_get):
+def test_web_results_are_capped_per_domain(mock_get):
     payload = {
         "results": [
             {"url": f"https://big.example/post-{i}", "title": f"P{i}"}
@@ -395,8 +394,8 @@ def test_marginalia_provider_caps_results_per_domain(mock_get):
     mock_get.return_value.json.return_value = payload
 
     # One domain shouldn't flood the list, even with room under the limit.
-    results = MarginaliaProvider().search("q", limit=10)
-    assert len(results) == 3  # _MAX_PER_DOMAIN
+    results = tidy(MarginaliaProvider().search("q", limit=10))
+    assert len(results) == 3
 
 
 @patch("app.search.marginalia_provider.httpx.get")
@@ -515,11 +514,14 @@ def test_primary_language_parsing():
     assert _primary_language("*;q=0.5") is None
 
 
-def test_search_all_passes_hl_to_providers(monkeypatch):
+def test_search_passes_hl_to_providers(monkeypatch):
     fake = _FakeProvider("youtube", results=[_result("youtube:1")])
     monkeypatch.setattr(service, "PROVIDERS", [fake])
 
-    asyncio.run(service.search_all("q", hl="fr"))
+    async def run():
+        return [b async for b in service.search_batches("q", hl="fr")]
+
+    asyncio.run(run())
 
     assert fake.hl == "fr"
 
@@ -575,32 +577,6 @@ def test_podcast_provider_raises_on_http_error(mock_get):
 
 
 # ── service: parallel merge + per-provider isolation ─────────────────────────
-
-def test_search_all_merges_all_providers(monkeypatch):
-    monkeypatch.setattr(service, "PROVIDERS", [
-        _FakeProvider("a", results=[_result("a:1")]),
-        _FakeProvider("b", results=[_result("b:1"), _result("b:2")]),
-    ])
-
-    resp = asyncio.run(service.search_all("q"))
-
-    assert {r.id for r in resp.results} == {"a:1", "b:1", "b:2"}
-    assert resp.errors == []
-
-
-def test_search_all_isolates_a_failing_provider(monkeypatch):
-    monkeypatch.setattr(service, "PROVIDERS", [
-        _FakeProvider("youtube", results=[_result("youtube:1")]),
-        _FakeProvider("podcast", error="boom"),
-    ])
-
-    resp = asyncio.run(service.search_all("q"))
-
-    assert [r.id for r in resp.results] == ["youtube:1"]
-    assert len(resp.errors) == 1
-    assert resp.errors[0].provider == "podcast"
-    assert "boom" in resp.errors[0].message
-
 
 class _SlowProvider(_FakeProvider):
     def __init__(self, name: str, results, delay_s: float):
@@ -677,36 +653,6 @@ def test_search_stream_endpoint_blank_query_sends_nothing(client: TestClient):
     assert res.text == ""
 
 
-def test_search_endpoint_blank_query_is_empty(client: TestClient):
-    body = client.get("/search", params={"q": "   "}).json()
-    assert body == {"results": [], "errors": []}
-
-
-def test_search_endpoint_returns_results(client: TestClient, monkeypatch):
-    monkeypatch.setattr(
-        service, "PROVIDERS", [_FakeProvider("youtube", results=[_result("youtube:1")])]
-    )
-
-    res = client.get("/search", params={"q": "python"})
-
-    assert res.status_code == 200
-    body = res.json()
-    assert [r["id"] for r in body["results"]] == ["youtube:1"]
-    assert body["errors"] == []
-
-
-def test_search_endpoint_surfaces_partial_error(client: TestClient, monkeypatch):
-    monkeypatch.setattr(service, "PROVIDERS", [
-        _FakeProvider("youtube", results=[_result("youtube:1")]),
-        _FakeProvider("podcast", error="down"),
-    ])
-
-    body = client.get("/search", params={"q": "x"}).json()
-
-    assert len(body["results"]) == 1
-    assert [e["provider"] for e in body["errors"]] == ["podcast"]
-
-
 def test_paid_youtube_search_follows_the_triage_whichever_backend_answers(monkeypatch):
     """The ScrapeCreators search exists to feed the triage descriptions and
     dates. It must switch on with the triage itself, not with one backend's key:
@@ -767,13 +713,11 @@ def test_every_web_backend_drops_social_video_and_shop_hits(backend):
     "https://www.welcometothejungle.com/fr/companies/acme/jobs/design-engineer",
 ])
 def test_job_pages_are_not_articles(url):
-    from app.search.web_provider import is_article_like
 
     assert is_article_like(url) is False
 
 
 def test_an_article_about_jobs_is_still_an_article():
-    from app.search.web_provider import is_article_like
 
     assert is_article_like("https://blog.example.com/what-a-design-engineer-does") is True
     assert is_article_like("https://blog.example.com/posts/jobs-to-be-done") is True

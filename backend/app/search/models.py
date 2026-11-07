@@ -2,11 +2,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-# What kind of thing a result is. Drives the downstream pipeline once the result
-# becomes a source: video/episode -> audio transcription, web -> text
-# extraction, playlist/channel -> expanded into many items first. The set is
-# deliberately broad so podcast/web providers slot in without a schema change.
-ResultType = Literal["video", "playlist", "channel", "podcast", "episode", "web"]
+# What kind of thing a result is: a video, a podcast episode, or a web page.
+ResultType = Literal["video", "episode", "web"]
 
 # Which provider produced the result — drives the source badge in the UI.
 ResultSource = Literal["youtube", "podcast", "web"]
@@ -17,7 +14,7 @@ class SearchResult(BaseModel):
 
     Every provider maps its native payload onto this single shape so the
     frontend renders one unified list regardless of origin. `meta` carries
-    provider-specific extras (item counts, view counts, channel URL…) without
+    provider-specific extras (a snippet, a date, a feed URL) without
     bloating the common schema.
     """
 
@@ -32,14 +29,6 @@ class SearchResult(BaseModel):
     meta: dict[str, Any] = Field(default_factory=dict)
 
 
-class ProviderError(BaseModel):
-    """A single provider's failure, surfaced so the UI can show a partial-error
-    banner while still rendering the providers that succeeded."""
-
-    provider: str
-    message: str
-
-
 class ProviderBatch(BaseModel):
     """One provider's share of a streamed search, sent as soon as it finishes.
 
@@ -49,8 +38,3 @@ class ProviderBatch(BaseModel):
     provider: str
     results: list[SearchResult] = Field(default_factory=list)
     error: str | None = None
-
-
-class SearchResponse(BaseModel):
-    results: list[SearchResult] = Field(default_factory=list)
-    errors: list[ProviderError] = Field(default_factory=list)

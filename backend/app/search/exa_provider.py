@@ -4,6 +4,7 @@ from app.core import gateway
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
+from app.search.web import web_result
 
 logger = logging.getLogger(__name__)
 
@@ -89,24 +90,11 @@ def exa_result(row: dict) -> SearchResult | None:
         return None
     highlights = row.get("highlights") or []
     snippet = " … ".join(h.strip() for h in highlights if h and h.strip())[:_SNIPPET_CHARS]
-    return _web(url, row.get("title"), snippet, row.get("publishedDate"))
+    return web_result(url, row.get("title"), snippet, row.get("publishedDate"))
 
 
 def tinyfish_result(row: dict) -> SearchResult | None:
     url = row.get("url")
     if not url:
         return None
-    return _web(url, row.get("title"), (row.get("snippet") or "").strip(), row.get("date"))
-
-
-def _web(url: str, title: str | None, snippet: str, published: str | None) -> SearchResult:
-    # No author: the site is the identity and the URL already carries it.
-    return SearchResult(
-        id=f"web:{url}",
-        type="web",
-        title=(title or "").strip() or url,
-        url=url,
-        source="web",
-        # published_at (ISO) feeds the triage's freshness criterion.
-        meta={k: v for k, v in (("snippet", snippet), ("published_at", published)) if v},
-    )
+    return web_result(url, row.get("title"), (row.get("snippet") or "").strip(), row.get("date"))
