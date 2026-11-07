@@ -488,8 +488,8 @@ def test_paid_youtube_search_follows_the_triage_whichever_backend_answers(monkey
     provider = YouTubeProvider()
     with patch.object(provider, "_search_scrapecreators", return_value=[]) as paid, \
          patch.object(provider, "_apply_original_titles"):
-        monkeypatch.setattr(cfg.settings, "typesafe_api_key", "k")
-        monkeypatch.setattr(cfg.settings, "search_triage_api_key", None)
+        monkeypatch.setattr(cfg.settings, "llm_api_key", "k")
+        monkeypatch.setattr(cfg.settings, "llm_base_url", "https://openrouter.ai/api/v1")
         provider.search("q", 5)
     assert paid.called
 

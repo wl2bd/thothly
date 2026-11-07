@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
 
 from app.core.config import settings
+from app.search.triage import TYPESAFE_BASE_URL
 
 # The same tokens as `audit._words`, with their positions kept so a match in
 # the word stream maps back to the source text a reader can check.
@@ -109,7 +110,7 @@ def judge_chapter(source_md: str, output_md: str) -> list[str]:
         return n, out, answers.nouls["adds"].noul, answers.nouls["changes"].noul
 
     with TypeSafeClient(
-        api_key=settings.typesafe_api_key, base_url=settings.typesafe_base_url, timeout=_TIMEOUT_S
+        api_key=settings.openrouter_api_key, base_url=TYPESAFE_BASE_URL, timeout=_TIMEOUT_S
     ) as client, ThreadPoolExecutor(_PARALLEL) as pool:
         for n, out, adds, changes in pool.map(ask, todo):
             seen = [label for label, hit in (("adds content", adds >= ADDS_AT),

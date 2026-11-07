@@ -139,19 +139,13 @@ def test_judge_items_failure_sets_nothing_aside():
         assert judge_items(None, [_r(0), _r(1)]) == {}
 
 
-def test_openai_compatible_judge_ranks_results(monkeypatch):
-    """With only an OpenAI-compatible key, triage still runs."""
+def test_triage_runs_only_on_an_openrouter_llm_key(monkeypatch):
+    """The decision model reuses the LLM key, so it needs OpenRouter as the LLM."""
     from app.search import triage as t
 
-    monkeypatch.setattr(t.settings, "typesafe_api_key", None)
-    monkeypatch.setattr(t.settings, "search_triage_api_key", "k")
-    answer = '{"freshness": "any", "level": "any", "results": [' \
-        '{"i": 0, "compilable": false, "relevance": 3, "format": "other", "level": "intro"},' \
-        '{"i": 1, "compilable": true, "relevance": 3, "format": "lecture", "level": "intro"}]}'
-    client = MagicMock()
-    client.chat.completions.create.return_value = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=answer))]
-    )
-    monkeypatch.setattr(t, "openai_client", lambda *a, **k: client)
+    monkeypatch.setattr(t.settings, "llm_api_key", "k")
+    monkeypatch.setattr(t.settings, "llm_base_url", "https://openrouter.ai/api/v1")
+    assert t.triage_enabled()
+    monkeypatch.setattr(t.settings, "llm_base_url", "http://localhost:11434/v1")
+    assert not t.triage_enabled()
 
-    assert [r.id for r in triage("q", [_r(0), _r(1)])] == ["x:1"]

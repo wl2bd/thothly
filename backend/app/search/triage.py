@@ -5,22 +5,16 @@ turns into text: a lecture, an interview, an article. A music video, a trailer o
 gameplay with no commentary compiles to nothing. Keyword ranking can't tell them
 apart; a model reading title + channel + description + duration can.
 
-The model answers closed questions only (a JSON schema of enums and small
-integers), never free text, so its output is checked, not trusted: an unknown
+The model answers closed questions only (yes/no, a choice, a score), never
+free text, so its output is checked, not trusted: an unknown
 index or a missing field is ignored. Any failure returns the list untouched —
 the triage can make a search better, never break it.
 
-Two backends answer those questions, behind one `_Verdict`:
-
-  TYPESAFE (preferred) — a System One model answers the closed questions
-  natively and returns a probability per answer. One call per result, fired in
-  parallel, because the API judges one state at a time.
-
-  OPENAI-COMPATIBLE (fallback) — any endpoint with JSON-schema output judges the
-  whole list in a single call. Kept so the two can be compared on one search.
+A decision model on OpenRouter answers those questions natively and returns a
+probability per answer. It switches on with an OpenRouter LLM key
+(`settings.openrouter_api_key`) and needs no key of its own.
 """
 
-import json
 import logging
 import time
 from datetime import datetime, timezone
@@ -29,71 +23,25 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
-
-from app.pipeline.providers import Endpoint, openai_client
 from app.search.models import SearchResult
 
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_S = 8.0
+# OpenRouter serves TypeSafe's /v1/systemone contract for many decision models.
+TYPESAFE_BASE_URL = "https://openrouter.ai/api"
 # Below this, a result is off-topic and dropped: "loosely related" is the floor.
 # At 0.5, TypeSafe let self-help podcasts through on "how do transformers work"
 # (scored 1-2 for sharing "transform" and "work"); measured on four searches,
-# 1.0 halves them. Integer relevance 0 falls under it and 1 clears it, so the
-# OpenAI path keeps the behaviour it always had.
+# 1.0 halves them.
 _MIN_RELEVANCE = 1.0
 _SNIPPET_CHARS = 240
 _LEVELS = ["intro", "intermediate", "expert"]
 
-_SYSTEM = """You sort search results for Thothly, an app that turns videos, podcasts and web articles into a book to read.
-
-First read the user's REQUEST and decide:
-- freshness: "recent" if the request is about news, current events or a fast-moving topic; otherwise "any" (history, philosophy, science basics, how-tos).
-- level: the depth the request asks for ("intro", "intermediate", "expert"), or "any" when it doesn't say.
-
-Then judge EVERY result by its index i:
-- compilable: true if the item is mostly continuous speech or prose a reader could learn from (lecture, talk, interview, debate, documentary, podcast episode, explainer, article). false for music videos, songs, trailers, teasers, compilations of clips, gameplay without commentary, ASMR, livestream replays of mostly silence, shopping pages, job ads and job boards.
-- relevance: 0 = off-topic, 1 = loosely related, 2 = on topic, 3 = exactly what was asked.
-- format: one of lecture, interview, documentary, explainer, news, reaction, article, other.
-- level: "intro", "intermediate" or "expert".
-
-Judge from the title, channel/site, duration, date and description only. Do not guess beyond them."""
-
-_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["freshness", "level", "results"],
-    "properties": {
-        "freshness": {"type": "string", "enum": ["recent", "any"]},
-        "level": {"type": "string", "enum": [*_LEVELS, "any"]},
-        "results": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["i", "compilable", "relevance", "format", "level"],
-                "properties": {
-                    "i": {"type": "integer"},
-                    "compilable": {"type": "boolean"},
-                    "relevance": {"type": "integer", "enum": [0, 1, 2, 3]},
-                    "format": {
-                        "type": "string",
-                        "enum": ["lecture", "interview", "documentary", "explainer",
-                                 "news", "reaction", "article", "other"],
-                    },
-                    "level": {"type": "string", "enum": _LEVELS},
-                },
-            },
-        },
-    },
-}
-
-
 class _Judgement(BaseModel):
     i: int
     compilable: bool
-    # 0-3. An integer on the OpenAI path, a point on the spectrum on the
-    # TypeSafe one (1.6 = between "loosely related" and "on topic").
+    # 0-3, a point on the spectrum (1.6 = between "loosely related" and "on topic").
     relevance: float
     format: str
     level: str
@@ -106,13 +54,11 @@ class _Verdict(BaseModel):
 
 
 def triage_enabled() -> bool:
-    return bool(settings.typesafe_api_key or settings.search_triage_api_key)
+    return bool(settings.openrouter_api_key)
 
 
 def _ask(query: str, described: list[dict]) -> _Verdict:
-    if settings.typesafe_api_key:
-        return _ask_typesafe(query, described)
-    return _ask_openai(query, described)
+    return _ask_typesafe(query, described)
 
 
 def triage(query: str, results: list[SearchResult]) -> list[SearchResult]:
@@ -133,8 +79,8 @@ def triage(query: str, results: list[SearchResult]) -> list[SearchResult]:
     return ordered
 
 
-# The same rungs the OpenAI schema offers, written as a spectrum: TypeSafe
-# scores a position between the levels rather than picking one.
+# Relevance rungs, written as a spectrum: TypeSafe scores a position between
+# the levels rather than picking one.
 _RELEVANCE_LEVELS = [
     "off-topic: not about the request at all",
     "loosely related: same broad subject, does not answer the request",
@@ -210,8 +156,8 @@ def _ask_typesafe(query: str, described: list[dict]) -> _Verdict:
         )
 
     with TypeSafeClient(
-        api_key=settings.typesafe_api_key,
-        base_url=settings.typesafe_base_url,
+        api_key=settings.openrouter_api_key,
+        base_url=TYPESAFE_BASE_URL,
         timeout=_TIMEOUT_S,
     ) as client:
         answers = client.system_one(
@@ -243,26 +189,6 @@ def _ask_typesafe(query: str, described: list[dict]) -> _Verdict:
         level=answers.choices["wanted_level"].choice,
         results=judged,
     )
-
-def _ask_openai(query: str, described: list[dict]) -> _Verdict:
-    endpoint = Endpoint(
-        settings.search_triage_base_url, settings.search_triage_model, settings.search_triage_api_key
-    )
-    lines = "\n".join(f"[{i}] {json.dumps(d, ensure_ascii=False)}" for i, d in enumerate(described))
-    response = openai_client(endpoint, _TIMEOUT_S, max_retries=0).chat.completions.create(
-        model=endpoint.model,
-        temperature=0,
-        messages=[
-            {"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": f"REQUEST: {query}\n\nRESULTS:\n{lines}"},
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {"name": "triage", "strict": True, "schema": _SCHEMA},
-        },
-    )
-    return _Verdict.model_validate_json(response.choices[0].message.content or "")
-
 
 def describe(
     kind: str, title: str, author: str | None = None, duration_s: int | None = None

@@ -48,25 +48,16 @@ class Settings(BaseSettings):
     monid_api_key: str | None = None
     monid_base_url: str = "https://api.monid.ai"
 
-    # Search triage: one small-model call per search judges every result
-    # (compilable? relevant? level, freshness) and re-orders the list. Any
-    # OpenAI-compatible endpoint with JSON-schema output; unset = untriaged.
-    search_triage_api_key: str | None = None
-    search_triage_base_url: str = "https://openrouter.ai/api/v1"
-    search_triage_model: str = "mistralai/mistral-small-24b-instruct-2501"
-
-    # System One triage: a decision model answers the closed questions directly
-    # and returns a probability per answer, instead of writing JSON a word at a
-    # time, which is where a chat model spends its seconds on this task. Set
-    # this key and it takes over the triage; the OpenAI-compatible settings
-    # above stay usable so the two can be compared on the same search.
-    # OpenRouter serves TypeSafe's /v1/systemone contract for many decision
-    # models. Perplexity Decider v1.2 ranked best of ten on five test searches
+    # Decision model: search triage (one call per search judges every result,
+    # compilable? relevant? level, freshness, and re-orders the list) and the
+    # audit judge. It answers closed questions directly and returns a probability
+    # per answer, instead of writing JSON a word at a time. It runs on OpenRouter
+    # with the LLM key, so it has no key of its own: it switches on when
+    # LLM_BASE_URL points at OpenRouter (see `openrouter_api_key`), and is off
+    # otherwise. Perplexity Decider v1.2 ranked best of ten on five test searches
     # (2026-11-05), ~1 s for 24 results; Jev was faster (0.3 s) but kept
     # self-help hits on top. Drex Max and Clef cap a call at 64 questions,
     # under the ~100 a full search sends.
-    typesafe_api_key: str | None = None
-    typesafe_base_url: str = "https://openrouter.ai/api"
     typesafe_model: str = "perplexity/pplx-decider-v1.2"
     # USD per million input tokens (output is free), for the paid_call event:
     # the SDK drops the cost OpenRouter returns.
@@ -149,6 +140,14 @@ class Settings(BaseSettings):
     # PostHog product analytics. Optional: unset means nothing is sent.
     posthog_project_token: str | None = None
     posthog_host: str | None = None
+
+    @property
+    def openrouter_api_key(self) -> str | None:
+        """The LLM key when the LLM is served by OpenRouter, which also serves
+        the decision model; None otherwise, and the decision model stays off."""
+        if self.llm_api_key and self.llm_base_url and "openrouter.ai" in self.llm_base_url:
+            return self.llm_api_key
+        return None
 
 
 settings = Settings()

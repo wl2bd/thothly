@@ -71,8 +71,8 @@ def main(argv: list[str]) -> int:
     # mean something attached to what produced them.
     model = get_job_llm_model(job_id)
     if judge:
-        if not settings.typesafe_api_key:
-            print("--judge needs TYPESAFE_API_KEY")
+        if not settings.openrouter_api_key:
+            print("--judge needs LLM_API_KEY with LLM_BASE_URL on OpenRouter")
             return 1
         if model == settings.typesafe_model:
             # A judge grading its own work measures the judge, not the book.

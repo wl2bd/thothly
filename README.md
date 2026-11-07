@@ -173,9 +173,7 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `BACKEND_URL` | `http://backend:8000` | Frontend to backend (set by Compose; override only outside it) |
 | `MARGINALIA_API_KEY` | `public` | Marginalia key, used only when no gateway key is set; `public` works keyless, personal/commercial keys lift the rate limit / licence |
 | `TREG_TOKEN` / `MONID_API_KEY` | empty | Pay-per-call data gateways (treg first, Monid as fallback): YouTube transcripts (and search, when triage is on) through ScrapeCreators (yt-dlp is IP-blocked from data centers), web search (TinyFish, then Exa), and published podcast transcripts looked up before any speech-to-text. Answers are cached, so the same call is paid once |
-| `SEARCH_TRIAGE_API_KEY` / `_BASE_URL` / `_MODEL` | empty / OpenRouter / Mistral Small | Optional search triage through any OpenAI-compatible endpoint: one small call per search drops what can't be compiled or is off topic, then re-ranks |
-| `TYPESAFE_API_KEY` / `_BASE_URL` / `_MODEL` | empty / OpenRouter / Perplexity Decider | Triage through a decision model instead; takes over from the setting above when set |
-| `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
+| `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above). On OpenRouter, the same key also turns on search triage: a decision model drops results that can't be compiled or are off topic, then re-ranks |
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
 | `BYOK_ALLOW_CUSTOM_BASE_URL` | `false` | Let users enter any server address for their own model, not just the listed providers. Only for an instance whose users you trust: the server calls whatever they type |
 | `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
