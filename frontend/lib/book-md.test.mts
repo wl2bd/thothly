@@ -34,3 +34,16 @@ test("words are counted on whitespace", () => {
   assert.equal(countWords("  one two\nthree "), 3);
   assert.equal(countWords("   "), 0);
 });
+
+test("a chapter carries the link to its original, read from its attribution", () => {
+  const md = [
+    "# A post",
+    "::: {.source-attribution}",
+    "*Source: [https://quillnotes.example/p/a](https://quillnotes.example/p/a)* | *Author: Q*",
+    ":::",
+    "Text.",
+  ].join("\n");
+  assert.deepEqual(splitBook(md), [
+    { title: "A post", body: "Text.", source: "https://quillnotes.example/p/a" },
+  ]);
+});

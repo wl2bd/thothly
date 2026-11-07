@@ -3,12 +3,14 @@
 import { Kbd, KeyLabel } from "@/components/ui/kbd";
 import { useEffect, useRef } from "react";
 import katex from "katex";
+import { ExternalLink } from "lucide-react";
 import "katex/dist/katex.min.css";
 
 import { Button } from "@/components/ui/button";
 import { tokenizeInline, type InlineToken } from "@/lib/inline-md";
 import { countWords, type Chapter } from "@/lib/book-md";
 import { parseBlocks, type Block } from "@/lib/md-blocks";
+import { hostOf } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
 // A compiled book, read in the app: its contents, one chapter at a time, and
@@ -53,6 +55,17 @@ export function BookReader({
           <h2 className="font-display text-3xl tracking-tight text-balance">
             {chapter.title}
           </h2>
+          {chapter.source && (
+            <a
+              href={chapter.source}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted-foreground hover:text-foreground -mt-2 inline-flex w-fit items-center gap-1 text-xs transition-colors"
+            >
+              Open original on {hostOf(chapter.source)}
+              <ExternalLink className="size-3" />
+            </a>
+          )}
           <MarkdownPreview md={chapter.body} reading />
         </article>
         {chapters.length > 1 && (

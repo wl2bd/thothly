@@ -1,7 +1,9 @@
 // Reading back the book Markdown the backend compiles (app/pipeline/models.py
 // writes it; app/pipeline/audit.py split_chapters reads it the same way).
 
-export type Chapter = { title: string; body: string };
+// `source`: the original's URL, read from the compiler's attribution block, so
+// a chapter can be checked against its page.
+export type Chapter = { title: string; body: string; source?: string };
 
 // A book H1 as the compiler writes it: the title, then optional Pandoc
 // attributes ("{lang=fr}" on a chapter, "{.front-matter}" on the Sources index
@@ -23,7 +25,7 @@ function parseHeading(text: string): { title: string; frontMatter: boolean } {
 // `split_chapters` reads it. The "Sources" index is navigation, not reading;
 // the source-attribution block (`:::`) is the compiler's, not the text.
 export function splitBook(md: string): Chapter[] {
-  const out: { title: string; frontMatter: boolean; body: string[] }[] = [];
+  const out: { title: string; frontMatter: boolean; body: string[]; source?: string }[] = [];
   let fenced = false;
   // A book written on Windows comes back with CRLF; a stray "\r" defeats every
   // "$"-anchored pattern downstream.
@@ -37,11 +39,21 @@ export function splitBook(md: string): Chapter[] {
       fenced = !fenced;
       continue;
     }
-    if (!fenced) out[out.length - 1]?.body.push(line);
+    const chapter = out[out.length - 1];
+    if (!fenced) chapter?.body.push(line);
+    else if (chapter && !chapter.source) {
+      // The attribution's first link is the source; author and date follow.
+      const link = /\]\((https?:\/\/[^)\s]+)\)/.exec(line);
+      if (link) chapter.source = link[1];
+    }
   }
   return out
     .filter((c) => !c.frontMatter)
-    .map((c) => ({ title: c.title, body: c.body.join("\n").trim() }));
+    .map((c) => ({
+      title: c.title,
+      body: c.body.join("\n").trim(),
+      ...(c.source ? { source: c.source } : {}),
+    }));
 }
 
 export function countWords(text: string): number {
