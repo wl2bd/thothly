@@ -14,7 +14,7 @@ import { clearDraft } from "@/lib/workspace-draft";
 import { withBrowserModels } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 import { cn, plural } from "@/lib/utils";
-import { fetchLlmConfig, type LlmConfig } from "@/lib/api";
+import { fetchLlmConfig, NO_MODELS, type LlmConfig } from "@/lib/api";
 import { CompletedView } from "./completed";
 import { CompilingView, DiscoveringView, FailedView, StopButton } from "./progress";
 import { ReviewView } from "./review";
@@ -43,17 +43,9 @@ export default function JobPage() {
   useEffect(() => {
     fetchLlmConfig()
       .then(setLlm)
-      .catch(() =>
-        setLlm({
-          available: false,
-          stt_available: false,
-          podcast_transcripts: false,
-          roles: [],
-          pricing: { stt_per_minute: 0, llm_per_mtok_in: 0, llm_per_mtok_out: 0 },
-          providers: [],
-          custom_base_url_allowed: false,
-        }),
-      );
+      // The free path works without the config, so a failed read means "no
+      // models" rather than an error screen.
+      .catch(() => setLlm(NO_MODELS));
   }, []);
 
   // The one way out of a finished or failed compilation.

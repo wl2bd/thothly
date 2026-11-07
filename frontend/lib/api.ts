@@ -63,6 +63,17 @@ export async function fetchJob(id: string): Promise<JobResponse> {
   return res.json();
 }
 
+// The config when none could be read: no model, no transcription, nothing priced.
+export const NO_MODELS: LlmConfig = {
+  available: false,
+  stt_available: false,
+  podcast_transcripts: false,
+  roles: [],
+  pricing: { stt_per_minute: 0, llm_per_mtok_in: 0, llm_per_mtok_out: 0 },
+  providers: [],
+  custom_base_url_allowed: false,
+};
+
 export async function fetchLlmConfig(): Promise<LlmConfig> {
   const res = await fetch("/api/llm", { cache: "no-store" });
   if (!res.ok) return parseError(res);

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import type { LlmConfig } from "./api.ts";
+import { NO_MODELS, type LlmConfig } from "./api.ts";
 import { maskKey, parseModels, toVisitorEndpoint, withBrowserModels } from "./model-keys.ts";
 
 const mistral = { provider: "mistral", apiKey: "sk-abcdef4f2c", model: "mistral-small-latest" };
@@ -48,16 +48,12 @@ test("the confirm body uses the backend's field names", () => {
 });
 
 const server: LlmConfig = {
-  available: false,
-  stt_available: false,
-  podcast_transcripts: false,
-  roles: [],
+  ...NO_MODELS,
   pricing: { stt_per_minute: 0.003, llm_per_mtok_in: 0.2, llm_per_mtok_out: 0.6 },
   providers: [
     { id: "openai", label: "OpenAI", llm_per_mtok_in: 0.15, llm_per_mtok_out: 0.6, stt_per_minute: 0.006 },
     { id: "mistral", label: "Mistral", llm_per_mtok_in: 0.2, llm_per_mtok_out: 0.6, stt_per_minute: 0.003 },
   ],
-  custom_base_url_allowed: false,
 };
 
 test("a key in the browser makes the AI path available and quotes its provider", () => {

@@ -1,8 +1,8 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, fetchJob, type JobResponse } from "@/lib/api";
+import { ApiError, fetchJob, type JobResponse, type JobStatus } from "@/lib/api";
 import { recordCompilation } from "@/lib/history";
 
-const ACTIVE_STATUSES = ["discovering", "processing"];
+const ACTIVE_STATUSES: JobStatus[] = ["discovering", "processing"];
 
 // A single failed poll must not kill the live view: the job is still running
 // server-side, so a transient failure (5xx, a network blip) is retried with
