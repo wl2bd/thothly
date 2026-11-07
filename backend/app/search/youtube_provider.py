@@ -9,6 +9,7 @@ from app.core import gateway
 from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
 from app.search.triage import triage_enabled
+from app.sources.youtube.common import watch_url
 
 # YouTube's keyless oEmbed endpoint returns a video's TRUE ORIGINAL title — the
 # creator's own, never auto-translated (it takes no language parameter). yt-dlp's
@@ -82,7 +83,7 @@ class YouTubeProvider:
         return results
 
     def _search_scrapecreators(self, query: str, limit: int) -> list[SearchResult]:
-        """Paid path (see app/sources/scrapecreators.py): unlike the flat yt-dlp
+        """Paid path (see app/sources/youtube/scrapecreators.py): unlike the flat yt-dlp
         search it returns each video's description and publish date, which the
         triage needs to judge a video and its freshness."""
         endpoint = "scrapecreators.x.v1-youtube-search"
@@ -108,7 +109,7 @@ class YouTubeProvider:
                 id=f"youtube:{v['id']}",
                 type="video",
                 title=v.get("title") or "Untitled",
-                url=f"https://www.youtube.com/watch?v={v['id']}",
+                url=watch_url(v["id"]),
                 thumbnail=f"https://i.ytimg.com/vi/{v['id']}/hqdefault.jpg",
                 duration_s=v.get("lengthSeconds"),
                 author=channel.get("title"),

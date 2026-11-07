@@ -3,6 +3,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.core.net import BROWSER_UA
 from app.search.models import SearchResult
 from app.search.web import web_result
 
@@ -13,11 +14,6 @@ from app.search.web import web_result
 # isolated by the service layer, never blanking the other providers.
 _ENDPOINT = "https://html.duckduckgo.com/html/"
 
-# A browser-like User-Agent: the endpoint serves an empty page to obvious bots.
-_BROWSER_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
 _TIMEOUT_S = 10.0
 
 class WebProvider:
@@ -46,7 +42,7 @@ class WebProvider:
                 # buries non-English sources and produces locale-variant dupes
                 # (quillnotes.example vs /fr). Without it DDG infers language from the
                 # query itself, keeping results faithful to what's being searched.
-                headers={"User-Agent": _BROWSER_UA},
+                headers={"User-Agent": BROWSER_UA},
                 timeout=_TIMEOUT_S,
                 follow_redirects=True,
             )
