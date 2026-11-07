@@ -1,0 +1,1503 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Thothly backend",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Create Job",
+        "operationId": "create_job_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}/stop": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Stop Job",
+        "description": "Stop a running compile before its next item or AI call; the book keeps\nwhat's ready.",
+        "operationId": "stop_job_jobs__job_id__stop_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}/confirm": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Confirm Job",
+        "operationId": "confirm_job_jobs__job_id__confirm_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}/items/{item_id}/preview": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Preview Item",
+        "description": "The no-LLM content this item would contribute, for the review screen.\n\nLets the user see what they're keeping before compiling — the exact\nzero-LLM render (free/instant for cached YouTube transcripts, one cheap\nscrape for blogs; podcasts report that they need transcription first).",
+        "operationId": "preview_item_jobs__job_id__items__item_id__preview_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{job_id}/download": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Download Job",
+        "description": "The finished compilation, as EPUB or as plain Markdown.",
+        "operationId": "download_job_jobs__job_id__download_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "epub",
+                "md"
+              ],
+              "type": "string",
+              "default": "epub",
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/llm": {
+      "get": {
+        "tags": [
+          "llm"
+        ],
+        "summary": "Get Llm Config",
+        "description": "Tell the review screen which AI passes are configured and what they cost.\n\n`available`/`stt_available` are False when no endpoint is set; the frontend\nthen shows the roles disabled and skips that part of the estimate. The role\ncatalogue is the single source of truth from app/pipeline/roles.py; pricing\ncomes from config so a self-hoster can match their provider.",
+        "operationId": "get_llm_config_llm_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LLMConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/llm/verify": {
+      "post": {
+        "tags": [
+          "llm"
+        ],
+        "summary": "Verify Key",
+        "description": "Check a visitor's key and list the models it grants, before they save it.\n\nGoes through the backend because providers don't allow browser calls\n(CORS), and only ever to an allowlisted provider's own URL. The key is used\nfor this one call and never stored or echoed.",
+        "operationId": "verify_key_llm_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search/stream": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search Stream",
+        "description": "Multi-provider search, streamed: one JSON line per provider (NDJSON), each\nsent the moment that provider answers, so fast sources show up without\nwaiting for the slowest. A line is a `ProviderBatch`. A blank query sends\nnothing, so the frontend can call it while the visitor is still typing.\n\nThe browser's Accept-Language localizes YouTube's fallback titles the way an\nanonymous visit would.",
+        "operationId": "search_stream_search_stream_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Free-text search query",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Free-text search query"
+          },
+          {
+            "name": "accept-language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One ProviderBatch per line (NDJSON).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderBatch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DiscoveredItemResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "item_type": {
+            "type": "string",
+            "enum": [
+              "youtube",
+              "blog",
+              "podcast"
+            ],
+            "title": "Item Type"
+          },
+          "source_index": {
+            "type": "integer",
+            "title": "Source Index"
+          },
+          "item_index": {
+            "type": "integer",
+            "title": "Item Index"
+          },
+          "estimated_duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration S"
+          },
+          "estimated_size_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Size Chars"
+          },
+          "preview_html": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Html"
+          },
+          "feed_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feed Url"
+          },
+          "has_transcript": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Transcript"
+          },
+          "transcript_lang": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript Lang"
+          },
+          "is_punctuated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Punctuated"
+          },
+          "word_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Word Count"
+          },
+          "reading_time_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reading Time Min"
+          },
+          "uncertain": {
+            "type": "boolean",
+            "title": "Uncertain",
+            "default": false
+          },
+          "set_aside": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Aside"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "selected": {
+            "type": "boolean",
+            "title": "Selected",
+            "default": false
+          },
+          "compile_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "compiling",
+                  "done",
+                  "skipped",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compile State"
+          },
+          "compile_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compile Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "url",
+          "item_type",
+          "source_index",
+          "item_index",
+          "id"
+        ],
+        "title": "DiscoveredItemResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ItemPreview": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "item_type": {
+            "type": "string",
+            "enum": [
+              "youtube",
+              "blog",
+              "podcast"
+            ],
+            "title": "Item Type"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "content_md": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Md"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "item_type",
+          "available"
+        ],
+        "title": "ItemPreview",
+        "description": "The no-LLM content a discovered item would contribute, for the review\nscreen. Mirrors the compiler's zero-LLM path exactly, so `content_md` is what\nactually lands in the EPUB when no AI cleanup role is chosen — not a guess.\n\n`available` is False when there's nothing free to show (a podcast awaiting\ntranscription, a video without subtitles, an unscrapable page); `note` then\nexplains why. `note` is also set on an *available* preview to flag a caveat\n(e.g. raw captions the final compile would punctuate). `truncated` marks a\nlong body clipped for transport — the compile still uses the full text."
+      },
+      "JobConfirm": {
+        "properties": {
+          "selected_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Selected Ids"
+          },
+          "book_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Title"
+          },
+          "llm_roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Llm Roles",
+            "default": []
+          },
+          "llm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VisitorEndpoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VisitorEndpoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "selected_ids"
+        ],
+        "title": "JobConfirm"
+      },
+      "JobCreate": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceSpec"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Sources"
+          },
+          "book_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources"
+        ],
+        "title": "JobCreate"
+      },
+      "JobResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "discovering",
+              "reviewing",
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "book_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Title"
+          },
+          "title_named": {
+            "type": "boolean",
+            "title": "Title Named",
+            "default": false
+          },
+          "epub_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epub Bytes"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "discovered_items": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveredItemResponse"
+            },
+            "type": "array",
+            "title": "Discovered Items",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "sources",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "JobResponse"
+      },
+      "LLMConfig": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "stt_available": {
+            "type": "boolean",
+            "title": "Stt Available"
+          },
+          "podcast_transcripts": {
+            "type": "boolean",
+            "title": "Podcast Transcripts"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/RoleInfo"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/Pricing"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderInfo"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "custom_base_url_allowed": {
+            "type": "boolean",
+            "title": "Custom Base Url Allowed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "stt_available",
+          "podcast_transcripts",
+          "roles",
+          "pricing",
+          "providers",
+          "custom_base_url_allowed"
+        ],
+        "title": "LLMConfig"
+      },
+      "Pricing": {
+        "properties": {
+          "stt_per_minute": {
+            "type": "number",
+            "title": "Stt Per Minute"
+          },
+          "llm_per_mtok_in": {
+            "type": "number",
+            "title": "Llm Per Mtok In"
+          },
+          "llm_per_mtok_out": {
+            "type": "number",
+            "title": "Llm Per Mtok Out"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stt_per_minute",
+          "llm_per_mtok_in",
+          "llm_per_mtok_out"
+        ],
+        "title": "Pricing",
+        "description": "Approximate provider rates (USD) for the review screen's cost estimate.\nInformational only — Thothly never bills anything."
+      },
+      "ProviderBatch": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "results"
+        ],
+        "title": "ProviderBatch",
+        "description": "One provider's share of a streamed search, sent as soon as it finishes.\n\n`error` is set when the provider failed or timed out; its results are then\nempty and the other providers' batches still arrive."
+      },
+      "ProviderInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "llm_per_mtok_in": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Per Mtok In"
+          },
+          "llm_per_mtok_out": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Per Mtok Out"
+          },
+          "stt_per_minute": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stt Per Minute"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "llm_per_mtok_in",
+          "llm_per_mtok_out",
+          "stt_per_minute"
+        ],
+        "title": "ProviderInfo",
+        "description": "An allowlisted provider for the connect dialog. No base URL: the browser\nnames a provider and the server alone knows where it lives."
+      },
+      "RoleInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "item",
+              "book"
+            ],
+            "title": "Scope"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "default",
+              "extra"
+            ],
+            "title": "Tier"
+          },
+          "system_prompt": {
+            "type": "string",
+            "title": "System Prompt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "description",
+          "scope",
+          "tier",
+          "system_prompt"
+        ],
+        "title": "RoleInfo"
+      },
+      "SearchResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "video",
+              "episode",
+              "web"
+            ],
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "thumbnail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "youtube",
+              "podcast",
+              "web"
+            ],
+            "title": "Source"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "title",
+          "url",
+          "source"
+        ],
+        "title": "SearchResult",
+        "description": "One normalized hit from any provider.\n\nEvery provider maps its native payload onto this single shape so the\nfrontend renders one unified list regardless of origin. `meta` carries\nprovider-specific extras (a snippet, a date, a feed URL) without\nbloating the common schema."
+      },
+      "Source": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "youtube_video",
+                  "youtube_playlist",
+                  "youtube_channel",
+                  "podcast",
+                  "blog"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "feed_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feed Url"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "resolved": {
+            "type": "boolean",
+            "title": "Resolved",
+            "default": false
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "Source"
+      },
+      "SourceSpec": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "youtube_video",
+                  "youtube_playlist",
+                  "youtube_channel",
+                  "podcast",
+                  "blog"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "feed_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feed Url"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "SourceSpec",
+        "description": "What to discover: a URL, plus what a search result knew about it.\n\nA pasted URL carries only `url` and its kind is detected from it. A picked\nsearch result adds what the URL can't tell: a podcast episode's audio URL\nisn't self-identifying, and its title, length and feed live only in the\nresult."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerifyRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "title": "VerifyRequest"
+      },
+      "VerifyResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "title": "VerifyResponse"
+      },
+      "VisitorEndpoint": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Model"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "VisitorEndpoint",
+        "description": "A visitor's own provider, key and model, sent from the browser for one\njob. Ridden in the confirm body rather than a header: bodies reach proxy\ntraces far less often. SecretStr keeps the key out of any repr or log."
+      }
+    }
+  }
+}

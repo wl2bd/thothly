@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Header, Query
 from fastapi.responses import StreamingResponse
 
+from app.search.models import ProviderBatch
 from app.search.service import search_batches
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["search"])
 
 
-@router.get("/search/stream")
+@router.get(
+    "/search/stream",
+    responses={200: {"model": ProviderBatch, "description": "One ProviderBatch per line (NDJSON)."}},
+)
 async def search_stream(
     q: str = Query("", description="Free-text search query"),
     accept_language: str | None = Header(default=None),

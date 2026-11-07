@@ -19,7 +19,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 def create_job(payload: JobCreate, background_tasks: BackgroundTasks) -> JobResponse:
     job = repository.create_job(payload)
     capture("job_created", {"source_count": len(payload.sources)}, job.id)
-    background_tasks.add_task(run_discovery, job.id, payload.sources, job.book_title)
+    background_tasks.add_task(run_discovery, job.id, job.sources, job.book_title)
     return job
 
 

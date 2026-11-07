@@ -7,25 +7,18 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
-import { ApiError, fetchJob, type JobStatus } from "@/lib/api";
+import { ApiError, fetchJob } from "@/lib/api";
 import {
   forgetCompilation,
   getHistorySnapshot,
   groupBooks,
   getHistoryServerSnapshot,
   replaceHistory,
+  snapshotOf,
+  STATUS,
   subscribeHistory,
   type CompilationSnapshot,
 } from "@/lib/history";
-
-// The group label says "To review" or "Ready"; a row only adds the states the
-// label doesn't cover: still being built, or stopped.
-const STATUS_LABEL: Partial<Record<JobStatus, string>> = {
-  pending: "Building…",
-  discovering: "Building…",
-  processing: "Building…",
-  failed: "Did not finish",
-};
 
 // A deleted row goes at once; storage forgets it only when the Undo toast
 // runs out, so a slip costs nothing.
@@ -91,13 +84,7 @@ export function CompilationHistory() {
       settled.forEach((result, i) => {
         const entry = stored[i];
         if (result.status === "fulfilled") {
-          next.push({
-            id: entry.id,
-            title: result.value.book_title,
-            createdAt: result.value.created_at,
-            status: result.value.status,
-            sources: result.value.sources.length,
-          });
+          next.push(snapshotOf(result.value));
           return;
         }
         // A 404 is the server saying it genuinely no longer has this job, so the
@@ -189,7 +176,7 @@ function BookRow({ entry, onDelete }: { entry: CompilationSnapshot; onDelete: ()
   // Markdown, so it would read the same on every row.
   const meta = [
     entry.sources !== undefined && `${entry.sources} ${entry.sources === 1 ? "source" : "sources"}`,
-    STATUS_LABEL[entry.status],
+    STATUS[entry.status].label,
     relativeDate(entry.createdAt),
   ].filter(Boolean);
   return (

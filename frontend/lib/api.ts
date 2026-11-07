@@ -1,183 +1,32 @@
-export type JobStatus =
-  | "pending"
-  | "discovering"
-  | "reviewing"
-  | "processing"
-  | "completed"
-  | "failed";
+import type { components } from "./api-schema";
+import openapi from "./openapi.json";
 
-export interface Source {
-  url: string;
-  // Optional hints the backend uses only for podcast episodes (whose audio URL
-  // isn't self-identifying and carries no title); omitted for pasted links.
-  kind?: string;
-  title?: string;
-  // Episode length (seconds) from the search result — the only place it's known,
-  // and what the review screen needs for the transcription cost estimate.
-  duration_s?: number;
-  // The show's RSS feed (podcasts only): some feeds publish the transcript.
-  feed_url?: string;
-  // The search that found this source, so discovery can judge what it unfolds
-  // into against it. Omitted for a pasted link.
-  query?: string;
-  // The source's real name (channel / playlist / blog title), filled in by the
-  // backend during discovery. Used to label the review's source groups.
-  name?: string | null;
-  // Per-source discovery progress, written incrementally so the loading screen
-  // shows a live per-source state. `resolved` flips true once the source is done;
-  // `item_count` is how many items it yielded.
-  resolved?: boolean;
-  item_count?: number;
-  // Why the source yielded nothing, when it failed. The others carry on.
-  error?: string | null;
-}
+// The backend's shapes, generated from its OpenAPI schema (lib/openapi.json,
+// written by backend/scripts/export_openapi.py; `pnpm api:types` regenerates
+// lib/api-schema.d.ts from it).
+type Schemas = components["schemas"];
 
-export type CompileState =
-  | "pending"
-  | "compiling"
-  | "done"
-  | "skipped"
-  | "failed";
+export type JobResponse = Schemas["JobResponse"];
+export type JobStatus = JobResponse["status"];
+export type Source = Schemas["Source"];
+export type SourceSpec = Schemas["SourceSpec"];
+export type DiscoveredItem = Schemas["DiscoveredItemResponse"];
+export type ItemType = DiscoveredItem["item_type"];
+export type CompileState = NonNullable<DiscoveredItem["compile_state"]>;
+export type ItemPreview = Schemas["ItemPreview"];
+export type LlmConfig = Schemas["LLMConfig"];
+export type LlmRole = Schemas["RoleInfo"];
+export type LlmPricing = Schemas["Pricing"];
+export type LlmProvider = Schemas["ProviderInfo"];
+export type VisitorEndpoint = Schemas["VisitorEndpoint"];
+export type SearchResult = Schemas["SearchResult"];
+export type ResultType = SearchResult["type"];
+export type ProviderBatch = Schemas["ProviderBatch"];
 
-export interface DiscoveredItem {
-  id: string;
-  source_index: number;
-  item_index: number;
-  item_type: "youtube" | "blog" | "podcast";
-  title: string;
-  url: string;
-  estimated_duration_s: number | null;
-  estimated_size_chars: number | null;
-  preview_html: string | null;
-  selected: boolean;
-  // YouTube transcript info computed at discovery. has_transcript is tri-state:
-  // true = usable subtitles, false = none (skipped), null = unknown.
-  has_transcript: boolean | null;
-  transcript_lang: string | null;
-  is_punctuated: boolean | null;
-  word_count: number | null;
-  reading_time_min: number | null;
-  // A homepage link that may not be an article (it sat in the page's prose):
-  // listed at review but unselected by default.
-  uncertain: boolean;
-  // Why discovery doubts this item ("Likely off-topic"): it starts unchecked,
-  // with this reason on its row. Null when nothing is doubted.
-  set_aside?: string | null;
-  // How this item fared in the compile, present from the moment it's confirmed;
-  // null on items that weren't part of one. "skipped" is nothing usable to build
-  // from, "failed" is something that broke, and both carry the user-facing reason
-  // in compile_note.
-  compile_state: CompileState | null;
-  compile_note: string | null;
-}
-
-export interface ItemPreview {
-  item_id: string;
-  item_type: "youtube" | "blog" | "podcast";
-  // false when there's nothing free to show (podcast awaiting transcription,
-  // video without subtitles, unscrapable page) — `note` then says why.
-  available: boolean;
-  content_md: string | null;
-  truncated: boolean;
-  note: string | null;
-}
-
-export interface JobResponse {
-  id: string;
-  status: JobStatus;
-  sources: Source[];
-  created_at: string;
-  updated_at: string;
-  book_title: string | null;
-  // The title was typed in the workspace; review keeps it as the user's own.
-  title_named: boolean;
-  output_path: string | null;
-  // Standalone Markdown twin of the EPUB (zero-LLM), for feeding to an AI.
-  output_md_path: string | null;
-  error: string | null;
-  discovered_items: DiscoveredItem[];
-}
-
-export interface LlmRole {
-  id: string;
-  label: string;
-  description: string;
-  scope: "item" | "book";
-  // How the review screen groups the role (see backend app/pipeline/roles.py):
-  // "auto" runs on its own, "default" is the master switch's safe set, "extra"
-  // lives behind Customize.
-  tier: "auto" | "default" | "extra";
-  // What the model is told, shown when the visitor connects their own key.
-  system_prompt: string;
-}
-
-export interface LlmPricing {
-  stt_per_minute: number;
-  llm_per_mtok_in: number;
-  llm_per_mtok_out: number;
-}
-
-// An allowlisted provider a visitor can bring a key for. No address: the
-// browser names a provider and the server alone knows where it lives.
-export interface LlmProvider {
-  id: string;
-  label: string;
-  llm_per_mtok_in: number | null; // null = transcription only, no text model
-  llm_per_mtok_out: number | null;
-  stt_per_minute: number | null; // null = no transcription on this provider
-}
-
-export interface LlmConfig {
-  // Whether THIS server has its own key. What the browser holds is added on
-  // top by withBrowserModels (lib/model-keys.ts).
-  available: boolean;
-  stt_available: boolean;
-  // Published podcast transcripts can be looked up: an episode may get in
-  // with no transcription at all.
-  podcast_transcripts: boolean;
-  roles: LlmRole[];
-  pricing: LlmPricing;
-  providers: LlmProvider[];
-  custom_base_url_allowed: boolean;
-}
-
-// A visitor's endpoint as the backend's confirm body names its fields.
-export interface VisitorEndpoint {
-  provider: string;
-  api_key: string;
-  model: string;
-  base_url?: string;
-}
-
-export type ResultType =
-  | "video"
-  | "playlist"
-  | "channel"
-  | "podcast"
-  | "episode"
-  | "web";
-
-export interface SearchResult {
-  id: string;
-  type: ResultType;
-  title: string;
-  url: string;
-  thumbnail: string | null;
-  duration_s: number | null;
-  author: string | null;
-  source: string;
-  meta: Record<string, unknown>;
-}
-
-export interface ProviderError {
-  provider: string;
-  message: string;
-}
-
-export interface SearchResponse {
-  results: SearchResult[];
-  errors: ProviderError[];
-}
+const limits = openapi.components.schemas;
+// Most sources a compilation can hold, and the longest title.
+export const MAX_SOURCES = limits.JobCreate.properties.sources.maxItems;
+export const BOOK_TITLE_MAX = limits.JobCreate.properties.book_title.anyOf[0].maxLength!;
 
 // Carries the HTTP status so callers can tell a terminal client error (e.g. a
 // 404 for an unknown compilation) from a transient one (5xx, backend blip) and
@@ -198,7 +47,7 @@ async function parseError(res: Response): Promise<never> {
 }
 
 export async function createJob(
-  sources: Source[],
+  sources: SourceSpec[],
   bookTitle?: string,
 ): Promise<JobResponse> {
   const res = await fetch("/api/jobs", {
@@ -221,10 +70,6 @@ export async function fetchLlmConfig(): Promise<LlmConfig> {
   if (!res.ok) return parseError(res);
   return res.json();
 }
-
-// Most sources a compilation can hold — the backend enforces the same cap
-// (MAX_SOURCES_PER_JOB).
-export const MAX_SOURCES = 5;
 
 export async function confirmJob(
   id: string,
@@ -249,7 +94,7 @@ export async function confirmJob(
   return res.json();
 }
 
-// Stops a running compile after the item in progress; the book keeps the
+// Stops a running compile before its next item or AI call; the book keeps the
 // chapters already built.
 export async function stopJob(id: string): Promise<JobResponse> {
   const res = await fetch(`/api/jobs/${id}/stop`, { method: "POST" });
@@ -287,13 +132,6 @@ export async function fetchItemPreview(
 
 export function getDownloadUrl(id: string, format: "epub" | "md" = "epub"): string {
   return `/api/jobs/${id}/download?format=${format}`;
-}
-
-/** One provider's share of a streamed search (backend `ProviderBatch`). */
-export interface ProviderBatch {
-  provider: string;
-  results: SearchResult[];
-  error: string | null;
 }
 
 /**

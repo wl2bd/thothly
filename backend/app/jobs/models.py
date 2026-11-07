@@ -26,14 +26,14 @@ class Source(SourceSpec):
 # A single job fans out to one background worker that processes every source
 # sequentially, and each source can enumerate up to `max_items_per_source`
 # items — so an unbounded source count is an easy resource-exhaustion vector.
-# The frontend states and enforces the same number (MAX_SOURCES).
+# The frontend reads both limits from the API schema.
 MAX_SOURCES_PER_JOB = 5
 BOOK_TITLE_MAX = 100
 
 
 class JobCreate(BaseModel):
     sources: Annotated[
-        list[Source], Field(min_length=1, max_length=MAX_SOURCES_PER_JOB)
+        list[SourceSpec], Field(min_length=1, max_length=MAX_SOURCES_PER_JOB)
     ]
     # Named in the workspace before discovery. Absent = derived from the sources.
     book_title: Annotated[str | None, Field(max_length=BOOK_TITLE_MAX)] = None

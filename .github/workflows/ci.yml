@@ -41,7 +41,7 @@ jobs:
       - run: uv run --no-sync pytest -q
 
   frontend:
-    name: Frontend (lint, types, build)
+    name: Frontend (lint, tests, types, build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,6 +74,12 @@ jobs:
       # install skips them instead of adding three "command not found" errors on
       # top of the real one.
       - run: pnpm lint
+      - if: steps.install.outcome == 'success'
+        run: pnpm test
+      # The API types are generated from lib/openapi.json, which a backend test
+      # keeps equal to the API; this keeps the types equal to the file.
+      - if: steps.install.outcome == 'success'
+        run: pnpm api:types && git diff --exit-code lib/api-schema.d.ts
       - if: steps.install.outcome == 'success'
         run: pnpm typecheck
       - if: steps.install.outcome == 'success'

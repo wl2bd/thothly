@@ -7,13 +7,12 @@ import {
   ListVideoIcon,
   MicIcon,
   PlayIcon,
-  PodcastIcon,
   TvIcon,
   type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { type ResultType } from "@/lib/api";
+import type { Kind } from "@/lib/kinds";
 
 // ── Source presentation, shared across screens ───────────────────────────────
 // One vocabulary for "what kind of thing is this source" that search, review and
@@ -29,13 +28,7 @@ import { type ResultType } from "@/lib/api";
 //      podcast), a DOC means time you spend reading it (article). Eight minutes
 //      of video must never read like eight minutes of text.
 
-export type SourceKind =
-  | "video"
-  | "episode"
-  | "podcast"
-  | "article"
-  | "playlist"
-  | "channel";
+export type SourceKind = Kind;
 
 interface KindMeta {
   label: string;
@@ -50,7 +43,6 @@ interface KindMeta {
 const KIND_META: Record<SourceKind, KindMeta> = {
   video: { label: "Video", Icon: PlayIcon, text: false, container: false },
   episode: { label: "Episode", Icon: MicIcon, text: false, container: false },
-  podcast: { label: "Podcast", Icon: PodcastIcon, text: false, container: false },
   article: { label: "Article", Icon: FileTextIcon, text: true, container: false },
   playlist: { label: "Playlist", Icon: ListVideoIcon, text: false, container: true },
   channel: { label: "Channel", Icon: TvIcon, text: false, container: true },
@@ -58,35 +50,6 @@ const KIND_META: Record<SourceKind, KindMeta> = {
 
 // The one display order for kinds, wherever they are listed side by side.
 export const KIND_ORDER = Object.keys(KIND_META) as SourceKind[];
-
-// Search hits speak ResultType; discovered items speak item_type. Both fold into
-// the one SourceKind vocabulary so downstream screens never special-case either.
-export function kindFromResultType(type: ResultType): SourceKind {
-  switch (type) {
-    case "video":
-      return "video";
-    case "episode":
-      return "episode";
-    case "podcast":
-      return "podcast";
-    case "playlist":
-      return "playlist";
-    case "channel":
-      return "channel";
-    case "web":
-      return "article";
-  }
-}
-
-export function kindFromItemType(
-  itemType: "youtube" | "blog" | "podcast",
-): SourceKind {
-  return itemType === "youtube"
-    ? "video"
-    : itemType === "podcast"
-      ? "episode"
-      : "article";
-}
 
 export function isContainerKind(kind: SourceKind): boolean {
   return KIND_META[kind].container;

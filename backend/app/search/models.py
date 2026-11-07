@@ -36,5 +36,5 @@ class ProviderBatch(BaseModel):
     empty and the other providers' batches still arrive."""
 
     provider: str
-    results: list[SearchResult] = Field(default_factory=list)
+    results: list[SearchResult]
     error: str | None = None

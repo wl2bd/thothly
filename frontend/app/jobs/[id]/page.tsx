@@ -72,8 +72,9 @@ import {
   SourceFavicon,
   SourceTypePill,
   hostOf,
-  kindFromItemType,
+
 } from "@/components/source-kind";
+import { kindFromItemType } from "@/lib/kinds";
 import { ConnectModelStep, type ModelKind } from "@/components/connect-model";
 import { recordCompilation } from "@/lib/history";
 import { clearDraft, restoreJobDraft } from "@/lib/workspace-draft";
@@ -453,12 +454,12 @@ export default function JobPage() {
         />
       </>
     );
-  } else if (job.status === "pending" || job.status === "discovering") {
+  } else if (job.status === "discovering") {
     const n = job.sources.length;
     panes = (
       <>
         <WorkPane>
-          <BackToSources jobId={id} sources={job.sources} title={job.book_title} />
+          <BackToSources jobId={id} sources={job.sources} title={job.book_title ?? null} />
           <DiscoveringView sources={job.sources} />
         </WorkPane>
         <CompilationPane
@@ -832,10 +833,7 @@ function CompletedView({
 }) {
   const [md, setMd] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const hasMarkdown = !!job.output_md_path;
-
   useEffect(() => {
-    if (!hasMarkdown) return;
     let cancelled = false;
     fetch(getDownloadUrl(jobId, "md"))
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error("fetch failed"))))
@@ -848,25 +846,8 @@ function CompletedView({
     return () => {
       cancelled = true;
     };
-  }, [jobId, hasMarkdown]);
-
-  // The EPUB's weight, shown on its download. Read from the file itself.
-  // ponytail: one extra fetch of a small file; expose the size on the job if it grows.
-  const [epubBytes, setEpubBytes] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(getDownloadUrl(jobId))
-      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("fetch failed"))))
-      .then((b) => {
-        if (!cancelled) setEpubBytes(b.size);
-      })
-      .catch(() => {
-        /* no weight shown; the download still works */
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [jobId]);
+  const epubBytes = job.epub_bytes ?? null;
   const chapters = useMemo(() => (md ? splitBook(md) : []), [md]);
   const [at, setAt] = useState(0);
   const words = md ? countWords(md) : null;
@@ -933,12 +914,8 @@ function CompletedView({
       <WorkPane label="Your compilation">
         {md ? (
           <BookReader chapters={chapters} at={at} onGo={setAt} />
-        ) : hasMarkdown ? (
-          <StatusMessage label="Opening the compilation…" />
         ) : (
-          <p className="text-muted-foreground text-sm">
-            Download the EPUB to read it.
-          </p>
+          <StatusMessage label="Opening the compilation…" />
         )}
       </WorkPane>
 
@@ -961,7 +938,7 @@ function CompletedView({
                 e-reader), the two quieter actions side by side under it. */}
             <BookActions
               epubUrl={getDownloadUrl(jobId)}
-              mdUrl={hasMarkdown ? getDownloadUrl(jobId, "md") : undefined}
+              mdUrl={getDownloadUrl(jobId, "md")}
               title={job.book_title ?? ""}
               epubNote={
                 epubBytes != null
@@ -973,8 +950,7 @@ function CompletedView({
               }
             />
             <div className="flex w-full gap-2">
-              {hasMarkdown && (
-                <Tooltip content="Copy the Markdown, to paste into an AI">
+              <Tooltip content="Copy the Markdown, to paste into an AI">
                   {/* Both labels share one grid cell, the idle one hidden, so
                       "Copied" never widens the button or shifts its row. */}
                   <Button type="button" variant="outline" onClick={copy} disabled={!md} aria-keyshortcuts="C" className="flex-1">
@@ -986,7 +962,6 @@ function CompletedView({
                     <Kbd>C</Kbd>
                   </Button>
                 </Tooltip>
-              )}
               <Link
                 href="/"
                 onClick={clearDraft}
@@ -996,11 +971,9 @@ function CompletedView({
                 <Kbd>N</Kbd>
               </Link>
             </div>
-            {hasMarkdown && (
-              <p className="text-muted-foreground text-xs">
-                The full compilation as Markdown, ready to paste into an AI.
-              </p>
-            )}
+            <p className="text-muted-foreground text-xs">
+              The full compilation as Markdown, ready to paste into an AI.
+            </p>
             {tokens != null && tokens > 200000 && (
               <p className="text-muted-foreground text-xs">
                 Large for some AIs: attaching the Markdown file may work better than pasting it.

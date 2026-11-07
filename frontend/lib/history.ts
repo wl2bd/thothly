@@ -21,19 +21,18 @@ const KEY = "thothly.compilations.v1";
 
 // Enough to cover the compilations anyone actually returns to, and a hard bound
 // on both storage and the refresh burst the app fires on mount.
-export const HISTORY_CAP = 25;
+const HISTORY_CAP = 25;
 
-// Every JobStatus the backend can send. Kept as a runtime list because the
-// type alone cannot guard storage: this is the boundary where data the user
-// (or a stale build) could have written meets code that trusts it.
-const STATUSES: readonly JobStatus[] = [
-  "pending",
-  "discovering",
-  "reviewing",
-  "processing",
-  "completed",
-  "failed",
-];
+// What each status means in the list: still to review (being found, or waiting
+// for picks) or past it, and what the row adds that its group label doesn't
+// say. A Record, so a status the backend adds fails the build until placed.
+export const STATUS: Record<JobStatus, { toReview: boolean; label?: string }> = {
+  discovering: { toReview: true, label: "Building…" },
+  reviewing: { toReview: true },
+  processing: { toReview: false, label: "Building…" },
+  completed: { toReview: false },
+  failed: { toReview: false, label: "Did not finish" },
+};
 
 function isSnapshot(value: unknown): value is CompilationSnapshot {
   if (!value || typeof value !== "object") return false;
@@ -42,7 +41,7 @@ function isSnapshot(value: unknown): value is CompilationSnapshot {
     typeof e.id === "string" &&
     (typeof e.title === "string" || e.title === null) &&
     typeof e.createdAt === "string" &&
-    STATUSES.includes(e.status as JobStatus)
+    Object.hasOwn(STATUS, e.status as string)
   );
 }
 
@@ -64,10 +63,7 @@ export function parseHistory(raw: string | null): CompilationSnapshot[] {
   }
 }
 
-// Still being found or waiting for you to pick what goes in, versus past
-// review (compiling, done or stopped). Newest first in each.
-const TO_REVIEW: readonly JobStatus[] = ["pending", "discovering", "reviewing"];
-
+// Newest first in each group.
 export function groupBooks(entries: CompilationSnapshot[]): {
   toReview: CompilationSnapshot[];
   ready: CompilationSnapshot[];
@@ -78,12 +74,12 @@ export function groupBooks(entries: CompilationSnapshot[]): {
   };
   const sorted = [...entries].sort((a, b) => time(b) - time(a));
   return {
-    toReview: sorted.filter((e) => TO_REVIEW.includes(e.status)),
-    ready: sorted.filter((e) => !TO_REVIEW.includes(e.status)),
+    toReview: sorted.filter((e) => STATUS[e.status].toReview),
+    ready: sorted.filter((e) => !STATUS[e.status].toReview),
   };
 }
 
-export function readHistory(): CompilationSnapshot[] {
+function readHistory(): CompilationSnapshot[] {
   // Server-rendered passes have no storage; callers render a skeleton until
   // mount rather than branching on this.
   if (typeof window === "undefined") return [];
@@ -157,17 +153,20 @@ export function getHistoryServerSnapshot(): CompilationSnapshot[] | null {
 // Upsert, newest first. Called when a compilation is created AND whenever a job
 // screen loads, so a link someone shared with you joins your history the way a
 // browser would treat a page you visited.
-export function recordCompilation(
-  job: Pick<JobResponse, "id" | "book_title" | "created_at" | "status" | "sources">,
-): void {
-  const entry: CompilationSnapshot = {
+type JobSummary = Pick<JobResponse, "id" | "book_title" | "created_at" | "status" | "sources">;
+
+export function snapshotOf(job: JobSummary): CompilationSnapshot {
+  return {
     id: job.id,
-    title: job.book_title,
+    title: job.book_title ?? null,
     createdAt: job.created_at,
     status: job.status,
     sources: job.sources.length,
   };
-  write([entry, ...readHistory().filter((e) => e.id !== job.id)]);
+}
+
+export function recordCompilation(job: JobSummary): void {
+  write([snapshotOf(job), ...readHistory().filter((e) => e.id !== job.id)]);
 }
 
 export function forgetCompilation(id: string): void {

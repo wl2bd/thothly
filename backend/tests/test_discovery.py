@@ -305,3 +305,12 @@ def test_a_site_home_picked_from_search_still_unfolds(mock_feed):
     name, items = discovery.discover_source(SourceSpec(url="https://blog.example.com/fr/", query="q"), 0)
     assert name == "A blog"
     assert len(items) == 2
+
+
+def test_pasted_urls_read_as_the_frontend_reads_them():
+    import json
+    from pathlib import Path
+
+    cases = json.loads((Path(__file__).parents[2] / "fixtures" / "url-kinds.json").read_text("utf-8"))
+    for url, kind in cases["cases"]:
+        assert discovery.detect_kind(url) == kind, url

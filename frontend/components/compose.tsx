@@ -49,7 +49,6 @@ import {
   createJob,
   MAX_SOURCES,
   searchStream,
-  type ProviderError,
   type SearchResult,
 } from "@/lib/api";
 import {
@@ -63,7 +62,9 @@ import {
   normalizeUrl,
   saveDraft,
   saveJobDraft,
+  stagedFromResult,
   stagedFromUrl,
+  toSourceSpec,
   type Draft,
   type StagedSource,
 } from "@/lib/workspace-draft";
@@ -77,12 +78,10 @@ import {
   hostOf,
   isContainerKind,
   KIND_ORDER,
-  kindFromResultType,
   kindLabel,
 } from "@/components/source-kind";
+import { kindFromResultType } from "@/lib/kinds";
 
-// A source the user has staged for compilation. Built either from a picked
-// search result or from a directly-pasted link.
 // Every settled query is a paid search (ScrapeCreators + triage), so a
 // half-typed word must not go out. A space ends a word, so it searches at once;
 // mid-word, wait for a real pause (at 400 ms, "Desig" and typos were searched
@@ -137,7 +136,8 @@ function ComposeWorkspace({
   // Seeded from ?q=…, so an old /app?q= link arrives with its search running.
   const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchErrors, setSearchErrors] = useState<ProviderError[]>([]);
+  // The providers that failed this search, to say which results are missing.
+  const [failedProviders, setFailedProviders] = useState<string[]>([])
   const [searching, setSearching] = useState(false);
   // The query the current `results` belong to — lets the list distinguish a
   // search that hasn't run yet from one that settled empty (see the effect).
@@ -218,7 +218,7 @@ function ComposeWorkspace({
         // same flow-card transition as every other phase change.
         startTransition(() => {
           setResults([]);
-          setSearchErrors([]);
+          setFailedProviders([]);
           setTypeFilter("all");
           setSortBy("relevance");
           setSettledQuery(term);
@@ -245,12 +245,10 @@ function ComposeWorkspace({
             // starts no view transition: batches land while the user is still
             // typing, and a view transition would swallow their keystrokes.
             startTransition(() => {
-              const error = batch.error
-                ? [{ provider: batch.provider, message: batch.error }]
-                : [];
+              const failed = batch.error ? [batch.provider] : [];
               if (isFirst) {
                 setResults(batch.results);
-                setSearchErrors(error);
+                setFailedProviders(failed);
                 setTypeFilter("all");
                 setSortBy("relevance");
                 setSettledQuery(term);
@@ -259,7 +257,7 @@ function ComposeWorkspace({
                   const seen = new Set(prev.map((r) => r.id));
                   return [...prev, ...batch.results.filter((r) => !seen.has(r.id))];
                 });
-                setSearchErrors((prev) => [...prev, ...error]);
+                setFailedProviders((prev) => [...prev, ...failed]);
               }
             });
           },
@@ -270,7 +268,7 @@ function ComposeWorkspace({
           // A stream that ended without a single batch still settles the query.
           if (first) {
             setResults([]);
-            setSearchErrors([]);
+            setFailedProviders([]);
             setSettledQuery(term);
           }
           setSearching(false);
@@ -281,7 +279,7 @@ function ComposeWorkspace({
         startTransition(() => {
           if (first) {
             setResults([]);
-            setSearchErrors([]);
+            setFailedProviders([]);
           }
           setSettledQuery(term);
           setSearching(false);
@@ -340,20 +338,7 @@ function ComposeWorkspace({
         ? prev.filter((s) => s.url !== r.url)
         : prev.length >= MAX_SOURCES
           ? prev
-          : [
-            ...prev,
-            {
-              url: r.url,
-              title: r.title,
-              type: r.type,
-              source: r.source,
-              thumbnail: r.thumbnail,
-              durationS: r.duration_s,
-              feedUrl: typeof r.meta?.feed_url === "string" ? r.meta.feed_url : undefined,
-              author: r.author,
-              query: !queryIsUrl && trimmed !== "" ? trimmed : undefined,
-            },
-          ],
+          : [...prev, stagedFromResult(r, !queryIsUrl && trimmed !== "" ? trimmed : undefined)],
     );
   }
 
@@ -439,26 +424,7 @@ function ComposeWorkspace({
     setSubmitting(true);
     setCompileError(null);
     try {
-      const job = await createJob(
-        staged.map((s) =>
-          // Always carry the title the user just saw in search, so the loading
-          // screen can label each source by name instead of a raw URL. `kind` is
-          // sent ONLY for podcasts (their audio URL isn't self-identifying and
-          // needs the duration hint); sending it for other kinds would override
-          // the backend's URL-based detection and misroute them.
-          s.source === "podcast"
-            ? {
-                url: s.url,
-                kind: "podcast",
-                title: s.title,
-                duration_s: s.durationS ?? undefined,
-                feed_url: s.feedUrl,
-                query: s.query,
-              }
-            : { url: s.url, title: s.title, query: s.query },
-        ),
-        title.trim(),
-      );
+      const job = await createJob(staged.map(toSourceSpec), title.trim());
       // Remembered before the navigation, so a compile that is still running
       // when the tab is closed is already in this browser's list to come back
       // to. The response carries everything the snapshot needs.
@@ -764,7 +730,7 @@ function ComposeWorkspace({
               and nothing at the bottom), so alerts are always looked for in
               one place. */}
           {showResults &&
-            searchErrors.length > 0 &&
+            failedProviders.length > 0 &&
             (() => {
               // Concrete, distinct names — "web search", not "the web" (too
               // broad when YouTube/podcast results are still shown). The raw
@@ -774,7 +740,7 @@ function ComposeWorkspace({
                 youtube: "YouTube",
                 podcast: "podcasts",
               };
-              const names = searchErrors.map((e) => labels[e.provider] ?? e.provider);
+              const names = failedProviders.map((p) => labels[p] ?? p);
               const list =
                 names.length > 1
                   ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
@@ -930,7 +896,7 @@ function StagedRow({
   source: StagedSource;
   onRemove: () => void;
 }) {
-  const kind = kindFromResultType(s.type);
+  const kind = s.type;
   return (
     // Slides in from the search side when picked, so the eye follows the
     // result into the compilation. @starting-style: no JS, no library.
@@ -1146,7 +1112,7 @@ function ResultRow({
             kind={kind}
             url={r.url}
             thumbnail={r.thumbnail}
-            duration={formatDuration(r.duration_s)}
+            duration={formatDuration(r.duration_s ?? null)}
           />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-1.5">

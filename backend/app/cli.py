@@ -17,12 +17,13 @@ from pathlib import Path
 from app.core.config import settings
 from app.core.database import init_db
 from app.jobs import repository, service
-from app.jobs.models import DiscoveredItemResponse, JobConfirm, JobCreate, Source
+from app.jobs.models import DiscoveredItemResponse, JobConfirm, JobCreate
 from app.jobs.outputs import output_file
 from app.jobs.phases import run_discovery
 from app.jobs.runner import run_compilation
 from app.pipeline.llm import llm_available
 from app.pipeline.roles import AI_POLISH
+from app.sources.models import SourceSpec
 
 KIND_LABELS = {"youtube": "video", "podcast": "episode", "blog": "article"}
 
@@ -56,12 +57,12 @@ def _discover(urls: list[str]) -> tuple[str, list[DiscoveredItemResponse], list[
     """Run discovery; returns (job id, items, source names) or raises with the
     job's own user-facing error."""
     try:
-        payload = JobCreate(sources=[Source(url=u) for u in urls])
+        payload = JobCreate(sources=[SourceSpec(url=u) for u in urls])
     except ValueError as exc:
         raise RuntimeError(f"Invalid URL. {exc.errors()[0]['msg']}.") from None
     job = repository.create_job(payload)
     print(f"Reading {len(urls)} source(s)…", file=sys.stderr)
-    run_discovery(job.id, payload.sources)
+    run_discovery(job.id, job.sources)
     job = repository.get_job(job.id)
     if job.status != "reviewing":
         raise RuntimeError(job.error or "Those sources couldn't be read.")

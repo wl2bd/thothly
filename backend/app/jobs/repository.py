@@ -19,7 +19,8 @@ def create_job(payload: JobCreate) -> JobResponse:
     job_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
-    sources_json = json.dumps([s.model_dump(mode="json") for s in payload.sources])
+    sources = [Source(**s.model_dump()) for s in payload.sources]
+    sources_json = json.dumps([s.model_dump(mode="json") for s in sources])
     title = (payload.book_title or "").strip() or None
 
     with get_connection() as conn:
@@ -34,7 +35,7 @@ def create_job(payload: JobCreate) -> JobResponse:
     return JobResponse(
         id=job_id,
         status="discovering",
-        sources=payload.sources,
+        sources=sources,
         created_at=now,
         updated_at=now,
         book_title=title,

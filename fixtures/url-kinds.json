@@ -1,0 +1,18 @@
+{
+  "_doc": "What a pasted URL is, read the same by the backend (app/sources/discovery.detect_kind) and the frontend (lib/kinds.ts kindOfUrl). Both test suites read this file.",
+  "cases": [
+    ["https://www.youtube.com/watch?v=abc123XYZ", "youtube_video"],
+    ["https://www.youtube.com/watch?v=abc123XYZ&list=PL1", "youtube_video"],
+    ["https://youtu.be/abc123XYZ?t=30", "youtube_video"],
+    ["https://www.youtube.com/shorts/abc123XYZ", "youtube_video"],
+    ["https://youtube.com/live/abc123XYZ?si=x", "youtube_video"],
+    ["https://www.youtube.com/embed/abc123XYZ", "youtube_video"],
+    ["https://www.youtube.com/playlist?list=PLabc", "youtube_playlist"],
+    ["https://www.youtube.com/@veritasium", "youtube_channel"],
+    ["https://www.youtube.com/channel/UCabc", "youtube_channel"],
+    ["https://cdn.example/show/ep1.mp3", "podcast"],
+    ["https://cdn.example/show/ep1.m4a?token=x", "podcast"],
+    ["https://blog.example.com/posts/hello", "blog"],
+    ["https://en.wikipedia.org/wiki/Stoicism", "blog"]
+  ]
+}
