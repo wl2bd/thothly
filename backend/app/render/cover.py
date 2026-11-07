@@ -7,9 +7,11 @@ channel avatar) can be slotted in — circular, the way an avatar reads.
 """
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,54 @@ _CREAM = _oklch_to_rgb(0.972, 0.013, 84)
 _INK = _oklch_to_rgb(0.245, 0.014, 56)
 _OCHRE = _oklch_to_rgb(0.555, 0.13, 52)
 _MUTED = _oklch_to_rgb(0.52, 0.022, 62)
+_GOLD = _oklch_to_rgb(0.78, 0.15, 75)
+
+Tint = Literal["cream", "stone", "ink", "gold"]
+EmblemChoice = Literal["source", "thothly", "none"]
+
+
+@dataclass(frozen=True)
+class Palette:
+    ground: tuple[int, int, int]
+    title: tuple[int, int, int]
+    # Subtitle and authors: the quiet voice under the title.
+    quiet: tuple[int, int, int]
+    # The wordmark at the foot.
+    mark: tuple[int, int, int]
+
+
+# The grounds a visitor can pick. Each keeps the brand's two voices, a stark
+# neutral or the desert gold, with ink or cream type at full contrast on it.
+PALETTES: dict[str, Palette] = {
+    "cream": Palette(_CREAM, _INK, _MUTED, _OCHRE),
+    "stone": Palette(
+        _oklch_to_rgb(0.9, 0.016, 80), _INK, _oklch_to_rgb(0.45, 0.022, 62), _OCHRE
+    ),
+    "ink": Palette(
+        _oklch_to_rgb(0.2, 0.01, 60),
+        _oklch_to_rgb(0.95, 0.012, 84),
+        _oklch_to_rgb(0.74, 0.02, 70),
+        _GOLD,
+    ),
+    "gold": Palette(_GOLD, _INK, _oklch_to_rgb(0.34, 0.05, 60), _INK),
+}
+# Over a visitor's own image: light type on the darkened photo.
+_ON_IMAGE = Palette(
+    _INK, _oklch_to_rgb(0.97, 0.01, 84), _oklch_to_rgb(0.88, 0.012, 80), _GOLD
+)
+# How much the photo is darkened under the type, 0-255.
+_SCRIM_ALPHA = 140
+
+
+@dataclass(frozen=True)
+class CoverDesign:
+    """What a visitor chose for the cover. The defaults are the house cover."""
+
+    tint: Tint = "cream"
+    emblem: EmblemChoice = "source"
+    subtitle: str | None = None
+    # Their own image, laid as the ground under the type. Wins over the tint.
+    background: Path | None = None
 
 
 def _font(
@@ -118,6 +168,18 @@ def _circle_crop(img: Image.Image, size: int) -> Image.Image:
     return out
 
 
+def _draw_ring(
+    image: Image.Image, at: tuple[int, int], size: int, color: tuple[int, int, int]
+) -> None:
+    """An antialiased circle outline just outside a `size` disc placed at `at`."""
+    pad, width, scale = 6, 3, 4
+    side = (size + 2 * pad) * scale
+    mask = Image.new("L", (side, side), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, side - 1, side - 1), outline=110, width=width * scale)
+    mask = mask.resize((size + 2 * pad,) * 2, Image.LANCZOS)
+    image.paste(Image.new("RGB", mask.size, color), (at[0] - pad, at[1] - pad), mask)
+
+
 def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, width: int) -> list[str]:
     lines: list[str] = []
     current = ""
@@ -160,6 +222,26 @@ def _balanced_wrap(
     return best
 
 
+def _clamp(
+    draw: ImageDraw.ImageDraw,
+    lines: list[str],
+    font: ImageFont.FreeTypeFont,
+    width: int,
+    max_lines: int,
+) -> list[str]:
+    """Keep at most `max_lines`, the last one ending in an ellipsis when cut."""
+    if len(lines) <= max_lines:
+        return lines
+    kept = lines[:max_lines]
+    last = " ".join(lines[max_lines - 1 :])
+    while last and draw.textlength(last + "…", font=font) > width:
+        last = last[:-1]
+    if " " in last:  # end on a whole word
+        last = last[: last.rfind(" ")]
+    kept[-1] = last.rstrip(" ,·") + "…"
+    return kept
+
+
 def _strip_unrenderable(text: str, font: ImageFont.FreeTypeFont) -> str:
     """Drop characters the cover font (a Latin typeface) has no glyph for.
 
@@ -187,7 +269,9 @@ def _strip_unrenderable(text: str, font: ImageFont.FreeTypeFont) -> str:
     return " ".join("".join(kept).split())
 
 
-def _draw_wordmark(image: Image.Image, draw: ImageDraw.ImageDraw) -> None:
+def _draw_wordmark(
+    image: Image.Image, draw: ImageDraw.ImageDraw, color: tuple[int, int, int] = _OCHRE
+) -> None:
     """Stamp the brand wordmark at the foot, recoloured to the gold accent.
 
     `wordmark.png` is an alpha silhouette of the "thothly" lettering; we tint
@@ -202,14 +286,30 @@ def _draw_wordmark(image: Image.Image, draw: ImageDraw.ImageDraw) -> None:
         w = _WORDMARK_WIDTH
         h = round(wm.height * w / wm.width)
         wm = wm.resize((w, h), Image.LANCZOS)
-        tint = Image.new("RGBA", wm.size, (*_OCHRE, 255))
+        tint = Image.new("RGBA", wm.size, (*color, 255))
         tint.putalpha(wm.getchannel("A"))
         image.paste(tint, ((_W - w) // 2, y_bottom - h), tint)
         return
     logger.warning("Wordmark not found at %s; using text colophon", _WORDMARK_PATH)
     font = _font(44, weight=500)
     cw = draw.textlength("thothly", font=font)
-    draw.text(((_W - cw) // 2, y_bottom - 60), "thothly", font=font, fill=_OCHRE)
+    draw.text(((_W - cw) // 2, y_bottom - 60), "thothly", font=font, fill=color)
+
+
+def fit_to_cover(img: Image.Image) -> Image.Image:
+    """Crop and scale any image to the cover's portrait frame, centred, the
+    way CSS `object-fit: cover` does. A phone photo is turned upright first."""
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    return ImageOps.fit(img, (_W, _H), Image.LANCZOS)
+
+
+def _ground(design: CoverDesign) -> tuple[Image.Image, Palette]:
+    if design.background is not None and design.background.exists():
+        photo = fit_to_cover(Image.open(design.background))
+        scrim = Image.new("RGB", photo.size, (0, 0, 0))
+        return Image.blend(photo, scrim, _SCRIM_ALPHA / 255), _ON_IMAGE
+    palette = PALETTES.get(design.tint, PALETTES["cream"])
+    return Image.new("RGB", (_W, _H), palette.ground), palette
 
 
 def generate_cover(
@@ -217,9 +317,14 @@ def generate_cover(
     authors: list[str],
     output_path: Path,
     emblem_path: Path | None = None,
+    design: CoverDesign | None = None,
 ) -> Path:
-    """Render the cover PNG to *output_path* and return it."""
-    image = Image.new("RGB", (_W, _H), _CREAM)
+    """Render the cover PNG to *output_path* and return it.
+
+    *emblem_path* is the source's own mark; None falls back to the Thothly
+    emblem, unless the design asks for no emblem at all."""
+    design = design or CoverDesign()
+    image, palette = _ground(design)
     draw = ImageDraw.Draw(image)
     text_width = _W - 2 * _MARGIN
 
@@ -230,13 +335,21 @@ def generate_cover(
     title = _strip_unrenderable(title, _font(100, font_path=_TITLE_FONT))
     text_probe = _font(100, font_path=_TEXT_FONT)
     authors = [a for a in (_strip_unrenderable(a, text_probe) for a in authors) if a]
+    subtitle = _strip_unrenderable(design.subtitle or "", text_probe)
 
     # Emblem — a modest CIRCULAR mark, centred near the top (an avatar reads as
     # an avatar). No rule beneath it: the title below carries the structure.
     emblem_file = emblem_path or _EMBLEM_PATH
-    if emblem_file.exists():
+    if design.emblem == "none":
+        pass
+    elif emblem_file.exists():
         emblem = _circle_crop(Image.open(emblem_file).convert("RGBA"), _EMBLEM_SIZE)
-        image.paste(emblem, ((_W - emblem.width) // 2, 470), emblem)
+        x, y = (_W - emblem.width) // 2, 470
+        if sum(palette.ground) < 3 * 110:
+            # A dark ground swallows a dark mark (the Thothly emblem is one):
+            # a hairline in the quiet tone keeps its edge.
+            _draw_ring(image, (x, y), _EMBLEM_SIZE, palette.quiet)
+        image.paste(emblem, (x, y), emblem)
     else:
         logger.warning("Cover emblem not found at %s; skipping", emblem_file)
 
@@ -251,10 +364,26 @@ def generate_cover(
     lines = _balanced_wrap(draw, title, title_font, text_width)
     line_height = round(size * 1.16)
 
+    # Subtitle — the sans, a step up from the authors, right under the title.
+    subtitle_font = _font(64, weight=450)
+    subtitle_lines = (
+        _clamp(draw, _balanced_wrap(draw, subtitle, subtitle_font, text_width), subtitle_font, text_width, 2)
+        if subtitle
+        else []
+    )
+    _SUBTITLE_GAP = 52     # title → subtitle
+    _SUBTITLE_LINE_H = 88
+
     # Authors — lighter, muted, sit just below the title.
     author_font = _font(56, weight=420)
     author_lines = (
-        _balanced_wrap(draw, "  ·  ".join(authors), author_font, text_width)
+        _clamp(
+            draw,
+            _balanced_wrap(draw, "  ·  ".join(authors), author_font, text_width),
+            author_font,
+            text_width,
+            2,
+        )
         if authors
         else []
     )
@@ -264,26 +393,40 @@ def generate_cover(
     # Centre the whole title+authors block vertically (the emblem stays up top,
     # the colophon at the foot), so a one-line and a four-line title both sit
     # balanced instead of anchored to a fixed Y that left a short title floating.
-    block_h = len(lines) * line_height + (
-        _AUTHOR_GAP + len(author_lines) * _AUTHOR_LINE_H if author_lines else 0
+    block_h = (
+        len(lines) * line_height
+        + (_SUBTITLE_GAP + len(subtitle_lines) * _SUBTITLE_LINE_H if subtitle_lines else 0)
+        + (_AUTHOR_GAP + len(author_lines) * _AUTHOR_LINE_H if author_lines else 0)
     )
     y = round(_H * 0.5 - block_h / 2)
+    # A long block never climbs onto the emblem: it starts below it instead
+    # and runs toward the wordmark, which the line caps above keep it clear of.
+    y = max(y, 470 + _EMBLEM_SIZE + 90)
 
     for line in lines:
         lw = draw.textlength(line, font=title_font)
-        draw.text(((_W - lw) / 2, y), line, font=title_font, fill=_INK)
+        draw.text(((_W - lw) / 2, y), line, font=title_font, fill=palette.title)
         y += line_height
+
+    if subtitle_lines:
+        y += _SUBTITLE_GAP
+        for line in subtitle_lines:
+            lw = draw.textlength(line, font=subtitle_font)
+            draw.text(((_W - lw) / 2, y), line, font=subtitle_font, fill=palette.quiet)
+            y += _SUBTITLE_LINE_H
 
     if author_lines:
         y += _AUTHOR_GAP
         for line in author_lines:
             lw = draw.textlength(line, font=author_font)
-            draw.text(((_W - lw) / 2, y), line, font=author_font, fill=_MUTED)
+            draw.text(((_W - lw) / 2, y), line, font=author_font, fill=palette.quiet)
             y += _AUTHOR_LINE_H
 
     # Wordmark at the foot, in place of a plain "thothly" in text.
-    _draw_wordmark(image, draw)
+    _draw_wordmark(image, draw, palette.mark)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(output_path, format="PNG")
+    # A photo cover as PNG weighs ~5 MB; as JPEG under 1 MB. Flat grounds stay PNG.
+    jpeg = output_path.suffix.lower() in (".jpg", ".jpeg")
+    image.save(output_path, format="JPEG" if jpeg else "PNG", **({"quality": 88} if jpeg else {}))
     return output_path

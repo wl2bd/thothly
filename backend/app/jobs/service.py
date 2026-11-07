@@ -71,6 +71,7 @@ def confirm(job_id: str, choice: JobConfirm) -> list[DiscoveredItemResponse]:
     else:
         model = None
     repository.set_job_llm_model(job_id, model)
+    repository.set_job_cover(job_id, choice.cover)
 
     title = choice.book_title.strip() if choice.book_title else None
     # A blank title keeps the default discovery derived.

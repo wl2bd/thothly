@@ -57,6 +57,31 @@ class ItemLanguage(BaseModel):
     language: Annotated[str, Field(min_length=2, max_length=16)]
 
 
+COVER_SUBTITLE_MAX = 120
+COVER_AUTHORS_MAX = 200
+
+
+class CoverSettings(BaseModel):
+    """The cover as the visitor set it at review. The image they may upload
+    lives apart (POST /jobs/{id}/cover/image) and, when there, wins over `tint`."""
+
+    subtitle: Annotated[str | None, Field(max_length=COVER_SUBTITLE_MAX)] = None
+    # A comma-separated line of names. Blank = the authors read off the sources.
+    authors: Annotated[str | None, Field(max_length=COVER_AUTHORS_MAX)] = None
+    emblem: Literal["source", "thothly", "none"] = "source"
+    tint: Literal["cream", "stone", "ink", "gold"] = "cream"
+
+
+class CoverPreview(BaseModel):
+    """What the review screen renders a cover thumbnail from, as it stands."""
+
+    title: Annotated[str, Field(max_length=BOOK_TITLE_MAX)]
+    cover: CoverSettings = CoverSettings()
+    # The items currently picked: the source emblem and default authors come
+    # from them. Empty = every item of the job.
+    selected_ids: list[str] = []
+
+
 class JobConfirm(BaseModel):
     selected_ids: Annotated[list[str], Field(min_length=1)]
     book_title: Annotated[str | None, Field(max_length=BOOK_TITLE_MAX)] = None
@@ -65,6 +90,8 @@ class JobConfirm(BaseModel):
     # The visitor's own model and transcription endpoints. Absent = the server's.
     llm: VisitorEndpoint | None = None
     stt: VisitorEndpoint | None = None
+    # Absent = the house cover.
+    cover: CoverSettings | None = None
 
 
 class DiscoveredItemResponse(DiscoveredItem):
@@ -110,5 +137,7 @@ class JobResponse(BaseModel):
     title_named: bool = False
     # The finished EPUB's size, once the job has completed.
     epub_bytes: int | None = None
+    # The visitor uploaded their own cover image.
+    cover_image: bool = False
     error: str | None = None
     discovered_items: list[DiscoveredItemResponse] = []

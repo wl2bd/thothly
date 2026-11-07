@@ -1,11 +1,20 @@
 import re
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
 from app.core.posthog import capture
 from app.jobs import repository, service
+from app.jobs.cover import render_preview
+from app.jobs.cover_image import (
+    MAX_UPLOAD_BYTES,
+    InvalidCoverImage,
+    remove_cover_image,
+    save_cover_image,
+)
 from app.jobs.models import (
+    CoverPreview,
     DiscoveredItemResponse,
     ItemLanguage,
     ItemPreview,
@@ -125,6 +134,76 @@ def choose_item_language(job_id: str, item_id: str, payload: ItemLanguage) -> Di
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="YouTube didn't answer. Try again in a moment.",
         ) from None
+
+
+def _reviewing_job(job_id: str) -> JobResponse:
+    job = repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
+    if job.status != "reviewing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This compilation isn't awaiting review anymore.",
+        )
+    return job
+
+
+@router.post(
+    "/{job_id}/cover/image",
+    response_model=JobResponse,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {t: {"schema": {"type": "string", "format": "binary"}} for t in
+                        ("image/jpeg", "image/png", "image/webp")},
+        }
+    },
+)
+async def upload_cover_image(job_id: str, request: Request) -> JobResponse:
+    """The visitor's own cover image, sent as the raw request body. It becomes
+    the cover's ground, with the title laid over it."""
+    _reviewing_job(job_id)
+    too_large = HTTPException(
+        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+        detail="That image is too large. Pick one under 8 MB.",
+    )
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
+        raise too_large
+    # Read with a running cap: the header can lie, or be absent.
+    data = bytearray()
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise too_large
+    # The compile may have started while the body arrived.
+    _reviewing_job(job_id)
+    try:
+        await run_in_threadpool(save_cover_image, job_id, bytes(data))
+    except InvalidCoverImage as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from None
+    return repository.get_job(job_id)
+
+
+@router.delete("/{job_id}/cover/image", response_model=JobResponse)
+def delete_cover_image(job_id: str) -> JobResponse:
+    _reviewing_job(job_id)
+    remove_cover_image(job_id)
+    return repository.get_job(job_id)
+
+
+@router.post(
+    "/{job_id}/cover/preview",
+    response_class=Response,
+    responses={200: {"content": {"image/jpeg": {}}}},
+)
+def preview_cover(job_id: str, payload: CoverPreview) -> Response:
+    """The cover as it would be drawn now, for the review screen's thumbnail."""
+    job = _reviewing_job(job_id)
+    picked = set(payload.selected_ids)
+    items = [i for i in job.discovered_items if not picked or i.id in picked]
+    image = render_preview(job_id, payload.title, payload.cover, items)
+    return Response(content=image, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/{job_id}/download")

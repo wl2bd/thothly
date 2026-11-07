@@ -99,6 +99,8 @@ _JOB_ADDED_COLUMNS = (
     # 1 once the visitor asked to stop: the runner checks it before each item and
     # before each AI call.
     ("stop_requested", "INTEGER"),
+    # JSON CoverSettings chosen at review; NULL = the house cover.
+    ("cover", "TEXT"),
 )
 
 def _merge_legacy_job_items(conn: sqlite3.Connection) -> None:

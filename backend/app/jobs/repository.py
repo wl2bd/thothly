@@ -3,8 +3,10 @@ import uuid
 from datetime import datetime, timezone
 
 from app.core.database import get_connection
+from app.jobs.cover_image import cover_image_path
 from app.jobs.models import (
     CompileState,
+    CoverSettings,
     DiscoveredItemResponse,
     JobCreate,
     JobResponse,
@@ -51,6 +53,7 @@ def get_job(job_id: str) -> JobResponse | None:
         return None
 
     response = _row_to_response(row)
+    response.cover_image = cover_image_path(job_id).exists()
     if response.status == "reviewing":
         response.discovered_items = _get_discovered_items(job_id)
     elif response.status in ("processing", "completed", "failed"):
@@ -192,6 +195,23 @@ def get_job_llm_model(job_id: str) -> str | None:
             "SELECT llm_model FROM jobs WHERE id = ?", (job_id,)
         ).fetchone()
     return row["llm_model"] if row else None
+
+
+def set_job_cover(job_id: str, cover: CoverSettings | None) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE jobs SET cover = ? WHERE id = ?",
+            (cover.model_dump_json() if cover else None, job_id),
+        )
+        conn.commit()
+
+
+def get_job_cover(job_id: str) -> CoverSettings:
+    with get_connection() as conn:
+        row = conn.execute("SELECT cover FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if row is None or not row["cover"]:
+        return CoverSettings()
+    return CoverSettings.model_validate_json(row["cover"])
 
 
 def get_job_llm_roles(job_id: str) -> list[str]:

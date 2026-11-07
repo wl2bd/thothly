@@ -43,6 +43,22 @@ class CompiledBook(BaseModel):
     language: str = FALLBACK
     # Images for the cover emblem, best first; none = the bundled emblem.
     emblem_urls: list[str] = []
+    # Set at review: a subtitle (cover + title page), and the authors to credit
+    # in place of the ones read off the sources. None = read off the sources.
+    subtitle: str | None = None
+    authors: list[str] | None = None
+
+    @property
+    def credited_authors(self) -> list[str]:
+        """Who the book names: the visitor's line, else each source's author,
+        unique and in order."""
+        if self.authors is not None:
+            return self.authors
+        seen: dict[str, None] = {}
+        for chapter in self.chapters:
+            if chapter.author and chapter.author.strip():
+                seen.setdefault(chapter.author.strip(), None)
+        return list(seen)
 
     def to_markdown(self) -> str:
         # No book-level heading: Pandoc already builds a title page from the

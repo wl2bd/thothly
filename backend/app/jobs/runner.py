@@ -6,11 +6,13 @@ from dataclasses import dataclass
 from app.core.posthog import capture
 from app.jobs import credentials
 from app.jobs.chapters import YOUTUBE_BUSY, ItemSkipped, draft, polish
+from app.jobs.cover import apply_to_book, design_for
 from app.jobs.emblem import emblem_urls
 from app.jobs.models import DiscoveredItemResponse
 from app.jobs.outputs import output_file
 from app.jobs.repository import (
     get_job,
+    get_job_cover,
     get_job_llm_roles,
     get_selected_items,
     set_item_compile_state,
@@ -23,6 +25,7 @@ from app.pipeline.llm import llm_endpoint
 from app.pipeline.models import CompiledBook, CompiledChapter
 from app.pipeline.providers import Endpoint
 from app.pipeline.roles import PREFACE
+from app.render.cover import CoverDesign
 from app.render.epub import render_epub
 from app.sources.youtube import YouTubeUnavailable
 
@@ -101,8 +104,12 @@ def run_compilation(job_id: str) -> None:
             book.preface = generate_preface(
                 book.title, [c.title for c in book.chapters], llm, book.language
             )
-        book.emblem_urls = emblem_urls(book)
-        _render(book, job_id)
+        cover = get_job_cover(job_id)
+        apply_to_book(book, cover)
+        design = design_for(job_id, cover)
+        if design.emblem == "source":
+            book.emblem_urls = emblem_urls(book)
+        _render(book, job_id, design)
         update_job_status(job_id, "completed", book_title=book.title)
         logger.info("Compilation done for job %s: %d chapters", job_id, len(book.chapters))
         capture("compilation_completed", {**stats, "duration_s": round(time.monotonic() - started)}, job_id)
@@ -176,9 +183,9 @@ def _build(
     return _Built("done", None, chapter)
 
 
-def _render(book: CompiledBook, job_id: str) -> None:
+def _render(book: CompiledBook, job_id: str, design: CoverDesign) -> None:
     epub = output_file(job_id, "epub")
-    render_epub(book, epub)
+    render_epub(book, epub, design)
     # The same content as plain Markdown, without Pandoc or image localization,
     # so remote image URLs stay referenceable for an AI or a text tool.
     output_file(job_id, "md").write_text(book.to_markdown(), encoding="utf-8")

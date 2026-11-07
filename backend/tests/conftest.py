@@ -54,7 +54,7 @@ def fake_pandoc():
     """Pandoc writes a stand-in EPUB; the mock keeps the book it was handed."""
     from unittest.mock import patch
 
-    def render(book, path):
+    def render(book, path, design=None):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("epub")
 

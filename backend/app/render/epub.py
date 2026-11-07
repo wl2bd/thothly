@@ -5,12 +5,13 @@ import shutil
 import subprocess
 import tempfile
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 
 from app.core.config import settings
 from app.pipeline.i18n import chrome
 from app.pipeline.models import CompiledBook
-from app.render.cover import generate_cover
+from app.render.cover import CoverDesign, generate_cover
 from app.render.images import fetch_remote_icon, localize_images
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,9 @@ class RenderError(Exception):
     pass
 
 
-def render_epub(book: CompiledBook, output_path: Path) -> Path:
+def render_epub(
+    book: CompiledBook, output_path: Path, design: CoverDesign | None = None
+) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Remote images are downloaded and embedded so the EPUB is self-contained;
@@ -31,7 +34,7 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
     media_dir = Path(tempfile.mkdtemp(prefix="thothly-media-"))
     markdown = localize_images(book.to_markdown(), media_dir, settings.scrape_timeout_s)
 
-    cover_path = _make_cover(book, media_dir)
+    cover_path = make_cover(book, media_dir / "cover.png", design or CoverDesign())
     markdown_path = _write_temp(markdown, suffix=".md")
     metadata_path = _write_temp(_metadata_yaml(book), suffix=".yaml")
     try:
@@ -55,25 +58,23 @@ def render_epub(book: CompiledBook, output_path: Path) -> Path:
         shutil.rmtree(media_dir, ignore_errors=True)
 
 
-def _chapter_authors(book: CompiledBook) -> list[str]:
-    """Unique source authors, order preserved (empty list if none carry one)."""
-    seen: dict[str, None] = {}
-    for chapter in book.chapters:
-        if chapter.author and chapter.author.strip():
-            seen.setdefault(chapter.author.strip(), None)
-    return list(seen)
+def make_cover(book: CompiledBook, output_path: Path, design: CoverDesign) -> Path | None:
+    """Render the editorial cover; None (no cover) if generation fails.
 
-
-def _make_cover(book: CompiledBook, media_dir: Path) -> Path | None:
-    """Render the editorial cover; None (no cover) if generation fails."""
+    The source's emblem is fetched only when the design shows it."""
     try:
-        dest = media_dir / "emblem_source.png"
-        emblem = next(
-            (path for url in book.emblem_urls if (path := fetch_remote_icon(url, dest))), None
-        )
-        return generate_cover(
-            book.title, _chapter_authors(book), media_dir / "cover.png", emblem
-        )
+        if design.subtitle is None and book.subtitle:
+            design = replace(design, subtitle=book.subtitle)
+        if design.background is not None:
+            output_path = output_path.with_suffix(".jpg")
+        emblem = None
+        if design.emblem == "source":
+            dest = output_path.with_name("emblem_source.png")
+            emblem = next(
+                (path for url in book.emblem_urls if (path := fetch_remote_icon(url, dest))),
+                None,
+            )
+        return generate_cover(book.title, book.credited_authors, output_path, emblem, design)
     except Exception as exc:  # never let a cover problem block the EPUB
         logger.warning("Cover generation failed; rendering without a cover: %s", exc)
         return None
@@ -82,7 +83,7 @@ def _make_cover(book: CompiledBook, media_dir: Path) -> Path | None:
 def _metadata_yaml(book: CompiledBook) -> str:
     # dc:creator should name the people who wrote the sources, not the tool.
     # Fall back to "Thothly" only when no source carries an author.
-    authors = _chapter_authors(book) or ["Thothly"]
+    authors = book.credited_authors or ["Thothly"]
 
     # json.dumps gives a double-quoted scalar whose escapes (\", \\, \n, control
     # chars) YAML also accepts — but ONLY with ensure_ascii=False. The default
@@ -94,7 +95,10 @@ def _metadata_yaml(book: CompiledBook) -> str:
     def q(value: str) -> str:
         return json.dumps(value, ensure_ascii=False)
 
-    lines = [f"title: {q(book.title)}", "author:"]
+    lines = [f"title: {q(book.title)}"]
+    if book.subtitle:
+        lines.append(f"subtitle: {q(book.subtitle)}")
+    lines.append("author:")
     lines += [f"  - {q(name)}" for name in authors]
     lines += [
         f"lang: {q(book.language)}",
