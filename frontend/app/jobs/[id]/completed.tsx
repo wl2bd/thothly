@@ -136,7 +136,7 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
         // are named once, in the line under them.
         footer={
           <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <BookActions
                 epubUrl={getDownloadUrl(jobId)}
                 mdUrl={getDownloadUrl(jobId, "md")}

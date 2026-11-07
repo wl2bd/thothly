@@ -76,7 +76,7 @@ export default function ExamplePage() {
           meta={`3 Wikipedia articles${words != null ? ` · ~${words.toLocaleString("en-US")} words` : ""}`}
           footer={
             <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <BookActions
                   epubUrl={epubUrl}
                   mdUrl={mdUrl}
