@@ -41,15 +41,20 @@ def llm_available(endpoint: Endpoint | None = None) -> bool:
     return llm_endpoint(endpoint) is not None
 
 
-def extra_body(endpoint: Endpoint) -> dict:
+def extra_body(endpoint: Endpoint, *, server_key: bool = False) -> dict:
     """Request fields only OpenRouter understands. Every call here is a faithful
     transform or a closed question, where a reasoning pass only costs time and
     tokens: measured on DeepSeek V4.1 Flash, it spent a cleanup chunk's whole
     output budget thinking and returned an empty text. Another provider would
     reject the unknown field, so it is sent to OpenRouter alone."""
-    if urlsplit(endpoint.base_url).hostname == "openrouter.ai":
-        return {"reasoning": {"enabled": False}}
-    return {}
+    if urlsplit(endpoint.base_url).hostname != "openrouter.ai":
+        return {}
+    body: dict = {"reasoning": {"enabled": False}}
+    # OpenRouter's model fallback: it moves down this list when a model errors
+    # or is rate-limited, inside the same request.
+    if server_key and settings.llm_fallback_models:
+        body["models"] = [endpoint.model, *settings.llm_fallback_models]
+    return body
 
 
 def call_cost(response) -> float | None:
@@ -96,7 +101,7 @@ def complete(
             ],
             temperature=0,
             max_tokens=max_tokens,
-            extra_body=extra_body(ep),
+            extra_body=extra_body(ep, server_key=endpoint is None),
         )
         cost = call_cost(response)
         # The operator's own key only: a visitor's spend is on their invoice.

@@ -80,6 +80,11 @@ class Settings(BaseSettings):
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+    # OpenRouter only, server key only: models tried in order when `llm_model`
+    # fails or is rate-limited (a JSON list in the env). Lets the default be
+    # a free `:free` model with a paid one behind it, so a busy free tier never
+    # leaves a transcript rough. A visitor's own key never gets this list.
+    llm_fallback_models: list[str] = []
     llm_timeout_s: int = 60
     llm_chunk_words: int = 1200  # words per LLM call — small enough to verify & not truncate
     llm_max_concurrency: int = 4  # chunks cleaned in parallel (big win on hosted APIs)

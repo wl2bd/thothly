@@ -83,6 +83,20 @@ def test_reasoning_is_switched_off_on_openrouter_only() -> None:
     assert extra_body(Endpoint("http://localhost:11434/v1", "m")) == {}
 
 
+def test_fallback_models_go_with_the_server_key_only(monkeypatch) -> None:
+    from app.core.config import settings
+    from app.pipeline.llm import extra_body
+    from app.pipeline.providers import Endpoint
+
+    monkeypatch.setattr(settings, "llm_fallback_models", ["paid/model"])
+    ep = Endpoint("https://openrouter.ai/api/v1", "free/model:free")
+    assert extra_body(ep, server_key=True)["models"] == ["free/model:free", "paid/model"]
+    # A visitor's key: their own model, never the operator's paid fallback.
+    assert "models" not in extra_body(ep)
+    # Another provider would reject the field.
+    assert extra_body(Endpoint("https://api.mistral.ai/v1", "m"), server_key=True) == {}
+
+
 def test_cost_is_recorded_for_the_server_key_only(monkeypatch) -> None:
     from unittest.mock import MagicMock
 
