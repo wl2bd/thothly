@@ -316,6 +316,38 @@ def test_a_figure_keeps_its_caption_set_apart(mock_fetch):
     assert "\n\nA sundial.\n\n" not in md
 
 
+@patch("app.sources.blog.fetch_page")
+def test_the_site_header_stays_out_of_the_article(mock_fetch):
+    # A magazine with no <article>: favor_recall took its header's drop-down
+    # menu (a promo for another issue, the tagline) as the article's opening.
+    filler = "<p>" + "A sentence that makes this page an article. " * 40 + "</p>"
+    mock_fetch.return_value = (
+        "<html><body>"
+        '<header class="fixed-top"><div class="collapse"><small>Current issue</small>'
+        '<a href="/issues/385"><img src="/issue.jpg" alt="Issue"><h1>Another issue</h1></a>'
+        "<p>A bimonthly magazine, demanding and accessible.</p></div></header>"
+        f'<div class="row"><h1>The real title</h1><p>Opening.</p>{filler}</div>'
+        "<footer><p>All rights reserved, the magazine.</p></footer>"
+        "</body></html>"
+    )
+    md = html_to_markdown(scrape_article("https://x.test/a").content_html)
+    assert "Opening." in md
+    assert "Current issue" not in md
+    assert "Another issue" not in md
+    assert "bimonthly" not in md
+
+
+@patch("app.sources.blog.fetch_page")
+def test_an_articles_own_header_is_kept(mock_fetch):
+    filler = "<p>" + "A sentence that makes this page an article. " * 40 + "</p>"
+    mock_fetch.return_value = (
+        "<html><body><article><header><h1>T</h1><p>The standfirst of the piece.</p></header>"
+        f"{filler}</article></body></html>"
+    )
+    md = html_to_markdown(scrape_article("https://x.test/a").content_html)
+    assert "The standfirst of the piece." in md
+
+
 def test_fetch_page_gives_up_when_the_download_hangs():
     # A host that never finishes answering used to strand discovery forever:
     # the timeout fired, but leaving the thread pool waited for the hung

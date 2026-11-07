@@ -100,7 +100,7 @@ def scrape_article(url: str) -> Article:
     if _is_paywalled(downloaded):
         raise Paywalled(url)
 
-    downloaded = _captions_to_titles(_unwrap_image_links(downloaded))
+    downloaded = _captions_to_titles(_unwrap_image_links(_drop_site_chrome(downloaded)))
 
     # include_formatting/include_links keep bold, italics and hyperlinks (both
     # default to False, which would flatten the article to plain text). Tables
@@ -159,6 +159,31 @@ def _html_language(html: str) -> str | None:
     """The primary language a page declares on its <html> element."""
     match = _HTML_LANG.search(html[:5000])
     return normalize_language(match.group(1)) if match else None
+
+
+_CHROME = re.compile(r"<(header|nav|footer)\b", re.IGNORECASE)
+
+
+def _drop_site_chrome(html: str) -> str:
+    """Remove the site's own header, menus and footer before extraction.
+
+    favor_recall keeps text trafilatura would otherwise prune, and on a page
+    with no <article> that includes the site header: a magazine's drop-down
+    menu (a promo for its current issue, its tagline) became the article's
+    opening. Only page-level ones go: an <article>'s or <main>'s own header
+    holds its title and standfirst.
+    """
+    if not _CHROME.search(html):
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    chrome = [
+        el for el in soup.find_all(["header", "nav", "footer"])
+        if not el.find_parent(["article", "main"]) and not el.find(["article", "main"])
+    ]
+    for el in chrome:
+        if not el.decomposed:
+            el.decompose()
+    return str(soup) if chrome else html
 
 
 def _unwrap_image_links(html: str) -> str:
