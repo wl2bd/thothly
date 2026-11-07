@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.pipeline.compiler import html_to_markdown
+from app.pipeline.html_md import html_to_markdown
 from app.sources.models import Article
 from app.sources.blog import (
     FeedUnavailable,

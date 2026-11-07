@@ -3,13 +3,9 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.pipeline.compiler import (
-    compile_book,
-    demote_headings,
-    html_to_markdown,
-    strip_leading_title,
-    transcript_to_markdown,
-)
+from app.pipeline.compiler import compile_book
+from app.pipeline.html_md import demote_headings, html_to_markdown, strip_leading_title
+from app.pipeline.transcript_md import transcript_to_markdown
 from app.pipeline.models import CompiledChapter
 from app.render.epub import render_epub
 from app.sources.models import Chapter, Transcript, TranscriptSegment

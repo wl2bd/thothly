@@ -1,18 +1,10 @@
 import pytest
 
-from app.pipeline.compiler import (
-    CompilationError,
-    compile_book,
-    demote_headings,
-    derive_book_title,
-    html_to_markdown,
-    is_punctuated,
-    segments_to_markdown,
-    strip_leading_title,
-    transcript_to_markdown,
-)
+from app.pipeline.compiler import CompilationError, compile_book, derive_book_title
+from app.pipeline.html_md import demote_headings, html_to_markdown, strip_leading_title
 from app.pipeline.models import CompiledChapter
-from app.sources.models import Chapter, Transcript, TranscriptSegment
+from app.pipeline.transcript_md import segments_to_markdown, transcript_to_markdown
+from app.sources.models import Chapter, Transcript, TranscriptSegment, is_punctuated
 
 
 def _seg(text: str, start: float) -> TranscriptSegment:

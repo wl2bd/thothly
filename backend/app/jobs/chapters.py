@@ -12,12 +12,8 @@ from dataclasses import dataclass
 
 from app.core.config import settings
 from app.pipeline.cleanup import StopCheck, clean_markdown, clean_transcript, map_speaker_names
-from app.pipeline.compiler import (
-    demote_headings,
-    html_to_markdown,
-    strip_leading_title,
-    transcript_to_markdown,
-)
+from app.pipeline.html_md import demote_headings, html_to_markdown, strip_leading_title
+from app.pipeline.transcript_md import transcript_to_markdown
 from app.pipeline.i18n import chrome, detect_language, normalize_language
 from app.pipeline.models import CompiledChapter
 from app.pipeline.providers import Endpoint

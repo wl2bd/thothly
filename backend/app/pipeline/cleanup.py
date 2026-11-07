@@ -16,7 +16,7 @@ from difflib import SequenceMatcher
 
 from app.core.config import settings
 from app.core.database import get_connection
-from app.pipeline.compiler import chapter_buckets, segments_to_markdown
+from app.pipeline.transcript_md import chapter_buckets, segments_to_markdown
 from app.pipeline.models import escape_tags
 from app.pipeline.llm import LLMError, complete, llm_available, llm_endpoint
 from app.pipeline.providers import Endpoint
