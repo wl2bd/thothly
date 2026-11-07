@@ -18,7 +18,7 @@ from app.jobs.repository import (
     update_job_status,
 )
 from app.pipeline.cleanup import CompileStopped, generate_preface
-from app.pipeline.compiler import CompilationError, compile_book
+from app.pipeline.compiler import DEFAULT_BOOK_TITLE, CompilationError, compile_book
 from app.pipeline.llm import llm_endpoint
 from app.pipeline.models import CompiledBook, CompiledChapter
 from app.pipeline.providers import Endpoint
@@ -96,7 +96,7 @@ def run_compilation(job_id: str) -> None:
             raise CompilationError(NOTHING_BUILT)
 
         job = get_job(job_id)
-        book = compile_book(chapters, (job.book_title if job else None) or "Thothly compilation")
+        book = compile_book(chapters, (job.book_title if job else None) or DEFAULT_BOOK_TITLE)
         if PREFACE in roles:
             book.preface = generate_preface(
                 book.title, [c.title for c in book.chapters], llm, book.language

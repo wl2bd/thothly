@@ -6,6 +6,10 @@ from app.pipeline.i18n import dominant_language
 from app.pipeline.models import CompiledBook, CompiledChapter
 
 
+# The title of a book whose sources gave no name.
+DEFAULT_BOOK_TITLE = "Thothly compilation"
+
+
 class CompilationError(Exception):
     pass
 
@@ -20,7 +24,7 @@ def derive_book_title(source_names: list[str | None]) -> str:
     """
     names = [n.strip() for n in source_names if n and n.strip()]
     if not names:
-        return "Thothly compilation"
+        return DEFAULT_BOOK_TITLE
     if len(names) == 1:
         return names[0]
     rest = len(names) - 1
