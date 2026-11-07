@@ -32,17 +32,23 @@ dump.
 
 - **Search or paste.** Type a query to search YouTube, podcasts, and the web at
   once (all keyless), or paste a link directly: single videos, playlists,
-  channels, blog homepages, or RSS feeds. The source type is auto-detected, with
-  no dropdowns. Filter results by type (video, episode, article) and sort by
-  relevance, duration, or title. Titles show in the source's own language, never
-  an auto-translation.
+  channels, blog homepages, Wikipedia articles, or RSS feeds. The source type is
+  auto-detected, with no dropdowns. Filter results by type (video, episode,
+  article) and sort by relevance, duration, or title. Titles show in the source's
+  own language, never an auto-translation. Job boards, shops and social posts are
+  never offered as articles, and an optional triage model drops results that
+  can't be compiled or are off topic.
 - **Build it in one workspace.** Search and your sources on the left, the
   compilation on the right, from the first link to the finished book. Up to five
   sources per compilation, each one named and removable (with undo).
 - **Review before you compile.** Discovery tags every item with what was actually
   retrieved (a clean transcript, raw captions, web text, or nothing usable), plus
-  a no-LLM preview of exactly what each item would contribute. You tick what makes
-  the book.
+  a no-LLM preview of exactly what each item would contribute. Each row says up
+  front what will happen to it (left out, raw captions, transcribed) and how to
+  fix it. You tick what makes the book; anything metered (transcription, AI
+  polish on your key) shows its estimated cost, down to the Compile button.
+- **Stop when you want.** A long compile can be stopped at any time: it ends
+  before the next AI call and keeps the chapters already built.
 - **Two formats, one compilation.** Every job produces a clean EPUB (sources
   index, per-chapter attribution, YouTube chapters as sub-headings, an editorial
   cover, Instapaper-grade typography) and a standalone Markdown twin of the same
@@ -66,9 +72,11 @@ dump.
 - **Examples to start from.** Two ready-made compilations on the home page (a
   book about Stoicism, and the Markdown an AI gets for "How transformers work"),
   both downloadable.
-- **Optional podcast transcription.** Turn audio episodes into chapters via any
-  OpenAI-compatible speech-to-text endpoint, with diarized speaker labels.
-- **Self-hosted, single-user.** No accounts, no telemetry, runs on your machine.
+- **Podcasts as text.** A transcript the show publishes in its own feed is used
+  first, for free. Otherwise episodes are transcribed by any OpenAI-compatible
+  speech-to-text endpoint or ElevenLabs, with diarized speaker labels.
+- **Self-hosted, single-user.** No accounts, runs on your machine. No analytics
+  are sent unless you set a PostHog key yourself.
 
 ## ▸ How it works
 
@@ -81,7 +89,8 @@ job (`POST /jobs`). Discovery enumerates the items (cheap, in the background) an
 the job moves to `reviewing`. You pick the items, an optional title, and any LLM
 cleanup roles (`POST /jobs/{id}/confirm`); compilation fetches the selected
 content, renders a single EPUB with Pandoc plus its Markdown twin, and the job
-reaches `completed`. Then you download it (`GET /jobs/{id}/download`, or
+reaches `completed` (`POST /jobs/{id}/stop` ends it early with the chapters
+built so far). Then you download it (`GET /jobs/{id}/download`, or
 `?format=md` for the Markdown). Job state lives in SQLite, with no Redis and no
 Celery.
 
@@ -135,12 +144,15 @@ whose users you trust.
 
 ## ▸ Optional podcast transcription
 
-Search also covers **podcasts** (Apple's keyless iTunes index). A picked episode
-is audio, so turning it into a chapter needs a speech-to-text endpoint, the only
-outbound dependency beyond the keyless scrapers. Point `STT_BASE_URL`, `STT_MODEL`
+Search also covers **podcasts** (Apple's keyless iTunes index). When a show
+publishes a transcript in its RSS feed, Thothly reads that and nothing is
+transcribed; with `TREG_TOKEN` or `MONID_API_KEY` set, it also looks up a
+published transcript at discovery. Otherwise a picked episode is audio, so
+turning it into a chapter needs a speech-to-text endpoint. Point `STT_BASE_URL`, `STT_MODEL`
 (and `STT_API_KEY` when required) at any OpenAI-compatible `audio/transcriptions`
 endpoint: **Mistral Voxtral** (`voxtral-mini-latest`), a local vLLM/whisper.cpp
-server (no key), or OpenAI. See `.env.example`.
+server (no key), or OpenAI. Visitors can also use their own ElevenLabs key from
+Settings. See `.env.example`.
 
 Transcription runs lazily, only for the episodes you select, and is cached by
 audio URL, so re-compiling never re-pays for it. Episodes keep their diarized
@@ -162,11 +174,14 @@ All settings have sensible defaults; see `.env.example` for the full list.
 | `WEB_SEARCH_BACKEND` | `marginalia` | Which engine finds article URLs (see below) |
 | `MARGINALIA_API_KEY` | `public` | Marginalia key; `public` works keyless, personal/commercial keys lift the rate limit / licence |
 | `BRAVE_API_KEY` | empty | Brave Search API key (required when `WEB_SEARCH_BACKEND=brave`) |
-| `TREG_TOKEN` / `MONID_API_KEY` | empty | Pay-per-call data gateways (treg first, Monid as fallback): hosted YouTube transcripts, the `exa` web backend, and published podcast transcripts looked up before any speech-to-text |
+| `TREG_TOKEN` / `MONID_API_KEY` | empty | Pay-per-call data gateways (treg first, Monid as fallback): YouTube transcripts (and search, when triage is on) through ScrapeCreators (yt-dlp is IP-blocked from data centers), the `exa` and `tinyfish` web backends, and published podcast transcripts looked up before any speech-to-text. Answers are cached, so the same call is paid once |
+| `SEARCH_TRIAGE_API_KEY` / `_BASE_URL` / `_MODEL` | empty / OpenRouter / Mistral Small | Optional search triage through any OpenAI-compatible endpoint: one small call per search drops what can't be compiled or is off topic, then re-ranks |
+| `TYPESAFE_API_KEY` / `_BASE_URL` / `_MODEL` | empty / OpenRouter / Perplexity Decider | Triage through a decision model instead; takes over from the setting above when set |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | empty | Optional LLM endpoint (see above) |
 | `STT_BASE_URL` / `STT_MODEL` / `STT_API_KEY` | empty | Optional speech-to-text endpoint for podcast episodes (see above) |
 | `BYOK_ALLOW_CUSTOM_BASE_URL` | `false` | Let users enter any server address for their own model, not just the listed providers. Only for an instance whose users you trust: the server calls whatever they type |
 | `PODCAST_SPEAKER_NAMING` | `true` | Resolve real speaker names via the LLM (otherwise plain "Speaker N") |
+| `POSTHOG_PROJECT_TOKEN` / `POSTHOG_HOST` | empty | Optional product analytics (jobs created, compiles finished or failed, downloads, paid calls), sent without person profiles. Unset sends nothing |
 
 ### Web search backends
 
@@ -204,6 +219,20 @@ BACKEND_URL=http://127.0.0.1:8000 pnpm dev
 The Markdown companion is free, but the EPUB step shells out to **Pandoc**, so
 install it locally if you compile outside Docker.
 
+The checks CI runs:
+
+```bash
+# Backend
+uv run ruff check . && uv run pytest -q
+
+# Frontend
+pnpm lint && pnpm test && pnpm typecheck && pnpm build
+```
+
+After changing a backend model or route, refresh the frontend's types:
+`uv run python scripts/export_openapi.py` from `backend/`, then `pnpm api:types`
+from `frontend/`.
+
 ## ▸ Command line
 
 The same flow runs from a terminal, no server needed. From `backend/`, after `uv sync`:
@@ -222,8 +251,10 @@ Pandoc is needed for both formats for now.
 
 ## ▸ Architecture
 
-- **Next.js (App Router) for the frontend.** Server Components and small route
-  handlers proxy to the backend so its URL never leaks to the browser. The UI is
+- **Next.js (App Router) for the frontend.** One catch-all route handler
+  (`app/api/[...path]`) proxies every call to the backend, so its URL never
+  leaks to the browser. The API types are generated from the backend's OpenAPI
+  schema (`pnpm api:types`), and CI fails when they drift. The UI is
   built with Tailwind v4 and shadcn/base-ui primitives, on neutral, fully
   tokenized theme variables (light and dark) so the whole look re-skins from one
   file.
@@ -247,18 +278,20 @@ thothly/
 ├── .env.example                # DATA_DIR / BACKEND_URL / optional LLM_* / STT_* keys
 ├── data/                       # persistent volume (SQLite DB, generated files)
 ├── frontend/                   # Next.js 16 + Tailwind v4 + shadcn/base-ui
-│   ├── app/                    # App Router pages + /api proxy routes
+│   ├── app/                    # pages, one file per job screen, the /api proxy
 │   ├── components/             # workspace, panes, book reader, ui/ primitives
-│   └── lib/                    # api client + backend proxy helpers
+│   ├── lib/                    # api client + generated types, review rules, url labels
+│   └── public/r/               # shadcn registry build (checked in CI)
 └── backend/                    # FastAPI + uv
     ├── app/
-    │   ├── api/                # health, llm catalogue
-    │   ├── search/             # multi-provider search (youtube, podcast, web)
-    │   ├── sources/            # ingestion: youtube, blog, podcast, discovery, caches
-    │   ├── pipeline/           # compiler, LLM cleanup (llm/roles/cleanup)
+    │   ├── api/                # health, search, model catalogue and key checks
+    │   ├── search/             # providers (youtube, podcast, web engines), triage
+    │   ├── sources/            # ingestion: youtube/, blog, wikipedia, podcast, discovery
+    │   ├── pipeline/           # HTML and transcript to Markdown, AI roles, STT
     │   ├── render/             # Pandoc + EPUB CSS + cover
-    │   ├── jobs/               # routes, BackgroundTasks phases, SQLite state
-    │   └── core/               # config, database, version
+    │   ├── jobs/               # routes, phases, runner, previews, SQLite state
+    │   └── core/               # config, database, guarded fetch, gateways, analytics
+    ├── scripts/                # OpenAPI export, example and audit tools
     └── tests/                  # pytest suite
 ```
 
