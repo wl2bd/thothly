@@ -24,7 +24,7 @@ function item(fields: Partial<DiscoveredItem>): DiscoveredItem {
   n += 1;
   return {
     id: `i${n}`, title: `Item ${n}`, url: `https://x/${n}`, item_type: "youtube",
-    source_index: 0, item_index: n, uncertain: false, selected: false, ...fields,
+    source_index: 0, item_index: n, uncertain: false, selected: false, transcript_tracks: [], ...fields,
   };
 }
 

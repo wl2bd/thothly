@@ -117,6 +117,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/{job_id}/items/{item_id}/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose Item Language
+         * @description Read one video in another of its caption languages (review screen).
+         */
+        post: operations["choose_item_language_jobs__job_id__items__item_id__language_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}/download": {
         parameters: {
             query?: never;
@@ -243,6 +263,13 @@ export interface components {
             has_transcript?: boolean | null;
             /** Transcript Lang */
             transcript_lang?: string | null;
+            /**
+             * Transcript Tracks
+             * @default []
+             */
+            transcript_tracks: components["schemas"]["TrackOption"][];
+            /** Transcript Choice */
+            transcript_choice?: string | null;
             /** Is Punctuated */
             is_punctuated?: boolean | null;
             /** Word Count */
@@ -272,6 +299,15 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * ItemLanguage
+         * @description The caption language a reader picks for one video at review: a base code
+         *     from the item's `transcript_tracks`.
+         */
+        ItemLanguage: {
+            /** Language */
+            language: string;
         };
         /**
          * ItemPreview
@@ -544,6 +580,21 @@ export interface components {
             /** Query */
             query?: string | null;
         };
+        /**
+         * TrackOption
+         * @description A caption language the reader can switch a video to, at review.
+         *
+         *     `original` is what is said in the video, `translation` subtitles a channel
+         *     added in another language, `dubbed` the captions of a YouTube auto-dub
+         *     (machine-translated speech). None when YouTube doesn't say which language
+         *     was spoken.
+         */
+        TrackOption: {
+            /** Language */
+            language: string;
+            /** Relation */
+            relation?: ("original" | "translation" | "dubbed") | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -767,6 +818,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    choose_item_language_jobs__job_id__items__item_id__language_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemLanguage"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveredItemResponse"];
                 };
             };
             /** @description Validation Error */

@@ -93,3 +93,20 @@ def test_init_drops_video_transcripts_cached_in_a_preferred_language_once():
     transcript_cache.put("vidEN", Transcript(video_id="vidEN", language="en", segments=[]))
     database.init_db()  # already done: a fresh English fetch is kept
     assert transcript_cache.get("vidEN") is not None
+
+
+def test_a_chosen_language_is_cached_apart_from_the_default_track(monkeypatch):
+    from app.sources import youtube
+
+    fetched = []
+
+    def fetch(vid, language=None):
+        fetched.append(language)
+        return Transcript(video_id=vid, language=language or "fr", segments=[])
+
+    monkeypatch.setattr(youtube.ytdlp, "fetch_transcript", fetch)
+    assert youtube.load_transcript("vid").video_id == "vid"
+    en = youtube.load_transcript("vid", "en")
+    assert en.video_id == "vid#en" and en.language == "en"  # its AI polish is keyed apart too
+    youtube.load_transcript("vid", "en")
+    assert fetched == [None, "en"]

@@ -266,6 +266,20 @@ def set_item_compile_state(
         conn.commit()
 
 
+def save_reviewed_item(job_id: str, item: DiscoveredItemResponse) -> bool:
+    """Rewrite one item's stored fields (a reader's language choice), only while
+    its job is still in review: once compiling, the runner has read the items.
+    False when the job had moved on."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "UPDATE job_items SET item = ? WHERE job_id = ? AND id = ? "
+            "AND (SELECT status FROM jobs WHERE id = ?) = 'reviewing'",
+            (item.model_dump_json(include=set(DiscoveredItem.model_fields)), job_id, item.id, job_id),
+        )
+        conn.commit()
+        return cursor.rowcount == 1
+
+
 def get_discovered_item(job_id: str, item_id: str) -> DiscoveredItemResponse | None:
     with get_connection() as conn:
         row = conn.execute(

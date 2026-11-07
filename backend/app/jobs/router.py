@@ -5,12 +5,20 @@ from fastapi.responses import FileResponse
 
 from app.core.posthog import capture
 from app.jobs import repository, service
-from app.jobs.models import ItemPreview, JobConfirm, JobCreate, JobResponse
+from app.jobs.models import (
+    DiscoveredItemResponse,
+    ItemLanguage,
+    ItemPreview,
+    JobConfirm,
+    JobCreate,
+    JobResponse,
+)
 from app.jobs.outputs import FORMATS, OutputFormat, output_file
 from app.jobs.phases import run_discovery
 from app.jobs.preview import build_item_preview
 from app.jobs.runner import run_compilation
 from app.pipeline.providers import ProviderRejected
+from app.sources.youtube import YouTubeUnavailable
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -84,6 +92,39 @@ def preview_item(job_id: str, item_id: str) -> ItemPreview:
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That item doesn't exist.")
     return build_item_preview(item)
+
+
+@router.post("/{job_id}/items/{item_id}/language", response_model=DiscoveredItemResponse)
+def choose_item_language(job_id: str, item_id: str, payload: ItemLanguage) -> DiscoveredItemResponse:
+    """Read one video in another of its caption languages (review screen)."""
+    job = repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
+    if job.status != "reviewing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This compilation isn't awaiting review anymore.",
+        )
+    item = repository.get_discovered_item(job_id, item_id)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That item doesn't exist.")
+    try:
+        return service.choose_language(job_id, item, payload.language)
+    except service.ReviewOver:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This compilation isn't awaiting review anymore.",
+        ) from None
+    except service.LanguageNotOffered:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This video can't be read in that language.",
+        ) from None
+    except YouTubeUnavailable:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="YouTube didn't answer. Try again in a moment.",
+        ) from None
 
 
 @router.get("/{job_id}/download")

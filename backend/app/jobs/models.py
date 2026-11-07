@@ -50,6 +50,13 @@ class VisitorEndpoint(BaseModel):
     base_url: str | None = None  # read only for "custom", when the server allows it
 
 
+class ItemLanguage(BaseModel):
+    """The caption language a reader picks for one video at review: a base code
+    from the item's `transcript_tracks`."""
+
+    language: Annotated[str, Field(min_length=2, max_length=16)]
+
+
 class JobConfirm(BaseModel):
     selected_ids: Annotated[list[str], Field(min_length=1)]
     book_title: Annotated[str | None, Field(max_length=BOOK_TITLE_MAX)] = None

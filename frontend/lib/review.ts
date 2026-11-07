@@ -73,6 +73,24 @@ export function orderedSelection(
 
 // A video whose captions came without punctuation: readable as is, rough
 // without AI polish.
+// A language in its own name ("fr" -> "Français"), as a reader of it would
+// look for it. Falls back to the code when the browser doesn't know it.
+export function languageName(code: string): string {
+  try {
+    const name = new Intl.DisplayNames([code], { type: "language" }).of(code);
+    return name ? name.charAt(0).toLocaleUpperCase(code) + name.slice(1) : code;
+  } catch {
+    return code;
+  }
+}
+
+// The language a video is read in now, as a base code: the reader's choice,
+// else the default track. Null when discovery couldn't read it.
+export function currentLanguage(item: DiscoveredItem): string | null {
+  const code = item.transcript_choice ?? item.transcript_tracks?.[0]?.language ?? item.transcript_lang;
+  return code ? code.split("-")[0].toLowerCase() : null;
+}
+
 export function isRawCaptions(item: DiscoveredItem): boolean {
   return item.item_type === "youtube" && item.has_transcript === true && item.is_punctuated === false;
 }

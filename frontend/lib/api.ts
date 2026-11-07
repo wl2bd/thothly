@@ -142,6 +142,23 @@ export async function fetchItemPreview(
   return res.json();
 }
 
+// Reads one video in another of its caption languages (a code from its
+// `transcript_tracks`); answers with the updated item.
+export async function chooseItemLanguage(
+  jobId: string,
+  itemId: string,
+  language: string,
+): Promise<DiscoveredItem> {
+  const body: Schemas["ItemLanguage"] = { language };
+  const res = await fetch(`/api/jobs/${jobId}/items/${itemId}/language`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return parseError(res);
+  return res.json();
+}
+
 export function getDownloadUrl(id: string, format: "epub" | "md" = "epub"): string {
   return `/api/jobs/${id}/download?format=${format}`;
 }

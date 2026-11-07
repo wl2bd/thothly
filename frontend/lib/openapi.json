@@ -257,6 +257,68 @@
         }
       }
     },
+    "/jobs/{job_id}/items/{item_id}/language": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Choose Item Language",
+        "description": "Read one video in another of its caption languages (review screen).",
+        "operationId": "choose_item_language_jobs__job_id__items__item_id__language_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemLanguage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveredItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/{job_id}/download": {
       "get": {
         "tags": [
@@ -534,6 +596,25 @@
             ],
             "title": "Transcript Lang"
           },
+          "transcript_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOption"
+            },
+            "type": "array",
+            "title": "Transcript Tracks",
+            "default": []
+          },
+          "transcript_choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript Choice"
+          },
           "is_punctuated": {
             "anyOf": [
               {
@@ -645,6 +726,22 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ItemLanguage": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "title": "ItemLanguage",
+        "description": "The caption language a reader picks for one video at review: a base code\nfrom the item's `transcript_tracks`."
       },
       "ItemPreview": {
         "properties": {
@@ -1366,6 +1463,36 @@
         ],
         "title": "SourceSpec",
         "description": "What to discover: a URL, plus what a search result knew about it.\n\nA pasted URL carries only `url` and its kind is detected from it. A picked\nsearch result adds what the URL can't tell: a podcast episode's audio URL\nisn't self-identifying, and its title, length and feed live only in the\nresult."
+      },
+      "TrackOption": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "original",
+                  "translation",
+                  "dubbed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "title": "TrackOption",
+        "description": "A caption language the reader can switch a video to, at review.\n\n`original` is what is said in the video, `translation` subtitles a channel\nadded in another language, `dubbed` the captions of a YouTube auto-dub\n(machine-translated speech). None when YouTube doesn't say which language\nwas spoken."
       },
       "ValidationError": {
         "properties": {

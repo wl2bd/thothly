@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, fetchJob, type JobResponse, type JobStatus } from "@/lib/api";
+import { ApiError, fetchJob, type DiscoveredItem, type JobResponse, type JobStatus } from "@/lib/api";
 import { recordCompilation } from "@/lib/history";
 
 const ACTIVE_STATUSES: JobStatus[] = ["discovering", "processing"];
@@ -83,5 +83,16 @@ export function useJob(id: string) {
     };
   }, [id, polling, applyJob]);
 
-  return { job, error, applyJob };
+  // One item changed on the server (a language switch at review). Applied to the
+  // latest job, so two switches landing out of order don't undo each other.
+  const updateItem = useCallback((next: DiscoveredItem) => {
+    setJob((prev) =>
+      prev && {
+        ...prev,
+        discovered_items: prev.discovered_items.map((it) => (it.id === next.id ? next : it)),
+      },
+    );
+  }, []);
+
+  return { job, error, applyJob, updateItem };
 }

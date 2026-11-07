@@ -16,7 +16,7 @@ from app.core import gateway
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
 from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
-from app.sources.youtube.common import YouTubeUnavailable, pick_track, watch_url
+from app.sources.youtube.common import YouTubeUnavailable, pick_track, track_options, watch_url
 
 _TIMEOUT_S = 60.0
 # Discovery asks for a video's detail (title, length), then its transcript asks
@@ -27,14 +27,15 @@ _TTL_S = {
 }
 
 
-def fetch_transcript(video_id: str) -> Transcript | None:
+def fetch_transcript(video_id: str, want: str | None = None) -> Transcript | None:
+    """The video's default track, or the one in `want` (a language the reader
+    chose at review)."""
     url = watch_url(video_id)
     detail = _call("scrapecreators.youtube.video.detail", url=url)
-    language = _pick_language(
-        detail.get("captionTracks") or [],
-        settings.preferred_languages,
-        detail.get("audioTracks") or [],
-    )
+    audio = detail.get("audioTracks") or []
+    manual, auto, original = _tracks(detail.get("captionTracks") or [], audio)
+    default = pick_track(manual, auto, original, settings.preferred_languages)
+    language = pick_track(manual, auto, original, settings.preferred_languages, want) if want else default
     if language is None:
         return None
     payload = _call("scrapecreators.x.v1-youtube-video-transcript", url=url, language=language)
@@ -49,6 +50,7 @@ def fetch_transcript(video_id: str) -> Transcript | None:
         chapters=_parse_chapters(detail.get("chapters") or [], (detail.get("durationMs") or 0) / 1000),
         uploader=channel.get("title"),
         channel_url=channel.get("url"),
+        tracks=track_options(manual, auto, original, default, _dubbed_languages(audio)),
     )
 
 
@@ -87,14 +89,21 @@ def _call(endpoint: str, **params: str) -> dict:
 
 
 def _pick_language(tracks: list[dict], languages: list[str], audio_tracks: list[dict] | None = None) -> str | None:
-    """The spoken language is the audio track that isn't an auto-dub. Without that
+    manual, auto, original = _tracks(tracks, audio_tracks or [])
+    return pick_track(manual, auto, original, languages)
+
+
+def _tracks(tracks: list[dict], audio_tracks: list[dict]) -> tuple[list[str], list[str], str | None]:
+    """(added subtitle codes, auto-caption codes, spoken language).
+
+    The spoken language is the audio track that isn't an auto-dub. Without that
     info, a lone ASR track is it: YouTube runs ASR on the spoken audio only, so a
     French talk with hand-made English subtitles stays French. On an auto-dubbed
     video every dubbed track gets ASR too, so "asr" alone says nothing."""
     manual = [t["languageCode"] for t in tracks if t.get("kind") != "asr" and t.get("languageCode")]
     auto = [t["languageCode"] for t in tracks if t.get("kind") == "asr" and t.get("languageCode")]
-    original = _original_audio_language(audio_tracks or []) or (auto[0] if len(auto) == 1 else None)
-    return pick_track(manual, auto, original, languages)
+    original = _original_audio_language(audio_tracks) or (auto[0] if len(auto) == 1 else None)
+    return manual, auto, original
 
 
 def _original_audio_language(audio_tracks: list[dict]) -> str | None:
@@ -110,6 +119,11 @@ def _original_audio_language(audio_tracks: list[dict]) -> str | None:
         not t.get("audioIsDefault"),
     ))
     return real[0]["id"].split(".")[0] if real else None
+
+
+def _dubbed_languages(audio_tracks: list[dict]) -> list[str]:
+    """Languages YouTube auto-dubbed the video into: their ASR reads the dub."""
+    return [t["id"].split(".")[0] for t in audio_tracks if t.get("isAutoDubbed") and t.get("id")]
 
 
 def _parse_segments(rows: list[dict]) -> list[TranscriptSegment]:

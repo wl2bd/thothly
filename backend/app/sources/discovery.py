@@ -130,7 +130,7 @@ def _discover_podcast(
         logger.warning("Published transcript lookup failed for %s: %s", url, exc)
         transcript = None
     if transcript is not None:
-        _apply_transcript_stats(item, transcript)
+        apply_transcript_stats(item, transcript)
     return title, [item]
 
 
@@ -200,13 +200,14 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
 
     # The transcript itself is now in the video-keyed cache (load_transcript
     # stored it); we only keep the derived review metadata on the item.
-    _apply_transcript_stats(item, transcript)
+    apply_transcript_stats(item, transcript)
 
 
-def _apply_transcript_stats(item: DiscoveredItem, transcript: Transcript) -> None:
+def apply_transcript_stats(item: DiscoveredItem, transcript: Transcript) -> None:
     word_count = len(transcript.full_text.split())
     item.has_transcript = True
     item.transcript_lang = transcript.language
+    item.transcript_tracks = transcript.tracks
     item.is_punctuated = transcript.is_punctuated
     item.word_count = word_count
     item.reading_time_min = max(1, round(word_count / _WORDS_PER_MINUTE))

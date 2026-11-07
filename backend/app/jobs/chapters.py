@@ -140,7 +140,7 @@ def polish(
 
 def _youtube(item: DiscoveredItem, step: Step) -> Draft:
     step("Reading the transcript")
-    transcript = youtube.load_transcript(youtube.video_id(item.url))
+    transcript = youtube.load_transcript(youtube.video_id(item.url), item.transcript_choice)
     if transcript is None:
         raise ItemSkipped(SkipReason.NO_SUBTITLES)
     content = transcript_to_markdown(transcript)

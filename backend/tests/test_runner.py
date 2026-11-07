@@ -164,7 +164,7 @@ def test_a_rate_limited_run_says_youtube_is_busy(load):
 def test_a_running_item_names_its_stage():
     seen = []
 
-    def load(_vid):
+    def load(_vid, _language=None):
         seen.append(repository.get_selected_items(job_id)[0].compile_note)
         return _transcript()
 
@@ -177,7 +177,7 @@ def test_a_running_item_names_its_stage():
 
 
 def test_stop_builds_the_book_from_the_chapters_ready(fake_pandoc):
-    def load(_vid):
+    def load(_vid, _language=None):
         repository.request_stop(job_id)
         return _transcript()
 

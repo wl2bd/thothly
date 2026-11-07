@@ -31,7 +31,7 @@ export default function JobPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
-  const { job, error, applyJob } = useJob(id);
+  const { job, error, applyJob, updateItem } = useJob(id);
 
   const [llm, setLlm] = useState<LlmConfig | null>(null);
   // A key the visitor saved in this browser counts as much as the server's own.
@@ -102,7 +102,7 @@ export default function JobPage() {
       </>
     );
   } else if (job.status === "reviewing") {
-    panes = <ReviewView job={job} llm={effectiveLlm} onConfirmed={applyJob} />;
+    panes = <ReviewView job={job} llm={effectiveLlm} onConfirmed={applyJob} onItemChange={updateItem} />;
   } else if (job.status === "processing") {
     const built = job.discovered_items.filter(
       (it) => it.compile_state === "done",

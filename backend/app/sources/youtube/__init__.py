@@ -40,14 +40,17 @@ def fetch_video_meta(url: str) -> VideoMeta:
     return backend.fetch_video_meta(watch_url(video_id(url)))
 
 
-def load_transcript(vid: str) -> Transcript | None:
-    """The video's transcript, fetched once. A refusal (YouTubeUnavailable) is
-    raised, never stored as "no subtitles"."""
-    cached = transcript_cache.get(vid)
+def load_transcript(vid: str, language: str | None = None) -> Transcript | None:
+    """The video's transcript, fetched once: its default track, or the one in
+    `language` that the reader chose at review (cached apart, as "<id>#<lang>").
+    A refusal (YouTubeUnavailable) is raised, never stored as "no subtitles"."""
+    key = f"{vid}#{language}" if language else vid
+    cached = transcript_cache.get(key)
     if cached is not None:
         return cached
     backend = scrapecreators if paid_backend() else ytdlp
-    transcript = backend.fetch_transcript(vid)
+    transcript = backend.fetch_transcript(vid, language)
     if transcript is not None:
-        transcript_cache.put(vid, transcript)
+        transcript.video_id = key
+        transcript_cache.put(key, transcript)
     return transcript

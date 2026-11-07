@@ -1,6 +1,7 @@
 import {
   Fragment,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -8,6 +9,7 @@ import {
 } from "react";
 import {
   Ban,
+  ChevronDown,
   CircleHelp,
   Eye,
   EyeOff,
@@ -42,6 +44,13 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { highlightMatch } from "@/components/highlight";
 import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
@@ -58,6 +67,7 @@ import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   autoTitleForSelection,
   costLabel,
+  currentLanguage,
   defaultSelection,
   episodeCost,
   estimateCost,
@@ -66,6 +76,7 @@ import {
   isPolishOn,
   isPolishable,
   isRawCaptions,
+  languageName,
   needsTranscription,
   orderedSelection,
   polishRoleIds,
@@ -76,6 +87,7 @@ import {
   PODCAST_PRESELECT,
 } from "@/lib/review";
 import {
+  chooseItemLanguage,
   confirmJob,
   fetchItemPreview,
   type DiscoveredItem,
@@ -194,13 +206,27 @@ export function ReviewView({
   job,
   llm,
   onConfirmed,
+  onItemChange,
 }: {
   job: JobResponse;
   llm: LlmConfig | null;
   onConfirmed: (job: JobResponse) => void;
+  // A row changed on the server (its caption language).
+  onItemChange: (item: DiscoveredItem) => void;
 }) {
   const jobId = job.id;
   const items = job.discovered_items;
+  // Language switches in flight: Compile waits for them, or it would build
+  // the language the row is leaving.
+  const [switching, setSwitching] = useState(0);
+  const chooseLanguage = async (itemId: string, language: string) => {
+    setSwitching((n) => n + 1);
+    try {
+      onItemChange(await chooseItemLanguage(jobId, itemId, language));
+    } finally {
+      setSwitching((n) => n - 1);
+    }
+  };
   const sources = job.sources;
   const {
     selected,
@@ -263,7 +289,11 @@ export function ReviewView({
     (it) => selected.has(it.id) && !leftOut(it),
   ).length;
   // Mod+Enter compiles (from the title field too).
-  useShortcut("mod+enter", () => void confirm(), !confirming && includedCount > 0 && title.trim() !== "");
+  useShortcut(
+    "mod+enter",
+    () => void confirm(),
+    !confirming && switching === 0 && includedCount > 0 && title.trim() !== "",
+  );
   const connectStt = llm && !sttAvailable ? () => setConnecting("stt") : undefined;
   // Raw-caption rows offer AI polish themselves, while it's available and off.
   const polishDefaultIds = polishRoleIds(llm);
@@ -376,6 +406,7 @@ export function ReviewView({
           onToggle={() => toggle(only.id)}
           onConnectStt={connectStt}
           onPolish={turnOnPolish}
+          onChooseLanguage={(language) => chooseLanguage(only.id, language)}
           pricing={llm?.pricing ?? null}
           sourceUrl={showHost ? url : undefined}
           dragHandleProps={handleProps}
@@ -398,6 +429,7 @@ export function ReviewView({
         onToggle={() => toggle(item.id)}
         onConnectStt={connectStt}
           onPolish={turnOnPolish}
+          onChooseLanguage={(language) => chooseLanguage(item.id, language)}
           pricing={llm?.pricing ?? null}
         highlight={needle}
         muted={item.uncertain}
@@ -697,7 +729,7 @@ export function ReviewView({
                 the message is where the click is. */}
             <Button
               onClick={confirm}
-              disabled={confirming || includedCount === 0 || title.trim() === ""}
+              disabled={confirming || switching > 0 || includedCount === 0 || title.trim() === ""}
               aria-keyshortcuts="Control+Enter Meta+Enter"
               className="w-full"
             >
@@ -780,6 +812,8 @@ interface ReviewItemProps {
   onConnectStt?: () => void;
   // Set while AI polish is available and off: a raw-caption row offers it.
   onPolish?: () => void;
+  // Reads the item in another of its caption languages (resolves once saved).
+  onChooseLanguage: (language: string) => Promise<void>;
   // Null until the model config has loaded; a metered episode shows its cost from it.
   pricing: LlmConfig["pricing"] | null;
   // When this row IS a whole single-item source (no group header above it), its
@@ -809,6 +843,7 @@ function ReviewItem({
   onToggle,
   onConnectStt,
   onPolish,
+  onChooseLanguage,
   pricing,
   sourceUrl,
   dragHandleProps,
@@ -818,22 +853,36 @@ function ReviewItem({
 }: ReviewItemProps) {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<ItemPreview | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function toggleOpen() {
-    const next = !open;
-    setOpen(next);
-    if (!next || preview || loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setPreview(await fetchItemPreview(jobId, item.id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
+  // The language the preview text is in. Opening the row, or switching its
+  // language while open, loads the text; an answer for a language the row has
+  // left meanwhile is dropped.
+  const choice = item.transcript_choice ?? null;
+  const [previewFor, setPreviewFor] = useState<string | null | undefined>(undefined);
+  const [failure, setFailure] = useState<{ choice: string | null; message: string } | null>(null);
+  const error = failure?.choice === choice ? failure.message : null;
+  const loading = open && previewFor !== choice && error === null;
+
+  useEffect(() => {
+    if (!open || previewFor === choice) return;
+    let current = true;
+    fetchItemPreview(jobId, item.id)
+      .then((next) => {
+        if (!current) return;
+        setPreview(next);
+        setPreviewFor(choice);
+      })
+      .catch((err) => {
+        if (current) setFailure({ choice, message: err instanceof Error ? err.message : String(err) });
+      });
+    return () => {
+      current = false;
+    };
+  }, [open, choice, previewFor, jobId, item.id]);
+
+  function toggleOpen() {
+    setFailure(null); // reopening retries a preview that failed
+    setOpen((was) => !was);
   }
 
   // The meta line is deliberately spare: the content tag (what was retrieved +
@@ -841,6 +890,9 @@ function ReviewItem({
   // No length metrics: the decision here is "include or not / polish or not".
   // Length lives in the per-item preview and the cost estimate.
   const metaParts: ReactNode[] = [contentTag(item, leftOut, pricing ? episodeCost(item, pricing) : 0)];
+  if (item.item_type === "youtube" && item.has_transcript && currentLanguage(item)) {
+    metaParts.push(<LanguagePicker item={item} onChoose={onChooseLanguage} />);
+  }
   // The fix sits on the row it fixes, so the problem and its way out read together.
   const action =
     onConnectStt && needsTranscription(item)
@@ -973,6 +1025,67 @@ function ReviewItem({
         </div>
       )}
     </div>
+  );
+}
+
+// The language a video is read in. A menu when it can be read in another one
+// (its spoken language, translations a channel added), plain text otherwise.
+function LanguagePicker({
+  item,
+  onChoose,
+}: {
+  item: DiscoveredItem;
+  onChoose: (language: string) => Promise<void>;
+}) {
+  const [pending, setPending] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const tracks = item.transcript_tracks ?? [];
+  const current = currentLanguage(item)!;
+  if (tracks.length < 2) return <Tag>{languageName(current)}</Tag>;
+
+  async function choose(language: string) {
+    if (language === current || pending) return;
+    setPending(language);
+    setFailed(null);
+    try {
+      await onChoose(language);
+    } catch (err) {
+      setFailed(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    // Inside the row's label: a click here must not toggle the checkbox.
+    <span className="inline-flex items-center gap-1.5" onClick={(e) => e.preventDefault()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          disabled={pending !== null}
+          aria-label={`Language: ${languageName(current)}. Change`}
+          className="text-foreground hover:border-foreground/25 aria-expanded:border-foreground/25 border-border inline-flex items-center gap-1 rounded-full border py-px pr-1.5 pl-2 transition-colors disabled:opacity-60"
+        >
+          {pending && <Spinner className="size-3" />}
+          {languageName(pending ?? current)}
+          <ChevronDown className="text-muted-foreground size-3" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-auto min-w-52">
+          <DropdownMenuRadioGroup value={current} onValueChange={(v) => choose(String(v))}>
+            {tracks.map((t) => (
+              <DropdownMenuRadioItem key={t.language} value={t.language} closeOnClick className="py-1.5">
+                {languageName(t.language)}
+                {t.relation && (
+                  <span className="text-muted-foreground text-xs">
+                    · {t.relation === "dubbed" ? "AI dub" : t.relation}
+                  </span>
+                )}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {failed && <span className="text-destructive">{failed}</span>}
+    </span>
   );
 }
 

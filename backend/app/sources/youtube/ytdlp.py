@@ -11,6 +11,7 @@ from app.sources.youtube.common import (
     YouTubeUnavailable,
     base_language,
     pick_track,
+    track_options,
     watch_url,
 )
 
@@ -71,7 +72,7 @@ def fetch_video_meta(url: str) -> VideoMeta:
     return _entry_to_video_meta(info)
 
 
-def fetch_transcript(video_id: str) -> Transcript | None:
+def fetch_transcript(video_id: str, want: str | None = None) -> Transcript | None:
     """Fetch a video's subtitles through yt-dlp.
 
     We go through yt-dlp rather than the lighter timedtext endpoint because it
@@ -80,7 +81,8 @@ def fetch_transcript(video_id: str) -> Transcript | None:
     subtitles over auto-captions, and among auto-captions the video's *original*
     language over a machine translation (so the body stays coherent with the
     original-language title). Raises YouTubeUnavailable when YouTube refuses the
-    request (e.g. an IP block); returns None when no subtitles exist.
+    request (e.g. an IP block); returns None when no subtitles exist. `want`
+    is a language the reader chose at review over the default track.
     """
     url = watch_url(video_id)
     opts = {
@@ -92,10 +94,15 @@ def fetch_transcript(video_id: str) -> Transcript | None:
     try:
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            track = _pick_subtitle_track(info, settings.preferred_languages)
-            if track is None:
+            manual, auto, original = _caption_tracks(info, want)
+            default = pick_track(list(manual), list(auto), original, settings.preferred_languages)
+            language = (
+                pick_track(list(manual), list(auto), original, settings.preferred_languages, want)
+                if want else default
+            )
+            if language is None:
                 return None
-            language, sub_url = track
+            sub_url = _json3_url(manual.get(language) or auto[language])
             raw = ydl.urlopen(sub_url).read().decode("utf-8", "replace")
     except YoutubeDLError as exc:
         raise YouTubeUnavailable(str(exc)) from exc
@@ -105,8 +112,8 @@ def fetch_transcript(video_id: str) -> Transcript | None:
         return None
     # The first extract ran in our preferred language, so chapter titles may have
     # come back auto-translated for a non-preferred-language video. Re-request
-    # them in the video's ORIGINAL language so they match the (original) body.
-    meta = _info_in_original_language(url, opts, info)
+    # them in the language of the body: the original, or the one the reader chose.
+    meta = _info_in_language(url, opts, info, want or base_language(info.get("language")))
     return Transcript(
         video_id=video_id,
         language=language,
@@ -114,26 +121,27 @@ def fetch_transcript(video_id: str) -> Transcript | None:
         chapters=_parse_chapters(meta),
         uploader=info.get("channel") or info.get("uploader") or None,
         channel_url=info.get("channel_url") or info.get("uploader_url") or None,
+        tracks=track_options(list(manual), list(auto), original, default),
     )
 
 
-def _info_in_original_language(url: str, opts: dict, info: dict) -> dict:
-    """Return info whose metadata is in the video's ORIGINAL language.
+def _info_in_language(url: str, opts: dict, info: dict, language: str) -> dict:
+    """Return info whose metadata (chapter titles) is in `language`, the body's.
 
-    The first extract uses `preferred_languages`, so for a video whose original
-    language differs YouTube may have auto-translated the chapter titles. We learn
-    the true original from `info["language"]` and, when it differs, re-extract
-    requesting that language so the chapters read in the source language. Skipped
-    when there are no chapters to fix (no extra network call), and degrades to the
-    already-fetched info if the re-extract fails — never worse than before.
+    The first extract uses `preferred_languages`, so for a video read in another
+    language YouTube may have auto-translated the chapter titles. When the two
+    differ, re-extract requesting the body's language (the video's original from
+    `info["language"]`, or the one the reader chose) so the chapters match it.
+    Skipped when there are no chapters to fix (no extra network call), and
+    degrades to the already-fetched info if the re-extract fails.
     """
     preferred = settings.preferred_languages or ["en"]
     requested = base_language(preferred[0])
-    original = base_language(info.get("language"))
-    if not info.get("chapters") or not original or original == requested:
+    language = base_language(language)
+    if not info.get("chapters") or not language or language == requested:
         return info
     try:
-        with YoutubeDL({**opts, "extractor_args": _lang_extractor_args([original])}) as ydl:
+        with YoutubeDL({**opts, "extractor_args": _lang_extractor_args([language])}) as ydl:
             return ydl.extract_info(url, download=False) or info
     except YoutubeDLError:
         return info
@@ -199,8 +207,20 @@ def _parse_chapters(info: dict) -> list[Chapter]:
 
 def _pick_subtitle_track(info: dict, languages: list[str]) -> tuple[str, str] | None:
     """Choose (language_code, json3_url) for the best available subtitle track."""
+    manual, auto, original = _caption_tracks(info, languages=languages)
+    code = pick_track(list(manual), list(auto), original, languages)
+    if code is None:
+        return None
+    return code, _json3_url(manual.get(code) or auto[code])
+
+
+def _caption_tracks(
+    info: dict, want: str | None = None, languages: list[str] | None = None
+) -> tuple[dict, dict, str]:
+    """(added subtitles, real auto-captions, spoken language), formats by code."""
     manual = {c: f for c, f in (info.get("subtitles") or {}).items() if _json3_url(f)}
     original = base_language(info.get("language"))
+    languages = [*(languages or settings.preferred_languages), *([want] if want else [])]
     wanted = {original, *(base_language(lang) for lang in languages)} - {""}
     # yt-dlp lists an auto-caption for every language YouTube can machine-translate
     # into, so only the original's and the preferred ones are real candidates.
@@ -209,10 +229,7 @@ def _pick_subtitle_track(info: dict, languages: list[str]) -> tuple[str, str] | 
         for c, f in (info.get("automatic_captions") or {}).items()
         if _json3_url(f) and base_language(c) in wanted
     }
-    code = pick_track(list(manual), list(auto), original, languages)
-    if code is None:
-        return None
-    return code, _json3_url(manual.get(code) or auto[code])
+    return manual, auto, original
 
 
 def _json3_url(formats: list[dict]) -> str | None:

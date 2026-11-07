@@ -8,10 +8,44 @@ from app.jobs import credentials, repository
 from app.jobs.models import DiscoveredItemResponse, JobConfirm, VisitorEndpoint
 from app.pipeline.providers import Endpoint, resolve_endpoint
 from app.pipeline.roles import get_role
+from app.sources import youtube
+from app.sources.discovery import apply_transcript_stats
 
 
 class NothingSelected(Exception):
     """None of the chosen items belong to the job anymore."""
+
+
+class LanguageNotOffered(Exception):
+    """The item can't be read in that language (or it had no track there)."""
+
+
+class ReviewOver(Exception):
+    """The job left review while the language was being fetched."""
+
+
+def choose_language(job_id: str, item: DiscoveredItemResponse, language: str) -> DiscoveredItemResponse:
+    """Switch a video to another of its caption languages, at review.
+
+    Picking the default (first) option goes back to the default track. The
+    transcript is fetched now, so the row's language, length and punctuation are
+    right before the preview reloads; it is cached, so the compile reuses it.
+    Raises LanguageNotOffered, ReviewOver when the compile started meanwhile, or
+    YouTubeUnavailable when YouTube refuses."""
+    offered = [o.language for o in item.transcript_tracks]
+    if language not in offered:
+        raise LanguageNotOffered
+    choice = None if language == offered[0] else language
+    transcript = youtube.load_transcript(youtube.video_id(item.url), choice)
+    if transcript is None:
+        raise LanguageNotOffered
+    tracks = item.transcript_tracks
+    apply_transcript_stats(item, transcript)
+    item.transcript_tracks = tracks
+    item.transcript_choice = choice
+    if not repository.save_reviewed_item(job_id, item):
+        raise ReviewOver
+    return item
 
 
 def confirm(job_id: str, choice: JobConfirm) -> list[DiscoveredItemResponse]:

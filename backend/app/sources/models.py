@@ -47,7 +47,21 @@ class Chapter(BaseModel):
     end_s: float
 
 
+class TrackOption(BaseModel):
+    """A caption language the reader can switch a video to, at review.
+
+    `original` is what is said in the video, `translation` subtitles a channel
+    added in another language, `dubbed` the captions of a YouTube auto-dub
+    (machine-translated speech). None when YouTube doesn't say which language
+    was spoken."""
+
+    language: str  # base code: "fr", "en"
+    relation: Literal["original", "translation", "dubbed"] | None = None
+
+
 class Transcript(BaseModel):
+    # The cache key: the video id, plus "#<lang>" for a language the reader
+    # chose over the default track (so its AI polish is cached apart too).
     video_id: str
     language: str
     segments: list[TranscriptSegment]
@@ -55,6 +69,9 @@ class Transcript(BaseModel):
     # Channel name → chapter author; channel page URL → cover avatar emblem.
     uploader: str | None = None
     channel_url: str | None = None
+    # Every language the video can be read in, the default track first. Empty
+    # when there is only one, or for transcripts cached before 2026-11-07.
+    tracks: list[TrackOption] = []
 
     @property
     def full_text(self) -> str:
@@ -99,6 +116,10 @@ class DiscoveredItem(BaseModel):
     # unknown (YouTube couldn't be reached, or the item wasn't probed).
     has_transcript: bool | None = None
     transcript_lang: str | None = None
+    # The languages the review screen offers (see TrackOption), and the one the
+    # reader picked over the default, as a base code. None = the default track.
+    transcript_tracks: list[TrackOption] = []
+    transcript_choice: str | None = None
     is_punctuated: bool | None = None
     word_count: int | None = None
     reading_time_min: int | None = None

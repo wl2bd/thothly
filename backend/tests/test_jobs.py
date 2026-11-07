@@ -426,3 +426,63 @@ def test_stop_refuses_a_job_that_is_not_compiling(client):
     update_job_status(job_id, "completed")
     assert client.post(f"/jobs/{job_id}/stop").status_code == 409
     assert client.post("/jobs/nope/stop").status_code == 404
+
+
+def _reviewing_video(tracks) -> tuple[str, str]:
+    from app.jobs.models import JobCreate, Source
+
+    job = repository.create_job(JobCreate(sources=[Source(url="https://example.com")]))
+    item = DiscoveredItemResponse(
+        id="v1", title="Une conférence", url="https://www.youtube.com/watch?v=abcdefghijk",
+        item_type="youtube", source_index=0, item_index=0, selected=True,
+        has_transcript=True, transcript_lang="fr", transcript_tracks=tracks,
+    )
+    repository.save_discovered_items(job.id, [item])
+    repository.update_job_status(job.id, "reviewing")
+    return job.id, item.id
+
+
+TRACKS = [{"language": "fr", "relation": "original"}, {"language": "en", "relation": "translation"}]
+
+
+def test_choosing_a_language_reads_the_video_in_it_and_back(client: TestClient) -> None:
+    from app.sources.models import Transcript, TranscriptSegment
+
+    job_id, item_id = _reviewing_video(TRACKS)
+    seg = [TranscriptSegment(text="Hello there.", start_s=0, duration_s=1)]
+    with patch("app.jobs.service.youtube.load_transcript",
+               return_value=Transcript(video_id="x", language="en", segments=seg)) as load:
+        resp = client.post(f"/jobs/{job_id}/items/{item_id}/language", json={"language": "en"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["transcript_choice"] == "en" and body["transcript_lang"] == "en"
+    assert [t["language"] for t in body["transcript_tracks"]] == ["fr", "en"]
+    load.assert_called_once_with("abcdefghijk", "en")
+    assert repository.get_discovered_item(job_id, item_id).transcript_choice == "en"
+
+    with patch("app.jobs.service.youtube.load_transcript",
+               return_value=Transcript(video_id="x", language="fr", segments=seg)) as load:
+        client.post(f"/jobs/{job_id}/items/{item_id}/language", json={"language": "fr"})
+    load.assert_called_once_with("abcdefghijk", None)  # the default track again
+    assert repository.get_discovered_item(job_id, item_id).transcript_choice is None
+
+
+def test_a_language_the_video_does_not_offer_is_refused(client: TestClient) -> None:
+    job_id, item_id = _reviewing_video(TRACKS)
+    resp = client.post(f"/jobs/{job_id}/items/{item_id}/language", json={"language": "de"})
+    assert resp.status_code == 400
+
+
+def test_a_choice_landing_after_the_compile_started_is_not_saved(client: TestClient) -> None:
+    from app.sources.models import Transcript
+
+    job_id, item_id = _reviewing_video(TRACKS)
+
+    def load(vid, language):  # the compile starts while YouTube answers
+        repository.update_job_status(job_id, "processing")
+        return Transcript(video_id="x", language="en", segments=[])
+
+    with patch("app.jobs.service.youtube.load_transcript", side_effect=load):
+        resp = client.post(f"/jobs/{job_id}/items/{item_id}/language", json={"language": "en"})
+    assert resp.status_code == 409
+    assert repository.get_discovered_item(job_id, item_id).transcript_choice is None

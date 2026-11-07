@@ -104,6 +104,37 @@ def test_fetch_video_meta_missing_video_is_unavailable(_):
         fetch_video_meta("https://www.youtube.com/watch?v=gone")
 
 
+def test_fetch_transcript_offers_the_spoken_language_then_added_translations():
+    from app.sources.models import TrackOption
+
+    detail = {**DETAIL, "captionTracks": [
+        {"languageCode": "fr", "kind": "asr"}, {"languageCode": "en"}, {"languageCode": "de"},
+    ]}
+    calls = []
+
+    def call(endpoint, **params):
+        calls.append(params)
+        return detail if "detail" in endpoint else TRANSCRIPT
+
+    with patch("app.sources.youtube.scrapecreators._call", side_effect=call):
+        transcript = fetch_transcript("vid")
+        chosen = fetch_transcript("vid", "en")
+    assert transcript.language == "fr"
+    assert transcript.tracks == [
+        TrackOption(language="fr", relation="original"),
+        TrackOption(language="en", relation="translation"),
+        TrackOption(language="de", relation="translation"),
+    ]
+    assert chosen.language == "en" and calls[-1]["language"] == "en"
+    assert chosen.tracks == transcript.tracks  # the default stays first
+
+
+def test_a_single_language_offers_no_choice():
+    from app.sources.youtube.common import track_options
+
+    assert track_options(["fr-FR"], ["fr"], "fr", "fr-FR") == []
+
+
 # Trimmed from a real video (2026-11-07): a French talk YouTube auto-dubbed into
 # English. Asked from an English locale, the dub is the DEFAULT audio track and
 # the French original is not, so "default" does not mean "spoken".
@@ -116,3 +147,28 @@ DUBBED_AUDIO = [
 
 def test_pick_language_on_a_dub_played_by_default_takes_the_original():
     assert _pick_language(DUBBED_TRACKS, ["en"], DUBBED_AUDIO) == "fr"
+
+
+def test_an_auto_dub_is_offered_as_such():
+    from app.sources.models import TrackOption
+
+    detail = {**DETAIL, "captionTracks": DUBBED_TRACKS, "audioTracks": DUBBED_AUDIO}
+    with patch("app.sources.youtube.scrapecreators._call",
+               side_effect=lambda endpoint, **p: detail if "detail" in endpoint else TRANSCRIPT):
+        transcript = fetch_transcript("dubbedTalk")
+    assert transcript.language == "fr"
+    assert transcript.tracks == [
+        TrackOption(language="fr", relation="original"),
+        TrackOption(language="en", relation="dubbed"),
+    ]
+
+
+def test_a_default_track_that_is_an_auto_dub_is_labelled_as_one():
+    from app.sources.models import TrackOption
+    from app.sources.youtube.common import track_options
+
+    # Spoken French has no captions; the English dub's ASR became the default.
+    assert track_options(["de"], ["en"], "fr", "en", ["en-US"]) == [
+        TrackOption(language="en", relation="dubbed"),
+        TrackOption(language="de", relation="translation"),
+    ]
