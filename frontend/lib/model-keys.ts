@@ -81,6 +81,11 @@ export function toVisitorEndpoint(e: StoredEndpoint): VisitorEndpoint {
   return { provider: e.provider, api_key: e.apiKey, model: e.model, base_url: e.baseUrl };
 }
 
+// How a provider is named to the visitor.
+export function providerLabel(config: LlmConfig, id: string): string {
+  return id === "custom" ? "Your own server" : (config.providers.find((p) => p.id === id)?.label ?? id);
+}
+
 // The server's answer, corrected by what this browser holds: a stored key makes
 // the path available, and the estimate quotes the visitor's provider rather
 // than the operator's config.

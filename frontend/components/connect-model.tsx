@@ -23,7 +23,14 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { ApiError, fetchLlmConfig, verifyKey, type LlmConfig } from "@/lib/api";
-import { maskKey, parseModels, readModelsRaw, writeModels, type StoredEndpoint } from "@/lib/model-keys";
+import {
+  maskKey,
+  parseModels,
+  providerLabel,
+  readModelsRaw,
+  writeModels,
+  type StoredEndpoint,
+} from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 
 export type ModelKind = "llm" | "stt";
@@ -41,11 +48,12 @@ const KIND_COPY: Record<ModelKind, { name: string; title: string; purpose: strin
   },
 };
 
-const PRIVACY =
+export const PRIVACY =
   "Your key stays in this browser. Thothly sends it to your provider only to check it and to run a compilation you start, and never stores it.";
 
 // The stored endpoint for one kind: a summary with Replace and Remove once a key
-// is saved, the connect form otherwise. Shared by the review dialog and Settings.
+// is saved, the connect form otherwise. Used by the review screen's connect step;
+// Settings lays the same key field and key check out per provider.
 export function ModelEndpointSettings({
   kind,
   config,
@@ -66,10 +74,7 @@ export function ModelEndpointSettings({
   }
 
   if (current && !replacing) {
-    const label =
-      current.provider === "custom"
-        ? "Your own server"
-        : (config.providers.find((p) => p.id === current.provider)?.label ?? current.provider);
+    const label = providerLabel(config, current.provider);
     return (
       <div className="flex flex-col gap-3">
         <div className="bg-card shadow-surface flex items-center gap-3 rounded-lg border px-4 py-3">
@@ -204,34 +209,23 @@ function EndpointForm({
   const [models, setModels] = useState<string[] | null>(null);
   const [model, setModel] = useState("");
   const [status, setStatus] = useState<KeyStatus>("idle");
-  // The key + address the status is about, so a stale answer is dropped.
-  const checked = useRef<string | null>(null);
+  const keyCheck = useKeyCheck((_, outcome) => {
+    setStatus(outcome.status);
+    if (outcome.models) setModels(outcome.status === "valid" ? modelsFor(outcome.models, kind) : null);
+  });
 
   const isCustom = provider === "custom";
 
   // Any change to what was checked invalidates the check.
-  function edit<T>(set: (v: T) => void) {
-    return (v: T) => {
-      set(v);
-      setModels(null);
-      setModel("");
-      setStatus("idle");
-      checked.current = null;
-    };
+  function reset() {
+    setModels(null);
+    setModel("");
+    setStatus("idle");
+    keyCheck.invalidate(id);
   }
 
   // Runs on paste and on blur, with the field's value at that moment.
-  async function check(value: { apiKey: string; baseUrl: string }) {
-    const sig = signature(value);
-    if (isCustom ? !value.baseUrl.trim() : !value.apiKey.trim()) return;
-    if (checked.current === sig) return;
-    checked.current = sig;
-    setStatus("checking");
-    const result = await checkKey(provider, value.apiKey.trim(), value.baseUrl.trim());
-    if (checked.current !== sig) return;
-    setStatus(result.status);
-    setModels(result.status === "valid" ? modelsFor(result.models, kind) : null);
-  }
+  const check = (value: KeyValue) => void keyCheck.check(id, provider, value);
 
   if (options.length === 0) {
     return <p className="text-muted-foreground text-sm">No provider offers this here yet.</p>;
@@ -241,7 +235,7 @@ function EndpointForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void check({ apiKey, baseUrl });
+        check({ apiKey, baseUrl });
       }}
       className="flex flex-col gap-4"
     >
@@ -253,56 +247,30 @@ function EndpointForm({
           id={`${id}-provider`}
           options={options}
           value={provider}
-          onChange={edit(setProvider)}
-        />
-      </div>
-
-      {isCustom && (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={`${id}-url`} className="text-sm font-medium">
-            Server address
-          </label>
-          <Input
-            id={`${id}-url`}
-            type="url"
-            value={baseUrl}
-            onChange={(e) => {
-              edit(setBaseUrl)(e.target.value);
-              if (pasted(e)) void check({ apiKey, baseUrl: e.target.value });
-            }}
-            onBlur={() => void check({ apiKey, baseUrl })}
-            placeholder="http://localhost:11434/v1"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <label htmlFor={`${id}-key`} className="text-sm font-medium">
-            API key{isCustom && <span className="text-muted-foreground font-normal"> (if your server needs one)</span>}
-          </label>
-          <KeyStatusText status={status} />
-        </div>
-        <Input
-          id={`${id}-key`}
-          type="password"
-          value={apiKey}
-          onChange={(e) => {
-            edit(setApiKey)(e.target.value);
-            if (pasted(e)) void check({ apiKey: e.target.value, baseUrl });
+          onChange={(v) => {
+            setProvider(v);
+            reset();
           }}
-          onBlur={() => void check({ apiKey, baseUrl })}
-          placeholder={initial ? `Replacing ${maskKey(initial.apiKey)}` : "Paste your key"}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <GetKeyLink
-          provider={provider}
-          label={options.find((o) => o.value === provider)?.label ?? provider}
         />
       </div>
+
+      <KeyField
+        idPrefix={id}
+        provider={provider}
+        providerName={providerLabel(config, provider)}
+        keyName="API key"
+        optionalHint="(if your server needs one)"
+        placeholder={initial ? `Replacing ${maskKey(initial.apiKey)}` : "Paste your key"}
+        value={{ apiKey, baseUrl }}
+        status={status}
+        onChange={(change, wasPasted) => {
+          if (change.apiKey !== undefined) setApiKey(change.apiKey);
+          if (change.baseUrl !== undefined) setBaseUrl(change.baseUrl);
+          reset();
+          if (wasPasted) check({ apiKey, baseUrl, ...change });
+        }}
+        onBlur={() => check({ apiKey, baseUrl })}
+      />
 
       {models && models.length === 0 && (
         <Notice variant="error">That key works, but it doesn&apos;t grant any model.</Notice>
@@ -404,7 +372,10 @@ export function ConnectModelStep({
 
 // ponytail: name match only. A list whose names say nothing of the task (a
 // local server, say) is shown whole rather than emptied.
-const NOT_TEXT_MODEL = /whisper|voxtral|transcri|tts|speech|audio|realtime|scribe|embed|moderation|image|dall-e/i;
+const NOT_TEXT_MODEL = new RegExp(
+  `${TRANSCRIPTION_MODEL.source}|tts|speech|audio|realtime|embed|moderation|image|dall-e`,
+  "i",
+);
 
 function modelsFor(ids: string[], kind: ModelKind): string[] {
   const fit = ids.filter((m) =>
@@ -456,6 +427,132 @@ const signature = (k: { apiKey: string; baseUrl: string }) => `${k.apiKey.trim()
 const pasted = (e: FormEvent<HTMLInputElement>) =>
   (e.nativeEvent as InputEvent).inputType === "insertFromPaste";
 
+interface KeyValue {
+  apiKey: string;
+  baseUrl: string;
+}
+
+// What a check reports: `models` arrives with the final answer only.
+interface KeyOutcome {
+  status: KeyStatus;
+  models?: string[];
+}
+
+// Key checks for one or several fields (`id` names the field). It remembers the
+// key + address each field's status is about, so an answer to a key that has
+// since been edited is dropped. `onResult` is called with "checking", then with
+// the answer.
+function useKeyCheck(onResult: (id: string, outcome: KeyOutcome, value: KeyValue) => void) {
+  // Written only in handlers, so a check started from an edit sees it at once.
+  const checked = useRef<Record<string, string | null>>({});
+
+  // `again` re-checks a value that was already checked.
+  async function check(id: string, provider: string, value: KeyValue, again = false) {
+    const apiKey = value.apiKey.trim();
+    const baseUrl = value.baseUrl.trim();
+    if (provider === "custom" ? !baseUrl : !apiKey) {
+      checked.current[id] = null;
+      return onResult(id, { status: "idle" }, value);
+    }
+    const sig = signature(value);
+    if (!again && checked.current[id] === sig) return;
+    checked.current[id] = sig;
+    onResult(id, { status: "checking" }, value);
+    const result = await checkKey(provider, apiKey, baseUrl);
+    if (checked.current[id] !== sig) return;
+    onResult(
+      id,
+      result.status === "valid" ? { status: "valid", models: result.models } : { status: result.status, models: [] },
+      value,
+    );
+  }
+
+  // Any change to what was checked invalidates the check.
+  function invalidate(id: string) {
+    checked.current[id] = null;
+  }
+
+  return { check, invalidate };
+}
+
+// The address (own server only) and key inputs of one provider, with the check
+// status and the link to get a key. The caller owns the values and the checking.
+function KeyField({
+  idPrefix,
+  provider,
+  providerName,
+  keyName,
+  optionalHint,
+  placeholder,
+  value,
+  status,
+  onChange,
+  onBlur,
+  onRemove,
+}: {
+  idPrefix: string;
+  provider: string;
+  providerName: string;
+  keyName: string;
+  optionalHint: string;
+  placeholder: string;
+  value: KeyValue;
+  status: KeyStatus;
+  onChange: (change: Partial<KeyValue>, pasted: boolean) => void;
+  onBlur: () => void;
+  onRemove?: () => void;
+}) {
+  const isCustom = provider === "custom";
+  return (
+    <>
+      {isCustom && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`${idPrefix}-url`} className="text-sm font-medium">
+            Server address
+          </label>
+          <Input
+            id={`${idPrefix}-url`}
+            type="url"
+            value={value.baseUrl}
+            onChange={(e) => onChange({ baseUrl: e.target.value }, pasted(e))}
+            onBlur={onBlur}
+            placeholder="http://localhost:11434/v1"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+      )}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor={`${idPrefix}-key`} className="text-sm font-medium">
+            {keyName}
+            {isCustom && <span className="text-muted-foreground font-normal"> {optionalHint}</span>}
+          </label>
+          <KeyStatusText status={status} />
+        </div>
+        <div className="flex gap-2">
+          <Input
+            id={`${idPrefix}-key`}
+            type="password"
+            value={value.apiKey}
+            onChange={(e) => onChange({ apiKey: e.target.value }, pasted(e))}
+            onBlur={onBlur}
+            placeholder={placeholder}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {onRemove && (
+            <Button type="button" variant="ghost" onClick={onRemove}>
+              Remove
+            </Button>
+          )}
+        </div>
+        <GetKeyLink provider={provider} label={providerName} />
+      </div>
+    </>
+  );
+}
+
 // Settings: a key belongs to a provider and is entered once; each task picks a
 // provider and one of its models. Transcription follows the text model's
 // provider when that provider can transcribe, so one key covers both; its own
@@ -481,9 +578,11 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
     }
     return init;
   });
-  // Per provider, the key + address the current status is about. Written only
-  // in handlers, so a check started from an edit sees it at once.
-  const checked = useRef<Record<string, string | null>>({});
+  // One key check per provider.
+  const keyCheck = useKeyCheck((provider, outcome, value) => {
+    patch(provider, { status: outcome.status, ...(outcome.models ? { models: outcome.models } : {}) });
+    if (outcome.status === "valid") adoptKey(provider, value);
+  });
 
   const keyOf = (provider: string): ProviderKey =>
     keys[provider] ?? { apiKey: "", baseUrl: "", status: "idle", models: [] };
@@ -492,30 +591,10 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
     setKeys((prev) => ({ ...prev, [provider]: { ...keyOf(provider), ...prev[provider], ...change } }));
   }
 
-  async function check(provider: string, value: { apiKey: string; baseUrl: string }) {
-    const sig = signature(value);
+  // A new valid key replaces the old one on every task that uses the provider.
+  function adoptKey(provider: string, value: KeyValue) {
     const apiKey = value.apiKey.trim();
     const baseUrl = value.baseUrl.trim();
-    if (provider === "custom" ? !baseUrl : !apiKey) {
-      checked.current[provider] = null;
-      return patch(provider, { status: "idle" });
-    }
-    if (checked.current[provider] === sig) return;
-    checked.current[provider] = sig;
-    patch(provider, { status: "checking" });
-    await verify(provider, value);
-  }
-
-  async function verify(provider: string, value: { apiKey: string; baseUrl: string }) {
-    const sig = signature(value);
-    const apiKey = value.apiKey.trim();
-    const baseUrl = value.baseUrl.trim();
-    const result = await checkKey(provider, apiKey, baseUrl);
-    // A later edit has its own check under way: this answer is stale.
-    if (checked.current[provider] !== sig) return;
-    patch(provider, { status: result.status, models: result.status === "valid" ? result.models : [] });
-    if (result.status !== "valid") return;
-    // A new valid key replaces the old one on every task that uses the provider.
     const now = parseModels(readModelsRaw());
     const next = { ...now };
     let changed = false;
@@ -532,22 +611,19 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
   // Stored keys are checked when Settings opens: it lists their models and
   // flags one that has expired.
   useEffect(() => {
-    for (const [provider, k] of Object.entries(keys)) {
-      checked.current[provider] = signature(k);
-      void verify(provider, k);
-    }
+    for (const [provider, k] of Object.entries(keys)) void keyCheck.check(provider, provider, k, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function edit(provider: string, change: Partial<ProviderKey>, pasted: boolean) {
     const value = { ...keyOf(provider), ...change };
-    checked.current[provider] = null;
+    keyCheck.invalidate(provider);
     patch(provider, { ...change, status: "idle" });
-    if (pasted) void check(provider, value);
+    if (pasted) void keyCheck.check(provider, provider, value);
   }
 
   function remove(provider: string) {
-    checked.current[provider] = null;
+    keyCheck.invalidate(provider);
     patch(provider, { apiKey: "", baseUrl: "", status: "idle", models: [] });
     const now = parseModels(readModelsRaw());
     writeModels({
@@ -579,63 +655,27 @@ export function ModelSettingsSections({ config }: { config: LlmConfig }) {
     });
   }
 
-  const labelOf = (provider: string) =>
-    provider === "custom"
-      ? "Your own server"
-      : (config.providers.find((p) => p.id === provider)?.label ?? provider);
+  const labelOf = (provider: string) => providerLabel(config, provider);
 
   // A provider's key, entered once whichever task uses it.
   function keyField(provider: string) {
     const k = keyOf(provider);
-    const isCustom = provider === "custom";
     const isStored = KINDS.some((kind) => stored[kind]?.provider === provider);
-    const blur = () => void check(provider, keyOf(provider));
     return (
       <div className="flex flex-col gap-3">
-        {isCustom && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${id}-${provider}-url`} className="text-sm font-medium">
-              Server address
-            </label>
-            <Input
-              id={`${id}-${provider}-url`}
-              type="url"
-              value={k.baseUrl}
-              onChange={(e) => edit(provider, { baseUrl: e.target.value }, pasted(e))}
-              onBlur={blur}
-              placeholder="http://localhost:11434/v1"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <label htmlFor={`${id}-${provider}-key`} className="text-sm font-medium">
-              {labelOf(provider)} key
-              {isCustom && <span className="text-muted-foreground font-normal"> (if needed)</span>}
-            </label>
-            <KeyStatusText status={k.status} />
-          </div>
-          <div className="flex gap-2">
-            <Input
-              id={`${id}-${provider}-key`}
-              type="password"
-              value={k.apiKey}
-              onChange={(e) => edit(provider, { apiKey: e.target.value }, pasted(e))}
-              onBlur={blur}
-              placeholder="Paste your key"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {isStored && (
-              <Button type="button" variant="ghost" onClick={() => remove(provider)}>
-                Remove
-              </Button>
-            )}
-          </div>
-          <GetKeyLink provider={provider} label={labelOf(provider)} />
-        </div>
+        <KeyField
+          idPrefix={`${id}-${provider}`}
+          provider={provider}
+          providerName={labelOf(provider)}
+          keyName={`${labelOf(provider)} key`}
+          optionalHint="(if needed)"
+          placeholder="Paste your key"
+          value={k}
+          status={k.status}
+          onChange={(change, wasPasted) => edit(provider, change, wasPasted)}
+          onBlur={() => void keyCheck.check(provider, provider, keyOf(provider))}
+          onRemove={isStored ? () => remove(provider) : undefined}
+        />
       </div>
     );
   }

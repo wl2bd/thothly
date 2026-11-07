@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 
-import { ModelSettingsPanel } from "@/components/connect-model";
+import { ModelSettingsPanel, PRIVACY } from "@/components/connect-model";
 import { PaneFrame } from "@/components/pane-frame";
 import { setSettingsOpen, usePaneCount, useSettingsOpen, useWide } from "@/lib/settings-open";
 import { useShortcut } from "@/lib/shortcuts";
@@ -44,10 +44,7 @@ export function SettingsPaneContent() {
           <span className="underline decoration-current/35 underline-offset-3">How keys are used</span>
           <ChevronDownIcon aria-hidden="true" className="size-3.5 transition-transform group-open:rotate-180" />
         </summary>
-        <p className="mt-1.5">
-          Thothly sends your key to your provider only to check it and to run a compilation you
-          start. It never stores it.
-        </p>
+        <p className="mt-1.5">{PRIVACY}</p>
       </details>
       <ModelSettingsPanel />
     </PaneFrame>

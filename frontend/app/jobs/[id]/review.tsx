@@ -50,7 +50,7 @@ import { MetaSep, SourceFavicon, SourceTypePill } from "@/components/source-kind
 import { hostOf, sourceName } from "@/lib/url";
 import { kindFromItemType } from "@/lib/kinds";
 import { ConnectModelStep, type ModelKind } from "@/components/connect-model";
-import { toVisitorEndpoint, type StoredEndpoint } from "@/lib/model-keys";
+import { providerLabel, toVisitorEndpoint, type StoredEndpoint } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 import { cn, plural } from "@/lib/utils";
 import { MarkdownPreview } from "@/components/book";
@@ -1080,9 +1080,11 @@ function RoleSelector({
     else onSetRolesMany([...defaultIds, ...extraIds], false);
   }
 
-  const providerLabel = browserModel
-    ? (llm.providers.find((p) => p.id === browserModel.provider)?.label ?? "your own server")
-    : null;
+  const runsOn = browserModel
+    ? browserModel.provider === "custom"
+      ? "Runs on your own server. "
+      : `Runs on your ${providerLabel(llm, browserModel.provider)} key. `
+    : "";
   // What the switch does, never the problem again: the rows already say which
   // captions read raw. Its reach is a count, so you know what it would touch.
   const reach =
@@ -1137,9 +1139,9 @@ function RoleSelector({
           {/* Always a way to bring (or change) your own key from here, even
               when the server has a model of its own. */}
           <p className="text-muted-foreground text-xs">
-            {providerLabel ? `Runs on your ${providerLabel} key. ` : ""}
+            {runsOn}
             <button type="button" onClick={onConnect} className="text-foreground text-link font-medium">
-              {providerLabel ? "Change" : "Use your own key"}
+              {browserModel ? "Change" : "Use your own key"}
             </button>
           </p>
         </>
