@@ -12,6 +12,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import type { Kind } from "@/lib/kinds";
+import { faviconUrl } from "@/lib/url";
 
 // ── Source presentation, shared across screens ───────────────────────────────
 // One vocabulary for "what kind of thing is this source" that search, review and
@@ -234,17 +235,4 @@ export function SourceFavicon({
       }}
     />
   );
-}
-
-export function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-export function faviconUrl(url: string): string | null {
-  const host = hostOf(url);
-  return host ? `https://icons.duckduckgo.com/ip3/${host}.ico` : null;
 }

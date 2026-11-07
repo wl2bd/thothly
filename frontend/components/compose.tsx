@@ -75,12 +75,12 @@ import {
   MetaSep,
   SourceMedia,
   SourceTypePill,
-  hostOf,
   isContainerKind,
   KIND_ORDER,
   kindLabel,
 } from "@/components/source-kind";
 import { kindFromResultType } from "@/lib/kinds";
+import { hostOf } from "@/lib/url";
 
 // Every settled query is a paid search (ScrapeCreators + triage), so a
 // half-typed word must not go out. A space ends a word, so it searches at once;

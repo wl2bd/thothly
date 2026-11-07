@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Minus, X } from "lucide-react";
+import { prettyUrl } from "@/lib/url";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -23,25 +24,6 @@ function WaitHeader({ label, done, total }: { label: string; done: number; total
   );
 }
 
-// A compact, recognizable label derived from the URL the user entered
-// (e.g. "youtube.com/@channel", "jakub.kr"), the last resort when no title or
-// discovered name is available. A YouTube watch URL carries its identity in the
-// dropped `?v=` query, so the bare path "youtube.com/watch" would name every
-// video identically; "YouTube video" is at least honest.
-function sourceLabel(url: string | undefined): string {
-  if (!url) return "Source";
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.replace(/^www\./, "");
-    if (host === "youtu.be" || (host.endsWith("youtube.com") && parsed.pathname === "/watch")) {
-      return "YouTube video";
-    }
-    const path = parsed.pathname.replace(/\/+$/, "");
-    return path && path !== "" ? `${host}${path}` : host;
-  } catch {
-    return url;
-  }
-}
 
 // The wait between staging sources and reviewing items. It lists the sources by
 // the names the user just picked (the staged title shows immediately; the
@@ -61,7 +43,7 @@ export function DiscoveringView({ sources }: { sources: Source[] }) {
       />
       <ul className="flex flex-col divide-y">
         {sources.map((s, i) => {
-          const label = s.name?.trim() || s.title?.trim() || sourceLabel(s.url);
+          const label = s.name?.trim() || s.title?.trim() || prettyUrl(s.url);
           const isActive = i === activeIndex;
           const count = s.item_count ?? 0;
           return (

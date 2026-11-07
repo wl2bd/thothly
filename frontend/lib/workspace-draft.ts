@@ -3,6 +3,7 @@
 // compilation) finds them again. sessionStorage: per tab, gone when it closes.
 import type { SearchResult, Source, SourceSpec } from "@/lib/api";
 import { backendKindOfUrl, kindFromResultType, kindOfUrl, type Kind } from "@/lib/kinds";
+import { prettyUrl } from "@/lib/url";
 
 export interface StagedSource {
   url: string;
@@ -134,14 +135,4 @@ export function normalizeUrl(raw: string): string {
   if (t === "") return "";
   if (/^https?:\/\//i.test(t)) return t;
   return `https://${t.replace(/^\/+/, "")}`;
-}
-
-function prettyUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.replace(/\/$/, "");
-    return `${u.hostname.replace(/^www\./, "")}${path}`;
-  } catch {
-    return url;
-  }
 }
