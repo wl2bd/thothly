@@ -3,8 +3,8 @@
 import { ViewTransition, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { PaneFrame } from "@/components/pane-frame";
-import { SettingsPaneContent } from "@/components/settings-pane";
-import { useRegisterPane, useSettingsOpen, useWide } from "@/lib/settings-open";
+import { SidePaneContent } from "@/components/settings-pane";
+import { useRegisterPane, usePaneView, useWide } from "@/lib/settings-open";
 import { cn } from "@/lib/utils";
 
 // The right-hand pane of every screen of the flow: the compilation itself. The
@@ -47,11 +47,11 @@ export function CompilationPane({
   morphOn?: string[];
 }) {
   useRegisterPane();
-  const settingsOpen = useSettingsOpen();
+  const view = usePaneView();
   const wide = useWide();
   // In place only where the pane sits beside the work; on a phone Settings
-  // opens full screen instead (settings-pane.tsx).
-  const settings = settingsOpen && wide;
+  // and the shortcuts open full screen instead (settings-pane.tsx).
+  const settings = view !== null && wide;
   // On a phone the footer is fixed to the screen's bottom edge, out of the
   // flow, so the pane reserves its height to keep the last content visible.
   const footerRef = useRef<HTMLDivElement>(null);
@@ -72,14 +72,14 @@ export function CompilationPane({
     >
       <aside
         data-pane
-        aria-label={settings ? "Settings" : "Your compilation"}
+        aria-label={settings ? (view === "shortcuts" ? "Keyboard shortcuts" : "Settings") : "Your compilation"}
         style={{ "--footer-h": `${footer ? footerHeight : 0}px` } as React.CSSProperties}
         className={cn(
           "bg-card flex min-h-0 flex-col border-t max-lg:flex-1 max-lg:pb-(--footer-h) lg:border-t-0 lg:border-l",
           className,
         )}
       >
-        {settings && <SettingsPaneContent />}
+        {settings && <SidePaneContent />}
         <div className={settings ? "hidden" : "contents"}>
           <PaneFrame
             eyebrow={eyebrow}

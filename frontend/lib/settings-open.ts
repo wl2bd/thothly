@@ -8,7 +8,11 @@ import { flushSync } from "react-dom";
 // panel over it; a page with no pane (About, the examples) gets a stand-alone
 // one in the same spot.
 
-let open = false;
+// What the side pane shows in place of the compilation: Settings or the
+// keyboard shortcuts, both the same kind of aside, one at a time.
+export type PaneView = "settings" | "shortcuts" | null;
+
+let view: PaneView = null;
 let panes = 0;
 const listeners = new Set<() => void>();
 
@@ -24,17 +28,26 @@ function subscribe(onChange: () => void) {
 // An external store can't ride a React transition, so the swap asks the
 // browser for its transition directly (the `pane` one in globals.css). `animate: false`
 // when a navigation already runs its own transition, which a second one would cut.
-export function setSettingsOpen(value: boolean, animate = true) {
-  if (open === value) return;
-  open = value;
+export function setPaneView(value: PaneView, animate = true) {
+  if (view === value) return;
+  view = value;
   if (!animate || !document.startViewTransition) return emit();
   const root = document.documentElement;
   root.dataset.paneSwitch = "";
   document.startViewTransition(() => flushSync(emit)).finished.finally(() => delete root.dataset.paneSwitch);
 }
 
+// Opens Settings, or closes whatever the side pane shows.
+export function setSettingsOpen(value: boolean, animate = true) {
+  setPaneView(value ? "settings" : null, animate);
+}
+
+export function usePaneView(): PaneView {
+  return useSyncExternalStore(subscribe, () => view, () => null);
+}
+
 export function useSettingsOpen(): boolean {
-  return useSyncExternalStore(subscribe, () => open, () => false);
+  return usePaneView() === "settings";
 }
 
 export function usePaneCount(): number {

@@ -8,25 +8,36 @@ import { usePathname } from "next/navigation";
 
 import { ModelSettingsPanel, PRIVACY } from "@/components/connect-model";
 import { PaneFrame } from "@/components/pane-frame";
-import { setSettingsOpen, usePaneCount, useSettingsOpen, useWide } from "@/lib/settings-open";
+import { ShortcutsPaneContent } from "@/components/shortcuts-help";
+import { setSettingsOpen, usePaneCount, usePaneView, useSettingsOpen, useWide } from "@/lib/settings-open";
 import { useShortcut } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 
 const close = () => setSettingsOpen(false);
 
-// Settings, in the pane's own shape. Set once and rarely touched again, so it
-// takes the compilation pane's place instead of a page of its own: Back, and
-// the work is where it was.
-export function SettingsPaneContent() {
+// What the side pane shows in place of the compilation: Settings or the
+// shortcuts. Focus lands on its title, so a keyboard or screen reader follows
+// the swap; Escape closes, like any panel.
+export function SidePaneContent() {
+  const view = usePaneView();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  // Focus lands on the pane's title, so a keyboard or screen reader follows
-  // the swap; Escape closes, like any panel.
   useEffect(() => {
     titleRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [view]);
+  return view === "shortcuts" ? (
+    <ShortcutsPaneContent titleRef={titleRef} />
+  ) : (
+    <SettingsPaneContent titleRef={titleRef} />
+  );
+}
+
+// Settings, in the pane's own shape. Set once and rarely touched again, so it
+// takes the compilation pane's place instead of a page of its own: Back, and
+// the work is where it was.
+function SettingsPaneContent({ titleRef }: { titleRef: React.Ref<HTMLHeadingElement> }) {
   return (
     <PaneFrame
       eyebrow="Settings"
@@ -56,6 +67,7 @@ export function SettingsPaneContent() {
 // pane sits out of sight under the work).
 export function SettingsLink({ className }: { className?: string }) {
   const open = useSettingsOpen();
+  const view = usePaneView();
   const panes = usePaneCount();
   const wide = useWide();
   const pathname = usePathname();
@@ -66,7 +78,9 @@ export function SettingsLink({ className }: { className?: string }) {
   }, [pathname]);
   useShortcut(",", () => setSettingsOpen(!open));
 
-  const standalone = open && (panes === 0 || !wide);
+  // Settings or the shortcuts, whichever is open (this link, always in the
+  // header, hosts the stand-alone pane for both).
+  const standalone = view !== null && (panes === 0 || !wide);
   return (
     <>
       <button
@@ -85,10 +99,10 @@ export function SettingsLink({ className }: { className?: string }) {
         createPortal(
         <aside
           data-pane
-          aria-label="Settings"
+          aria-label={view === "shortcuts" ? "Keyboard shortcuts" : "Settings"}
           className="bg-card fixed inset-x-0 top-header bottom-0 z-30 flex flex-col border-t lg:left-auto lg:w-pane lg:border-t-0 lg:border-l"
         >
-          <SettingsPaneContent />
+          <SidePaneContent />
         </aside>,
         document.body,
       )}
