@@ -1,5 +1,5 @@
 import type { components } from "./api-schema";
-import openapi from "./openapi.json";
+import openapi from "./openapi.json" with { type: "json" };
 
 // The backend's shapes, generated from its OpenAPI schema (lib/openapi.json,
 // written by backend/scripts/export_openapi.py; `pnpm api:types` regenerates
@@ -32,12 +32,12 @@ export const BOOK_TITLE_MAX = limits.JobCreate.properties.book_title.anyOf[0].ma
 // 404 for an unknown compilation) from a transient one (5xx, backend blip) and
 // react differently — the live poller retries the latter but not the former.
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 }
 
