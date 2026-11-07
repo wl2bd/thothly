@@ -310,8 +310,9 @@ def _row_to_response(row) -> JobResponse:
 
 
 def request_stop(job_id: str) -> None:
-    """Ask a running compile to stop. The runner reads it between items, so the
-    item in progress finishes and the book is built from what's ready."""
+    """Ask a running compile to stop. The runner checks it before each item and
+    before each AI call; an item stopped mid-polish is dropped, and the book is
+    built from the chapters already ready."""
     with get_connection() as conn:
         conn.execute("UPDATE jobs SET stop_requested = 1 WHERE id = ?", (job_id,))
         conn.commit()
