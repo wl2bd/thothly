@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Minus, X } from "lucide-react";
-import { prettyUrl } from "@/lib/url";
+import { isFinished, isLeftOutState } from "@/lib/review";
+import { sourceName } from "@/lib/url";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -43,7 +44,7 @@ export function DiscoveringView({ sources }: { sources: Source[] }) {
       />
       <ul className="flex flex-col divide-y">
         {sources.map((s, i) => {
-          const label = s.name?.trim() || s.title?.trim() || prettyUrl(s.url);
+          const label = sourceName(s);
           const isActive = i === activeIndex;
           const count = s.item_count ?? 0;
           return (
@@ -87,7 +88,7 @@ export function DiscoveringView({ sources }: { sources: Source[] }) {
   );
 }
 
-// The wait between "Generate" and the finished compilation. It walks the items
+// The wait between "Compile" and the finished compilation. It walks the items
 // the user confirmed, in the order they compile, and shows each one's outcome as
 // the runner reaches it (built, or left out with the reason why), then one last
 // step for assembling the file. Same shape as DiscoveringView, so the two waits
@@ -103,14 +104,12 @@ export function CompilingView({ items }: { items: DiscoveredItem[] }) {
   const building =
     items.length > 0 &&
     items.some((it) => it.compile_state === "done") &&
-    items.every((it) =>
-      ["done", "skipped", "failed"].includes(it.compile_state ?? "pending"),
-    );
+    items.every((it) => isFinished(it.compile_state));
   return (
     <div className="flex flex-col gap-5">
       <WaitHeader
         label={building ? "Building the file" : "Writing your chapters"}
-        done={items.filter((it) => it.compile_state && it.compile_state !== "pending" && it.compile_state !== "compiling").length}
+        done={items.filter((it) => isFinished(it.compile_state)).length}
         total={items.length}
       />
       <ul className="flex flex-col divide-y">
@@ -148,7 +147,7 @@ function CompileStep({
 }) {
   const done = state === "done";
   const active = state === "compiling";
-  const out = state === "skipped" || state === "failed";
+  const out = isLeftOutState(state);
   return (
     <li className="flex items-start gap-3 py-3.5 text-sm">
       <span className="flex size-3.5 shrink-0 items-center justify-center pt-0.5">

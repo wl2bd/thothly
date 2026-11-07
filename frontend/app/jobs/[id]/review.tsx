@@ -47,7 +47,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
 import { MetaSep, SourceFavicon, SourceTypePill } from "@/components/source-kind";
-import { hostOf } from "@/lib/url";
+import { hostOf, sourceName } from "@/lib/url";
 import { kindFromItemType } from "@/lib/kinds";
 import { ConnectModelStep, type ModelKind } from "@/components/connect-model";
 import { toVisitorEndpoint, type StoredEndpoint } from "@/lib/model-keys";
@@ -59,6 +59,7 @@ import {
   autoTitleForSelection,
   costLabel,
   defaultSelection,
+  episodeCost,
   estimateCost,
   formatUsd,
   isLeftOut,
@@ -69,6 +70,8 @@ import {
   orderedSelection,
   polishRoleIds,
   sureItems,
+  toggled,
+  withIds,
   type Cost,
   PODCAST_PRESELECT,
 } from "@/lib/review";
@@ -79,7 +82,6 @@ import {
   type ItemPreview,
   type JobResponse,
   type LlmConfig,
-  type Source,
 } from "@/lib/api";
 import { BackToSources, DragGrip } from "./shared";
 
@@ -123,47 +125,19 @@ function useReview(
     setTitleIsAuto(false);
   }, []);
 
-  const selectItems = useCallback((ids: string[], value: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (value) next.add(id);
-        else next.delete(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggle = useCallback((itemId: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
-  }, []);
-
-  const toggleRole = useCallback((roleId: string) => {
-    setRoles((prev) => {
-      const next = new Set(prev);
-      if (next.has(roleId)) next.delete(roleId);
-      else next.add(roleId);
-      return next;
-    });
-  }, []);
+  const selectItems = useCallback(
+    (ids: string[], value: boolean) => setSelected((prev) => withIds(prev, ids, value)),
+    [],
+  );
+  const toggle = useCallback((itemId: string) => setSelected((prev) => toggled(prev, itemId)), []);
+  const toggleRole = useCallback((roleId: string) => setRoles((prev) => toggled(prev, roleId)), []);
 
   // The AI polish master switch turns its whole safe set on, or clears every
   // opt-in pass off, in one move.
-  const setRolesMany = useCallback((ids: string[], value: boolean) => {
-    setRoles((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (value) next.add(id);
-        else next.delete(id);
-      }
-      return next;
-    });
-  }, []);
+  const setRolesMany = useCallback(
+    (ids: string[], value: boolean) => setRoles((prev) => withIds(prev, ids, value)),
+    [],
+  );
 
   const selectAll = () =>
     setSelected(new Set(sureItems(job.discovered_items).map((it) => it.id)));
@@ -216,8 +190,6 @@ function useReview(
   };
 }
 
-type Review = ReturnType<typeof useReview>;
-
 export function ReviewView({
   job,
   llm,
@@ -227,54 +199,32 @@ export function ReviewView({
   llm: LlmConfig | null;
   onConfirmed: (job: JobResponse) => void;
 }) {
-  const review = useReview(job, onConfirmed);
-  return (
-    <ReviewList
-      jobId={job.id}
-      items={job.discovered_items}
-      sources={job.sources}
-      llm={llm}
-      review={review}
-    />
-  );
-}
-
-function ReviewList({
-  jobId,
-  items,
-  sources,
-  llm,
-  review,
-}: {
-  jobId: string;
-  items: DiscoveredItem[];
-  sources: Source[];
-  llm: LlmConfig | null;
-  review: Review;
-}) {
+  const jobId = job.id;
+  const items = job.discovered_items;
+  const sources = job.sources;
   const {
     selected,
     title,
-    roles: selectedRoles,
+    roles,
     sourceOrder,
     confirming,
     error,
     onTitleChange,
-    toggle: onToggle,
-    selectItems: onSelectItems,
-    selectAll: onSelectAll,
-    selectNone: onSelectNone,
-    toggleRole: onToggleRole,
-    setRolesMany: onSetRolesMany,
-    setSourceOrder: onReorderSources,
-    confirm: onConfirm,
-  } = review;
+    toggle,
+    selectItems,
+    selectAll,
+    selectNone,
+    toggleRole,
+    setRolesMany,
+    setSourceOrder,
+    confirm,
+  } = useReview(job, onConfirmed);
   const [query, setQuery] = useState("");
   const [connecting, setConnecting] = useState<ModelKind | null>(null);
   const masterItems = sureItems(items);
   const masterSelected = masterItems.filter((it) => selected.has(it.id)).length;
   const allMaster = masterItems.length > 0 && masterSelected === masterItems.length;
-  useShortcut("a", () => (allMaster ? onSelectNone() : onSelectAll()), items.length > 0);
+  useShortcut("a", () => (allMaster ? selectNone() : selectAll()), items.length > 0);
   const storedModels = useStoredModels();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   // Sources whose "uncertain links" fold is open. Closed by default: those
@@ -292,7 +242,7 @@ function ReviewList({
     const from = sourceOrder.indexOf(Number(active.id));
     const to = sourceOrder.indexOf(Number(over.id));
     if (from !== -1 && to !== -1) {
-      onReorderSources(arrayMove(sourceOrder, from, to));
+      setSourceOrder(arrayMove(sourceOrder, from, to));
     }
   }
 
@@ -313,15 +263,14 @@ function ReviewList({
     (it) => selected.has(it.id) && !leftOut(it),
   ).length;
   // Mod+Enter compiles (from the title field too).
-  useShortcut("mod+enter", () => void onConfirm(), !confirming && includedCount > 0 && title.trim() !== "");
+  useShortcut("mod+enter", () => void confirm(), !confirming && includedCount > 0 && title.trim() !== "");
   const connectStt = llm && !sttAvailable ? () => setConnecting("stt") : undefined;
   // Raw-caption rows offer AI polish themselves, while it's available and off.
   const polishDefaultIds = polishRoleIds(llm);
   const turnOnPolish =
-    llm?.available && !isPolishOn(llm, selectedRoles) && polishDefaultIds.length > 0
-      ? () => onSetRolesMany(polishDefaultIds, true)
+    llm?.available && !isPolishOn(llm, roles) && polishDefaultIds.length > 0
+      ? () => setRolesMany(polishDefaultIds, true)
       : undefined;
-  const sttPerMinute = llm?.pricing.stt_per_minute ?? 0;
 
   // On an all-podcast selection the AI polish block is irrelevant and hidden.
   const polishableSelected = items.filter(
@@ -329,8 +278,8 @@ function ReviewList({
   ).length;
 
   const cost = useMemo(
-    () => estimateCost(items, selected, selectedRoles, llm),
-    [items, selected, selectedRoles, llm],
+    () => estimateCost(items, selected, roles, llm),
+    [items, selected, roles, llm],
   );
 
   const needle = query.trim().toLowerCase();
@@ -368,21 +317,8 @@ function ReviewList({
   // to reorder otherwise.
   const reorderable = needle === "" && sourceOrder.length > 1;
 
-  const toggleUncertain = (index: number) =>
-    setUncertainOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-
-  const toggleCollapse = (index: number) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+  const toggleUncertain = (index: number) => setUncertainOpen((prev) => toggled(prev, index));
+  const toggleCollapse = (index: number) => setCollapsed((prev) => toggled(prev, index));
 
   // One source group: its sticky header (optional drag handle, collapse, count,
   // select toggle) and items. Shared by the sortable and plain render paths —
@@ -419,11 +355,11 @@ function ReviewList({
     // it would just echo the name (the name fell back to the host already).
     const source = sources[sourceIndex];
     const url = source?.url ?? "";
-    const title = groupLabel(source);
+    const title = source ? sourceName(source) : "";
     const host = hostOf(url);
-    // Show the domain in the meta line unless the title already fell back to it
-    // (no captured name), so it's never printed twice.
-    const showHost = host !== "" && host !== title;
+    // Show the domain in the meta line unless the title already fell back to the
+    // URL (no captured name), so it's never printed twice.
+    const showHost = host !== "" && !title.startsWith(host);
 
     // A source that resolved to a single item has no group to manage (collapse,
     // select-all, a 1/1 count are all moot, and a header would just repeat the
@@ -438,11 +374,10 @@ function ReviewList({
           item={only}
           checked={selected.has(only.id)}
           leftOut={leftOut(only)}
-          onToggle={() => onToggle(only.id)}
-          sttAvailable={sttAvailable}
+          onToggle={() => toggle(only.id)}
           onConnectStt={connectStt}
           onPolish={turnOnPolish}
-          sttPerMinute={sttPerMinute}
+          pricing={llm?.pricing ?? null}
           sourceUrl={showHost ? url : undefined}
           dragHandleProps={handleProps}
           asSource
@@ -461,11 +396,10 @@ function ReviewList({
         item={item}
         checked={selected.has(item.id)}
         leftOut={leftOut(item)}
-        onToggle={() => onToggle(item.id)}
-        sttAvailable={sttAvailable}
+        onToggle={() => toggle(item.id)}
         onConnectStt={connectStt}
           onPolish={turnOnPolish}
-          sttPerMinute={sttPerMinute}
+          pricing={llm?.pricing ?? null}
         highlight={needle}
         muted={item.uncertain}
       />
@@ -495,7 +429,7 @@ function ReviewList({
             <Checkbox
               checked={allSelected}
               indeterminate={someSelected}
-              onCheckedChange={() => onSelectItems(ids, !allSelected)}
+              onCheckedChange={() => selectItems(ids, !allSelected)}
               aria-label={
                 allSelected
                   ? "Deselect all items in this source"
@@ -596,7 +530,7 @@ function ReviewList({
                       unsureSelected > 0 && unsureSelected < unsureIds.length
                     }
                     onCheckedChange={() =>
-                      onSelectItems(
+                      selectItems(
                         unsureIds,
                         unsureSelected !== unsureIds.length,
                       )
@@ -674,7 +608,7 @@ function ReviewList({
           checked={allMaster}
           indeterminate={selected.size > 0 && !allMaster}
           onCheckedChange={() =>
-            allMaster ? onSelectNone() : onSelectAll()
+            allMaster ? selectNone() : selectAll()
           }
           aria-label={
             allMaster
@@ -767,7 +701,7 @@ function ReviewList({
             {/* The button says what's blocking it (no item / no title), so
                 the message is where the click is. */}
             <Button
-              onClick={onConfirm}
+              onClick={confirm}
               disabled={confirming || includedCount === 0 || title.trim() === ""}
               aria-keyshortcuts="Control+Enter Meta+Enter"
               className="w-full"
@@ -797,9 +731,9 @@ function ReviewList({
             onConnect={() => setConnecting("llm")}
             browserModel={storedModels.llm}
             llm={llm}
-            selectedRoles={selectedRoles}
-            onToggleRole={onToggleRole}
-            onSetRolesMany={onSetRolesMany}
+            selectedRoles={roles}
+            onToggleRole={toggleRole}
+            onSetRolesMany={setRolesMany}
             unpunctuatedSelected={unpunctuatedSelected}
           />
         ) : (
@@ -844,18 +778,15 @@ interface ReviewItemProps {
   checked: boolean;
   // The compile can't read this item: its checkbox shows unchecked and greyed,
   // and there's nothing to preview.
-  leftOut?: boolean;
+  leftOut: boolean;
   onToggle: () => void;
-  // Whether speech-to-text is configured. Only a podcast's tag reads it: with STT
-  // on, transcription is metered, so the tag wears the paid-path accent.
-  sttAvailable: boolean;
   // Set when an episode here can't be read without transcription and none is
   // connected: the row then offers the fix itself.
   onConnectStt?: () => void;
   // Set while AI polish is available and off: a raw-caption row offers it.
   onPolish?: () => void;
-  // Transcription price, so a metered episode shows what it will cost.
-  sttPerMinute?: number;
+  // Null until the model config has loaded; a metered episode shows its cost from it.
+  pricing: LlmConfig["pricing"] | null;
   // When this row IS a whole single-item source (no group header above it), its
   // domain is shown inline (favicon + host) so it still reads as a top-level
   // source, and a drag handle is rendered so it can still be reordered.
@@ -879,12 +810,11 @@ function ReviewItem({
   jobId,
   item,
   checked,
-  leftOut = false,
+  leftOut,
   onToggle,
-  sttAvailable,
   onConnectStt,
   onPolish,
-  sttPerMinute = 0,
+  pricing,
   sourceUrl,
   dragHandleProps,
   asSource,
@@ -919,7 +849,7 @@ function ReviewItem({
   // (four on a video, one on a podcast, none on an article), which read as
   // inconsistent. Length now lives where it's actionable — the per-item preview
   // and the aggregate cost estimate.
-  const metaParts: ReactNode[] = [contentTag(item, sttAvailable, sttPerMinute)];
+  const metaParts: ReactNode[] = [contentTag(item, leftOut, pricing ? episodeCost(item, pricing) : 0)];
   // The fix sits on the row it fixes, so the problem and its way out read together.
   const action =
     onConnectStt && needsTranscription(item)
@@ -1218,14 +1148,6 @@ function RoleSelector({
   );
 }
 
-// The title for a source group — always the real name the backend captured at
-// discovery (channel / playlist / blog / video title), so every header reads the
-// same way: a title on top, the domain + type in the meta line beneath it. Only
-// when no name was captured does it fall back to the bare host.
-function groupLabel(source: Source | undefined): string {
-  return source?.name?.trim() || hostOf(source?.url ?? "");
-}
-
 // The leading tag on every review row: what was actually retrieved for this
 // item, and — by its wording — whether it will need work. At review the medium
 // (Video / Episode / Article) is the least useful thing to repeat: the source
@@ -1237,16 +1159,11 @@ function groupLabel(source: Source | undefined): string {
 // is the whole point, so the clean cases state themselves too.
 //
 // One item kind carries an unavoidable cost: a podcast has no text until it's
-// transcribed (metered STT), so when transcription is available its tag wears
-// the brand's paid-path accent (gold + coin) — the cue that this one costs to
-// include no matter what, while everything else is free unless AI polish is on.
-// "Web text" (not "Article") names what was pulled from a page so it never reads
-// as a duplicate of the "Article" type pill the source header already shows.
-function contentTag(
-  item: DiscoveredItem,
-  sttAvailable: boolean,
-  sttPerMinute: number,
-) {
+// transcribed (metered STT), so while it is included its tag is a warning that
+// carries the price (`price`, from episodeCost): this one costs to include no
+// matter what, while everything else is free unless AI polish is on. `leftOut`
+// comes from the same rule as the row's checkbox (isLeftOut).
+function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
   // Each tag says the consequence, not a technical state. Three tones: muted
   // when nothing needs doing, warning when the item is included but costs or
   // reads rough, destructive when it will be left out.
@@ -1254,7 +1171,7 @@ function contentTag(
     return <Tag>Transcript</Tag>;
   }
   if (item.item_type === "podcast") {
-    if (!sttAvailable) {
+    if (leftOut) {
       return (
         <Tag className="text-destructive">
           <Ban />
@@ -1263,20 +1180,19 @@ function contentTag(
       );
     }
     const minutes = Math.round((item.estimated_duration_s ?? 0) / 60);
-    const price = minutes * sttPerMinute;
     return (
       <Tag className="text-warning">
         <TriangleAlert />
         Transcribed from the audio
         {minutes > 0 && ` · ${minutes} min`}
-        {price > 0 && ` · ~${formatUsd(price)}`}
+        {price > 0 && ` · ${formatUsd(price, { approx: true })}`}
       </Tag>
     );
   }
   if (item.item_type === "blog") {
     return <Tag>Full article</Tag>;
   }
-  if (item.has_transcript === false) {
+  if (leftOut) {
     return (
       <Tag className="text-destructive">
         <Ban />

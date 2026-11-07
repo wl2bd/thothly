@@ -5,11 +5,19 @@ import type { DiscoveredItem, LlmConfig } from "./api.ts";
 import {
   autoTitleForSelection,
   defaultSelection,
+  costLabel,
+  episodeCost,
   estimateCost,
+  formatUsd,
+  isFinished,
   isLeftOut,
+  isLeftOutState,
   orderedSelection,
   sureItems,
+  toggled,
+  withIds,
 } from "./review.ts";
+import { sourceName } from "./url.ts";
 
 let n = 0;
 function item(fields: Partial<DiscoveredItem>): DiscoveredItem {
@@ -83,4 +91,47 @@ test("the estimate counts transcription and one pass per role, punctuation only 
   assert.equal(Math.round(cost.llm * 100) / 100, 2); // raw captions only: 1M tokens in + out
   assert.equal(Math.round(cost.stt * 100) / 100, 0.1);
   assert.deepEqual(estimateCost([raw], all, new Set(), null), { stt: 0, llm: 0 });
+});
+
+test("an episode's price is its exact length at the per-minute rate, and only when it needs transcribing", () => {
+  const pricing = llm.pricing;
+  const episode = item({ item_type: "podcast", estimated_duration_s: 90 });
+  assert.equal(episodeCost(episode, pricing), 0.015);
+  assert.equal(episodeCost(item({ item_type: "podcast", has_transcript: true, estimated_duration_s: 90 }), pricing), 0);
+  assert.equal(episodeCost(item({ word_count: 10 }), pricing), 0);
+  assert.equal(estimateCost([episode], new Set([episode.id]), new Set(), llm).stt, 0.015);
+});
+
+test("compile states: finished means a verdict, left out means no chapter", () => {
+  assert.deepEqual(
+    (["pending", "compiling", "done", "skipped", "failed", null] as const).map(isFinished),
+    [false, false, true, true, true, false],
+  );
+  assert.deepEqual(
+    (["done", "skipped", "failed", undefined] as const).map(isLeftOutState),
+    [false, true, true, false],
+  );
+});
+
+test("sets are toggled and bulk-set without touching the original", () => {
+  const base = new Set(["a"]);
+  assert.deepEqual([...toggled(base, "b")], ["a", "b"]);
+  assert.deepEqual([...toggled(base, "a")], []);
+  assert.deepEqual([...withIds(base, ["b", "c"], true)], ["a", "b", "c"]);
+  assert.deepEqual([...withIds(base, ["a", "z"], false)], []);
+  assert.deepEqual([...base], ["a"]);
+});
+
+test("money: a total under a cent is never approximated", () => {
+  assert.equal(formatUsd(0), "$0.00");
+  assert.equal(formatUsd(0.004, { approx: true }), "< $0.01");
+  assert.equal(formatUsd(0.5), "$0.50");
+  assert.equal(formatUsd(0.5, { approx: true }), "~$0.50");
+  assert.equal(costLabel({ stt: 0, llm: 0 }), null);
+});
+
+test("a source is called by its name, else its title, else its URL", () => {
+  assert.equal(sourceName({ name: " Chan ", title: "T", url: "https://x.example/a" }), "Chan");
+  assert.equal(sourceName({ name: "", title: "T", url: "https://x.example/a" }), "T");
+  assert.equal(sourceName({ url: "https://www.x.example/a/" }), "x.example/a");
 });

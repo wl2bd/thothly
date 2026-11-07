@@ -1,6 +1,13 @@
 // The review screen's rules, apart from how they are drawn: what starts
 // selected, what the book is called, what will be left out, what it will cost.
-import { BOOK_TITLE_MAX, type DiscoveredItem, type JobResponse, type LlmConfig } from "./api.ts";
+import {
+  BOOK_TITLE_MAX,
+  type CompileState,
+  type DiscoveredItem,
+  type JobResponse,
+  type LlmConfig,
+} from "./api.ts";
+import { sourceName } from "./url.ts";
 import { plural } from "./utils.ts";
 
 // Podcast episodes are the one item whose compile has a real cost (each is
@@ -42,8 +49,7 @@ export function autoTitleForSelection(job: JobResponse, selected: Set<string>): 
   if (sources.length === 0) return null;
   if (sources.length === 1) {
     const src = job.sources[sources[0]];
-    const name = src?.name?.trim() || src?.title?.trim();
-    if (name) return name.slice(0, BOOK_TITLE_MAX);
+    if (src) return sourceName(src).slice(0, BOOK_TITLE_MAX);
   }
   return `Compilation of ${plural(sources.length, "source")}`.slice(0, BOOK_TITLE_MAX);
 }
@@ -82,6 +88,16 @@ export function isLeftOut(item: DiscoveredItem, sttMissing: boolean): boolean {
   return item.item_type === "youtube" && item.has_transcript === false;
 }
 
+// The compile has reached a verdict on the item: built, left out or failed.
+export function isFinished(state: CompileState | null | undefined): boolean {
+  return state === "done" || state === "skipped" || state === "failed";
+}
+
+// The compile ran past the item without a chapter from it.
+export function isLeftOutState(state: CompileState | null | undefined): boolean {
+  return state === "skipped" || state === "failed";
+}
+
 // AI polish acts on captions and articles; episodes keep their diarized text.
 export function isPolishable(item: DiscoveredItem): boolean {
   return item.item_type === "youtube" || item.item_type === "blog";
@@ -111,6 +127,13 @@ export interface Cost {
   llm: number;
 }
 
+// What transcribing one episode costs, by its exact length: zero for anything
+// that already has text. The row's tag and the total both read it.
+export function episodeCost(item: DiscoveredItem, pricing: LlmConfig["pricing"]): number {
+  if (!needsTranscription(item)) return 0;
+  return ((item.estimated_duration_s ?? 0) / 60) * pricing.stt_per_minute;
+}
+
 export function estimateCost(
   items: DiscoveredItem[],
   selected: Set<string>,
@@ -127,9 +150,7 @@ export function estimateCost(
   for (const it of items) {
     if (!selected.has(it.id)) continue;
     if (it.item_type === "podcast") {
-      if (llm.stt_available && needsTranscription(it)) {
-        stt += ((it.estimated_duration_s ?? 0) / 60) * pricing.stt_per_minute;
-      }
+      if (llm.stt_available) stt += episodeCost(it, pricing);
       continue;
     }
     if (!llm.available || it.has_transcript === false) continue;
@@ -142,16 +163,33 @@ export function estimateCost(
   return { stt, llm: llmCost };
 }
 
-export function formatUsd(value: number): string {
+// "$0.12", or "~$0.12" when it is an estimate; a fraction of a cent is never
+// shown as an approximation of itself.
+export function formatUsd(value: number, { approx = false } = {}): string {
   if (value <= 0) return "$0.00";
   if (value < 0.01) return "< $0.01";
-  return `$${value.toFixed(2)}`;
+  return `${approx ? "~" : ""}$${value.toFixed(2)}`;
 }
 
 // The total as the footer and the Compile button read it; null when nothing is
 // metered.
 export function costLabel(cost: Cost): string | null {
   const total = cost.stt + cost.llm;
-  if (total <= 0) return null;
-  return total < 0.01 ? "< $0.01" : `~$${total.toFixed(2)}`;
+  return total > 0 ? formatUsd(total, { approx: true }) : null;
+}
+
+// Toggling one key in a set, and setting many at once, without mutating it.
+export function toggled<T>(set: Set<T>, key: T): Set<T> {
+  const next = new Set(set);
+  if (!next.delete(key)) next.add(key);
+  return next;
+}
+
+export function withIds<T>(set: Set<T>, ids: Iterable<T>, on: boolean): Set<T> {
+  const next = new Set(set);
+  for (const id of ids) {
+    if (on) next.add(id);
+    else next.delete(id);
+  }
+  return next;
 }

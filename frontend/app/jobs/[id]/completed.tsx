@@ -15,7 +15,7 @@ import { cn, plural } from "@/lib/utils";
 import { BookContents, BookReader } from "@/components/book";
 import { countWords, splitBook } from "@/lib/book-md";
 import { getDownloadUrl, type DiscoveredItem, type JobResponse } from "@/lib/api";
-import { TOKENS_PER_WORD } from "@/lib/review";
+import { isLeftOutState, TOKENS_PER_WORD } from "@/lib/review";
 import { StatusMessage } from "./shared";
 
 // Which items count as "in the compilation": items that actually became
@@ -229,9 +229,7 @@ function LeftOutNotice({
   className?: string;
   style?: CSSProperties;
 }) {
-  const leftOut = items.filter(
-    (it) => it.compile_state === "skipped" || it.compile_state === "failed",
-  );
+  const leftOut = items.filter((it) => isLeftOutState(it.compile_state));
   if (leftOut.length === 0) return null;
   return (
     <div className={className} style={style}>

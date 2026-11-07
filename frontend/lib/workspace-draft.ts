@@ -3,7 +3,7 @@
 // compilation) finds them again. sessionStorage: per tab, gone when it closes.
 import type { SearchResult, Source, SourceSpec } from "@/lib/api";
 import { backendKindOfUrl, kindFromResultType, kindOfUrl, type Kind } from "@/lib/kinds";
-import { prettyUrl } from "@/lib/url";
+import { prettyUrl, sourceName } from "@/lib/url";
 
 export interface StagedSource {
   url: string;
@@ -123,7 +123,7 @@ function stagedFromSource(s: Source): StagedSource {
   const staged = stagedFromUrl(s.url);
   return {
     ...staged,
-    title: s.title || s.name || staged.title,
+    title: sourceName(s),
     ...(s.kind === "podcast"
       ? { type: "episode", source: "podcast", durationS: s.duration_s ?? null, feedUrl: s.feed_url ?? undefined }
       : {}),

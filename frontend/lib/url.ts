@@ -28,3 +28,9 @@ export function prettyUrl(url: string): string {
     return url;
   }
 }
+
+// What a source is called wherever it is listed: the name discovery captured,
+// else its title, else its URL read as a label.
+export function sourceName(source: { name?: string | null; title?: string | null; url: string }): string {
+  return source.name?.trim() || source.title?.trim() || prettyUrl(source.url);
+}
