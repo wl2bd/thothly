@@ -26,7 +26,7 @@ Before transformers, [recurrent neural networks](https://en.wikipedia.org/wiki/R
 A key breakthrough was [LSTM](https://en.wikipedia.org/wiki/Long_short-term_memory "Long short-term memory") (originally described in a 1995 technical report and formally published in 1997), an RNN that introduced gating mechanisms to mitigate the vanishing gradient problem, allowing efficient learning of long-sequence modelling. One key architectural element was the use of *multiplicative gating units*, in which the outputs of some neurons modulate the outputs of others. These multiplicative units are conceptually distinct from the additive attention mechanism later introduced for sequence-to-sequence models.
 Neural networks using multiplicative units were later called *sigma-pi networks* or *[higher-order networks](https://en.wikipedia.org/wiki/Higher-order_neural_network?action=edit&redlink=1 "Higher-order neural network")*. LSTM became the standard architecture for long sequence modelling until the 2017 publication of transformers. However, LSTM still used sequential processing, like most other RNNs. Specifically, RNNs operate one token at a time from first to last; they cannot operate in parallel over all tokens in a sequence.
 
-Transformers allow parallel processing of tokens during training, but standard self-attention has computational and memory costs that grow quadratically with sequence length. The [fast weight](https://en.wikipedia.org/wiki/Fast_weight?action=edit&redlink=1 "Fast weight") controller, proposed in 1992, used one network to generate input-dependent weights for another network. This method built on earlier work on "fast weights" and "dynamic links". A slow neural network learns by gradient descent to generate keys and values for computing the weight changes of the fast neural network which computes answers to queries. This was later shown to be equivalent to the unnormalized linear transformer.
+Transformers allow parallel processing of tokens during training, but standard self-attention has computational and memory costs that grow quadratically with sequence length.
 
 ### Attention with seq2seq
 
@@ -50,7 +50,7 @@ On 2017-06-12, the original (100M-parameter) encoder–decoder transformer model
 
 ### AI boom era
 
-In spring 2017, before the "Attention is All you need" preprint was published, one of the co-authors applied the "decoder-only" variation of the architecture to generate fictitious Wikipedia articles. The transformer architecture is now used alongside many [generative models](https://en.wikipedia.org/wiki/Generative_AI "Generative AI") that contribute to the ongoing [AI boom](https://en.wikipedia.org/wiki/AI_boom "AI boom").
+In spring 2017, before the "Attention is All you need" preprint was published, one of the co-authors applied the "decoder-only" variation of the architecture to generate fictitious Wikipedia articles. Transformer architecture is now used alongside many [generative models](https://en.wikipedia.org/wiki/Generative_AI "Generative AI") that contribute to the ongoing [AI boom](https://en.wikipedia.org/wiki/AI_boom "AI boom").
 
 The "reference implementation" of the original Transformer was written in a TensorFlow library. In language modelling, [ELMo](https://en.wikipedia.org/wiki/ELMo "ELMo") (2018) was a bi-directional LSTM that produces contextualized [word embeddings](https://en.wikipedia.org/wiki/Word_embedding "Word embedding"), improving upon the line of research from [bag of words](https://en.wikipedia.org/wiki/Bag-of-words_model "Bag-of-words model") and [word2vec](https://en.wikipedia.org/wiki/Word2vec "Word2vec"). It was followed by [BERT](https://en.wikipedia.org/wiki/BERT_%28language_model%29 "BERT (language model)") (2018), an encoder-only transformer model. In October 2019, Google started using BERT to process search queries. In 2020, Google Translate replaced the previous RNN-encoder–RNN-decoder model by a transformer-encoder–RNN-decoder model.
 
@@ -558,18 +558,37 @@ Inspired by ideas about [attention in humans](https://en.wikipedia.org/wiki/Atte
 
 Academic reviews of the history of the attention mechanism are provided in Niu et al. and Soydaner.
 
-|  |  |
-| --- | --- |
-| 1950s 1960s | Psychology biology of attention, including [cocktail party effect](https://en.wikipedia.org/wiki/Cocktail_party_effect "Cocktail party effect"), [filter model of attention](https://en.wikipedia.org/wiki/Broadbent's_filter_model_of_attention "Broadbent's filter model of attention"), [partial report paradigm](https://en.wikipedia.org/wiki/Iconic_memory#Sperling's_partial_report_procedure "Iconic memory"), and [saccade control](https://en.wikipedia.org/wiki/Saccade "Saccade"). |
-| 1980s | sigma pi units, higher order neural networks |
-| 1990s | *fast weight controller*. Neuron weights generate fast "dynamic links" similar to keys & values. |
-| 2014 | [seq2seq](https://en.wikipedia.org/wiki/Seq2seq "Seq2seq") with RNN + Attention. Attention mechanism was added onto RNN encoder-decoder architecture to improve language translation of long sentences. See Overview section. |
-| 2015 | Attention applied to images |
-| 2017 | Transformers = Attention + position encoding + MLP + skip connections. This design improved accuracy and removed the sequential disadvantages of the RNN. |
+### Predecessors
+
+[Selective attention](https://en.wikipedia.org/wiki/Attentional_control "Attentional control") in humans had been well studied in neuroscience and cognitive psychology. In 1953, [Colin Cherry](https://en.wikipedia.org/wiki/Colin_Cherry "Colin Cherry") studied selective attention in the context of audition, known as the [cocktail party effect](https://en.wikipedia.org/wiki/Cocktail_party_effect "Cocktail party effect").
+
+In 1958, [Donald Broadbent](https://en.wikipedia.org/wiki/Donald_Broadbent "Donald Broadbent") proposed the [filter model of attention](https://en.wikipedia.org/wiki/Broadbent's_filter_model_of_attention "Broadbent's filter model of attention"). Selective attention of vision was studied in the 1960s by [George Sperling](https://en.wikipedia.org/wiki/George_Sperling "George Sperling")'s [partial report paradigm](https://en.wikipedia.org/wiki/Iconic_memory#Sperling's_partial_report_procedure "Iconic memory"). It was also noticed that [saccade control](https://en.wikipedia.org/wiki/Saccade "Saccade") is modulated by cognitive processes, insofar as the eye moves preferentially towards areas of high [salience](https://en.wikipedia.org/wiki/Salience_%28neuroscience%29 "Salience (neuroscience)"). As the fovea of the eye is small, the eye cannot sharply resolve the entire visual field at once. The use of saccade control allows the eye to quickly scan important features of a scene.
+
+These research developments inspired algorithms such as the [Neocognitron](https://en.wikipedia.org/wiki/Neocognitron "Neocognitron") and its variants. Meanwhile, developments in neural networks had inspired circuit models of biological visual attention. One well-cited network from 1998, for example, was inspired by the [low-level primate visual system](https://en.wikipedia.org/wiki/Visual_cortex "Visual cortex"). It produced [saliency maps](https://en.wikipedia.org/wiki/Saliency_map "Saliency map") of images using handcrafted (not learned) features, which were then used to guide a second neural network in processing patches of the image in order of reducing saliency.
+
+A key aspect of attention mechanism can be written (schematically) as $$\sum_i \langle(\text{query})_i, (\text{key})_i\rangle (\text{value})_i$$where the angled brackets denote dot product. This shows that it involves a multiplicative operation. Multiplicative operations within artificial neural networks had been studied under the names of *[higher-order neural networks](https://en.wikipedia.org/wiki/Higher-order_neural_network?action=edit&redlink=1 "Higher-order neural network")*, *multiplication units*, *sigma-pi units*, *fast weight controllers*, and *hyper-networks*.
+
+In *fast weight controller*, one of its two networks has "fast weights" or "dynamic links" (1981). A slow neural network learns by gradient descent to generate keys and values for computing the weight changes of the fast neural network which computes answers to queries. This is dot-product attention without softmax.
+
+### Recurrent attention
+
+During the deep learning era, attention mechanism was developed to solve similar problems in encoding-decoding.
+
+In machine translation, the [seq2seq](https://en.wikipedia.org/wiki/Seq2seq "Seq2seq") model, as it was proposed in 2014, would encode an input text into a fixed-length vector, which would then be decoded into an output text. If the input text is long, the fixed-length vector would be unable to carry enough information for accurate decoding. An attention mechanism was proposed to solve this problem.
+
+An image captioning model was proposed in 2015, citing inspiration from the seq2seq model. that would encode an input image into a fixed-length vector. (Xu et al 2015), citing (Bahdanau et al 2014), applied the attention mechanism as used in the seq2seq model to image captioning.
+
+### Transformer
+
+One problem with seq2seq models was their use of recurrent neural networks, which are not parallelizable as both the encoder and the decoder must process the sequence token-by-token. *Decomposable attention* attempted to solve this problem by processing the input sequence in parallel, before computing a "soft alignment matrix" (*alignment* is the terminology used by Bahdanau et al) in order to allow for parallel processing.
+
+The idea of using the attention mechanism for self-attention, instead of in an encoder-decoder (cross-attention), was also proposed during this period, such as in [differentiable neural computers](https://en.wikipedia.org/wiki/Differentiable_neural_computer "Differentiable neural computer") and [neural Turing machines](https://en.wikipedia.org/wiki/Neural_Turing_machine "Neural Turing machine"). It was termed *intra-attention* where an LSTM is augmented with a memory network as it encodes an input sequence.
+
+These strands of development were brought together in 2017 with the [Transformer architecture](https://en.wikipedia.org/wiki/Transformer_architecture "Transformer architecture"), published in the *[Attention Is All You Need](https://en.wikipedia.org/wiki/Attention_Is_All_You_Need "Attention Is All You Need")* paper.
 
 ## Dot-product attention
 
-Given three matrices: $Q\in\mathbb{R}^{m\times d_k}, K\in\mathbb{R}^{n\times d_k}$ and $V\in\mathbb{R}^{n\times d_v}$, the scaled dot-product attention is defined as:$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V\in\mathbb{R}^{m\times d_v}$$where ${}^T$ denotes [transpose](https://en.wikipedia.org/wiki/Transpose "Transpose") and the [softmax function](https://en.wikipedia.org/wiki/Softmax_function "Softmax function") is applied independently to every row of its argument.
+Given three matrices: $Q\in\mathbb{R}^{m\times d_Q}, K\in\mathbb{R}^{n\times d_K}$ and $V\in\mathbb{R}^{n\times d_V}$, the scaled dot-product attention is defined as:$$\text{Attention}(Q, K, V) = \text{softmax}\left(\lambda QK^T\right)V\in\mathbb{R}^{m\times d_v}$$where ${}^T$ denotes [transpose](https://en.wikipedia.org/wiki/Transpose "Transpose") and the [softmax function](https://en.wikipedia.org/wiki/Softmax_function "Softmax function") is applied independently to every row of its argument. $\lambda$ is a scalar. It is usually set to $1/\sqrt{d_K}$.
 
 The matrix $Q$ contains $m$ queries, while matrices $K, V$ jointly contain $n$ key-value pairs. Value vectors in matrix $V$ are weighted using the weights resulting from the softmax operation, so that the rows of the $m$-by-$d_v$ output matrix are confined to the [convex hull](https://en.wikipedia.org/wiki/Convex_hull "Convex hull") of the points in $\mathbb{R}^{d_v}$ given by the rows of $V$.
 
@@ -607,43 +626,21 @@ h_1' &= \mathrm{Attention}(h_1 W^Q, HW^K, H W^V) \\
 &\;\,\vdots
 \end{aligned}$$or more succinctly, $H' = \mathrm{Attention}(H W^Q, HW^K, H W^V)$. This can be applied repeatedly, to obtain a multilayered encoder. This is the "encoder self-attention", sometimes called the "all-to-all attention", as the vector at every position can attend to every other.
 
-### Variants
-
-Bahdanau et al (2014) proposed an additive form of attention$$z_{ij} = \tanh(q_i W^Q + k_j W^K) w^T$$
-
-where $W^Q, W^K$ are learnable matrices, and $w$ is a learnable vector.
-
-## Overview
-
-The modern era of machine attention was revitalized by grafting an attention mechanism (Fig 1. orange) to an Encoder-Decoder.
-
-|  |  |
-| --- | --- |
-| Animated sequence of language translation | Fig 1.  Encoder-decoder with attention. Numerical subscripts (100, 300, 500, 9k, 10k) indicate vector sizes while lettered subscripts i and i − 1 indicate time steps.  Pinkish regions in H matrix and w vector are zero values.  See Legend for details. Fig 1. Encoder-decoder with attention. Numerical subscripts (100, 300, 500, 9k, 10k) indicate vector sizes while lettered subscripts i and i − 1 indicate time steps. Pinkish regions in H matrix and w vector are zero values. See Legend for details. |
-
-Figure 2 shows the internal step-by-step operation of the attention block (A) in Fig 1.
-
-![](https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Attention-qkv.png/960px-Attention-qkv.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)
-
-Figure 2. The diagram shows the attention forward pass calculating correlations of the word "that" with other words in "See that girl run." Given the right weights from training, the network should be able to identify "girl" as a highly correlated word. Some things to note:
-
-- This example focuses on the attention of a single word "that". In practice, the attention of each word is calculated in parallel to speed up calculations. Simply changing the lowercase "x" vector to the uppercase "X" matrix will yield the formula for this.
-- Softmax scaling qW<sub>k</sub><sup>T</sup> / √100 prevents a high variance in qW<sub>k</sub><sup>T</sup> that would allow a single word to excessively dominate the softmax resulting in attention to only one word, as a discrete hard max would do.
-- Notation: the commonly written row-wise softmax formula above assumes that vectors are rows, which runs contrary to the standard math notation of column vectors. More correctly, we should take the transpose of the context vector and use the column-wise softmax, resulting in the more correct form
-
-$$\begin{align} (XW_v)^T * {[ (W_k X^T) * { (\underline{x}W_q)^T } ]_{sm} } \end{align}$$.
-
-## Variants
-
 ![Comparison of the data flow in CNN, RNN, and self-attention](https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d7/Self-attention_in_CNN%2C_RNN%2C_and_self-attention.svg/250px-Self-attention_in_CNN%2C_RNN%2C_and_self-attention.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)
 
-- fast weight programmers, or fast weight controllers (1992). A "slow" [neural network](https://en.wikipedia.org/wiki/Neural_network "Neural network") outputs the "fast" weights of another neural network through [outer products](https://en.wikipedia.org/wiki/Outer_product "Outer product"). The slow network learns by gradient descent. It was later renamed as "linearized self-attention".
-- Bahdanau-style attention, also referred to as *additive attention*,
-- Luong-style attention, which is known as *multiplicative attention*,
-- Early attention mechanisms similar to modern self-attention were proposed using recurrent neural networks. However, the highly parallelizable self-attention was introduced in 2017 and successfully used in the Transformer model,
-- *positional attention* and *factorized positional attention*.
+### Historical variants
 
-For [convolutional neural networks](https://en.wikipedia.org/wiki/Convolutional_neural_network "Convolutional neural network"), attention mechanisms can be distinguished by the dimension on which they operate, namely: spatial attention, channel attention, or combinations.
+[Lernmatrix](https://en.wikipedia.org/wiki/Lernmatrix "Lernmatrix"), or correlation matrix memory, is causally masked dot-product attention, without softmax. In a causally masked dot-product attention, the $i$-th output vector is equal to $$o_i = \frac{1}{\sum_{j \leq i} e^{q_i k_j^T} } \sum_{j \leq i} e^{q_i k_j^T} v_j$$removing the softmaix yields the correlation matrix memory:$$o_i = q_i \sum_{j \leq i } k_j^T v_j$$and Lernmatrix is the special case where all vectors are binary.
+
+Bahdanau et al (2014) proposed an additive form of attention$$z_{ij} = \tanh(q_i W^Q + k_j W^K) w^T$$where $W^Q, W^K$ are learnable matrices, and $w$ is a learnable vector.
+
+Luong et al (2015) attempted to improve upon Bahdanau et al (2014). They tested at least two different forms of attentions, two of which are the modern form of dot-product attention. They worked on seq2seq machine translation. A multilayered LSTM processes an input sequence $x_1, \dots, x_n$ (such as a sequence of words in an English sequence) into a sequence of vectors $k_1, \dots, k_n$. It then receives a special token `<EOS>` ("end of sequence") to mark as $x_0'$, the beginning of the output sequence. It then proceeds as follows:
+
+- Given another output $x_i'$, run the LSTM for another step, obtaining output $q_i$.
+- $q_i$ pays attention to input key-value pairs. The key and value vectors are the same: $k_i = v_i$.
+- The attention scores $z_{ij}$ are calculated as either $z_{ij} = q_i W k_j^T$, as in modern dot-product attention, or as $z_{ij} = \tanh(q_i W^Q + k_j W^K) w^T$, as in Bahdanau et al (2014).
+- The output vector is $o_i = \frac{1}{\sum_{j \leq i} e^{z_{ij}} } \sum_{j \leq i} e^{z_{ij}} v_j$.
+- The output word is sampled from $\operatorname{softmax}(\tanh(o_i W^Q + q_i W^Q) W)$.
 
 ## Optimizations
 
@@ -871,6 +868,8 @@ Another method, called *intermediate fusion*, involves each modality being first
 
 LLMs can handle [programming languages](https://en.wikipedia.org/wiki/Programming_language "Programming language") similarly to how they handle natural languages. No special change in token handling is needed as code, like human language, is represented as plain text. LLMs can generate code from problem statements or instructions written in [natural language](https://en.wikipedia.org/wiki/Natural_language "Natural language"), a process sometimes called [vibe coding](https://en.wikipedia.org/wiki/Vibe_coding "Vibe coding"). They can also describe code in natural language or translate it into other programming languages. They were originally used as a [code completion](https://en.wikipedia.org/wiki/Code_completion "Code completion") tool, but advances have moved them towards [automatic programming](https://en.wikipedia.org/wiki/Automatic_programming "Automatic programming"). Services such as [GitHub Copilot](https://en.wikipedia.org/wiki/GitHub_Copilot "GitHub Copilot") offer LLMs specifically trained, fine-tuned, or prompted for programming.
 
+In [mathematical applications](https://en.wikipedia.org/wiki/Mathematics_and_artificial_intelligence "Mathematics and artificial intelligence"), LLMs can generate [formal proofs](https://en.wikipedia.org/wiki/Formal_proof "Formal proof") in [formal languages](https://en.wikipedia.org/wiki/Formal_language "Formal language") for automated [proof assistants](https://en.wikipedia.org/wiki/Proof_assistant "Proof assistant").
+
 In [computational biology](https://en.wikipedia.org/wiki/Computational_biology "Computational biology"), transformer-based architectures, such as DNA LLMs, have also proven useful in analyzing biological sequences: [protein](https://en.wikipedia.org/wiki/Protein "Protein"), [DNA](https://en.wikipedia.org/wiki/DNA "DNA"), and [RNA](https://en.wikipedia.org/wiki/RNA "RNA"). With proteins they appear able to capture a degree of "grammar" from the amino-acid sequence, by mapping that sequence into an [embedding](https://en.wikipedia.org/wiki/Embedding_%28machine_learning%29 "Embedding (machine learning)"). On tasks such as [structure prediction](https://en.wikipedia.org/wiki/Protein_structure_prediction "Protein structure prediction") and [mutational](https://en.wikipedia.org/wiki/Mutation "Mutation") outcome prediction, a small model using an embedding as input can approach or exceed much larger models using [multiple sequence alignments](https://en.wikipedia.org/wiki/Multiple_sequence_alignment "Multiple sequence alignment") (MSA) as input. ESMFold, [Meta Platforms](https://en.wikipedia.org/wiki/Meta_Platforms "Meta Platforms")' embedding-based method for protein structure prediction, runs an order of magnitude faster than [AlphaFold2](https://en.wikipedia.org/wiki/AlphaFold2 "AlphaFold2") thanks to the removal of an MSA requirement and a lower parameter count due to the use of embeddings. Meta hosts ESM Atlas, a database of 772 million structures of [metagenomic](https://en.wikipedia.org/wiki/Metagenomic "Metagenomic") proteins predicted using ESMFold. An LLM can also design proteins unlike any seen in nature. Nucleic acid models have proven useful in detecting [regulatory sequences](https://en.wikipedia.org/wiki/Regulatory_sequence "Regulatory sequence"), sequence classification, RNA-RNA interaction prediction, and RNA structure prediction.
 
 ## Properties
@@ -1024,6 +1023,10 @@ Selection bias refers the inherent tendency of large language models to favor ce
 #### Political bias
 
 Political bias refers to the tendency of algorithms to systematically favor certain political viewpoints, ideologies, or outcomes over others. Language models may also exhibit political biases. Since the training data includes a wide range of political opinions and coverage, the models might generate responses that lean towards particular political ideologies or viewpoints, depending on the prevalence of those views in the data.
+
+#### Conformity bias
+
+As demonstrated in various experiments such as the ones conduced by [Solomon Ash](https://en.wikipedia.org/wiki/Solomon_Asch "Solomon Asch"), humans show a conformity bias, in which they disregard obviously correct answers when others seem to favor incorrect ones. Research suggests that similar tendencies also apply to LLMs, and are potentially even stronger than among humans. For instance, LLMs that were asked to answer multiple-choice questions showed conformity when seeing how other alleged participants answered them. The same effect was observed in purely visual tasks (derived from [Ash's experiment](https://en.wikipedia.org/wiki/Asch_conformity_experiments "Asch conformity experiments") or novel tasks), where models were asked to judge visual stimuli. This bias can have critical consequences. In health settings, LLM-based psychiatric evaluations achieved perfect accuracy without peer-pressure but collapsed when peer pressure was present.
 
 ## Safety
 
