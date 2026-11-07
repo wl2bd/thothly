@@ -15,9 +15,6 @@ export type ItemType = DiscoveredItem["item_type"];
 export type CompileState = NonNullable<DiscoveredItem["compile_state"]>;
 export type ItemPreview = Schemas["ItemPreview"];
 export type LlmConfig = Schemas["LLMConfig"];
-export type LlmRole = Schemas["RoleInfo"];
-export type LlmPricing = Schemas["Pricing"];
-export type LlmProvider = Schemas["ProviderInfo"];
 export type VisitorEndpoint = Schemas["VisitorEndpoint"];
 export type SearchResult = Schemas["SearchResult"];
 export type ResultType = SearchResult["type"];
@@ -50,10 +47,11 @@ export async function createJob(
   sources: SourceSpec[],
   bookTitle?: string,
 ): Promise<JobResponse> {
+  const body: Schemas["JobCreate"] = { sources, book_title: bookTitle || undefined };
   const res = await fetch("/api/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sources, book_title: bookTitle || undefined }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) return parseError(res);
   return res.json();
@@ -74,21 +72,22 @@ export async function fetchLlmConfig(): Promise<LlmConfig> {
 export async function confirmJob(
   id: string,
   selectedIds: string[],
-  bookTitle?: string,
-  llmRoles: string[] = [],
-  visitor: { llm?: VisitorEndpoint; stt?: VisitorEndpoint } = {},
+  bookTitle: string | undefined,
+  llmRoles: string[],
+  visitor: { llm?: VisitorEndpoint; stt?: VisitorEndpoint },
 ): Promise<JobResponse> {
+  const body: Schemas["JobConfirm"] = {
+    selected_ids: selectedIds,
+    book_title: bookTitle,
+    llm_roles: llmRoles,
+    llm: visitor.llm,
+    stt: visitor.stt,
+  };
   const res = await fetch(`/api/jobs/${id}/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // The visitor's keys ride in the body, never a header or the URL.
-    body: JSON.stringify({
-      selected_ids: selectedIds,
-      book_title: bookTitle,
-      llm_roles: llmRoles,
-      llm: visitor.llm,
-      stt: visitor.stt,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) return parseError(res);
   return res.json();
@@ -109,13 +108,14 @@ export async function verifyKey(
   apiKey: string,
   baseUrl?: string,
 ): Promise<string[]> {
+  const body: Schemas["VerifyRequest"] = { provider, api_key: apiKey, base_url: baseUrl };
   const res = await fetch("/api/llm/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) return parseError(res);
-  const data: { models: string[] } = await res.json();
+  const data: Schemas["VerifyResponse"] = await res.json();
   return data.models;
 }
 
