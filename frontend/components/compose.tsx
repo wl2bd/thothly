@@ -69,7 +69,7 @@ import {
   type StagedSource,
 } from "@/lib/workspace-draft";
 import { Skeleton } from "skullet/react";
-import { cn } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
   MetaSep,
@@ -457,7 +457,7 @@ function ComposeWorkspace({
   const reviewLabel = submitting
     ? "Starting…"
     : staged.length > 0
-      ? `Review ${staged.length} ${staged.length === 1 ? "source" : "sources"}`
+      ? `Review ${plural(staged.length, "source")}`
       : "Review sources";
 
   // "/" to the search, like most sites with one; Mod+Enter runs the pane's
@@ -968,7 +968,7 @@ function SearchResults({
   // every other scroll area, so rows dissolve at the seams instead of cutting on
   // a hard line. Re-measured when the result count changes.
   const listRef = useRef<HTMLUListElement>(null);
-  const fade = useScrollFade(listRef, { top: true, bottom: true }, [
+  const fade = useScrollFade(listRef, {}, [
     results.length,
   ]);
 

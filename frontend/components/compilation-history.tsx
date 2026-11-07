@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 import { ApiError, fetchJob } from "@/lib/api";
+import { plural } from "@/lib/utils";
 import {
   forgetCompilation,
   getHistorySnapshot,
@@ -175,7 +176,7 @@ function BookRow({ entry, onDelete }: { entry: CompilationSnapshot; onDelete: ()
   // "3 sources · 3 hours ago". No format: every book comes out as both EPUB and
   // Markdown, so it would read the same on every row.
   const meta = [
-    entry.sources !== undefined && `${entry.sources} ${entry.sources === 1 ? "source" : "sources"}`,
+    entry.sources !== undefined && plural(entry.sources, "source"),
     STATUS[entry.status].label,
     relativeDate(entry.createdAt),
   ].filter(Boolean);

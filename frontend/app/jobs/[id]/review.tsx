@@ -349,10 +349,9 @@ export function ReviewView({
     // and drop it from each row. A mixed group keeps its per-row pills.
     const kinds = new Set(groupItems.map((it) => kindFromItemType(it.item_type)));
     const uniformKind = kinds.size === 1 ? [...kinds][0] : null;
-    // The header now reads like a source on the home page (a name in normal case,
-    // its favicon + domain, its type) instead of an all-caps section divider, so
-    // the two screens speak the same visual language. The domain is dropped when
-    // it would just echo the name (the name fell back to the host already).
+    // The header reads like a source on the home page (a name in normal case,
+    // its favicon + domain, its type), so the two screens speak the same visual
+    // language. The domain is dropped when it would just echo the name.
     const source = sources[sourceIndex];
     const url = source?.url ?? "";
     const title = source ? sourceName(source) : "";
@@ -545,8 +544,7 @@ export function ReviewView({
                   >
                     <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
                       <CircleHelp className="size-3.5 shrink-0" aria-hidden="true" />
-                      {unsureItems.length} uncertain{" "}
-                      {unsureItems.length === 1 ? "link" : "links"}
+                      {plural(unsureItems.length, "uncertain link")}
                     </span>
                     <span className="text-muted-foreground flex min-w-0 items-center gap-x-1.5 text-xs">
                       <span className="truncate">
@@ -619,9 +617,6 @@ export function ReviewView({
         <span className="text-muted-foreground">Select all</span>
         <Kbd className="text-muted-foreground">A</Kbd>
       </label>
-
-      {/* No summary banner: each item's state and its fix live on its own row,
-          and the pane on the right counts what goes in. */}
 
       {items.length > 8 && (
         <div className="relative">
@@ -843,12 +838,8 @@ function ReviewItem({
 
   // The meta line is deliberately spare: the content tag (what was retrieved +
   // whether it needs work), and — only for a single-item source — its domain.
-  // Length metrics (word count, language, read/play time) were dropped here on
-  // purpose: at review the decision is "include or not / polish or not", which
-  // they don't drive, and they were available for some kinds and not others
-  // (four on a video, one on a podcast, none on an article), which read as
-  // inconsistent. Length now lives where it's actionable — the per-item preview
-  // and the aggregate cost estimate.
+  // No length metrics: the decision here is "include or not / polish or not".
+  // Length lives in the per-item preview and the cost estimate.
   const metaParts: ReactNode[] = [contentTag(item, leftOut, pricing ? episodeCost(item, pricing) : 0)];
   // The fix sits on the row it fixes, so the problem and its way out read together.
   const action =
@@ -987,19 +978,19 @@ function ReviewItem({
 
 function PreviewBody({
   preview,
-  rawCaptions = false,
+  rawCaptions,
 }: {
   preview: ItemPreview;
   // Raw auto-captions: the excerpt is labelled as such in its corner, so it's
   // never taken for the final text. The row above already says why and offers
   // the fix, so no sentence repeats it here.
-  rawCaptions?: boolean;
+  rawCaptions: boolean;
 }) {
   // The excerpt box has no sticky header, so it fades on BOTH edges that hide
   // content — the same softening the lists get, so a long preview dissolves at
   // top and bottom instead of being sliced on a hard line.
   const excerptRef = useRef<HTMLDivElement>(null);
-  const fade = useScrollFade(excerptRef, { top: true, bottom: true }, [
+  const fade = useScrollFade(excerptRef, {}, [
     preview.content_md,
   ]);
 
@@ -1054,9 +1045,10 @@ interface RoleSelectorProps {
 }
 
 // AI polish, the one paid path, presented as a single master switch: on engages
-// the safe set (a copyedit pass; punctuation already runs on its own), off
-// clears every optional pass. The opinionated extras that invent structure or
-// generate text (sections, preface) hide behind "Customize", opt-in one by one.
+// the default set (the roles whose tier is "default": punctuation and a copyedit
+// pass), off clears every optional pass. The extras that invent structure or
+// generate text (sections, preface) appear under the switch once it is on,
+// opt-in one by one.
 // Roles are grouped by their backend `tier` so the ids stay out of the UI.
 // Always rendered: with no model available, "Connect a model" stands where the
 // switch would be, quiet rather than gold, so the free path stays the default.
