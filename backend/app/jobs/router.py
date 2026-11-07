@@ -1,25 +1,16 @@
 import re
-from collections import Counter
-from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import FileResponse
 
-from app.core.config import settings
 from app.core.posthog import capture
-from app.jobs import credentials, repository
-from app.jobs.models import (
-    ItemPreview,
-    JobConfirm,
-    JobCreate,
-    JobResponse,
-    VisitorEndpoint,
-)
+from app.jobs import repository, service
+from app.jobs.models import ItemPreview, JobConfirm, JobCreate, JobResponse
+from app.jobs.outputs import FORMATS, OutputFormat, output_file
 from app.jobs.phases import run_discovery
 from app.jobs.preview import build_item_preview
 from app.jobs.runner import run_compilation
-from app.pipeline.providers import Endpoint, ProviderRejected, resolve_endpoint
-from app.pipeline.roles import get_role
+from app.pipeline.providers import ProviderRejected
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -27,15 +18,9 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=JobResponse)
 def create_job(payload: JobCreate, background_tasks: BackgroundTasks) -> JobResponse:
     job = repository.create_job(payload)
-    title = payload.book_title.strip() if payload.book_title else None
     capture("job_created", {"source_count": len(payload.sources)}, job.id)
-    background_tasks.add_task(run_discovery, job.id, payload.sources, title or None)
+    background_tasks.add_task(run_discovery, job.id, payload.sources, job.book_title)
     return job
-
-
-@router.get("", response_model=list[JobResponse])
-def list_jobs() -> list[JobResponse]:
-    return repository.list_jobs()
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -48,7 +33,8 @@ def get_job(job_id: str) -> JobResponse:
 
 @router.post("/{job_id}/stop", response_model=JobResponse)
 def stop_job(job_id: str) -> JobResponse:
-    """Stop a compile after the item in progress; the book keeps what's ready."""
+    """Stop a running compile before its next item or AI call; the book keeps
+    what's ready."""
     job = repository.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
@@ -71,68 +57,17 @@ def confirm_job(
             detail="This compilation isn't awaiting review anymore.",
         )
 
-    # Refuse a provider the server won't call before anything about the job
-    # changes, so a rejected confirm leaves it exactly as it was.
     try:
-        llm = _visitor_endpoint(payload.llm, for_stt=False)
-        stt = _visitor_endpoint(payload.stt, for_stt=True)
+        service.confirm(job_id, payload)
     except ProviderRejected as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-    selected = repository.confirm_items(job_id, payload.selected_ids)
-    if not selected:
+    except service.NothingSelected:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Those items are no longer available. Go back and choose again.",
-        )
-
-    # Keep only known role ids; the compile only acts on them when an LLM is
-    # actually configured (otherwise they are ignored — the free path).
-    valid_roles = [r for r in payload.llm_roles if get_role(r) is not None]
-    repository.set_job_llm_roles(job_id, valid_roles)
-
-    # Attribute the compile to the model that will run it — the visitor's when
-    # they brought one, otherwise the server's own. Recorded only when a role is
-    # actually engaged, so a free compile isn't credited to a model that never
-    # saw it. The id alone; the key stays in the credentials store.
-    repository.set_job_llm_model(
-        job_id,
-        (f"{payload.llm.provider}/{payload.llm.model}" if payload.llm else settings.llm_model)
-        if valid_roles
-        else None,
-    )
-
-    # A blank title keeps the discovery-derived default (book_title=None leaves
-    # the stored value untouched).
-    title = payload.book_title.strip() if payload.book_title else None
-    repository.update_job_status(job_id, "processing", book_title=title or None)
-    if llm or stt:
-        credentials.put(job_id, credentials.JobCredentials(llm=llm, stt=stt))
-    capture(
-        "job_confirmed",
-        {
-            "selected_item_count": len(selected),
-            "source_types": dict(Counter(item.item_type for item in selected)),
-            "llm_role_count": len(valid_roles),
-            "uses_visitor_llm": llm is not None,
-            "uses_visitor_stt": stt is not None,
-        },
-        job_id,
-    )
+        ) from None
     background_tasks.add_task(run_compilation, job_id)
     return repository.get_job(job_id)
-
-
-def _visitor_endpoint(sent: VisitorEndpoint | None, *, for_stt: bool) -> Endpoint | None:
-    if sent is None:
-        return None
-    return resolve_endpoint(
-        sent.provider,
-        api_key=sent.api_key.get_secret_value() if sent.api_key else None,
-        model=sent.model,
-        base_url=sent.base_url,
-        for_stt=for_stt,
-    )
 
 
 @router.get("/{job_id}/items/{item_id}/preview", response_model=ItemPreview)
@@ -152,31 +87,19 @@ def preview_item(job_id: str, item_id: str) -> ItemPreview:
 
 
 @router.get("/{job_id}/download")
-def download_job(job_id: str, format: str = "epub") -> FileResponse:
-    """Download the finished compilation.
-
-    `format=epub` (default) returns the EPUB; `format=md` returns the standalone
-    Markdown twin (the zero-LLM, AI-friendly text of the same content).
-    """
-    if format not in ("epub", "md"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="That format isn't supported. Choose EPUB or Markdown.",
-        )
-
+def download_job(job_id: str, format: OutputFormat = "epub") -> FileResponse:
+    """The finished compilation, as EPUB or as plain Markdown."""
     job = repository.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That compilation doesn't exist.")
 
-    stored_path = job.output_md_path if format == "md" else job.output_path
-    label = "Markdown" if format == "md" else "EPUB"
-    if job.status != "completed" or not stored_path:
+    label, media_type = FORMATS[format]
+    if job.status != "completed":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"The {label} isn't ready yet.",
         )
-
-    path = Path(stored_path)
+    path = output_file(job_id, format)
     if not path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -184,13 +107,7 @@ def download_job(job_id: str, format: str = "epub") -> FileResponse:
         )
 
     capture("compilation_downloaded", {"output_format": format}, job_id)
-
-    media_type = "text/markdown" if format == "md" else "application/epub+zip"
-    return FileResponse(
-        path,
-        media_type=media_type,
-        filename=_download_filename(job, format),
-    )
+    return FileResponse(path, media_type=media_type, filename=_download_filename(job, format))
 
 
 def _download_filename(job: JobResponse, ext: str) -> str:

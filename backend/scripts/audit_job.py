@@ -17,48 +17,23 @@ import sys
 
 from app.core.config import settings
 from app.core.database import init_db
+from app.jobs.chapters import ItemSkipped, draft
+from app.jobs.outputs import output_file
 from app.jobs.repository import get_job, get_job_llm_model, get_selected_items
-# The runner's own id extractor, so the audit reads the same cache entry the
-# compile wrote rather than a second, subtly different parse.
-from app.jobs.runner import _extract_video_id
 from app.pipeline.audit import audit_chapter, split_chapters
 from app.pipeline.audit_judge import judge_chapter
-from app.pipeline.compiler import (
-    demote_headings,
-    html_to_markdown,
-    strip_leading_title,
-    transcript_to_markdown,
-)
 from app.pipeline.titles import normalize_title
-from app.sources.blog import ScrapeUnavailable, scrape_article
-from app.sources.podcast import load_episode_transcript
-from app.sources.transcript_cache import load_transcript
+from app.sources.youtube import YouTubeUnavailable
 
 
 def _source_markdown(item) -> str | None:
-    """The chapter as it would read with AI polish off, mirroring each of the
-    runner's free paths.
-
-    Nothing metered runs here: a video's captions and an episode's transcription
-    are both cached from the compile (the transcription was paid for once), and
-    `load_episode_transcript` is called with no STT endpoint so a cache miss
-    returns None rather than quietly buying a second transcription. An article
-    is re-scraped, which costs only a request.
-    """
-    if item.item_type == "youtube":
-        transcript = load_transcript(_extract_video_id(item.url))
-        return transcript_to_markdown(transcript) if transcript else None
-
-    if item.item_type == "podcast":
-        transcript = load_episode_transcript(item.url, stt=None)
-        return transcript_to_markdown(transcript) if transcript else None
-
+    """The chapter as it would read with AI polish off. Nothing metered runs:
+    a video's captions and an episode's transcription were cached by the
+    compile, and nothing is transcribed again. An article is re-scraped."""
     try:
-        content_html = scrape_article(item.url).content_html
-    except ScrapeUnavailable:
+        return draft(item, transcribe=False).chapter.content_md
+    except (ItemSkipped, YouTubeUnavailable):
         return None
-    md = html_to_markdown(content_html)
-    return demote_headings(strip_leading_title(md, item.title)) or None
 
 
 def main(argv: list[str]) -> int:
@@ -75,12 +50,11 @@ def main(argv: list[str]) -> int:
     if job is None:
         print(f"No job {job_id}")
         return 1
-    if not job.output_md_path:
+    markdown = output_file(job_id, "md")
+    if not markdown.exists():
         print(f"Job {job_id} has no Markdown output (status: {job.status})")
         return 1
-
-    with open(job.output_md_path, encoding="utf-8") as fh:
-        chapters = split_chapters(fh.read())
+    chapters = split_chapters(markdown.read_text(encoding="utf-8"))
 
     audits, unmeasured = [], []
     for item in get_selected_items(job_id):

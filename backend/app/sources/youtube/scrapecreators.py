@@ -16,7 +16,7 @@ from app.core import gateway
 from app.core.config import settings
 from app.core.posthog import capture_paid_call
 from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
-from app.sources.youtube import YouTubeUnavailable
+from app.sources.youtube.common import YouTubeUnavailable, pick_track, watch_url
 
 _TIMEOUT_S = 60.0
 # Discovery asks for a video's detail (title, length), then its transcript asks
@@ -27,12 +27,12 @@ _TTL_S = {
 }
 
 
-def fetch_transcript(video_id: str, languages: list[str] | None = None) -> Transcript | None:
-    url = f"https://www.youtube.com/watch?v={video_id}"
+def fetch_transcript(video_id: str) -> Transcript | None:
+    url = watch_url(video_id)
     detail = _call("scrapecreators.youtube.video.detail", url=url)
     language = _pick_language(
         detail.get("captionTracks") or [],
-        languages or settings.preferred_languages,
+        settings.preferred_languages,
         detail.get("audioTracks") or [],
     )
     if language is None:
@@ -62,7 +62,7 @@ def fetch_video_meta(url: str) -> VideoMeta:
     return VideoMeta(
         id=detail["id"],
         title=detail.get("title") or "",
-        url=f"https://www.youtube.com/watch?v={detail['id']}",
+        url=watch_url(detail["id"]),
         duration_s=round(duration_ms / 1000) if duration_ms else None,
     )
 
@@ -87,34 +87,12 @@ def _call(endpoint: str, **params: str) -> dict:
 
 
 def _pick_language(tracks: list[dict], languages: list[str], audio_tracks: list[dict] | None = None) -> str | None:
-    """Same preference as the yt-dlp path: human subtitles in a preferred
-    language, else the auto-caption in the video's original language, else any
-    human track.
-
-    On an auto-dubbed video YouTube runs ASR on every dubbed audio track, so
+    """On an auto-dubbed video YouTube runs ASR on every dubbed audio track, so
     "asr" no longer means "original": the original is the default, non-dubbed
-    audio track. Without that info, an ASR track in a preferred language wins
-    over the first one listed (alphabetical, so usually Arabic)."""
+    audio track."""
     manual = [t["languageCode"] for t in tracks if t.get("kind") != "asr" and t.get("languageCode")]
     auto = [t["languageCode"] for t in tracks if t.get("kind") == "asr" and t.get("languageCode")]
-    for lang in languages:
-        picked = _match(manual, lang)
-        if picked:
-            return picked
-    original = _original_audio_language(audio_tracks or [])
-    for lang in ([original] if original else []) + list(languages):
-        picked = _match(auto, lang)
-        if picked:
-            return picked
-    return (auto or manual or [None])[0]
-
-
-def _match(codes: list[str], lang: str) -> str | None:
-    base = lang.split("-")[0]
-    for code in codes:
-        if code == lang or code.split("-")[0] == base:
-            return code
-    return None
+    return pick_track(manual, auto, _original_audio_language(audio_tracks or []), languages)
 
 
 def _original_audio_language(audio_tracks: list[dict]) -> str | None:

@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
+from app.sources.models import Article, SourceSpec
+from app.sources.youtube import video_id
 from app.sources import discovery
 from app.sources.blog import FeedUnavailable
 from app.sources.models import Article, VideoMeta
@@ -38,9 +40,8 @@ def test_detect_kind(url, expected):
     "https://youtu.be/abc123XYZ?t=30",
     "https://www.youtube.com/watch?v=abc123XYZ&list=PL1",
 ])
-def test_video_urls_are_cleaned_to_one_watch_url(url):
-    assert discovery._clean_video_url(url) == "https://www.youtube.com/watch?v=abc123XYZ"
-    assert discovery._video_id(url) == "abc123XYZ"
+def test_every_video_url_shape_names_one_video(url):
+    assert video_id(url) == "abc123XYZ"
 
 
 @patch("app.sources.discovery.load_transcript", return_value=None)
@@ -50,7 +51,7 @@ def test_discover_playlist_maps_videos(mock_list, mock_load):
         "Ma Playlist",
         [VideoMeta(id="a", title="A", url="https://www.youtube.com/watch?v=a", duration_s=60)],
     )
-    name, items = discovery.discover_source("https://www.youtube.com/playlist?list=x", 0)
+    name, items = discovery.discover_source(SourceSpec(url="https://www.youtube.com/playlist?list=x"), 0)
     assert name == "Ma Playlist"
     assert len(items) == 1
     assert items[0].item_type == "youtube"
@@ -61,7 +62,7 @@ def test_discover_playlist_maps_videos(mock_list, mock_load):
 @patch("app.sources.discovery.list_videos")
 def test_discover_channel_normalizes_to_videos_tab(mock_list):
     mock_list.return_value = (None, [])
-    discovery.discover_source("https://www.youtube.com/@veritasium", 0)
+    discovery.discover_source(SourceSpec(url="https://www.youtube.com/@veritasium"), 0)
     mock_list.assert_called_once_with("https://www.youtube.com/@veritasium/videos")
 
 
@@ -72,7 +73,7 @@ def test_discover_single_video(mock_meta, mock_load):
         id="abc123", title="My Video",
         url="https://www.youtube.com/watch?v=abc123", duration_s=120,
     )
-    name, items = discovery.discover_source("https://www.youtube.com/watch?v=abc123", 0)
+    name, items = discovery.discover_source(SourceSpec(url="https://www.youtube.com/watch?v=abc123"), 0)
     assert name == "My Video"  # single video -> its title seeds the book title
     assert len(items) == 1
     assert items[0].title == "My Video"
@@ -85,7 +86,7 @@ def test_discover_blog_uses_url_as_feed(mock_feed):
         "Example Blog",
         [Article(url="https://b.com/p1", title="P1", content_html="<p>hi</p>")],
     )
-    name, items = discovery.discover_source("https://b.com/feed", 1)
+    name, items = discovery.discover_source(SourceSpec(url="https://b.com/feed"), 1)
     assert name == "Example Blog"
     assert items[0].item_type == "blog"
     assert items[0].source_index == 1
@@ -100,9 +101,7 @@ def test_discover_blog_article_url_returns_single_item(mock_fetch):
         "<html><head><title>My Great Article</title></head>"
         "<body><a href='/next-article-here'>Next</a></body></html>"
     )
-    name, items = discovery.discover_source(
-        "https://blog.example.com/2024/01/my-great-article", 0
-    )
+    name, items = discovery.discover_source(SourceSpec(url="https://blog.example.com/2024/01/my-great-article"), 0)
     assert len(items) == 1
     assert items[0].url == "https://blog.example.com/2024/01/my-great-article"
     assert items[0].title == "My Great Article"
@@ -118,7 +117,7 @@ def test_discover_blog_scrapes_homepage_when_no_feed(mock_feed, mock_fetch):
         '<a href="/about">About</a>'
         '</body></html>'
     )
-    name, items = discovery.discover_source("https://blog.example.com", 0)
+    name, items = discovery.discover_source(SourceSpec(url="https://blog.example.com"), 0)
     assert name == "My Site"  # homepage <title> seeds the book title
     assert len(items) == 1
     assert items[0].url == "https://blog.example.com/2024/01/great-article"
@@ -145,7 +144,7 @@ def test_discover_blog_follows_the_feed_the_page_declares(mock_feed, mock_fetch)
         '<html><head><link rel="alternate" type="application/rss+xml" href="/fr/index.xml">'
         "</head><body></body></html>"
     )
-    name, items = discovery.discover_source("https://blog.example.com/fr/", 0)
+    name, items = discovery.discover_source(SourceSpec(url="https://blog.example.com/fr/"), 0)
     assert name == "Blog FR"
     assert [i.title for i in items] == ["Article FR"]
 
@@ -182,7 +181,7 @@ def test_discover_podcast_feed_lists_episodes_as_audio(mock_feed):
                     audio_url="https://cdn.example.com/ep2.mp3"),
         ],
     )
-    name, items = discovery.discover_source("https://feeds.example.com/abc123", 0)
+    name, items = discovery.discover_source(SourceSpec(url="https://feeds.example.com/abc123"), 0)
     assert name == "Example Show"
     assert [i.item_type for i in items] == ["podcast", "podcast"]
     assert items[0].url == "https://cdn.example.com/ep1.mp3"
@@ -280,26 +279,29 @@ def test_discover_blog_marks_in_prose_links_uncertain(mock_feed, mock_fetch):
         '<p>See <a href="/2024/01/aside-mention">aside mention</a>.</p>'
         "</body></html>"
     )
-    _name, items = discovery.discover_source("https://blog.example.com", 0)
+    _name, items = discovery.discover_source(SourceSpec(url="https://blog.example.com"), 0)
     assert [(i.title, i.uncertain) for i in items] == [
         ("Great Article", False),
         ("aside mention", True),
     ]
 
 
-@patch("app.sources.discovery._feed_to_items")
-@patch("app.sources.discovery._single_article")
-def test_a_deep_page_picked_from_search_is_that_page_not_its_site(mock_single, mock_feed):
-    mock_single.return_value = ("Mechanical Design Engineer", [])
-    discovery.discover_source(
-        "https://careers.example.com/job/berkeley/design-engineer/185/1029", 0, single_page=True
-    )
-    mock_single.assert_called_once()
+@patch("app.sources.discovery.list_feed")
+@patch("app.sources.discovery._fetch_url", return_value="<title>Mechanical Design Engineer</title>")
+def test_a_deep_page_picked_from_search_is_that_page_not_its_site(_fetch, mock_feed):
+    url = "https://careers.example.com/job/berkeley/design-engineer/185/1029"
+    name, items = discovery.discover_source(SourceSpec(url=url, query="q"), 0)
+    assert name == "Mechanical Design Engineer"
+    assert [i.url for i in items] == [url]
     mock_feed.assert_not_called()
 
 
-@patch("app.sources.discovery._single_article")
-@patch("app.sources.discovery._feed_to_items", return_value=("A blog", []))
-def test_a_site_home_picked_from_search_still_unfolds(mock_feed, mock_single):
-    discovery.discover_source("https://blog.example.com/fr/", 0, single_page=True)
-    mock_single.assert_not_called()
+@patch("app.sources.discovery.list_feed")
+def test_a_site_home_picked_from_search_still_unfolds(mock_feed):
+    mock_feed.return_value = ("A blog", [
+        Article(url="https://blog.example.com/fr/a", title="A", content_html="<p>a</p>"),
+        Article(url="https://blog.example.com/fr/b", title="B", content_html="<p>b</p>"),
+    ])
+    name, items = discovery.discover_source(SourceSpec(url="https://blog.example.com/fr/", query="q"), 0)
+    assert name == "A blog"
+    assert len(items) == 2

@@ -21,7 +21,8 @@ _held: dict[str, JobCredentials] = {}
 
 
 def put(job_id: str, creds: JobCredentials) -> None:
-    _held[job_id] = creds
+    if creds.llm or creds.stt:
+        _held[job_id] = creds
 
 
 def take(job_id: str) -> JobCredentials | None:

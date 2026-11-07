@@ -53,7 +53,7 @@ from app.pipeline.audit import split_chapters  # noqa: E402
 from app.pipeline.models import CompiledBook, CompiledChapter  # noqa: E402
 from app.render.epub import _metadata_yaml  # noqa: E402
 from app.sources.blog import _html_language  # noqa: E402
-from app.sources.youtube import _pick_subtitle_track  # noqa: E402
+from app.sources.youtube.ytdlp import _pick_subtitle_track  # noqa: E402
 
 
 def _book(language: str, chapters: list[CompiledChapter], preface: str | None = None):

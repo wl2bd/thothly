@@ -1,19 +1,18 @@
+"""YouTube through yt-dlp: free, and fine from a residential IP."""
+
 import json
-from datetime import datetime
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import YoutubeDLError
 
 from app.core.config import settings
 from app.sources.models import Chapter, Transcript, TranscriptSegment, VideoMeta
-
-
-class YouTubeUnavailable(Exception):
-    pass
-
-
-class TranscriptNotFound(Exception):
-    pass
+from app.sources.youtube.common import (
+    YouTubeUnavailable,
+    base_language,
+    pick_track,
+    watch_url,
+)
 
 
 def _lang_extractor_args(langs: list[str] | None = None) -> dict:
@@ -72,10 +71,7 @@ def fetch_video_meta(url: str) -> VideoMeta:
     return _entry_to_video_meta(info)
 
 
-def fetch_transcript(
-    video_id: str,
-    languages: list[str] | None = None,
-) -> Transcript | None:
+def fetch_transcript(video_id: str) -> Transcript | None:
     """Fetch a video's subtitles through yt-dlp.
 
     We go through yt-dlp rather than the lighter timedtext endpoint because it
@@ -86,10 +82,7 @@ def fetch_transcript(
     original-language title). Raises YouTubeUnavailable when YouTube refuses the
     request (e.g. an IP block); returns None when no subtitles exist.
     """
-    if languages is None:
-        languages = settings.preferred_languages
-
-    url = f"https://www.youtube.com/watch?v={video_id}"
+    url = watch_url(video_id)
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -99,7 +92,7 @@ def fetch_transcript(
     try:
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            track = _pick_subtitle_track(info, languages)
+            track = _pick_subtitle_track(info, settings.preferred_languages)
             if track is None:
                 return None
             language, sub_url = track
@@ -135,8 +128,8 @@ def _info_in_original_language(url: str, opts: dict, info: dict) -> dict:
     already-fetched info if the re-extract fails — never worse than before.
     """
     preferred = settings.preferred_languages or ["en"]
-    requested = preferred[0].split("-")[0]
-    original = (info.get("language") or "").split("-")[0]
+    requested = base_language(preferred[0])
+    original = base_language(info.get("language"))
     if not info.get("chapters") or not original or original == requested:
         return info
     try:
@@ -206,38 +199,20 @@ def _parse_chapters(info: dict) -> list[Chapter]:
 
 def _pick_subtitle_track(info: dict, languages: list[str]) -> tuple[str, str] | None:
     """Choose (language_code, json3_url) for the best available subtitle track."""
-    manual = info.get("subtitles") or {}
-    auto = info.get("automatic_captions") or {}
-    original = (info.get("language") or "").split("-")[0]
-
-    # 1) The video's own language: human subtitles, then its auto-caption (real
-    # ASR, never a translation). A book stays in the language it was said in.
-    if original:
-        for tracks in (manual, auto):
-            picked = _match_track(tracks, original)
-            if picked:
-                return picked
-    # 2) Human-made subtitles in a preferred language (a hand translation).
-    for lang in languages:
-        picked = _match_track(manual, lang)
-        if picked:
-            return picked
-    # 3) Last resort: an auto-caption in a preferred language (may be translated).
-    for lang in languages:
-        picked = _match_track(auto, lang)
-        if picked:
-            return picked
-    return None
-
-
-def _match_track(tracks: dict, lang: str) -> tuple[str, str] | None:
-    """Find a track whose code matches lang exactly or by base (fr ~ fr-FR)."""
-    for code, formats in tracks.items():
-        if code == lang or code.split("-")[0] == lang:
-            url = _json3_url(formats)
-            if url:
-                return code, url
-    return None
+    manual = {c: f for c, f in (info.get("subtitles") or {}).items() if _json3_url(f)}
+    original = base_language(info.get("language"))
+    wanted = {original, *(base_language(lang) for lang in languages)} - {""}
+    # yt-dlp lists an auto-caption for every language YouTube can machine-translate
+    # into, so only the original's and the preferred ones are real candidates.
+    auto = {
+        c: f
+        for c, f in (info.get("automatic_captions") or {}).items()
+        if _json3_url(f) and base_language(c) in wanted
+    }
+    code = pick_track(list(manual), list(auto), original, languages)
+    if code is None:
+        return None
+    return code, _json3_url(manual.get(code) or auto[code])
 
 
 def _json3_url(formats: list[dict]) -> str | None:
@@ -277,16 +252,6 @@ def _entry_to_video_meta(entry: dict) -> VideoMeta:
     return VideoMeta(
         id=video_id,
         title=entry.get("title", ""),
-        url=f"https://www.youtube.com/watch?v={video_id}",
+        url=watch_url(video_id),
         duration_s=entry.get("duration"),
-        published_at=_parse_upload_date(entry.get("upload_date")),
     )
-
-
-def _parse_upload_date(upload_date: str | None) -> datetime | None:
-    if not upload_date:
-        return None
-    try:
-        return datetime.strptime(upload_date, "%Y%m%d")
-    except ValueError:
-        return None

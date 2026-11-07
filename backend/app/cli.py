@@ -16,12 +16,13 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.jobs import repository
-from app.jobs.models import DiscoveredItemResponse, JobCreate, Source
+from app.jobs import repository, service
+from app.jobs.models import DiscoveredItemResponse, JobConfirm, JobCreate, Source
+from app.jobs.outputs import output_file
 from app.jobs.phases import run_discovery
 from app.jobs.runner import run_compilation
 from app.pipeline.llm import llm_available
-from app.pipeline.roles import ROLES
+from app.pipeline.roles import AI_POLISH
 
 KIND_LABELS = {"youtube": "video", "podcast": "episode", "blog": "article"}
 
@@ -126,10 +127,11 @@ def cmd_compile(args: argparse.Namespace) -> int:
     except (EOFError, KeyboardInterrupt):
         return 130
 
-    repository.confirm_items(job_id, [items[i].id for i in picked])
-    roles = [r.id for r in ROLES if r.tier == "default"] if args.ai else []
-    repository.set_job_llm_roles(job_id, roles)
-    repository.update_job_status(job_id, "processing", book_title=args.title)
+    service.confirm(job_id, JobConfirm(
+        selected_ids=[items[i].id for i in picked],
+        book_title=args.title,
+        llm_roles=AI_POLISH if args.ai else [],
+    ))
     print(f"Compiling {len(picked)} item(s)…", file=sys.stderr)
     run_compilation(job_id)
 
@@ -140,7 +142,7 @@ def cmd_compile(args: argparse.Namespace) -> int:
     if job.status != "completed":
         return _fail(job.error or "The compilation failed to build.")
 
-    source = job.output_md_path if args.format == "md" else job.output_path
+    source = output_file(job_id, args.format)
     default_name = re.sub(r'[\\/:*?"<>|]+', "-", job.book_title or "compilation")
     output = Path(args.output or f"{default_name}.{args.format}")
     shutil.copyfile(source, output)

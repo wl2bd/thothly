@@ -9,7 +9,6 @@ a cleaned result is only cached when every call in it succeeded.
 import json
 import logging
 import re
-from bisect import bisect_right
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -17,8 +16,9 @@ from difflib import SequenceMatcher
 
 from app.core.config import settings
 from app.core.database import get_connection
-from app.pipeline.compiler import is_punctuated, segments_to_markdown
-from app.pipeline.llm import LLMError, complete, llm_available
+from app.pipeline.compiler import chapter_buckets, segments_to_markdown
+from app.pipeline.models import escape_tags
+from app.pipeline.llm import LLMError, complete, llm_available, llm_endpoint
 from app.pipeline.providers import Endpoint
 from app.pipeline.roles import (
     COPYEDIT,
@@ -26,12 +26,9 @@ from app.pipeline.roles import (
     PUNCTUATE,
     SECTIONS,
     get_role,
-    has_role,
-    preface_prompt,
-    sections_prompt,
     selected_item_roles,
 )
-from app.sources.models import Transcript
+from app.sources.models import Transcript, is_punctuated
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +48,12 @@ class CompileStopped(Exception):
 def clean_transcript(
     transcript: Transcript,
     role_ids: list[str],
-    model: str,
     endpoint: Endpoint | None = None,
     *,
     should_stop: StopCheck = None,
 ) -> str:
     """Markdown for a video transcript with the selected item-roles applied."""
+    model = _model_key(endpoint)
     roles_key = _roles_key(role_ids)
     cached = _get_cached(transcript.video_id, roles_key, model)
     if cached is not None:
@@ -71,13 +68,14 @@ def clean_transcript(
 def clean_markdown(
     content_md: str,
     role_ids: list[str],
-    model: str,
     *,
     content_key: str,
+    language: str | None = None,
     endpoint: Endpoint | None = None,
     should_stop: StopCheck = None,
 ) -> str:
     """Apply the article-applicable roles (copyedit, sections) to blog markdown."""
+    model = _model_key(endpoint)
     roles_key = _roles_key(role_ids)
     cached = _get_cached(content_key, roles_key, model)
     if cached is not None:
@@ -85,7 +83,7 @@ def clean_markdown(
 
     body = content_md
     ok = True
-    if has_role(role_ids, COPYEDIT) and body.strip():
+    if COPYEDIT in role_ids and body.strip():
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
         edited, c_ok = _run_role(
             chunks, COPYEDIT, validate_copyedit, endpoint=endpoint, should_stop=should_stop
@@ -93,10 +91,11 @@ def clean_markdown(
         body = edited if edited.strip() else body
         ok = ok and c_ok
     # Only structure articles that have no headings of their own.
-    if has_role(role_ids, SECTIONS) and body.strip() and not _ATX_HEADING.search(body):
+    if SECTIONS in role_ids and body.strip() and not _ATX_HEADING.search(body):
         chunks = _group_paragraphs(body, settings.llm_chunk_words)
         structured, s_ok = _run_role(
-            chunks, SECTIONS, validate_sections, endpoint=endpoint, should_stop=should_stop
+            chunks, SECTIONS, validate_sections, language=language,
+            endpoint=endpoint, should_stop=should_stop,
         )
         body = structured if structured.strip() else body
         ok = ok and s_ok
@@ -119,7 +118,7 @@ _SPEAKER_NAMES_PROMPT = (
 
 
 def map_speaker_names(
-    transcript, model: str, endpoint: Endpoint | None = None
+    transcript: Transcript, endpoint: Endpoint | None = None
 ) -> dict[str, str]:
     """Map diarization speaker ids (speaker_1, …) to display names via the LLM.
 
@@ -131,6 +130,7 @@ def map_speaker_names(
     if len(speakers) < 2 or not llm_available(endpoint):
         return {}
 
+    model = _model_key(endpoint)
     cached = _get_cached(transcript.video_id, _SPEAKER_NAMES_KEY, model)
     if cached is not None:
         return _filter_map(_safe_json(cached), speakers)
@@ -264,11 +264,9 @@ def _build_transcript(
     ok = ok and body_ok
     if do_sections and md.strip():
         chunks = _group_paragraphs(md, settings.llm_chunk_words)
-        # Pin the generated headings to the transcript's own language rather than
-        # let the model infer it from a chunk and drift to English.
         structured, sec_ok = _run_role(
             chunks, SECTIONS, validate_sections,
-            system=sections_prompt(transcript.language),
+            language=transcript.language,
             endpoint=endpoint,
             should_stop=should_stop,
         )
@@ -314,16 +312,6 @@ def _body_from_texts(
     return body, ok
 
 
-def _bucket_by_chapter(transcript: Transcript) -> list[tuple[str, list[str]]]:
-    """Assign each segment to the last chapter that started at or before it."""
-    starts = [c.start_s for c in transcript.chapters]
-    buckets: list[list[str]] = [[] for _ in transcript.chapters]
-    for segment in transcript.segments:
-        index = max(0, bisect_right(starts, segment.start_s) - 1)
-        buckets[index].append(segment.text)
-    return [(c.title, b) for c, b in zip(transcript.chapters, buckets)]
-
-
 # ---------------------------------------------------------------------------
 # Chunked LLM application — parallel, fidelity-checked
 #
@@ -340,23 +328,16 @@ def _run_role(
     role_id: str,
     validate,
     *,
-    system: str | None = None,
+    language: str | None = None,
     endpoint: Endpoint | None = None,
     should_stop: StopCheck = None,
 ) -> tuple[str, bool]:
-    role = get_role(role_id)
     if not chunks:
         return "", True
-
-    # `system` lets a caller pin a parameterised variant (e.g. a language-locked
-    # sections prompt); otherwise the role's default prompt is used.
     outputs, no_transient = _transform_chunks(
-        chunks, system or role.system_prompt, validate, endpoint, should_stop
+        chunks, get_role(role_id).prompt(language), validate, endpoint, should_stop
     )
-    pieces = [
-        out if out is not None else raw  # None = fell back to the source chunk
-        for raw, out in zip(chunks, outputs)
-    ]
+    pieces = [out if out is not None else raw for raw, out in zip(chunks, outputs)]
     return "\n\n".join(p for p in pieces if p.strip()), no_transient
 
 
@@ -477,6 +458,11 @@ def _group_paragraphs(md: str, max_words: int) -> list[str]:
 # ---------------------------------------------------------------------------
 # Cache (transcript_llm_cache) — mirrors transcript_cache.py
 # ---------------------------------------------------------------------------
+def _model_key(endpoint: Endpoint | None) -> str:
+    resolved = llm_endpoint(endpoint)
+    return resolved.model if resolved else ""
+
+
 def _roles_key(role_ids: list[str]) -> str:
     return ",".join(sorted(set(role_ids)))
 

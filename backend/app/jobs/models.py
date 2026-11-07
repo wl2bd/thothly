@@ -1,53 +1,21 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, HttpUrl, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
-ItemType = Literal["youtube", "blog", "podcast"]
+from app.sources.models import DiscoveredItem, ItemType, SourceSpec
 
-JobStatus = Literal[
-    "pending",
-    "discovering",
-    "reviewing",
-    "processing",
-    "completed",
-    "failed",
-]
+JobStatus = Literal["discovering", "reviewing", "processing", "completed", "failed"]
 
 CompileState = Literal["pending", "compiling", "done", "skipped", "failed"]
 
 
-class Source(BaseModel):
-    """A source is a URL; its kind is auto-detected during discovery.
-
-    The search-staging flow may add optional hints a pasted URL can't supply: a
-    picked podcast episode sets kind="podcast" (its audio enclosure URL isn't
-    self-identifying) and carries the episode title (not derivable from the URL).
-    Both are ignored for kinds that re-derive their own metadata (youtube, blog).
-    """
-
-    url: HttpUrl
-    kind: str | None = None
-    title: str | None = None
-    # Episode length (seconds) from the podcast search result. The audio isn't
-    # probed at discovery (transcription is deferred), so this is the only place
-    # the duration is known — it drives the review screen's reading/cost figures.
-    duration_s: int | None = None
-    # The show's RSS feed, from the podcast search result: some feeds publish
-    # each episode's transcript (`<podcast:transcript>`), read for free.
-    feed_url: Annotated[str | None, Field(max_length=2000)] = None
-    # The search that found this source, when it came from one: discovery judges
-    # the items it unfolds into against it. Absent for a pasted URL.
-    query: Annotated[str | None, Field(max_length=200)] = None
-    # The source's human name (playlist/channel/feed/site title), captured during
-    # discovery and written back so the review screen can label each source group
-    # by its real name instead of the raw URL. Absent until discovery has run.
+class Source(SourceSpec):
+    # The source's real name (playlist/channel/feed/site title), so review can
+    # label each group by it instead of the raw URL. Absent until discovered.
     name: str | None = None
-    # Per-source discovery progress, written incrementally as each source
-    # resolves (discovery runs sequentially) so the loading screen can show a
-    # live per-source state instead of one opaque spinner. `resolved` flips true
-    # once this source is done (success or empty); `item_count` is how many items
-    # it yielded.
+    # Written as each source resolves, so the loading screen shows per-source
+    # progress: `resolved` flips once it is done, `item_count` is what it yielded.
     resolved: bool = False
     item_count: int = 0
     # Why this source yielded nothing, when it failed. The others still go on:
@@ -60,6 +28,7 @@ class Source(BaseModel):
 # items — so an unbounded source count is an easy resource-exhaustion vector.
 # The frontend states and enforces the same number (MAX_SOURCES).
 MAX_SOURCES_PER_JOB = 5
+BOOK_TITLE_MAX = 100
 
 
 class JobCreate(BaseModel):
@@ -67,7 +36,7 @@ class JobCreate(BaseModel):
         list[Source], Field(min_length=1, max_length=MAX_SOURCES_PER_JOB)
     ]
     # Named in the workspace before discovery. Absent = derived from the sources.
-    book_title: Annotated[str | None, Field(max_length=100)] = None
+    book_title: Annotated[str | None, Field(max_length=BOOK_TITLE_MAX)] = None
 
 
 class VisitorEndpoint(BaseModel):
@@ -83,7 +52,7 @@ class VisitorEndpoint(BaseModel):
 
 class JobConfirm(BaseModel):
     selected_ids: Annotated[list[str], Field(min_length=1)]
-    book_title: str | None = None
+    book_title: Annotated[str | None, Field(max_length=BOOK_TITLE_MAX)] = None
     # Selected LLM role ids (see app/pipeline/roles.py). Empty = zero-LLM compile.
     llm_roles: list[str] = []
     # The visitor's own model and transcription endpoints. Absent = the server's.
@@ -91,42 +60,14 @@ class JobConfirm(BaseModel):
     stt: VisitorEndpoint | None = None
 
 
-class DiscoveredItemResponse(BaseModel):
+class DiscoveredItemResponse(DiscoveredItem):
     id: str
-    source_index: int
-    item_index: int
-    item_type: ItemType
-    title: str
-    url: str
-    estimated_duration_s: int | None = None
-    estimated_size_chars: int | None = None
-    preview_html: str | None = None
     selected: bool = False
-
-    # Per-item reading info computed at discovery (YouTube). has_transcript is
-    # tri-state: True = usable subtitles, False = none (item will be skipped),
-    # None = unknown (couldn't reach YouTube). is_punctuated drives whether the
-    # transcript reads cleanly as-is or needs an LLM cleanup pass. The transcript
-    # text itself isn't stored here — it lives in the video-keyed transcript
-    # cache, which compilation reads back (with full timing + chapters).
-    has_transcript: bool | None = None
-    transcript_lang: str | None = None
-    is_punctuated: bool | None = None
-    word_count: int | None = None
-    reading_time_min: int | None = None
-    # A homepage link kept but not surely an article (it sat in running prose):
-    # listed at review, unselected by default.
-    uncertain: bool = False
-    # Why the discovery triage doubts this item ("Likely off-topic"): it starts
-    # unchecked at review, with this reason on its row. None = not doubted.
-    set_aside: str | None = None
-
-    # How this item fared in the compile, filled in from the moment the user
-    # confirms and advanced as the runner reaches it. None on items that weren't
-    # part of the compile. `skipped` means there was nothing usable to build from
-    # (no subtitles, no readable text); `failed` means something broke. Both carry
-    # a short, user-facing reason in `compile_note` — the compile no longer drops
-    # a chosen item without saying why.
+    # How this item fared in the compile, from the moment the visitor confirms.
+    # None on items that weren't part of it. `skipped` means there was nothing
+    # usable to build from, `failed` that something broke; both carry a short,
+    # user-facing reason in `compile_note`, which while `compiling` names the
+    # stage the item is in.
     compile_state: CompileState | None = None
     compile_note: str | None = None
 
@@ -160,9 +101,7 @@ class JobResponse(BaseModel):
     book_title: str | None = None
     # The title was typed by the user when the job was created.
     title_named: bool = False
-    output_path: str | None = None
-    # Standalone Markdown twin of the EPUB content (zero-LLM), for feeding the
-    # compilation to an AI or any plain-text tool. Set once the job completes.
-    output_md_path: str | None = None
+    # The finished EPUB's size, once the job has completed.
+    epub_bytes: int | None = None
     error: str | None = None
     discovered_items: list[DiscoveredItemResponse] = []

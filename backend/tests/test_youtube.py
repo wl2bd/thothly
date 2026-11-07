@@ -1,12 +1,11 @@
 import json
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from yt_dlp.utils import DownloadError
 
 from app.sources.models import Transcript, VideoMeta
-from app.sources.youtube import (
+from app.sources.youtube.ytdlp import (
     YouTubeUnavailable,
     _pick_avatar,
     fetch_transcript,
@@ -43,7 +42,7 @@ def _transcript_ydl(info: dict, payload: bytes) -> MagicMock:
 
 # ── list_videos ──────────────────────────────────────────────────────────────
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_list_videos_returns_title_and_video_meta(mock_cls):
     mock_cls.return_value.__enter__.return_value = _make_ydl_mock([
         {"id": "abc123", "title": "Episode 1", "duration": 120, "upload_date": "20240101"},
@@ -59,10 +58,9 @@ def test_list_videos_returns_title_and_video_meta(mock_cls):
     assert result[0].title == "Episode 1"
     assert result[0].duration_s == 120
     assert result[0].url == "https://www.youtube.com/watch?v=abc123"
-    assert result[0].published_at == datetime(2024, 1, 1)
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_list_videos_skips_none_entries(mock_cls):
     mock_cls.return_value.__enter__.return_value = _make_ydl_mock([
         {"id": "abc123", "title": "Valid", "duration": 60, "upload_date": None},
@@ -75,7 +73,7 @@ def test_list_videos_skips_none_entries(mock_cls):
     assert result[0].id == "abc123"
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_list_videos_empty_playlist(mock_cls):
     mock_cls.return_value.__enter__.return_value = _make_ydl_mock([])
 
@@ -84,7 +82,7 @@ def test_list_videos_empty_playlist(mock_cls):
     assert result == []
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_list_videos_raises_on_download_error(mock_cls):
     mock_ydl = MagicMock()
     mock_ydl.extract_info.side_effect = DownloadError("unavailable")
@@ -96,7 +94,7 @@ def test_list_videos_raises_on_download_error(mock_cls):
 
 # ── fetch_transcript ─────────────────────────────────────────────────────────
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_returns_transcript(mock_cls):
     info = {
         "language": "fr-FR",
@@ -117,7 +115,7 @@ def test_fetch_transcript_returns_transcript(mock_cls):
     assert result.segments[0].text == "Bonjour le monde"
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_prefers_the_original_language_over_a_hand_translation(mock_cls):
     # An English video with hand-made French subtitles: the book keeps the words
     # as they were said (English auto-captions), not the French translation.
@@ -129,13 +127,13 @@ def test_fetch_transcript_prefers_the_original_language_over_a_hand_translation(
     mock_ydl = _transcript_ydl(info, _json3(_event("Hello", 0, 1000)))
     mock_cls.return_value.__enter__.return_value = mock_ydl
 
-    result = fetch_transcript("vid", languages=["fr", "en"])
+    result = fetch_transcript("vid")
 
     assert result.language == "en"
     mock_ydl.urlopen.assert_called_once_with("http://x/en-auto.json3")
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_picks_original_over_translation(mock_cls):
     # A French video: the English auto-caption is a machine translation and must
     # NOT win over the original French track, even with fr/en both preferred.
@@ -150,13 +148,13 @@ def test_fetch_transcript_picks_original_over_translation(mock_cls):
     mock_ydl = _transcript_ydl(info, _json3(_event("Bonjour", 0, 1000)))
     mock_cls.return_value.__enter__.return_value = mock_ydl
 
-    result = fetch_transcript("vid", languages=["fr", "en"])
+    result = fetch_transcript("vid")
 
     assert result.language == "fr"
     mock_ydl.urlopen.assert_called_once_with("http://x/fr.json3")
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_includes_chapters(mock_cls):
     info = {
         "language": "fr",
@@ -177,7 +175,7 @@ def test_fetch_transcript_includes_chapters(mock_cls):
     assert result.chapters[0].title == "Introduction"
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_reextracts_chapters_in_original_language(mock_cls):
     # The first extract (preferred lang = en) carries English AUTO-TRANSLATED
     # chapters; because the original language differs, fetch re-extracts in the
@@ -209,7 +207,7 @@ def test_fetch_transcript_reextracts_chapters_in_original_language(mock_cls):
     assert mock_ydl.extract_info.call_count == 2  # re-extracted in the original language
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_no_reextract_when_original_is_preferred(mock_cls):
     # An English video (original == preferred) needs no second call.
     info = {
@@ -229,7 +227,7 @@ def test_fetch_transcript_no_reextract_when_original_is_preferred(mock_cls):
     assert result.chapters[0].end_s == 10.0
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_returns_none_when_no_subtitles(mock_cls):
     info = {"language": "fr", "subtitles": {}, "automatic_captions": {}}
     mock_cls.return_value.__enter__.return_value = _transcript_ydl(info, b"")
@@ -237,7 +235,7 @@ def test_fetch_transcript_returns_none_when_no_subtitles(mock_cls):
     assert fetch_transcript("dQw4w9WgXcQ") is None
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_raises_on_download_error(mock_cls):
     mock_ydl = MagicMock()
     mock_ydl.extract_info.side_effect = DownloadError("blocked")
@@ -247,7 +245,7 @@ def test_fetch_transcript_raises_on_download_error(mock_cls):
         fetch_transcript("dQw4w9WgXcQ")
 
 
-@patch("app.sources.youtube.YoutubeDL")
+@patch("app.sources.youtube.ytdlp.YoutubeDL")
 def test_fetch_transcript_captures_channel(mock_cls):
     info = {
         "language": "fr",
@@ -293,19 +291,3 @@ def test_pick_avatar_ignores_banner_only():
 
 def test_pick_avatar_empty():
     assert _pick_avatar([]) is None
-
-
-@patch("app.sources.youtube.YoutubeDL")
-def test_fetch_transcript_custom_languages(mock_cls):
-    info = {
-        "language": "es",
-        "subtitles": {"es": _track("http://x/es.json3")},
-        "automatic_captions": {},
-    }
-    mock_ydl = _transcript_ydl(info, _json3(_event("Hola", 0, 1000)))
-    mock_cls.return_value.__enter__.return_value = mock_ydl
-
-    result = fetch_transcript("someVideoId", languages=["es"])
-
-    assert result is not None
-    assert result.language == "es"

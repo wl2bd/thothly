@@ -1,12 +1,12 @@
 import logging
-import re
 import time
 from collections import Counter
 
-from app.core.config import settings
 from app.core.posthog import capture
 from app.jobs import credentials
+from app.jobs.chapters import YOUTUBE_BUSY, ItemSkipped, draft, polish
 from app.jobs.models import DiscoveredItemResponse
+from app.jobs.outputs import output_file
 from app.jobs.repository import (
     get_job,
     get_job_llm_roles,
@@ -15,65 +15,21 @@ from app.jobs.repository import (
     stop_requested,
     update_job_status,
 )
-from app.pipeline.cleanup import (
-    CompileStopped,
-    clean_markdown,
-    clean_transcript,
-    generate_preface,
-    map_speaker_names,
-)
-from app.pipeline.compiler import (
-    CompilationError,
-    compile_book,
-    demote_headings,
-    html_to_markdown,
-    strip_leading_title,
-    transcript_to_markdown,
-)
-from app.pipeline.i18n import chrome, detect_language, normalize_language
+from app.pipeline.cleanup import CompileStopped, generate_preface
+from app.pipeline.compiler import CompilationError, compile_book
 from app.pipeline.llm import llm_endpoint
-from app.pipeline.models import CompiledChapter
+from app.pipeline.models import CompiledBook, CompiledChapter
 from app.pipeline.providers import Endpoint
-from app.pipeline.roles import PREFACE, has_role
-from app.pipeline.titles import normalize_title
+from app.pipeline.roles import PREFACE
 from app.render.epub import render_epub
-from app.sources.blog import ScrapeUnavailable, scrape_article
-from app.sources.podcast import load_episode_transcript
-from app.sources.transcript_cache import load_transcript
 from app.sources.youtube import YouTubeUnavailable
 
 logger = logging.getLogger(__name__)
 
-
-class ItemSkipped(Exception):
-    """One item has nothing usable to build a chapter from.
-
-    Carries the user-facing reason, exactly like YouTubeUnavailable and
-    ScrapeUnavailable next door. Raised by the chapter builders and caught per
-    item by the loop, which records the reason against the item and carries on:
-    an item the user picked never disappears without an explanation, and never
-    costs them the rest of the compilation.
-    """
-
-
-# The reasons an item didn't make it into the book. They travel with the item to
-# the compile screen and survive to the finished one, so they're written for a
-# reader rather than a log: what happened, no blame, no jargon.
-NO_SUBTITLES = "No subtitles available."
-NO_TRANSCRIPTION = "Transcription unavailable."
-NO_CONTENT = "No readable content."
 YOUTUBE_RATE_LIMITED = "YouTube rate-limited this request."
 ITEM_FAILED = "This item could not be built."
-
-# Zero survivors, but not for lack of content: at least one item crashed rather
-# than being genuinely skipped. compile_book's "no usable content" message would
-# be actively misleading here (it tells the user to check subtitles and readable
-# text, when the real cause was an error the log already has), so this case gets
-# its own, honest message instead of falling through to that one.
-# Stop: the items never reached, and the compile stopped before any was ready.
 STOPPED = "Stopped before this item."
 STOPPED_EMPTY = "Compilation stopped before any chapter was ready."
-
 NOTHING_BUILT = "None of the selected items could be built. Try again, or pick different sources."
 
 
@@ -97,20 +53,12 @@ def run_compilation(job_id: str) -> None:
     stats: dict = {"uses_visitor_llm": bool(held and held.llm), "uses_visitor_stt": stt is not None}
     try:
         items = get_selected_items(job_id)
-        # Active only when roles were chosen AND an LLM endpoint is available.
+        # Roles only act when there is a model to run them.
         roles = get_job_llm_roles(job_id) if llm is not None else []
-        model = llm.model if llm else ""
-        chapters: list[CompiledChapter] = []
-        youtube_unavailable = False
-        # Items that ended `failed` (crashed or hit a YouTube rate limit), as
-        # opposed to `skipped` (nothing usable to build from). The distinction
-        # drives which zero-survivor message is honest: `skipped` means the
-        # content genuinely wasn't there; `failed` means something broke, and the
-        # "check that the videos have subtitles" message below would be wrong.
-        failed_items = 0
-        skipped_items = 0
         stats["source_types"] = dict(Counter(item.item_type for item in items))
         stats["ai_used"] = bool(roles)
+        outcomes: Counter = Counter()
+        chapters: list[CompiledChapter] = []
 
         for position, item in enumerate(items):
             if stop_requested(job_id):
@@ -121,87 +69,41 @@ def run_compilation(job_id: str) -> None:
                     stats["failure"] = "stopped"
                     raise CompilationError(STOPPED_EMPTY)
                 break
-            set_item_compile_state(job_id, item.id, "compiling")
-            try:
-                if item.item_type == "youtube":
-                    chapter = _youtube_chapter(item, job_id, roles, model, llm)
-                elif item.item_type == "podcast":
-                    chapter = _podcast_chapter(item, job_id, roles, model, llm, stt)
-                else:
-                    chapter = _blog_chapter(item, job_id, roles, model, llm)
-            except CompileStopped:
-                # Stopped mid-polish: this item is dropped, not half-polished.
-                # The check at the top of the next turn ends the loop.
-                set_item_compile_state(job_id, item.id, "skipped", STOPPED)
-                continue
-            except ItemSkipped as exc:
-                # Nothing usable to build from. Expected, explainable, and never
-                # fatal: the reason is written against the item and shown next to
-                # it, on this screen and on the finished one.
-                logger.info("Skipped %s (job %s): %s", item.url, job_id, exc)
-                skipped_items += 1
-                set_item_compile_state(job_id, item.id, "skipped", str(exc))
-                continue
-            except YouTubeUnavailable as exc:
-                # External and usually transient (a 429 from this IP), so it reads
-                # as failed rather than skipped: retrying later is the actual fix.
-                logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
-                youtube_unavailable = True
-                failed_items += 1
-                set_item_compile_state(job_id, item.id, "failed", YOUTUBE_RATE_LIMITED)
-                continue
-            except Exception:
-                # One broken item must not cost the user the other nine. The raw
-                # cause goes to the log; the item gets one calm written line, and
-                # the compile carries on with what's left.
-                logger.exception("Item %s failed (job %s)", item.url, job_id)
-                failed_items += 1
-                set_item_compile_state(job_id, item.id, "failed", ITEM_FAILED)
-                continue
-            chapters.append(chapter)
-            set_item_compile_state(job_id, item.id, "done")
-        stats.update(chapter_count=len(chapters), skipped_count=skipped_items, failed_count=failed_items)
+            state, note, chapter = _build(job_id, item, roles, llm, stt)
+            set_item_compile_state(job_id, item.id, state, note)
+            outcomes[note if state == "failed" else state] += 1
+            if chapter is not None:
+                chapters.append(chapter)
+        stats.update(
+            chapter_count=len(chapters),
+            skipped_count=outcomes["skipped"],
+            failed_count=outcomes[YOUTUBE_RATE_LIMITED] + outcomes[ITEM_FAILED],
+        )
 
-        # Ordered on purpose: a wholly rate-limited run is both the most specific
-        # diagnosis (an external, transient cause) and the most actionable one
-        # (wait, or use a residential proxy), so it's checked first even though
-        # it's also a case where failed_items > 0. Next, any other crash: honest
-        # over blaming the content, so it doesn't get funnelled into "check that
-        # the videos have subtitles" below. Falling through both leaves only the
-        # case where every item was genuinely `skipped` for lack of content, which
-        # is exactly what compile_book's own "no usable content" message says.
-        if not chapters and youtube_unavailable:
+        # Nothing built: say why, the most specific cause first. A wholly
+        # rate-limited run is external and transient; a crash is not the
+        # content's fault. Only an all-skipped run falls through to
+        # compile_book's own "no usable content".
+        if not chapters and outcomes[YOUTUBE_RATE_LIMITED]:
             stats["failure"] = "youtube_rate_limited"
-            raise CompilationError(
-                "YouTube is rate-limiting transcript requests (HTTP 429) from this "
-                "IP. This usually clears after a while, so try again later. For a "
-                "self-hosted server, a residential proxy avoids it."
-            )
-        if not chapters and failed_items > 0:
+            raise CompilationError(YOUTUBE_BUSY)
+        if not chapters and outcomes[ITEM_FAILED]:
             stats["failure"] = "nothing_built"
             raise CompilationError(NOTHING_BUILT)
 
         job = get_job(job_id)
-        book_title = (job.book_title if job else None) or "Compilation Thothly"
-        book = compile_book(chapters, book_title)
-        if has_role(roles, PREFACE):
+        book = compile_book(chapters, (job.book_title if job else None) or "Thothly compilation")
+        if PREFACE in roles:
             book.preface = generate_preface(
                 book.title, [c.title for c in book.chapters], llm, book.language
             )
-        output_path, output_md_path = _render(book, job_id)
-        update_job_status(
-            job_id,
-            "completed",
-            book_title=book.title,
-            output_path=output_path,
-            output_md_path=output_md_path,
-        )
+        _render(book, job_id)
+        update_job_status(job_id, "completed", book_title=book.title)
         logger.info("Compilation done for job %s: %d chapters", job_id, len(book.chapters))
         capture("compilation_completed", {**stats, "duration_s": round(time.monotonic() - started)}, job_id)
 
     except CompilationError as exc:
-        # CompilationError carries a hand-written, user-facing reason (no content,
-        # YouTube rate-limited); surface it as-is.
+        # A hand-written, user-facing reason: surfaced as-is.
         logger.warning("No usable content for job %s: %s", job_id, exc)
         update_job_status(job_id, "failed", error=str(exc))
         stats.setdefault("failure", "no_content")
@@ -222,165 +124,47 @@ def run_compilation(job_id: str) -> None:
         )
 
 
-def _step(job_id: str, item_id: str, label: str) -> None:
-    """Name the stage an item is currently in, on the item itself.
-
-    A long item (a big transcript through several AI passes, an episode being
-    transcribed) can hold the list for minutes, and a bare spinner there reads
-    as a hang. `compile_note` already carries the per-item line to the screen
-    for skipped/failed, so the stage rides the same field rather than a new
-    column: a terminal state overwrites it on the way out.
-    """
-    set_item_compile_state(job_id, item_id, "compiling", label)
-
-
-def _youtube_chapter(
-    item: DiscoveredItemResponse,
+def _build(
     job_id: str,
-    roles: list[str],
-    model: str,
-    llm: Endpoint | None = None,
-) -> CompiledChapter:
-    video_id = _extract_video_id(item.url)
-    # Cache hit from discovery (full segments + chapters); falls back to a live
-    # fetch only if the cache was never populated. A YouTubeUnavailable here
-    # (e.g. a 429) propagates so run_compilation can report it clearly.
-    _step(job_id, item.id, "Reading the transcript")
-    transcript = load_transcript(video_id)
-    if transcript is None:
-        raise ItemSkipped(NO_SUBTITLES)
-
-    # The free path (no roles selected) renders captions with the zero-LLM
-    # grouper. Raw (unpunctuated) captions then read rough — there's no zero-LLM
-    # way to paragraph them — which is the trade-off of leaving "AI polish" off;
-    # turning it on adds the Punctuation pass (and clean_transcript falls back to
-    # a free sentence-split on captions that are already punctuated).
-    if roles:
-        _step(job_id, item.id, "Polishing the text")
-        content_md = clean_transcript(
-            transcript, roles, model, llm, should_stop=lambda: stop_requested(job_id)
-        )
-    else:
-        content_md = transcript_to_markdown(transcript)
-    if not content_md:
-        raise ItemSkipped(NO_CONTENT)
-
-    return CompiledChapter(
-        title=normalize_title(item.title),
-        source_type="youtube",
-        source_url=item.url,
-        author=transcript.uploader,
-        channel_url=transcript.channel_url,
-        content_md=content_md,
-        language=normalize_language(transcript.language) or detect_language(content_md),
-    )
-
-
-def _podcast_chapter(
     item: DiscoveredItemResponse,
-    job_id: str,
     roles: list[str],
-    model: str,
-    llm: Endpoint | None = None,
-    stt: Endpoint | None = None,
-) -> CompiledChapter:
-    # Lazily, and cached by audio URL: a published transcript (Exa) first, else
-    # transcription. Both are metered and run once, only for selected episodes.
-    # Neither available, or a failure, leaves transcript None → the episode is
-    # skipped, like a video without subtitles.
-    _step(job_id, item.id, "Getting the transcript")
-    transcript = load_episode_transcript(
-        item.url, stt=stt, title=item.title, duration_s=item.estimated_duration_s
-    )
-    if transcript is None:
-        raise ItemSkipped(NO_TRANSCRIPTION)
+    llm: Endpoint | None,
+    stt: Endpoint | None,
+) -> tuple[str, str | None, CompiledChapter | None]:
+    """One item's (compile state, note, chapter). Never raises: one broken item
+    must not cost the visitor the others."""
 
-    # Podcasts keep their diarized dialogue with speaker labels. The Voxtral
-    # transcript is already punctuated and clean, so we deliberately do NOT run
-    # the content-editing roles here — that path flattens the text and drops the
-    # who-speaks labels. Real speaker names via the LLM are opt-in
-    # (podcast_speaker_naming); off by default → simple "Speaker N" titles.
-    speaker_names = (
-        map_speaker_names(transcript, model, llm) if settings.podcast_speaker_naming else {}
-    )
-    # STT rarely reports a language, so it is read off the words themselves.
-    language = normalize_language(transcript.language) or detect_language(
-        transcript.full_text
-    )
-    content_md = transcript_to_markdown(transcript, speaker_names, chrome(language)["speaker"])
-    if not content_md:
-        raise ItemSkipped(NO_CONTENT)
+    def step(label: str) -> None:
+        # The stage rides the item's note while it compiles: a long item (a big
+        # transcript through several AI passes, an episode being transcribed)
+        # would otherwise read as a hang.
+        set_item_compile_state(job_id, item.id, "compiling", label)
 
-    return CompiledChapter(
-        title=normalize_title(item.title),
-        source_type="podcast",
-        source_url=item.url,
-        content_md=content_md,
-        language=language,
-    )
-
-
-def _blog_chapter(
-    item: DiscoveredItemResponse,
-    job_id: str,
-    roles: list[str],
-    model: str,
-    llm: Endpoint | None = None,
-) -> CompiledChapter:
-    author = None
-    published_at = None
-    declared_language = None
-    _step(job_id, item.id, "Fetching the article")
     try:
-        article = scrape_article(item.url)
-        content_html = article.content_html
-        author = article.author
-        published_at = article.published_at
-        declared_language = article.language
-    except ScrapeUnavailable:
-        logger.warning("Scrape failed for %s (job %s), using RSS preview", item.url, job_id)
-        content_html = item.preview_html or ""
-
-    content_md = html_to_markdown(content_html)
-    content_md = demote_headings(strip_leading_title(content_md, item.title))
-    if not content_md:
-        raise ItemSkipped(NO_CONTENT)
-
-    language = normalize_language(declared_language) or detect_language(content_md)
-
-    if roles:
-        _step(job_id, item.id, "Polishing the text")
-        content_md = clean_markdown(
-            content_md, roles, model, content_key=item.url, endpoint=llm,
-            should_stop=lambda: stop_requested(job_id),
+        drafted = draft(item, transcribe=True, stt=stt, step=step)
+        chapter = polish(
+            item, drafted, roles, llm, should_stop=lambda: stop_requested(job_id), step=step
         )
+    except CompileStopped:
+        # Stopped mid-polish: the item is dropped, not half-polished.
+        return "skipped", STOPPED, None
+    except ItemSkipped as exc:
+        logger.info("Skipped %s (job %s): %s", item.url, job_id, exc)
+        return "skipped", str(exc), None
+    except YouTubeUnavailable as exc:
+        # Usually a 429 from this IP: failed rather than skipped, since retrying
+        # later is the fix.
+        logger.error("YouTube unavailable for %s (job %s): %s", item.url, job_id, exc)
+        return "failed", YOUTUBE_RATE_LIMITED, None
+    except Exception:
+        logger.exception("Item %s failed (job %s)", item.url, job_id)
+        return "failed", ITEM_FAILED, None
+    return "done", None, chapter
 
-    return CompiledChapter(
-        title=normalize_title(item.title),
-        source_type="blog",
-        source_url=item.url,
-        author=author,
-        published_at=published_at,
-        content_md=content_md,
-        language=language,
-    )
 
-
-def _extract_video_id(url: str) -> str:
-    match = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]+)", url)
-    return match.group(1) if match else url.rstrip("/").split("/")[-1]
-
-
-def _render(book, job_id: str) -> tuple[str, str]:
-    output_dir = settings.data_dir / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{job_id}.epub"
-    render_epub(book, output_path)
-
-    # A standalone Markdown twin of the same compiled content — no Pandoc, no
-    # image localization — so the reading list can be fed straight to an AI (or
-    # any plain-text tool). The non-localized Markdown keeps remote image URLs
-    # referenceable, unlike the EPUB's embedded copies.
-    md_path = output_dir / f"{job_id}.md"
-    md_path.write_text(book.to_markdown(), encoding="utf-8")
-    return str(output_path), str(md_path)
+def _render(book: CompiledBook, job_id: str) -> None:
+    epub = output_file(job_id, "epub")
+    render_epub(book, epub)
+    # The same content as plain Markdown, without Pandoc or image localization,
+    # so remote image URLs stay referenceable for an AI or a text tool.
+    output_file(job_id, "md").write_text(book.to_markdown(), encoding="utf-8")

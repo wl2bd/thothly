@@ -1,16 +1,18 @@
 """LLM role registry.
 
 A *role* is one faithful transform pass applied at compile time. Roles are
-data here (id/label/description/scope + system prompt) so the same definitions
-drive both the cleanup engine (`cleanup.py`) and the `GET /llm` catalogue the
-review screen renders. Adding a role is: append a `Role` and teach `cleanup.py`
+data here (id/label/description/scope + prompt) so the same definitions drive
+both the cleanup engine (`cleanup.py`) and the `GET /llm` catalogue the review
+screen renders. Adding a role is: append a `Role` and teach `cleanup.py`
 how to apply it.
 
 All prompts insist on preserving the original language and not
 adding/removing/summarising content (except `preface`, which is generative).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 # Role ids — stable identifiers stored on the job and sent by the frontend.
 PUNCTUATE = "punctuate"
@@ -24,16 +26,15 @@ class Role:
     id: str
     label: str
     description: str
-    scope: str  # "item" (per chapter) | "book" (once, on the whole book)
+    scope: Literal["item", "book"]  # per chapter, or once on the whole book
     # How the review screen groups the role under the "AI polish" switch:
     #   "default" — the safe set the master switch turns on (punctuation +
     #               a light copyedit).
     #   "extra"   — opinionated passes that invent structure or generate text
     #               (sections, preface), shown as opt-in checkboxes when on.
-    # ("auto" stays a reserved value for a pass that would always run; with the
-    #  master switch now gating everything, no role uses it today.)
-    tier: str
-    system_prompt: str
+    tier: Literal["default", "extra"]
+    # The system prompt, for a text in this language (None: not known).
+    prompt: Callable[[str | None], str]
 
 
 _PUNCTUATE_PROMPT = (
@@ -67,11 +68,6 @@ def _sections_prompt(language_clause: str) -> str:
     )
 
 
-# Default (generic) sections prompt: used for articles and the role catalogue,
-# where no reliable language tag is on hand, so the model infers it from the text.
-_SECTIONS_PROMPT = _sections_prompt("in the language of the text (do not translate)")
-
-
 # English names for the language tags transcripts carry, so the sections prompt
 # can name the target language outright rather than trust the model to infer it
 # from a chunk (a weak model otherwise drifts to English). Falls back to the raw
@@ -96,13 +92,12 @@ def language_name(tag: str | None) -> str | None:
 
 
 def sections_prompt(language: str | None) -> str:
-    """The `sections` system prompt, pinned to an explicit language when the
-    transcript's language is known so generated headings can't drift to English;
-    otherwise the generic, infer-from-text prompt."""
+    """Pinned to the text's language when it is known, so generated headings
+    can't drift to English; otherwise the model infers it from the text."""
     name = language_name(language)
     if not name:
-        return _SECTIONS_PROMPT
-    return _sections_prompt(f"in {name}, the language of the transcript (do not translate)")
+        return _sections_prompt("in the language of the text (do not translate)")
+    return _sections_prompt(f"in {name}, the language of the text (do not translate)")
 
 def _preface_prompt(language_name: str) -> str:
     return (
@@ -114,12 +109,9 @@ def _preface_prompt(language_name: str) -> str:
     )
 
 
-_PREFACE_PROMPT = _preface_prompt("English")
-
-
 def preface_prompt(language: str | None) -> str:
-    """The preface prompt in the book's language (English when unknown)."""
-    return _preface_prompt(language_name(language) or "English")
+    """The preface prompt in the book's language."""
+    return _preface_prompt(language_name(language) or "the language of the chapter titles")
 
 
 # Order matters for item-scoped roles: punctuate first (creates sentences),
@@ -134,7 +126,7 @@ ROLES: list[Role] = [
         ),
         scope="item",
         tier="default",
-        system_prompt=_PUNCTUATE_PROMPT,
+        prompt=lambda _: _PUNCTUATE_PROMPT,
     ),
     Role(
         id=COPYEDIT,
@@ -145,7 +137,7 @@ ROLES: list[Role] = [
         ),
         scope="item",
         tier="default",
-        system_prompt=_COPYEDIT_PROMPT,
+        prompt=lambda _: _COPYEDIT_PROMPT,
     ),
     Role(
         id=SECTIONS,
@@ -156,7 +148,7 @@ ROLES: list[Role] = [
         ),
         scope="item",
         tier="extra",
-        system_prompt=_SECTIONS_PROMPT,
+        prompt=sections_prompt,
     ),
     Role(
         id=PREFACE,
@@ -164,7 +156,7 @@ ROLES: list[Role] = [
         description="Generates a short preface to open the compilation.",
         scope="book",
         tier="extra",
-        system_prompt=_PREFACE_PROMPT,
+        prompt=preface_prompt,
     ),
 ]
 
@@ -181,5 +173,5 @@ def selected_item_roles(role_ids: list[str]) -> list[Role]:
     return [r for r in ROLES if r.scope == "item" and r.id in chosen]
 
 
-def has_role(role_ids: list[str], role_id: str) -> bool:
-    return role_id in set(role_ids)
+# What the "AI polish" switch turns on, and the CLI's --ai.
+AI_POLISH = [role.id for role in ROLES if role.tier == "default"]

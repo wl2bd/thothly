@@ -7,7 +7,7 @@ from markdownify import MarkdownConverter
 
 from app.pipeline.i18n import dominant_language
 from app.pipeline.models import CompiledBook, CompiledChapter, escape_tags
-from app.sources.models import Transcript, TranscriptSegment
+from app.sources.models import Chapter, Transcript, TranscriptSegment, is_punctuated
 
 
 class CompilationError(Exception):
@@ -17,22 +17,6 @@ class CompilationError(Exception):
 # Split on sentence-ending punctuation followed by whitespace. Keeps the
 # terminator attached to the sentence it ends.
 _SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
-
-
-def is_punctuated(text: str) -> bool:
-    """Heuristic: does this text carry real sentence punctuation?
-
-    YouTube auto-captions are inconsistent — newer ASR adds punctuation, older
-    tracks have none at all. We only get clean sentence-based paragraphs when
-    the source is actually punctuated, so we detect that with a density check
-    (roughly one sentence-ending mark per 50 words). A stray mark or two in an
-    otherwise raw transcript stays below the threshold.
-    """
-    words = len(text.split())
-    if words < 20:
-        return False
-    marks = sum(text.count(c) for c in ".!?")
-    return marks / words >= 0.02
 
 
 def _sentences_to_paragraphs(text: str, target_chars: int = 800) -> str:
@@ -424,6 +408,16 @@ def segments_to_paragraph_markdown(segments: list[TranscriptSegment]) -> str:
     return "\n\n".join(t for _, t in _paragraphs_from_segments(segments) if t.strip())
 
 
+def chapter_buckets(transcript: Transcript) -> list[tuple[Chapter, list[TranscriptSegment]]]:
+    """Each video chapter with its segments: a segment belongs to the last
+    chapter that started at or before it."""
+    starts = [c.start_s for c in transcript.chapters]
+    buckets: list[list[TranscriptSegment]] = [[] for _ in transcript.chapters]
+    for segment in transcript.segments:
+        buckets[max(0, bisect_right(starts, segment.start_s) - 1)].append(segment)
+    return list(zip(transcript.chapters, buckets))
+
+
 def transcript_to_markdown(
     transcript: Transcript,
     speaker_names: dict[str, str] | None = None,
@@ -447,14 +441,8 @@ def transcript_to_markdown(
             return segments_to_paragraph_markdown(segments)
         return segments_to_markdown([s.text for s in segments])
 
-    starts = [c.start_s for c in transcript.chapters]
-    buckets: list[list[TranscriptSegment]] = [[] for _ in transcript.chapters]
-    for segment in segments:
-        index = max(0, bisect_right(starts, segment.start_s) - 1)
-        buckets[index].append(segment)
-
     sections: list[str] = []
-    for chapter, segs in zip(transcript.chapters, buckets):
+    for chapter, segs in chapter_buckets(transcript):
         if _looks_sentence_segmented(segs) and _has_timing(segs):
             body = segments_to_paragraph_markdown(segs)
         else:

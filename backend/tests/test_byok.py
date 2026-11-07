@@ -21,6 +21,7 @@ from app.pipeline.providers import (
     resolve_endpoint,
 )
 from app.sources.models import Transcript, TranscriptSegment
+from tests.conftest import confirmed_job
 
 VALID_SOURCE = {"url": "https://youtube.com/playlist?list=PLtest123"}
 
@@ -120,23 +121,13 @@ def _raw_youtube_item() -> DiscoveredItemResponse:
     )
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_job_llm_roles", return_value=["punctuate"])
-@patch("app.jobs.runner.get_selected_items")
+@patch("app.jobs.chapters.youtube.load_transcript")
 def test_visitor_key_reaches_every_llm_call_over_the_server_key(
-    mock_selected, mock_roles, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch,
+    mock_fetch, fake_pandoc, monkeypatch,
 ) -> None:
     import app.core.config as cfg
-    import app.core.database as db
     import app.pipeline.cleanup as cleanup
 
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-    db.init_db()
     # The operator has a key too: the visitor's must still win.
     monkeypatch.setattr(cfg.settings, "llm_base_url", "https://operator.example/v1")
     monkeypatch.setattr(cfg.settings, "llm_model", "operator-model")
@@ -151,40 +142,32 @@ def test_visitor_key_reaches_every_llm_call_over_the_server_key(
 
     monkeypatch.setattr(cleanup, "complete", fake_complete)
     words = " ".join(f"mot{i}" for i in range(30))  # unpunctuated → punctuate runs
-    mock_selected.return_value = [_raw_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
     mock_fetch.return_value = Transcript(
         video_id="abc123", language="fr",
         segments=[TranscriptSegment(text=words, start_s=0.0, duration_s=1.0)],
     )
+    job_id = confirmed_job(_raw_youtube_item(), roles=["punctuate"])
     visitor = Endpoint("https://api.mistral.ai/v1", "mistral-small-latest", "visitor-key")
-    credentials.put("job-c", credentials.JobCredentials(llm=visitor, stt=None))
+    credentials.put(job_id, credentials.JobCredentials(llm=visitor, stt=None))
 
-    runner.run_compilation("job-c")
+    runner.run_compilation(job_id)
 
     assert len(seen) > 1
     assert all(ep == visitor for ep in seen)
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_episode_transcript", return_value=None)
-@patch("app.jobs.runner.get_selected_items")
-def test_visitor_stt_key_reaches_the_podcast_loader(
-    mock_selected, mock_tx, mock_render, mock_update, mock_job, mock_state,
-) -> None:
-    mock_selected.return_value = [DiscoveredItemResponse(
+@patch("app.jobs.chapters.load_episode_transcript", return_value=None)
+def test_visitor_stt_key_reaches_the_podcast_loader(mock_tx) -> None:
+    job_id = confirmed_job(DiscoveredItemResponse(
         id="j-0-0", source_index=0, item_index=0, item_type="podcast",
         title="An episode", url="https://cdn.example/ep1.mp3",
-    )]
+    ))
     visitor_stt = Endpoint("https://api.mistral.ai/v1", "voxtral-mini-latest", "visitor-key")
-    credentials.put("job-d", credentials.JobCredentials(llm=None, stt=visitor_stt))
+    credentials.put(job_id, credentials.JobCredentials(llm=None, stt=visitor_stt))
 
-    runner.run_compilation("job-d")
+    runner.run_compilation(job_id)
 
-    assert mock_tx.call_args.kwargs["stt"] == visitor_stt
+    assert mock_tx.call_args.args[1] == visitor_stt
 
 
 def test_podcast_chunks_are_transcribed_with_the_visitor_endpoint(tmp_path) -> None:

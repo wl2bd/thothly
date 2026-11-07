@@ -34,3 +34,29 @@ def client():
     from app.main import app
     with TestClient(app) as c:
         yield c
+
+
+def confirmed_job(*items, roles: list[str] | None = None) -> str:
+    """A job in the database, its items confirmed and ready to compile."""
+    from app.jobs import repository
+    from app.jobs.models import JobCreate, Source
+
+    job = repository.create_job(JobCreate(sources=[Source(url="https://example.com")]))
+    repository.save_discovered_items(job.id, list(items))
+    repository.confirm_items(job.id, [i.id for i in items])
+    repository.set_job_llm_roles(job.id, roles or [])
+    repository.update_job_status(job.id, "processing", book_title="My Book")
+    return job.id
+
+
+@pytest.fixture
+def fake_pandoc():
+    """Pandoc writes a stand-in EPUB; the mock keeps the book it was handed."""
+    from unittest.mock import patch
+
+    def render(book, path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("epub")
+
+    with patch("app.jobs.runner.render_epub", side_effect=render) as mock:
+        yield mock

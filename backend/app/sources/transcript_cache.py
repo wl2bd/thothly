@@ -1,76 +1,30 @@
-"""Persistent, video-keyed transcript cache.
+"""Transcripts fetched or paid for once, kept for good, keyed by what they
+transcribe: a video id or an episode's audio URL.
 
-Fetching a transcript hits YouTube, which IP-rate-limits scrapers. The same
-video is fetched repeatedly otherwise — once per discovery, again at compile,
-and again every time the user re-opens the same playlist. Caching by video_id
-collapses all of that to a single fetch per video, ever.
-
-Only successful fetches are cached. A "no subtitles" (None) result is left
-uncached so a video that later gains captions is picked up, and an IP block
-(YouTubeUnavailable) propagates untouched — we must never cache a block as if
-the video had no subtitles.
+YouTube IP-rate-limits scrapers and would otherwise be asked for the same video
+at discovery, at compile and on every re-opened playlist; an episode's
+transcription is a metered call that a re-compile must never pay twice. Only a
+found transcript is stored, so a video that later gains captions is picked up.
 """
 
-import json
 from datetime import datetime, timezone
 
-from app.core.config import settings
 from app.core.database import get_connection
-from app.sources import scrapecreators
-from app.sources.models import Chapter, Transcript, TranscriptSegment
-from app.sources.youtube import fetch_transcript
+from app.sources.models import Transcript
 
 
-def load_transcript(
-    video_id: str, languages: list[str] | None = None
-) -> Transcript | None:
-    cached = _get_cached(video_id)
-    if cached is not None:
-        return cached
-
-    fetch = scrapecreators.fetch_transcript if settings.treg_token else fetch_transcript
-    transcript = fetch(video_id, languages)
-    if transcript is not None:
-        _store(transcript)
-    return transcript
-
-
-def _get_cached(video_id: str) -> Transcript | None:
+def get(key: str) -> Transcript | None:
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM transcript_cache WHERE video_id = ?", (video_id,)
+            "SELECT transcript FROM transcripts WHERE key = ?", (key,)
         ).fetchone()
-    if row is None:
-        return None
-    segments = [TranscriptSegment(**s) for s in json.loads(row["segments"])]
-    chapters_json = row["chapters"]
-    chapters = [Chapter(**c) for c in json.loads(chapters_json)] if chapters_json else []
-    return Transcript(
-        video_id=video_id,
-        language=row["language"],
-        segments=segments,
-        chapters=chapters,
-        uploader=row["uploader"],
-        channel_url=row["channel_url"],
-    )
+    return Transcript.model_validate_json(row["transcript"]) if row else None
 
 
-def _store(transcript: Transcript) -> None:
-    segments_json = json.dumps([s.model_dump() for s in transcript.segments])
-    chapters_json = json.dumps([c.model_dump() for c in transcript.chapters])
+def put(key: str, transcript: Transcript) -> None:
     with get_connection() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO transcript_cache "
-            "(video_id, language, segments, fetched_at, chapters, uploader, channel_url) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                transcript.video_id,
-                transcript.language,
-                segments_json,
-                datetime.now(timezone.utc).isoformat(),
-                chapters_json,
-                transcript.uploader,
-                transcript.channel_url,
-            ),
+            "INSERT OR REPLACE INTO transcripts (key, transcript, stored_at) VALUES (?, ?, ?)",
+            (key, transcript.model_dump_json(), datetime.now(timezone.utc).isoformat()),
         )
         conn.commit()

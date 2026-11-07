@@ -27,14 +27,6 @@ def test_selected_item_roles_order_and_scope() -> None:
     assert [r.id for r in roles] == ["punctuate", "copyedit", "sections"]
 
 
-def test_all_roles_have_metadata() -> None:
-    for role in ROLES:
-        assert role.id and role.label and role.description
-        assert role.scope in ("item", "book")
-        assert role.tier in ("auto", "default", "extra")
-        assert role.system_prompt
-
-
 @patch("app.jobs.router.run_compilation")
 @patch("app.jobs.router.run_discovery")
 def test_confirm_stores_known_roles_and_drops_unknown(

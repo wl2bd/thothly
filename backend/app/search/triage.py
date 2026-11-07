@@ -109,10 +109,10 @@ def triage_enabled() -> bool:
     return bool(settings.typesafe_api_key or settings.search_triage_api_key)
 
 
-def _ask(query: str, results: list[SearchResult]) -> _Verdict:
+def _ask(query: str, described: list[dict]) -> _Verdict:
     if settings.typesafe_api_key:
-        return _ask_typesafe(query, results)
-    return _ask_openai(query, results)
+        return _ask_typesafe(query, described)
+    return _ask_openai(query, described)
 
 
 def triage(query: str, results: list[SearchResult]) -> list[SearchResult]:
@@ -122,7 +122,7 @@ def triage(query: str, results: list[SearchResult]) -> list[SearchResult]:
         return results
     started = time.monotonic()
     try:
-        verdict = _ask(query, results)
+        verdict = _ask(query, [_describe(r) for r in results])
     except Exception as exc:  # noqa: BLE001 — triage must never break a search
         logger.warning("Search triage failed, returning untriaged results: %s", exc)
         return results
@@ -158,7 +158,7 @@ _LEVEL_CRITERIA = {
 }
 
 
-def _ask_typesafe(query: str, results: list[SearchResult]) -> _Verdict:
+def _ask_typesafe(query: str, described: list[dict]) -> _Verdict:
     """One call: the request and every result go in as state, and each judgment
     is its own question against them.
 
@@ -183,7 +183,7 @@ def _ask_typesafe(query: str, results: list[SearchResult]) -> _Verdict:
             criteria={**_LEVEL_CRITERIA, "any": "the request does not say"},
         ),
     }
-    for i in range(len(results)):
+    for i in range(len(described)):
         at = f"results[{i}]"
         questions[f"compilable_{i}"] = Noul(
             instructions={
@@ -215,7 +215,7 @@ def _ask_typesafe(query: str, results: list[SearchResult]) -> _Verdict:
         timeout=_TIMEOUT_S,
     ) as client:
         answers = client.system_one(
-            state={"request": query, "results": [_describe(r) for r in results]},
+            state={"request": query, "results": described},
             questions=questions,
             model=settings.typesafe_model,
         )
@@ -224,7 +224,7 @@ def _ask_typesafe(query: str, results: list[SearchResult]) -> _Verdict:
     )
 
     judged = []
-    for i in range(len(results)):
+    for i in range(len(described)):
         if f"compilable_{i}" not in answers.nouls or f"relevance_{i}" not in answers.scores:
             continue  # unanswered: `rank` leaves it in place rather than dropping it
         judged.append(
@@ -244,7 +244,7 @@ def _ask_typesafe(query: str, results: list[SearchResult]) -> _Verdict:
         results=judged,
     )
 
-def _ask_openai(query: str, results: list[SearchResult]) -> _Verdict:
+def _ask_openai(query: str, described: list[dict]) -> _Verdict:
     endpoint = Endpoint(
         settings.search_triage_base_url, settings.search_triage_model, settings.search_triage_api_key
     )
@@ -264,17 +264,25 @@ def _ask_openai(query: str, results: list[SearchResult]) -> _Verdict:
     return _Verdict.model_validate_json(response.choices[0].message.content or "")
 
 
+def describe(
+    kind: str, title: str, author: str | None = None, duration_s: int | None = None
+) -> dict:
+    """What the judge reads about one candidate. Named fields, not one joined
+    line: titles and show names carry their own "|", and a flat line let the
+    judge read a show name as part of the title. Measured on four searches,
+    this alone halved the off-topic results kept."""
+    d: dict = {"kind": kind, "title": title}
+    if author:
+        d["channel_or_show"] = author
+    if duration_s:
+        d["minutes"] = round(duration_s / 60)
+    return d
+
+
 def _describe(r: SearchResult) -> dict:
-    """Named fields, not one joined line: titles and show names carry their own
-    "|", and a flat line let the judge read a show name as part of the title.
-    Measured on four searches, this alone halved the off-topic results kept."""
-    d: dict = {"kind": r.type, "title": r.title}
-    if r.author:
-        d["channel_or_show"] = r.author
+    d = describe(r.type, r.title, r.author, r.duration_s)
     if r.meta.get("genre"):
         d["genre"] = r.meta["genre"]
-    if r.duration_s:
-        d["minutes"] = round(r.duration_s / 60)
     date = _published(r)
     if date:
         d["date"] = date.date().isoformat()
@@ -305,8 +313,6 @@ def rank(results: list[SearchResult], verdict: _Verdict) -> list[SearchResult]:
     kept = sorted(
         (i for i, j in judged.items() if j.compilable and j.relevance >= _MIN_RELEVANCE), key=key
     )
-    for i in kept:
-        results[i].meta["format"] = judged[i].format
     skipped = [r for i, r in enumerate(results) if i not in judged]
     return [results[i] for i in kept] + skipped
 
@@ -352,9 +358,9 @@ def set_aside_reasons(verdict: _Verdict, n: int, *, has_query: bool) -> dict[int
     return reasons
 
 
-def judge_items(query: str | None, items: list[SearchResult]) -> dict[int, str]:
-    """Reasons to set items aside; empty on any failure (the review then shows
-    every item as before)."""
+def judge_items(query: str | None, items: list[dict]) -> dict[int, str]:
+    """Reasons to set items aside, from their `describe`d form; empty on any
+    failure (the review then shows every item as before)."""
     if not items:
         return {}
     started = time.monotonic()

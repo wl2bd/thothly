@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from app.sources.scrapecreators import _pick_language, fetch_transcript, fetch_video_meta
 from app.sources.youtube import YouTubeUnavailable
+from app.sources.youtube.scrapecreators import _pick_language, fetch_transcript, fetch_video_meta
 
 # Trimmed from real responses (video 822YgahP3H0, 2026-09-18).
 DETAIL = {
@@ -24,9 +24,9 @@ TRANSCRIPT = {
 }
 
 
-@patch("app.sources.scrapecreators._call", side_effect=[DETAIL, TRANSCRIPT])
+@patch("app.sources.youtube.scrapecreators._call", side_effect=[DETAIL, TRANSCRIPT])
 def test_fetch_transcript_maps_response(mock_call):
-    t = fetch_transcript("822YgahP3H0", ["en"])
+    t = fetch_transcript("822YgahP3H0")
 
     assert t.language == "fr"
     assert [s.text for s in t.segments] == ["imaginez tomber sur le journal intime", "d'un grand empereur romain"]
@@ -40,15 +40,23 @@ def test_fetch_transcript_maps_response(mock_call):
     assert mock_call.call_args.kwargs["language"] == "fr"
 
 
-@patch("app.sources.scrapecreators._call", return_value={"captionTracks": []})
+@patch("app.sources.youtube.scrapecreators._call", return_value={"captionTracks": []})
 def test_no_caption_track_skips_the_paid_transcript_call(mock_call):
-    assert fetch_transcript("x", ["en"]) is None
+    assert fetch_transcript("x") is None
     assert mock_call.call_count == 1
 
 
 def test_pick_language_prefers_human_subtitles_in_preferred_language():
     tracks = [{"languageCode": "fr", "kind": "asr"}, {"languageCode": "en-GB"}]
     assert _pick_language(tracks, ["en"]) == "en-GB"
+
+
+def test_pick_language_keeps_the_original_audio_over_a_hand_translation():
+    # An English video with hand-made French subtitles reads in English, as on
+    # the yt-dlp path.
+    tracks = [{"languageCode": "fr"}, {"languageCode": "en", "kind": "asr"}]
+    audio = [{"id": "en-US.4", "audioIsDefault": True}]
+    assert _pick_language(tracks, ["fr"], audio) == "en"
 
 
 def test_pick_language_takes_original_asr_over_foreign_human_track():
@@ -76,14 +84,14 @@ def test_pick_language_on_dubbed_video_without_audio_info_prefers_a_preferred_as
 
 # A single pasted video: yt-dlp is bot-walled on Fly (2026-09-29), so its title
 # and duration come from the detail call.
-@patch("app.sources.scrapecreators._call", return_value={"id": "dQw0example", "title": "A Long Evening Talk", "durationMs": 12212000})
+@patch("app.sources.youtube.scrapecreators._call", return_value={"id": "dQw0example", "title": "A Long Evening Talk", "durationMs": 12212000})
 def test_fetch_video_meta_maps_detail(_):
     v = fetch_video_meta("https://www.youtube.com/watch?v=dQw0example")
     assert (v.id, v.title, v.duration_s) == ("dQw0example", "A Long Evening Talk", 12212)
     assert v.url == "https://www.youtube.com/watch?v=dQw0example"
 
 
-@patch("app.sources.scrapecreators._call", return_value={})
+@patch("app.sources.youtube.scrapecreators._call", return_value={})
 def test_fetch_video_meta_missing_video_is_unavailable(_):
     with pytest.raises(YouTubeUnavailable):
         fetch_video_meta("https://www.youtube.com/watch?v=gone")

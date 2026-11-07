@@ -1,23 +1,23 @@
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import PurePosixPath
 from urllib.parse import unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
-from app.pipeline.compiler import is_punctuated
 from app.sources.blog import FeedUnavailable, list_feed
 from app.sources.blog import _fetch_url  # internal HTTP fetch with hard timeout
-from app.sources.models import Article
+from app.sources.models import Article, DiscoveredItem, SourceSpec, Transcript
 from app.sources.wikipedia import article_title, is_wikipedia_article
-from app.sources import podcast, scrapecreators
-from app.sources.transcript_cache import load_transcript
+from app.sources import podcast
 from app.sources.youtube import (
+    VIDEO_ID_RE,
     YouTubeUnavailable,
     fetch_video_meta,
     list_videos,
+    load_transcript,
+    video_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,38 +37,7 @@ _FILE_EXTENSIONS = (
 )
 
 
-@dataclass
-class DiscoveredItem:
-    title: str
-    url: str
-    item_type: str  # "youtube" | "blog"
-    source_index: int
-    item_index: int
-    estimated_duration_s: int | None = None
-    estimated_size_chars: int | None = None
-    preview_html: str | None = None
-    # Filled in for YouTube items by _enrich_youtube_item (see below).
-    has_transcript: bool | None = None
-    transcript_lang: str | None = None
-    is_punctuated: bool | None = None
-    word_count: int | None = None
-    reading_time_min: int | None = None
-    # A homepage link we kept but aren't sure is an article (it sat in running
-    # prose). Listed at review, unselected, so the user decides.
-    uncertain: bool = False
-    # Set by the discovery triage (see app.jobs.phases): why this item starts
-    # unchecked at review.
-    set_aside: str | None = None
-
-
 _AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav")
-
-
-# A single video's id, in every URL shape YouTube hands out: watch?v=, youtu.be,
-# Shorts, lives and embeds. Anything else on youtube.com is a list or a channel.
-_VIDEO_ID_RE = re.compile(
-    r"(?:[?&]v=|youtu\.be/|youtube\.com/(?:shorts|live|embed)/)([A-Za-z0-9_-]{6,})"
-)
 
 
 def detect_kind(url: str) -> str:
@@ -80,7 +49,7 @@ def detect_kind(url: str) -> str:
     u = url.lower()
     # An explicit video id wins over a playlist context: a link to a specific
     # video (even one carrying `?list=…`) means "this video", not the whole list.
-    if ("youtube.com/watch" in u and "v=" in u) or _VIDEO_ID_RE.search(url):
+    if ("youtube.com/watch" in u and "v=" in u) or VIDEO_ID_RE.search(url):
         return "youtube_video"
     if "list=" in u or "youtube.com/playlist" in u:
         return "youtube_playlist"
@@ -94,42 +63,30 @@ def detect_kind(url: str) -> str:
 
 
 def discover_source(
-    url: str,
-    source_index: int,
-    *,
-    kind: str | None = None,
-    title: str | None = None,
-    duration_s: int | None = None,
-    feed_url: str | None = None,
-    single_page: bool = False,
+    source: SourceSpec, source_index: int
 ) -> tuple[str | None, list[DiscoveredItem]]:
-    """Return the (source name, items) for a source URL.
+    """Return the (source name, items) for a source.
 
     The source name (playlist/channel/feed/site title) feeds a meaningful
     default book title; it's captured from the same calls that list the items,
     so it costs no extra request.
-
-    `kind`/`title`/`duration_s` are optional hints from the search-staging flow:
-    a picked podcast episode passes kind="podcast" (its audio URL isn't
-    self-identifying), its title, and its length (the audio isn't probed here).
-    A pasted URL leaves them None and the kind is auto-detected.
-
-    `single_page` is set for a web page picked from search: the visitor chose
-    that page, so a deep one stays one page instead of unfolding into its site's
-    whole feed (one job ad once came back as 250). A home or section still unfolds.
     """
-    resolved = kind or detect_kind(url)
-    logger.info("Discovering source %d (kind=%s, url=%s)", source_index, resolved, url)
+    url = str(source.url)
+    kind = source.kind or detect_kind(url)
+    logger.info("Discovering source %d (kind=%s, url=%s)", source_index, kind, url)
 
-    if resolved == "podcast":
-        return _discover_podcast(url, source_index, title, duration_s, feed_url)
-    if resolved == "youtube_playlist":
+    if kind == "podcast":
+        return _discover_podcast(source, source_index)
+    if kind == "youtube_playlist":
         return _discover_youtube(url, source_index)
-    if resolved == "youtube_channel":
+    if kind == "youtube_channel":
         return _discover_youtube(_channel_videos_url(url), source_index)
-    if resolved == "youtube_video":
+    if kind == "youtube_video":
         return _discover_youtube_video(url, source_index)
-    if single_page and _is_deep_page(url):
+    # A web page picked from search stays that page instead of unfolding into
+    # its site's whole feed (one job ad once came back as 250). A home or
+    # section still unfolds.
+    if source.query and _is_deep_page(url):
         return _single_article(url, source_index)
     return _discover_blog(url, source_index)
 
@@ -147,50 +104,36 @@ _LOCALE_SEGMENT_RE = re.compile(r"[a-z]{2}(?:-[a-z]{2})?")
 
 
 def _discover_podcast(
-    url: str,
-    source_index: int,
-    title: str | None,
-    duration_s: int | None = None,
-    feed_url: str | None = None,
+    source: SourceSpec, source_index: int
 ) -> tuple[str | None, list[DiscoveredItem]]:
-    """One item for a podcast episode. The audio enclosure isn't probed here —
-    transcription is metered, so it's deferred to compile and runs only for the
-    episodes the user actually selects (unlike YouTube's free subtitle probe).
-    The length comes from the search result (the only place it's known) so the
-    review screen can show reading time and a transcription cost estimate."""
-    episode_title = title or _episode_title_from_url(url)
+    """One item for a podcast episode. The audio isn't probed here: its length
+    comes from the search result, the only place it's known.
+
+    Its published transcript is looked up now, like a video's subtitles, so
+    review shows its text instead of promising it for later: the show's own
+    feed first (free), then Exa, one flat lookup (~$0.007) the compile would pay
+    anyway, and the hit is cached. Only picked episodes come through here; a
+    feed's episodes aren't probed, a long feed would cost one lookup each.
+    Never transcribes, and any failure leaves the item as "From audio"."""
+    url = str(source.url)
+    title = source.title or _episode_title_from_url(url)
     item = DiscoveredItem(
-        title=episode_title,
+        title=title,
         url=url,
         item_type="podcast",
         source_index=source_index,
         item_index=0,
-        estimated_duration_s=duration_s,
+        estimated_duration_s=source.duration_s,
+        feed_url=source.feed_url,
     )
-    _enrich_podcast_item(item, duration_s, feed_url)
-    return episode_title, [item]
-
-
-def _enrich_podcast_item(
-    item: DiscoveredItem, duration_s: int | None, feed_url: str | None = None
-) -> None:
-    """Look up a picked episode's published transcript now, like a video's
-    subtitles, so review shows its text instead of promising it for later.
-
-    The show's own feed is read first (free), then Exa: one flat lookup
-    (~$0.007) that the compile would pay anyway: the hit is
-    cached. Only picked episodes come through here; a feed's episodes aren't
-    probed, a long feed would cost one lookup each. Never transcribes, and any
-    failure leaves the item as before ("From audio")."""
     try:
-        transcript = podcast.find_published_transcript(
-            item.url, item.title, duration_s, feed_url=feed_url
-        )
+        transcript = podcast.find_published_transcript(item)
     except Exception as exc:  # noqa: BLE001 - best effort, never breaks discovery
-        logger.warning("Published transcript lookup failed for %s: %s", item.url, exc)
-        return
+        logger.warning("Published transcript lookup failed for %s: %s", url, exc)
+        transcript = None
     if transcript is not None:
         _apply_transcript_stats(item, transcript)
+    return title, [item]
 
 
 def _discover_youtube(
@@ -221,8 +164,7 @@ def _discover_youtube(
 def _discover_youtube_video(
     url: str, source_index: int
 ) -> tuple[str | None, list[DiscoveredItem]]:
-    meta = scrapecreators.fetch_video_meta if settings.treg_token else fetch_video_meta
-    video = meta(_clean_video_url(url))
+    video = fetch_video_meta(url)
     item = DiscoveredItem(
         title=video.title or f"YouTube video {video.id}",
         url=video.url,
@@ -246,11 +188,11 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
     YouTube a second time. Best-effort: any failure leaves the item flagged and
     never breaks discovery.
     """
-    video_id = _video_id(item.url)
+    vid = video_id(item.url)
     try:
-        transcript = load_transcript(video_id)
+        transcript = load_transcript(vid)
     except YouTubeUnavailable as exc:
-        logger.warning("Transcript probe failed for %s: %s", video_id, exc)
+        logger.warning("Transcript probe failed for %s: %s", vid, exc)
         item.has_transcript = None  # unknown — couldn't reach YouTube
         return
 
@@ -263,29 +205,13 @@ def _enrich_youtube_item(item: DiscoveredItem) -> None:
     _apply_transcript_stats(item, transcript)
 
 
-def _apply_transcript_stats(item: DiscoveredItem, transcript) -> None:
-    full_text = " ".join(
-        s.text.strip() for s in transcript.segments if s.text and s.text.strip()
-    )
-    word_count = len(full_text.split())
+def _apply_transcript_stats(item: DiscoveredItem, transcript: Transcript) -> None:
+    word_count = len(transcript.full_text.split())
     item.has_transcript = True
     item.transcript_lang = transcript.language
-    item.is_punctuated = is_punctuated(full_text)
+    item.is_punctuated = transcript.is_punctuated
     item.word_count = word_count
     item.reading_time_min = max(1, round(word_count / _WORDS_PER_MINUTE))
-
-
-def _video_id(url: str) -> str:
-    match = _VIDEO_ID_RE.search(url)
-    return match.group(1) if match else url.rstrip("/").split("/")[-1]
-
-
-def _clean_video_url(url: str) -> str:
-    """Strip playlist/extra params: a single-video URL must extract one video."""
-    match = _VIDEO_ID_RE.search(url)
-    if match:
-        return f"https://www.youtube.com/watch?v={match.group(1)}"
-    return url
 
 
 def _channel_videos_url(url: str) -> str:
@@ -362,7 +288,7 @@ def _feed_to_items(
     if not articles:
         return None
     articles = articles[: settings.max_items_per_source]
-    items = [_article_to_item(a, source_index, i) for i, a in enumerate(articles)]
+    items = [_article_to_item(a, source_index, i, feed_url) for i, a in enumerate(articles)]
     return feed_title, items
 
 
@@ -494,7 +420,9 @@ def _looks_like_article(href: str, base_url: str) -> bool:
     return len(slug) >= 8 and "-" in slug
 
 
-def _article_to_item(article: Article, source_index: int, item_index: int) -> DiscoveredItem:
+def _article_to_item(
+    article: Article, source_index: int, item_index: int, feed_url: str
+) -> DiscoveredItem:
     # A podcast feed's episode: the audio is the content, so it's transcribed
     # at compile like a picked episode, not scraped from its web page.
     if article.audio_url:
@@ -505,6 +433,7 @@ def _article_to_item(article: Article, source_index: int, item_index: int) -> Di
             source_index=source_index,
             item_index=item_index,
             estimated_duration_s=article.duration_s,
+            feed_url=feed_url,
         )
     preview = article.content_html[:500] if article.content_html else None
     return DiscoveredItem(

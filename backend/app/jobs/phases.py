@@ -1,5 +1,6 @@
 import logging
 
+from app.jobs.chapters import YOUTUBE_BUSY
 from app.jobs.models import DiscoveredItemResponse, Source
 from app.jobs.repository import (
     save_discovered_items,
@@ -7,17 +8,12 @@ from app.jobs.repository import (
     update_job_status,
 )
 from app.pipeline.compiler import derive_book_title
-from app.search.models import SearchResult
-from app.search.triage import MAX_JUDGED_ITEMS, judge_items, triage_enabled
-from app.sources.discovery import DiscoveredItem, discover_source
+from app.search.triage import MAX_JUDGED_ITEMS, describe, judge_items, triage_enabled
+from app.sources.discovery import discover_source
+from app.sources.models import DiscoveredItem
 from app.sources.youtube import YouTubeUnavailable
 
 logger = logging.getLogger(__name__)
-
-_YOUTUBE_BUSY = (
-    "YouTube didn't respond. It rate-limits requests from some networks, so "
-    "try again in a little while."
-)
 
 
 def run_discovery(
@@ -36,19 +32,11 @@ def run_discovery(
         source_names: list[str | None] = []
         for index, source in enumerate(sources):
             try:
-                source_name, discovered = discover_source(
-                    str(source.url),
-                    index,
-                    kind=source.kind,
-                    title=source.title,
-                    duration_s=source.duration_s,
-                    feed_url=source.feed_url,
-                    single_page=bool(source.query),
-                )
+                source_name, discovered = discover_source(source, index)
             except YouTubeUnavailable:
                 logger.exception("Source %d of job %s: YouTube refused", index, job_id)
                 source_name, discovered = None, []
-                source.error = _YOUTUBE_BUSY
+                source.error = YOUTUBE_BUSY
             except Exception:
                 # The raw exception stays in the log; the source gets one line.
                 logger.exception("Source %d of job %s couldn't be read", index, job_id)
@@ -57,32 +45,12 @@ def run_discovery(
             _set_aside_doubtful(discovered, source_name, source.query)
             source_names.append(source_name)
             items.extend(
-                DiscoveredItemResponse(
-                    id=f"{job_id}-{d.source_index}-{d.item_index}",
-                    source_index=d.source_index,
-                    item_index=d.item_index,
-                    item_type=d.item_type,
-                    title=d.title,
-                    url=d.url,
-                    estimated_duration_s=d.estimated_duration_s,
-                    estimated_size_chars=d.estimated_size_chars,
-                    preview_html=d.preview_html,
-                    has_transcript=d.has_transcript,
-                    transcript_lang=d.transcript_lang,
-                    is_punctuated=d.is_punctuated,
-                    word_count=d.word_count,
-                    reading_time_min=d.reading_time_min,
-                    uncertain=d.uncertain,
-                    set_aside=d.set_aside,
-                )
+                DiscoveredItemResponse(id=f"{job_id}-{d.source_index}-{d.item_index}", **d.model_dump())
                 for d in discovered
             )
 
-            # Record this source's name + tally and write the sources back now, so
-            # a polling client watches each one flip from scanning to done with a
-            # count instead of staring at a single spinner until the whole batch
-            # finishes. Discovery runs source-by-source, so the first unresolved
-            # source is the one currently being looked through.
+            # Written back source by source, so the loading screen shows each one
+            # flip from scanning to done instead of one spinner for the batch.
             source.name = source_name
             source.item_count = len(discovered)
             source.resolved = True
@@ -90,17 +58,13 @@ def run_discovery(
 
         if not items:
             errors = {s.error for s in sources}
-            update_job_status(
-                job_id,
-                "failed",
-                error=(
-                    _YOUTUBE_BUSY
-                    if errors == {_YOUTUBE_BUSY}
-                    else "Those sources couldn't be read. Try again."
-                    if None not in errors
-                    else "Those sources had no content to compile."
-                ),
-            )
+            if errors == {YOUTUBE_BUSY}:
+                error = YOUTUBE_BUSY
+            elif None in errors:
+                error = "Those sources had no content to compile."
+            else:
+                error = "Those sources couldn't be read. Try again."
+            update_job_status(job_id, "failed", error=error)
             return
 
         save_discovered_items(job_id, items)
@@ -111,13 +75,6 @@ def run_discovery(
         )
         logger.info("Discovery done for job %s: %d items", job_id, len(items))
 
-    except YouTubeUnavailable:
-        logger.exception("Discovery failed for job %s", job_id)
-        update_job_status(
-            job_id,
-            "failed",
-            error=_YOUTUBE_BUSY,
-        )
     except Exception:
         # The raw exception (yt-dlp text, a blocked-URL guard, a network error)
         # stays in the log; the user gets one calm, written line instead.
@@ -129,11 +86,8 @@ def run_discovery(
         )
 
 
-_RESULT_KIND = {
-    "youtube": ("video", "youtube"),
-    "podcast": ("episode", "podcast"),
-    "blog": ("web", "web"),
-}
+# How the judge names each kind of item.
+_JUDGED_KIND = {"youtube": "video", "podcast": "episode", "blog": "web"}
 
 
 def _set_aside_doubtful(
@@ -147,19 +101,9 @@ def _set_aside_doubtful(
     if len(items) < 2 or not triage_enabled():
         return
     judged = items[:MAX_JUDGED_ITEMS]
-    results = []
-    for i, d in enumerate(judged):
-        kind, provider = _RESULT_KIND.get(d.item_type, ("web", "web"))
-        results.append(
-            SearchResult(
-                id=f"item:{i}",
-                type=kind,
-                title=d.title,
-                url=d.url,
-                duration_s=d.estimated_duration_s,
-                author=source_name,
-                source=provider,
-            )
-        )
-    for i, reason in judge_items(query, results).items():
+    described = [
+        describe(_JUDGED_KIND[d.item_type], d.title, source_name, d.estimated_duration_s)
+        for d in judged
+    ]
+    for i, reason in judge_items(query, described).items():
         judged[i].set_aside = reason

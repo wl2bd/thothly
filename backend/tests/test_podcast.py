@@ -3,6 +3,8 @@ from unittest.mock import patch
 import pytest
 
 import app.sources.podcast as podcast
+from app.jobs.models import DiscoveredItemResponse
+from app.sources.models import DiscoveredItem, SourceSpec
 from app.pipeline.transcribe import STTResult, STTSegment
 from app.sources.discovery import detect_kind, discover_source
 from app.sources.podcast import load_episode_transcript
@@ -10,16 +12,18 @@ from app.sources.podcast import load_episode_transcript
 AUDIO_URL = "https://cdn.example/show/ep1.mp3"
 
 
-@pytest.fixture
-def db(tmp_path, monkeypatch):
-    """A scratch DB + STT endpoint configured (Voxtral via Mistral, say)."""
-    import app.core.config as cfg
-    import app.core.database as database
+def _episode(**fields) -> DiscoveredItem:
+    return DiscoveredItem(
+        **{"title": "Ep 1", "url": AUDIO_URL, "item_type": "podcast",
+           "source_index": 0, "item_index": 0, **fields}
+    )
 
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+
+@pytest.fixture
+def db(monkeypatch):
+    """An STT endpoint configured (Voxtral via Mistral, say)."""
     monkeypatch.setattr(podcast.settings, "stt_base_url", "https://api.mistral.ai/v1")
     monkeypatch.setattr(podcast.settings, "stt_model", "voxtral-mini-latest")
-    database.init_db()
 
 
 @pytest.fixture(autouse=True)
@@ -36,7 +40,7 @@ def test_detect_kind_audio_url_is_podcast():
 
 
 def test_discover_podcast_uses_title_hint():
-    name, items = discover_source(AUDIO_URL, 0, kind="podcast", title="Ep 1: Origins")
+    name, items = discover_source(SourceSpec(url=AUDIO_URL, kind="podcast", title="Ep 1: Origins"), 0)
 
     assert name == "Ep 1: Origins"
     assert len(items) == 1
@@ -46,38 +50,38 @@ def test_discover_podcast_uses_title_hint():
 
 
 def test_discover_podcast_falls_back_to_url_slug():
-    _, items = discover_source(AUDIO_URL, 0, kind="podcast")
+    _, items = discover_source(SourceSpec(url=AUDIO_URL, kind="podcast"), 0)
     assert items[0].title == "Ep1"  # derived from the .mp3 slug
 
 
 def test_discover_podcast_carries_duration_for_cost_estimate():
     # The episode length (from the search result) must reach the discovered item,
     # or the review screen's transcription cost estimate reads as $0.
-    _, items = discover_source(AUDIO_URL, 0, kind="podcast", duration_s=1470)
+    _, items = discover_source(SourceSpec(url=AUDIO_URL, kind="podcast", duration_s=1470), 0)
     assert items[0].estimated_duration_s == 1470
 
 
 def test_discover_picked_episode_carries_its_published_transcript(db):
-    from app.jobs.preview import _podcast_preview
+    from app.jobs.preview import build_item_preview
     from app.sources.models import Transcript, TranscriptSegment
 
     found = Transcript(video_id=AUDIO_URL, language="en", segments=[
         TranscriptSegment(text="Hello there, and welcome to the show.", start_s=0, duration_s=3, speaker="Ann"),
     ])
     with patch.object(podcast.exa_podcast, "available", return_value=True),          patch.object(podcast.exa_podcast, "find_transcript", return_value=found) as find:
-        _, items = discover_source(AUDIO_URL, 0, kind="podcast", title="Ep 1: Origins", duration_s=60)
+        _, items = discover_source(SourceSpec(url=AUDIO_URL, kind="podcast", title="Ep 1: Origins", duration_s=60), 0)
         # the compile reuses the cached hit instead of paying again
-        assert load_episode_transcript(AUDIO_URL, title="Ep 1: Origins", duration_s=60).segments[0].speaker == "Ann"
+        assert load_episode_transcript(items[0]).segments[0].speaker == "Ann"
     find.assert_called_once()
     item = items[0]
     assert (item.has_transcript, item.word_count) == (True, 7)
-    preview = _podcast_preview(type("I", (), {"id": "x", "item_type": "podcast", "url": AUDIO_URL})())
+    preview = build_item_preview(DiscoveredItemResponse(id="x", **item.model_dump()))
     assert preview.available and "welcome to the show" in preview.content_md
 
 
 def test_discover_episode_without_published_transcript_stays_from_audio(db):
     with patch.object(podcast.exa_podcast, "available", return_value=True),          patch.object(podcast.exa_podcast, "find_transcript", return_value=None),          patch.object(podcast, "_transcribe_episode") as stt:
-        _, items = discover_source(AUDIO_URL, 0, kind="podcast", title="Ep 1: Origins")
+        _, items = discover_source(SourceSpec(url=AUDIO_URL, kind="podcast", title="Ep 1: Origins"), 0)
     assert items[0].has_transcript is None
     stt.assert_not_called()
 
@@ -96,7 +100,7 @@ def test_transcribe_episode_assembles_transcript(db):
         "transcribe_file",
         return_value=STTResult(text="Hello world. This is the show.", segments=[]),
     ) as mock_tx:
-        transcript = load_episode_transcript(AUDIO_URL)
+        transcript = load_episode_transcript(_episode())
 
     assert transcript is not None
     assert transcript.video_id == AUDIO_URL
@@ -121,7 +125,7 @@ def test_transcribe_episode_keeps_segments_and_speakers(db):
     with patch.object(podcast, "_download", side_effect=fake_download), patch.object(
         podcast, "transcribe_file", return_value=result
     ):
-        transcript = load_episode_transcript(AUDIO_URL)
+        transcript = load_episode_transcript(_episode())
 
     assert [s.speaker for s in transcript.segments] == ["speaker_1", "speaker_2"]
     assert transcript.segments[1].start_s == 1.2  # single chunk → no offset
@@ -138,27 +142,22 @@ def test_transcribe_episode_is_cached(db):
         "transcribe_file",
         return_value=STTResult(text="cached text", segments=[]),
     ) as mock_tx:
-        first = load_episode_transcript(AUDIO_URL)
-        second = load_episode_transcript(AUDIO_URL)  # served from the DB cache
+        first = load_episode_transcript(_episode())
+        second = load_episode_transcript(_episode())  # served from the DB cache
 
     assert first.full_text == second.full_text == "cached text"
     assert mock_tx.call_count == 1  # transcribed once, never re-paid
 
 
-def test_transcribe_episode_skips_when_unconfigured(tmp_path, monkeypatch):
-    import app.core.config as cfg
-    import app.core.database as database
-
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+def test_transcribe_episode_skips_when_unconfigured(monkeypatch):
     monkeypatch.setattr(podcast.settings, "stt_base_url", None)  # no STT endpoint
-    database.init_db()
 
-    assert load_episode_transcript(AUDIO_URL) is None
+    assert load_episode_transcript(_episode()) is None
 
 
 def test_transcribe_episode_skips_on_download_failure(db):
     with patch.object(podcast, "_download", return_value=None):
-        assert load_episode_transcript(AUDIO_URL) is None
+        assert load_episode_transcript(_episode()) is None
 
 
 def test_split_without_ffmpeg_returns_whole_file(tmp_path):
@@ -236,9 +235,9 @@ def test_published_transcript_is_used_before_transcribing(db):
     with patch.object(podcast.exa_podcast, "available", return_value=True), \
          patch.object(podcast.exa_podcast, "find_transcript", return_value=found) as find, \
          patch.object(podcast, "_transcribe_episode") as stt:
-        assert load_episode_transcript(AUDIO_URL, title="Ep 1", duration_s=60) is found
+        assert load_episode_transcript(_episode(title="Ep 1", estimated_duration_s=60)) is found
         # cached: a second load pays for neither
-        assert load_episode_transcript(AUDIO_URL, title="Ep 1", duration_s=60).segments[0].speaker == "Ann"
+        assert load_episode_transcript(_episode(title="Ep 1", estimated_duration_s=60)).segments[0].speaker == "Ann"
     find.assert_called_once_with(AUDIO_URL, "Ep 1", 60)
     stt.assert_not_called()
 
@@ -247,7 +246,7 @@ def test_no_published_transcript_falls_back_to_transcribing(db):
     with patch.object(podcast.exa_podcast, "available", return_value=True), \
          patch.object(podcast.exa_podcast, "find_transcript", return_value=None), \
          patch.object(podcast, "_transcribe_episode", return_value=None) as stt:
-        assert load_episode_transcript(AUDIO_URL, title="Ep 1") is None
+        assert load_episode_transcript(_episode(title="Ep 1")) is None
     stt.assert_called_once()
 
 
@@ -265,9 +264,7 @@ def test_discovery_reads_the_feeds_own_transcript_before_exa(db, monkeypatch):
         )
 
     monkeypatch.setattr(podcast.rss_transcript, "find_transcript", fake_rss)
-    _, items = discover_source(
-        AUDIO_URL, 0, kind="podcast", title="Ep 1", feed_url="https://feed.example/rss"
-    )
+    _, items = discover_source(SourceSpec(url=AUDIO_URL, kind="podcast", title="Ep 1", feed_url="https://feed.example/rss"), 0)
     assert seen["args"] == ("https://feed.example/rss", AUDIO_URL, "Ep 1")
     assert items[0].has_transcript
     # Cached: the compile reuses it without another lookup.

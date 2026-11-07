@@ -18,52 +18,44 @@ def init_db() -> None:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
                 id          TEXT PRIMARY KEY,
-                status      TEXT NOT NULL DEFAULT 'pending',
+                status      TEXT NOT NULL,
                 sources     TEXT NOT NULL,
                 book_title  TEXT,
-                output_path TEXT,
                 error       TEXT,
                 created_at  TEXT NOT NULL,
                 updated_at  TEXT NOT NULL
             )
         """)
+        _add_missing_columns(conn, "jobs", _JOB_ADDED_COLUMNS)
+        # One row per discovered item. `item` is what discovery found (JSON of
+        # app.sources.models.DiscoveredItem); the other columns are what the
+        # visitor and the compile do with it.
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS job_discovered_items (
-                id                   TEXT PRIMARY KEY,
-                job_id               TEXT NOT NULL REFERENCES jobs(id),
-                source_index         INTEGER NOT NULL,
-                item_index           INTEGER NOT NULL,
-                item_type            TEXT NOT NULL,
-                title                TEXT NOT NULL,
-                url                  TEXT NOT NULL,
-                estimated_duration_s INTEGER,
-                estimated_size_chars INTEGER,
-                preview_html         TEXT,
-                selected             INTEGER NOT NULL DEFAULT 0,
-                created_at           TEXT NOT NULL
+            CREATE TABLE IF NOT EXISTS job_items (
+                id             TEXT PRIMARY KEY,
+                job_id         TEXT NOT NULL REFERENCES jobs(id),
+                item           TEXT NOT NULL,
+                source_index   INTEGER NOT NULL,
+                item_index     INTEGER NOT NULL,
+                selected       INTEGER NOT NULL DEFAULT 0,
+                -- The visitor's compile order (review lets sources be dragged).
+                selected_order INTEGER,
+                -- pending → compiling → done | skipped | failed, with the
+                -- user-facing reason (or, while compiling, the stage) in the note.
+                compile_state  TEXT,
+                compile_note   TEXT
             )
         """)
+        _merge_legacy_job_items(conn)
+        # Transcripts keyed by video id or audio URL (app/sources/transcript_cache.py).
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS transcript_cache (
-                video_id   TEXT PRIMARY KEY,
-                language   TEXT NOT NULL,
-                segments   TEXT NOT NULL,
-                fetched_at TEXT NOT NULL,
-                chapters   TEXT
+            CREATE TABLE IF NOT EXISTS transcripts (
+                key        TEXT PRIMARY KEY,
+                transcript TEXT NOT NULL,
+                stored_at  TEXT NOT NULL
             )
         """)
-        # Episode transcripts produced by the speech-to-text layer, keyed by the
-        # audio URL. Transcription is metered (a paid API call), so caching it
-        # means re-compiling — or changing LLM roles — never re-transcribes.
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS podcast_transcript_cache (
-                audio_url  TEXT PRIMARY KEY,
-                language   TEXT NOT NULL,
-                segments   TEXT NOT NULL,
-                fetched_at TEXT NOT NULL
-            )
-        """)
-        _add_missing_columns(conn, "podcast_transcript_cache", _PODCAST_CACHE_ADDED_COLUMNS)
+        _merge_legacy_transcript_caches(conn)
         # Cleaned-content cache for the LLM roles, keyed by the content (video id
         # or blog url), the applied role set, and the model — so a re-compile with
         # the same choices never re-calls the LLM.
@@ -88,9 +80,6 @@ def init_db() -> None:
                 stored_at REAL NOT NULL
             )
         """)
-        _add_missing_columns(conn, "jobs", _JOB_ADDED_COLUMNS)
-        _add_missing_columns(conn, "job_discovered_items", _DISCOVERED_ITEM_ADDED_COLUMNS)
-        _add_missing_columns(conn, "transcript_cache", _TRANSCRIPT_CACHE_ADDED_COLUMNS)
         conn.commit()
 
 
@@ -99,7 +88,6 @@ def init_db() -> None:
 # no-op (SQLite has no "ADD COLUMN IF NOT EXISTS").
 _JOB_ADDED_COLUMNS = (
     ("llm_roles", "TEXT"),  # JSON list of selected LLM role ids for the compile
-    ("output_md_path", "TEXT"),  # native zero-LLM Markdown companion (for AIs)
     # Which model actually wrote this book, as "provider/model" — never the key.
     # Without it a compilation can be measured but not attributed, and comparing
     # two models on the same source is the point of measuring at all.
@@ -111,40 +99,71 @@ _JOB_ADDED_COLUMNS = (
     ("stop_requested", "INTEGER"),
 )
 
-_DISCOVERED_ITEM_ADDED_COLUMNS = (
-    ("has_transcript", "INTEGER"),
-    ("transcript_lang", "TEXT"),
-    ("is_punctuated", "INTEGER"),
-    ("word_count", "INTEGER"),
-    ("reading_time_min", "INTEGER"),
-    # 1 for a homepage link that may not be an article (see DiscoveredItem).
-    ("uncertain", "INTEGER"),
-    # The discovery triage's reason to start an item unchecked (NULL = none).
-    ("set_aside", "TEXT"),
-    # Position in the user-confirmed compile order (the review screen lets sources
-    # be reordered by drag). NULL until confirmed; the compile sorts on it.
-    ("selected_order", "INTEGER"),
-    # Per-item compile outcome, advanced by the runner as it works through the
-    # confirmed list (pending → compiling → done | skipped | failed) so the
-    # compile screen can show real progress instead of one opaque spinner.
-    # `compile_note` is the user-facing reason an item was skipped or failed, and
-    # outlives the compile: the finished screen reports what was left out and why.
-    # Both are NULL on items that were never confirmed for this compile.
-    ("compile_state", "TEXT"),
-    ("compile_note", "TEXT"),
-)
+def _merge_legacy_job_items(conn: sqlite3.Connection) -> None:
+    """Move the items of the older one-column-per-field table into `job_items`."""
+    tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "job_discovered_items" not in tables:
+        return
+    _add_missing_columns(conn, "job_discovered_items", tuple(
+        (name, "TEXT") for name in (
+            "has_transcript", "transcript_lang", "is_punctuated", "word_count",
+            "reading_time_min", "uncertain", "set_aside", "selected_order",
+            "compile_state", "compile_note",
+        )
+    ))
+    conn.execute("""
+        INSERT OR IGNORE INTO job_items (
+            id, job_id, item, source_index, item_index, selected,
+            selected_order, compile_state, compile_note
+        )
+        SELECT id, job_id, json_object(
+            'title', title, 'url', url, 'item_type', item_type,
+            'source_index', source_index, 'item_index', item_index,
+            'estimated_duration_s', estimated_duration_s,
+            'estimated_size_chars', estimated_size_chars,
+            'preview_html', preview_html,
+            'has_transcript', CASE WHEN has_transcript IS NULL THEN NULL
+                                   ELSE json(CASE WHEN has_transcript THEN 'true' ELSE 'false' END) END,
+            'transcript_lang', transcript_lang,
+            'is_punctuated', CASE WHEN is_punctuated IS NULL THEN NULL
+                                  ELSE json(CASE WHEN is_punctuated THEN 'true' ELSE 'false' END) END,
+            'word_count', word_count, 'reading_time_min', reading_time_min,
+            'uncertain', json(CASE WHEN uncertain THEN 'true' ELSE 'false' END),
+            'set_aside', set_aside
+        ), source_index, item_index, selected, selected_order, compile_state, compile_note
+        FROM job_discovered_items
+    """)
+    conn.execute("DROP TABLE job_discovered_items")
 
-_TRANSCRIPT_CACHE_ADDED_COLUMNS = (
-    ("chapters", "TEXT"),
-    ("uploader", "TEXT"),  # channel name → chapter author
-    ("channel_url", "TEXT"),  # channel page → cover avatar emblem
-)
 
-_PODCAST_CACHE_ADDED_COLUMNS = (
-    # Schema version of the stored segments. Rows from before diarization /
-    # per-segment timing (NULL or older) are ignored on read and re-transcribed.
-    ("format_version", "INTEGER"),
-)
+def _merge_legacy_transcript_caches(conn: sqlite3.Connection) -> None:
+    """Fold the two caches that used to sit side by side, one for videos and one
+    for episodes, into `transcripts`, then drop them. Episode rows from before
+    per-segment timing and speakers (format_version < 2) are left behind, to be
+    transcribed again."""
+    tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "transcript_cache" in tables:
+        _add_missing_columns(conn, "transcript_cache", (
+            ("chapters", "TEXT"), ("uploader", "TEXT"), ("channel_url", "TEXT"),
+        ))
+        conn.execute("""
+            INSERT OR IGNORE INTO transcripts (key, transcript, stored_at)
+            SELECT video_id, json_object(
+                'video_id', video_id, 'language', language,
+                'segments', json(segments), 'chapters', json(coalesce(chapters, '[]')),
+                'uploader', uploader, 'channel_url', channel_url
+            ), fetched_at FROM transcript_cache
+        """)
+        conn.execute("DROP TABLE transcript_cache")
+    if "podcast_transcript_cache" in tables:
+        _add_missing_columns(conn, "podcast_transcript_cache", (("format_version", "INTEGER"),))
+        conn.execute("""
+            INSERT OR IGNORE INTO transcripts (key, transcript, stored_at)
+            SELECT audio_url, json_object(
+                'video_id', audio_url, 'language', language, 'segments', json(segments)
+            ), fetched_at FROM podcast_transcript_cache WHERE format_version = 2
+        """)
+        conn.execute("DROP TABLE podcast_transcript_cache")
 
 
 def _add_missing_columns(

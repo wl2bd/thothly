@@ -1,6 +1,7 @@
 """Wikipedia is read through its REST HTML; the cleaning decides what of the
 page reaches the book."""
 
+from app.sources.models import SourceSpec
 from app.sources.wikipedia import clean_wikipedia_html, is_wikipedia_article
 
 PAGE = r"""<html><body>
@@ -41,7 +42,7 @@ def test_only_article_pages_take_the_api_path():
 def test_a_pasted_wikipedia_url_is_one_article_named_after_the_page():
     from app.sources.discovery import discover_source
 
-    title, items = discover_source("https://fr.wikipedia.org/wiki/Sto%C3%AFcisme", 0)
+    title, items = discover_source(SourceSpec(url="https://fr.wikipedia.org/wiki/Sto%C3%AFcisme"), 0)
     assert title == "Stoïcisme"
     assert [(i.title, i.item_type) for i in items] == [("Stoïcisme", "blog")]
 

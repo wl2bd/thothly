@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
 
-import app.core.config as cfg
-import app.core.database as database
 from app.core.database import get_connection
 from app.jobs.repository import reap_orphaned_jobs
 
@@ -18,22 +16,18 @@ def _insert_job(job_id: str, status: str) -> None:
 
 
 def _insert_item(job_id: str, item_id: str, compile_state: str | None) -> None:
-    now = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
         conn.execute(
-            "INSERT INTO job_discovered_items "
-            "(id, job_id, source_index, item_index, item_type, title, url, "
-            " selected, created_at, compile_state) "
-            "VALUES (?, ?, 0, 0, 'youtube', 'A video', 'https://example.com/v', "
-            " 1, ?, ?)",
-            (item_id, job_id, now, compile_state),
+            "INSERT INTO job_items "
+            "(id, job_id, item, source_index, item_index, selected, compile_state) "
+            "VALUES (?, ?, ?, 0, 0, 1, ?)",
+            (item_id, job_id, '{"title": "A video", "url": "https://example.com/v", '
+             '"item_type": "youtube", "source_index": 0, "item_index": 0}', compile_state),
         )
         conn.commit()
 
 
-def test_reaper_fails_only_in_flight_jobs(tmp_path, monkeypatch):
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-    database.init_db()
+def test_reaper_fails_only_in_flight_jobs():
 
     _insert_job("a", "discovering")
     _insert_job("b", "processing")
@@ -54,21 +48,17 @@ def test_reaper_fails_only_in_flight_jobs(tmp_path, monkeypatch):
     assert rows["d"][0] == "completed"  # untouched
 
 
-def test_reaper_is_noop_when_nothing_in_flight(tmp_path, monkeypatch):
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-    database.init_db()
+def test_reaper_is_noop_when_nothing_in_flight():
 
     _insert_job("done", "completed")
     assert reap_orphaned_jobs() == 0
 
 
-def test_reaper_settles_in_flight_items(tmp_path, monkeypatch):
+def test_reaper_settles_in_flight_items():
     """Once a failed job renders its item list, a `compiling` or `pending` item
     left behind by a killed process would show a spinner that never resolves on
     a screen that's supposed to be terminal. The reaper has to settle those items
     itself, in the same pass that fails the job — nothing else ever will."""
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-    database.init_db()
 
     _insert_job("a", "processing")
     _insert_item("a", "compiling-item", "compiling")
@@ -81,7 +71,7 @@ def test_reaper_settles_in_flight_items(tmp_path, monkeypatch):
         rows = {
             r["id"]: (r["compile_state"], r["compile_note"])
             for r in conn.execute(
-                "SELECT id, compile_state, compile_note FROM job_discovered_items"
+                "SELECT id, compile_state, compile_note FROM job_items"
             )
         }
 

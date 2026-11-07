@@ -18,19 +18,16 @@ download/transcription failure, the episode is skipped exactly like a YouTube
 video with no subtitles — it never breaks the compile.
 """
 
-import json
 import logging
 import shutil
 import subprocess
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 
 from app.core.config import settings
-from app.core.database import get_connection
 from app.core.net import BlockedURLError, assert_public_url
 from app.pipeline.providers import Endpoint
 from app.pipeline.transcribe import (
@@ -39,8 +36,8 @@ from app.pipeline.transcribe import (
     stt_available,
     transcribe_file,
 )
-from app.sources import exa_podcast, rss_transcript
-from app.sources.models import Transcript, TranscriptSegment
+from app.sources import exa_podcast, rss_transcript, transcript_cache
+from app.sources.models import DiscoveredItem, Transcript, TranscriptSegment
 
 logger = logging.getLogger(__name__)
 
@@ -51,58 +48,44 @@ _BROWSER_UA = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 
-# Bumped whenever the stored segment shape changes (cache invalidation): v2
-# added per-segment timestamps + speaker diarization.
-_CACHE_FORMAT_VERSION = 2
-
-
 def load_episode_transcript(
-    audio_url: str,
-    stt: Endpoint | None = None,
-    title: str | None = None,
-    duration_s: int | None = None,
+    item: DiscoveredItem, stt: Endpoint | None = None
 ) -> Transcript | None:
-    """Cached transcript for a podcast episode, or None if it can't be produced.
+    """The episode's transcript: published if there is one, else transcribed.
 
-    A published transcript (Exa's podcast index, see exa_podcast.py) is tried
-    before transcribing: one flat-priced lookup instead of a per-minute bill.
+    None when neither is possible (no STT endpoint, a failed download or
+    transcription): the episode is then skipped, like a video without subtitles.
     """
-    transcript = find_published_transcript(audio_url, title, duration_s)
+    transcript = find_published_transcript(item)
     if transcript is None:
-        transcript = _transcribe_episode(audio_url, stt)
+        transcript = _transcribe_episode(item.url, stt)
         if transcript is not None:
-            _store(transcript)
+            transcript_cache.put(transcript.video_id, transcript)
     return transcript
 
 
-def find_published_transcript(
-    audio_url: str,
-    title: str | None,
-    duration_s: int | None = None,
-    feed_url: str | None = None,
-) -> Transcript | None:
+def find_published_transcript(item: DiscoveredItem) -> Transcript | None:
     """The cached or published transcript, never a transcription.
 
-    Discovery calls this so the review screen can show a picked episode's text
-    like a video's. A hit is cached, so the compile doesn't pay for it twice."""
-    cached = _get_cached(audio_url)
+    The show's feed is read first (free), then Exa's podcast index: one
+    flat-priced lookup instead of a per-minute bill. A hit is cached."""
+    cached = cached_episode_transcript(item.url)
     if cached is not None:
         return cached
-    if feed_url:
-        transcript = rss_transcript.find_transcript(feed_url, audio_url, title)
-        if transcript is not None:
-            _store(transcript)
-            return transcript
-    if not title or not exa_podcast.available():
-        return None
-    transcript = exa_podcast.find_transcript(audio_url, title, duration_s)
+    transcript = None
+    if item.feed_url:
+        transcript = rss_transcript.find_transcript(item.feed_url, item.url, item.title)
+    if transcript is None and item.title and exa_podcast.available():
+        transcript = exa_podcast.find_transcript(
+            item.url, item.title, item.estimated_duration_s
+        )
     if transcript is not None:
-        _store(transcript)
+        transcript_cache.put(transcript.video_id, transcript)
     return transcript
 
 
 def cached_episode_transcript(audio_url: str) -> Transcript | None:
-    return _get_cached(audio_url)
+    return transcript_cache.get(audio_url)
 
 
 def _transcribe_episode(audio_url: str, stt: Endpoint | None) -> Transcript | None:
@@ -290,38 +273,3 @@ def _suffix_from_url(audio_url: str) -> str:
     # Keep only plausible audio container extensions; default to .mp3 otherwise
     # (the most common podcast enclosure, and a safe ffmpeg stream-copy target).
     return suffix if suffix in {".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav"} else ".mp3"
-
-
-# --- cache (podcast_transcript_cache), mirrors transcript_cache.py -------------
-def _get_cached(audio_url: str) -> Transcript | None:
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM podcast_transcript_cache WHERE audio_url = ?", (audio_url,)
-        ).fetchone()
-    if row is None:
-        return None
-    # Ignore rows written by an older segment shape so they re-transcribe with
-    # timestamps + diarization (the column may not exist on very old DBs).
-    version = row["format_version"] if "format_version" in row.keys() else None
-    if version != _CACHE_FORMAT_VERSION:
-        return None
-    segments = [TranscriptSegment(**s) for s in json.loads(row["segments"])]
-    return Transcript(video_id=audio_url, language=row["language"], segments=segments)
-
-
-def _store(transcript: Transcript) -> None:
-    segments_json = json.dumps([s.model_dump() for s in transcript.segments])
-    with get_connection() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO podcast_transcript_cache "
-            "(audio_url, language, segments, fetched_at, format_version) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (
-                transcript.video_id,
-                transcript.language,
-                segments_json,
-                datetime.now(timezone.utc).isoformat(),
-                _CACHE_FORMAT_VERSION,
-            ),
-        )
-        conn.commit()

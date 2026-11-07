@@ -1,555 +1,218 @@
-from types import SimpleNamespace
+"""The compile, end to end against the test database. Only the outside world is
+faked: YouTube, the scraped page, the episode transcript and Pandoc."""
+
 from unittest.mock import patch
 
 import pytest
 
-from app.jobs import runner
+from app.jobs import repository, runner
 from app.jobs.models import DiscoveredItemResponse
+from app.jobs.outputs import output_file
+from app.pipeline.cleanup import CompileStopped
+from app.pipeline.providers import Endpoint
 from app.sources.models import Article, Transcript, TranscriptSegment
+from app.sources.youtube import YouTubeUnavailable
+from tests.conftest import confirmed_job
+
+NO_USABLE_CONTENT = (
+    "The selected items had no usable content. Check that the videos have "
+    "subtitles and the articles have readable text."
+)
 
 
-def _youtube_item() -> DiscoveredItemResponse:
+def _item(n: int, item_type: str, url: str) -> DiscoveredItemResponse:
     return DiscoveredItemResponse(
-        id="j-0-0", source_index=0, item_index=0, item_type="youtube",
-        title="A video", url="https://www.youtube.com/watch?v=abc123",
+        id=f"i{n}", source_index=0, item_index=n, item_type=item_type,
+        title=f"Item {n}", url=url,
     )
 
 
-def _blog_item() -> DiscoveredItemResponse:
-    return DiscoveredItemResponse(
-        id="j-1-0", source_index=1, item_index=0, item_type="blog",
-        title="An article", url="https://blog.example.com/posts/hello",
+def _video(n: int) -> DiscoveredItemResponse:
+    return _item(n, "youtube", f"https://www.youtube.com/watch?v=vid{n}xyz")
+
+
+def _transcript(text: str = "hello world") -> Transcript:
+    return Transcript(
+        video_id="v", language="en",
+        segments=[TranscriptSegment(text=text, start_s=0.0, duration_s=1.0)],
     )
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_youtube_completes(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state, tmp_path, monkeypatch
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.return_value = Transcript(
-        video_id="abc123", language="en",
-        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
-    )
-
-    runner.run_compilation("job1")
-
-    mock_render.assert_called_once()
-    assert mock_update.call_args.args[1] == "completed"
+def _outcomes(job_id: str) -> list[tuple[str, str, str | None]]:
+    return [(i.id, i.compile_state, i.compile_note) for i in repository.get_selected_items(job_id)]
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_writes_markdown_companion(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state, tmp_path, monkeypatch
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.return_value = Transcript(
-        video_id="abc123", language="en",
-        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
-    )
-
-    runner.run_compilation("job1")
-
-    # A standalone .md twin is written next to the EPUB and its path is recorded.
-    md_path = tmp_path / "output" / "job1.md"
-    assert md_path.exists()
-    assert "hello world" in md_path.read_text(encoding="utf-8")
-    assert mock_update.call_args.kwargs["output_md_path"] == str(md_path)
+@pytest.fixture(autouse=True)
+def _pandoc(fake_pandoc):
+    return fake_pandoc
 
 
-def _podcast_item() -> DiscoveredItemResponse:
-    return DiscoveredItemResponse(
-        id="j-2-0", source_index=2, item_index=0, item_type="podcast",
-        title="Episode 1", url="https://cdn.example/ep1.mp3",
-    )
+@patch("app.jobs.chapters.youtube.load_transcript", return_value=_transcript())
+def test_a_video_becomes_a_book_with_its_markdown_twin(_load):
+    job_id = confirmed_job(_video(0))
+
+    runner.run_compilation(job_id)
+
+    job = repository.get_job(job_id)
+    assert job.status == "completed"
+    assert job.epub_bytes == 4
+    assert "hello world" in output_file(job_id, "md").read_text(encoding="utf-8")
+    assert _outcomes(job_id) == [("i0", "done", None)]
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_episode_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_podcast_completes(
-    mock_selected, mock_tx, mock_render, mock_update, mock_job, mock_state, tmp_path, monkeypatch
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+@patch("app.jobs.chapters.load_episode_transcript")
+def test_an_episode_becomes_a_chapter(load):
+    load.return_value = _transcript("Welcome to the show.")
+    job_id = confirmed_job(_item(0, "podcast", "https://cdn.example/ep1.mp3"))
 
-    mock_selected.return_value = [_podcast_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_tx.return_value = Transcript(
-        video_id="https://cdn.example/ep1.mp3", language="",
-        segments=[TranscriptSegment(text="Welcome to the show.", start_s=0.0, duration_s=1.0)],
-    )
+    runner.run_compilation(job_id)
 
-    runner.run_compilation("job1")
-
-    mock_render.assert_called_once()
-    assert mock_update.call_args.args[1] == "completed"
+    assert repository.get_job(job_id).status == "completed"
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_episode_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_skips_podcast_without_transcript(
-    mock_selected, mock_tx, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_podcast_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_tx.return_value = None  # no STT configured / transcription failed
-
-    runner.run_compilation("job1")
-
-    mock_render.assert_not_called()
-    assert mock_update.call_args.args[1] == "failed"
-    # Assert the REASON, not just the status: without get_job mocked this test
-    # passed on a masked "no such table" error, which fails the job too and hid
-    # the fact that the skip path was never exercised.
-    assert mock_update.call_args.kwargs["error"] == (
-        "The selected items had no usable content. Check that the videos have "
-        "subtitles and the articles have readable text."
-    )
-
-
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.scrape_article")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_blog_completes(
-    mock_selected, mock_scrape, mock_render, mock_update, mock_job, mock_state, tmp_path, monkeypatch
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_blog_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_scrape.return_value = Article(
-        url="https://blog.example.com/posts/hello", title="An article",
+@patch("app.jobs.chapters.scrape_article")
+def test_an_article_becomes_a_chapter(scrape):
+    scrape.return_value = Article(
+        url="https://blog.example.com/posts/hello", title="Item 0",
         author="Bob", content_html="<p>Article body.</p>",
     )
+    job_id = confirmed_job(_item(0, "blog", "https://blog.example.com/posts/hello"))
 
-    runner.run_compilation("job1")
+    runner.run_compilation(job_id)
 
-    mock_render.assert_called_once()
-    assert mock_update.call_args.args[1] == "completed"
-
-
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_fails_when_no_subtitles(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch,
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.return_value = None  # no native subtitles, no fallback
-
-    runner.run_compilation("job1")
-
-    mock_render.assert_not_called()
-    assert mock_update.call_args.args[1] == "failed"
-    # Pinned against test_run_compilation_fails_when_every_item_crashes below:
-    # a genuinely empty item (nothing to build from) gets compile_book's content
-    # message, never the crash-specific NOTHING_BUILT.
-    assert (
-        mock_update.call_args.kwargs["error"]
-        == "The selected items had no usable content. Check that the videos have "
-        "subtitles and the articles have readable text."
-    )
+    assert repository.get_job(job_id).status == "completed"
+    assert "Article body." in output_file(job_id, "md").read_text(encoding="utf-8")
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_reports_youtube_rate_limit(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_state, tmp_path, monkeypatch
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    from app.sources.youtube import YouTubeUnavailable
-
-    mock_selected.return_value = [_youtube_item()]
-    mock_fetch.side_effect = YouTubeUnavailable("HTTP Error 429: Too Many Requests")
-
-    runner.run_compilation("job1")
-
-    mock_render.assert_not_called()
-    assert mock_update.call_args.args[1] == "failed"
-    assert "rate-limiting" in mock_update.call_args.kwargs["error"]
-
-
-def test_extract_video_id():
-    assert runner._extract_video_id("https://www.youtube.com/watch?v=abc123") == "abc123"
-    assert runner._extract_video_id("https://youtu.be/xyz789") == "xyz789"
-
-
-def test_extract_video_id_trailing_slash():
-    assert runner._extract_video_id("https://youtu.be/xyz789/") == "xyz789"
-
-
-@patch("app.jobs.runner.load_transcript")
-def test_youtube_chapter_skips_with_a_reason_when_there_are_no_subtitles(mock_load):
-    """The reason a video didn't make it has to leave the log: it's what the
-    compile screen shows next to the item."""
-    mock_load.return_value = None
-    with pytest.raises(runner.ItemSkipped) as excinfo:
-        runner._youtube_chapter(_youtube_item(), "job1", [], "")
-    assert str(excinfo.value) == "No subtitles available."
-
-
-@patch("app.jobs.runner.load_episode_transcript")
-def test_podcast_chapter_skips_with_a_reason_when_transcription_is_unavailable(mock_load):
-    mock_load.return_value = None
-    with pytest.raises(runner.ItemSkipped) as excinfo:
-        runner._podcast_chapter(_podcast_item(), "job1", [], "")
-    assert str(excinfo.value) == "Transcription unavailable."
-
-
-@patch("app.jobs.runner.scrape_article")
-def test_blog_chapter_skips_with_a_reason_when_the_page_has_no_text(mock_scrape):
-    mock_scrape.return_value = Article(
-        url="https://blog.example.com/posts/hello", title="An article",
-        content_html="", author=None, published_at=None,
-    )
-    with pytest.raises(runner.ItemSkipped) as excinfo:
-        runner._blog_chapter(_blog_item(), "job1", [], "")
-    assert str(excinfo.value) == "No readable content."
-
-
-def _states(mock_state):
-    """The (item_id, state, note) triples the runner wrote, in order.
-
-    `note` falls back to the keyword form: set_item_compile_state's fourth
-    argument is positional in every current call site, but if a future call ever
-    passed `note=` instead, reading only `c.args[3]` would silently see None and
-    the assertions below would keep passing while checking nothing.
-
-    Consecutive `compiling` writes for the same item collapse into one, with no
-    note: those are the progress stages (`_step`), which exist to keep a long
-    item from looking hung and say nothing about the outcome. What these tests
-    pin is the outcome sequence: every item enters compiling and reaches the
-    right terminal state with the right reason, so a new or reworded stage must
-    not break them. `test_progress_stages_are_written` covers the stages.
-    """
-    triples = [
+@pytest.mark.parametrize(
+    ("item", "target", "value", "reason"),
+    [
+        (_video(0), "app.jobs.chapters.youtube.load_transcript", None, "No subtitles available."),
         (
-            c.args[1],
-            c.args[2],
-            c.args[3] if len(c.args) > 3 else c.kwargs.get("note"),
-        )
-        for c in mock_state.call_args_list
-    ]
-    out: list[tuple[str, str, str | None]] = []
-    for item_id, state, note in triples:
-        if state == "compiling":
-            if out and out[-1][:2] == (item_id, "compiling"):
-                continue
-            note = None
-        out.append((item_id, state, note))
-    return out
+            _item(0, "podcast", "https://cdn.example/ep1.mp3"),
+            "app.jobs.chapters.load_episode_transcript", None, "Transcription unavailable.",
+        ),
+        (
+            _item(0, "blog", "https://blog.example.com/posts/hello"),
+            "app.jobs.chapters.scrape_article",
+            Article(url="https://blog.example.com/posts/hello", title="x", content_html=""),
+            "No readable content.",
+        ),
+    ],
+)
+def test_an_item_with_nothing_to_read_is_skipped_with_its_reason(item, target, value, reason):
+    job_id = confirmed_job(item)
+    with patch(target, return_value=value):
+        runner.run_compilation(job_id)
+
+    job = repository.get_job(job_id)
+    assert job.status == "failed"
+    assert job.error == NO_USABLE_CONTENT
+    assert _outcomes(job_id) == [("i0", "skipped", reason)]
 
 
-def _second_youtube_item() -> DiscoveredItemResponse:
-    return DiscoveredItemResponse(
-        id="j-0-1", source_index=0, item_index=1, item_type="youtube",
-        title="Another video", url="https://www.youtube.com/watch?v=def456",
-    )
+@patch("app.jobs.chapters.youtube.load_transcript")
+def test_a_skipped_item_does_not_stop_the_others(load):
+    load.side_effect = [None, _transcript()]
+    job_id = confirmed_job(_video(0), _video(1))
 
+    runner.run_compilation(job_id)
 
-def _transcript(video_id: str) -> Transcript:
-    return Transcript(
-        video_id=video_id, language="en",
-        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
-    )
-
-
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_records_each_item_and_skips_without_stopping(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch,
-):
-    """An item with nothing to compile is recorded with its reason and stepped
-    over. The rest of the compilation is not the user's to lose."""
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.side_effect = [None, _transcript("def456")]
-
-    runner.run_compilation("job1")
-
-    assert mock_update.call_args.args[1] == "completed"
-    assert _states(mock_state) == [
-        ("j-0-0", "compiling", None),
-        ("j-0-0", "skipped", "No subtitles available."),
-        ("j-0-1", "compiling", None),
-        ("j-0-1", "done", None),
+    assert repository.get_job(job_id).status == "completed"
+    assert _outcomes(job_id) == [
+        ("i0", "skipped", "No subtitles available."),
+        ("i1", "done", None),
     ]
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_progress_stages_are_written(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch,
-):
-    """A running item names the stage it's in, so a slow one doesn't read as a
-    hang. The stage rides `compile_note`, and a terminal state clears it."""
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+@patch("app.jobs.chapters.youtube.load_transcript")
+def test_an_item_that_blows_up_does_not_cost_the_others(load):
+    load.side_effect = [RuntimeError("boom"), _transcript()]
+    job_id = confirmed_job(_video(0), _video(1))
 
-    mock_selected.return_value = [_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.return_value = _transcript("abc123")
+    runner.run_compilation(job_id)
 
-    runner.run_compilation("job1")
-
-    notes = [
-        c.args[3]
-        for c in mock_state.call_args_list
-        if c.args[2] == "compiling" and len(c.args) > 3
-    ]
-    assert notes, "a running item should name its stage"
-    # Terminal write clears the stage rather than leaving the last one showing.
-    assert mock_state.call_args.args[2] == "done"
-    assert len(mock_state.call_args.args) == 3 or mock_state.call_args.args[3] is None
-
-
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_survives_an_item_that_blows_up(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch,
-):
-    """An unexpected crash on one item used to fail the whole job, losing every
-    other item and offering a retry that would do exactly the same thing."""
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.side_effect = [RuntimeError("boom"), _transcript("def456")]
-
-    runner.run_compilation("job1")
-
-    assert mock_update.call_args.args[1] == "completed"
-    assert _states(mock_state) == [
-        ("j-0-0", "compiling", None),
-        ("j-0-0", "failed", "This item could not be built."),
-        ("j-0-1", "compiling", None),
-        ("j-0-1", "done", None),
+    assert repository.get_job(job_id).status == "completed"
+    assert _outcomes(job_id) == [
+        ("i0", "failed", "This item could not be built."),
+        ("i1", "done", None),
     ]
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_fails_when_no_item_survives(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    tmp_path, monkeypatch,
-):
-    """The guard rail: tolerating bad items must not produce an empty book."""
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+@patch("app.jobs.chapters.youtube.load_transcript")
+def test_when_every_item_crashes_the_job_says_so_rather_than_blame_the_content(load):
+    load.side_effect = RuntimeError("boom")
+    job_id = confirmed_job(_video(0), _video(1))
 
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.return_value = None
+    runner.run_compilation(job_id)
 
-    runner.run_compilation("job1")
-
-    assert mock_update.call_args.args[1] == "failed"
-    mock_render.assert_not_called()
-    # Both items still carry their reason. get_job now exposes the confirmed
-    # items for a `failed` job too (not just processing/completed), and the
-    # failed screen renders them via CompileStep, so this failure screen isn't
-    # blank: it lists exactly what the compile screen showed a moment ago.
-    assert _states(mock_state) == [
-        ("j-0-0", "compiling", None),
-        ("j-0-0", "skipped", "No subtitles available."),
-        ("j-0-1", "compiling", None),
-        ("j-0-1", "skipped", "No subtitles available."),
-    ]
-    # No item crashed, so this is compile_book's own message, not NOTHING_BUILT
-    # — pinned apart from test_run_compilation_fails_when_every_item_crashes below.
-    assert (
-        mock_update.call_args.kwargs["error"]
-        == "The selected items had no usable content. Check that the videos have "
-        "subtitles and the articles have readable text."
-    )
+    assert repository.get_job(job_id).error == runner.NOTHING_BUILT
 
 
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_run_compilation_fails_when_every_item_crashes(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_state,
-    tmp_path, monkeypatch,
-):
-    """Distinct from test_run_compilation_fails_when_no_item_survives above: here
-    nothing was actually missing, every item raised. Before this guard, an
-    all-crash run fell through to compile_book's "no usable content" message and
-    sent the user to check subtitles when nothing was wrong with the content."""
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
+@patch("app.jobs.chapters.youtube.load_transcript")
+def test_a_rate_limited_run_says_youtube_is_busy(load):
+    load.side_effect = YouTubeUnavailable("HTTP Error 429")
+    job_id = confirmed_job(_video(0))
 
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
-    mock_fetch.side_effect = [RuntimeError("boom"), RuntimeError("boom again")]
+    runner.run_compilation(job_id)
 
-    runner.run_compilation("job1")
-
-    assert mock_update.call_args.args[1] == "failed"
-    mock_render.assert_not_called()
-    assert mock_update.call_args.kwargs["error"] == runner.NOTHING_BUILT
-    assert _states(mock_state) == [
-        ("j-0-0", "compiling", None),
-        ("j-0-0", "failed", "This item could not be built."),
-        ("j-0-1", "compiling", None),
-        ("j-0-1", "failed", "This item could not be built."),
-    ]
+    job = repository.get_job(job_id)
+    assert job.error == runner.YOUTUBE_BUSY
+    assert _outcomes(job_id) == [("i0", "failed", runner.YOUTUBE_RATE_LIMITED)]
 
 
-# --- Stop: the user can end a long compile and keep what's ready ---------------
-def _second_youtube_item() -> DiscoveredItemResponse:
-    return DiscoveredItemResponse(
-        id="j-0-1", source_index=0, item_index=1, item_type="youtube",
-        title="Another video", url="https://www.youtube.com/watch?v=def456",
-    )
+def test_a_running_item_names_its_stage():
+    seen = []
+
+    def load(_vid):
+        seen.append(repository.get_selected_items(job_id)[0].compile_note)
+        return _transcript()
+
+    job_id = confirmed_job(_video(0))
+    with patch("app.jobs.chapters.youtube.load_transcript", side_effect=load):
+        runner.run_compilation(job_id)
+
+    assert seen == ["Reading the transcript"]
+    assert _outcomes(job_id) == [("i0", "done", None)]
 
 
-@patch("app.jobs.runner.stop_requested")
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_stop_builds_the_book_from_the_chapters_ready(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state, mock_stop,
-    tmp_path, monkeypatch,
-):
-    import app.core.config as cfg
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
-    mock_job.return_value = SimpleNamespace(book_title="My Book")
-    mock_fetch.return_value = Transcript(
-        video_id="abc123", language="en",
-        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
-    )
-    mock_stop.side_effect = [False, True]  # stop asked while the first item compiled
+def test_stop_builds_the_book_from_the_chapters_ready(fake_pandoc):
+    def load(_vid):
+        repository.request_stop(job_id)
+        return _transcript()
 
-    runner.run_compilation("job1")
+    job_id = confirmed_job(_video(0), _video(1))
+    with patch("app.jobs.chapters.youtube.load_transcript", side_effect=load) as mock:
+        runner.run_compilation(job_id)
 
-    mock_fetch.assert_called_once()  # the second item is never fetched
-    assert mock_update.call_args.args[1] == "completed"
-    assert len(mock_render.call_args.args[0].chapters) == 1
-    mock_state.assert_any_call("job1", "j-0-1", "skipped", runner.STOPPED)
+    assert mock.call_count == 1
+    assert repository.get_job(job_id).status == "completed"
+    assert len(fake_pandoc.call_args.args[0].chapters) == 1
+    assert _outcomes(job_id)[1] == ("i1", "skipped", runner.STOPPED)
 
 
-@patch("app.jobs.runner.stop_requested", return_value=True)
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_stop_before_any_chapter_ends_the_compile(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state, mock_stop,
-):
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
+@patch("app.jobs.chapters.youtube.load_transcript")
+def test_stop_before_any_chapter_ends_the_compile(load):
+    job_id = confirmed_job(_video(0))
+    repository.request_stop(job_id)
 
-    runner.run_compilation("job1")
+    runner.run_compilation(job_id)
 
-    mock_fetch.assert_not_called()
-    mock_render.assert_not_called()
-    assert mock_update.call_args.args[1] == "failed"
-    assert mock_update.call_args.kwargs["error"] == runner.STOPPED_EMPTY
+    load.assert_not_called()
+    assert repository.get_job(job_id).error == runner.STOPPED_EMPTY
 
 
-@patch("app.jobs.runner.stop_requested")
-@patch("app.jobs.runner.clean_transcript")
-@patch("app.jobs.runner.get_job_llm_roles", return_value=["punctuate"])
-@patch("app.jobs.runner.llm_endpoint")
-@patch("app.jobs.runner.set_item_compile_state")
-@patch("app.jobs.runner.get_job")
-@patch("app.jobs.runner.update_job_status")
-@patch("app.jobs.runner.render_epub")
-@patch("app.jobs.runner.load_transcript")
-@patch("app.jobs.runner.get_selected_items")
-def test_stop_mid_polish_drops_that_item_without_waiting(
-    mock_selected, mock_fetch, mock_render, mock_update, mock_job, mock_state,
-    mock_llm, mock_roles, mock_clean, mock_stop,
-):
-    from app.pipeline.cleanup import CompileStopped
+@patch("app.jobs.runner.llm_endpoint", return_value=Endpoint("https://llm.test", "m"))
+@patch("app.jobs.chapters.youtube.load_transcript", return_value=_transcript())
+def test_stop_mid_polish_drops_that_item_without_waiting(_load, _llm):
+    def clean(*_args, should_stop, **_kwargs):
+        repository.request_stop(job_id)
+        assert should_stop()
+        raise CompileStopped
 
-    mock_selected.return_value = [_youtube_item(), _second_youtube_item()]
-    mock_llm.return_value = SimpleNamespace(model="m")
-    mock_fetch.return_value = Transcript(
-        video_id="abc123", language="en",
-        segments=[TranscriptSegment(text="hello world", start_s=0.0, duration_s=1.0)],
-    )
-    mock_clean.side_effect = CompileStopped()
-    mock_stop.side_effect = [False, True]
+    job_id = confirmed_job(_video(0), _video(1), roles=["punctuate"])
+    with patch("app.jobs.chapters.clean_transcript", side_effect=clean):
+        runner.run_compilation(job_id)
 
-    runner.run_compilation("job1")
-
-    assert mock_clean.call_args.kwargs["should_stop"] is not None
-    mock_state.assert_any_call("job1", "j-0-0", "skipped", runner.STOPPED)
-    assert mock_update.call_args.kwargs["error"] == runner.STOPPED_EMPTY
+    assert _outcomes(job_id)[0] == ("i0", "skipped", runner.STOPPED)
+    assert repository.get_job(job_id).error == runner.STOPPED_EMPTY

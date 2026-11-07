@@ -5,15 +5,6 @@ import pytest
 from app.sources.models import Chapter, Transcript, TranscriptSegment
 
 
-@pytest.fixture
-def db(tmp_path, monkeypatch):
-    import app.core.config as cfg
-    import app.core.database as database
-
-    monkeypatch.setattr(cfg.settings, "data_dir", tmp_path)
-    database.init_db()
-
-
 def _transcript(video_id: str) -> Transcript:
     return Transcript(
         video_id=video_id,
@@ -22,9 +13,9 @@ def _transcript(video_id: str) -> Transcript:
     )
 
 
-@patch("app.sources.transcript_cache.fetch_transcript")
-def test_successful_fetch_is_cached(mock_fetch, db):
-    from app.sources.transcript_cache import load_transcript
+@patch("app.sources.youtube.ytdlp.fetch_transcript")
+def test_successful_fetch_is_cached(mock_fetch):
+    from app.sources.youtube import load_transcript
 
     mock_fetch.return_value = _transcript("vid")
 
@@ -36,9 +27,9 @@ def test_successful_fetch_is_cached(mock_fetch, db):
     mock_fetch.assert_called_once()  # second call served from cache
 
 
-@patch("app.sources.transcript_cache.fetch_transcript")
-def test_chapters_survive_the_cache(mock_fetch, db):
-    from app.sources.transcript_cache import load_transcript
+@patch("app.sources.youtube.ytdlp.fetch_transcript")
+def test_chapters_survive_the_cache(mock_fetch):
+    from app.sources.youtube import load_transcript
 
     transcript = _transcript("vid")
     transcript.chapters = [Chapter(title="Introduction", start_s=0.0, end_s=10.0)]
@@ -52,9 +43,9 @@ def test_chapters_survive_the_cache(mock_fetch, db):
     mock_fetch.assert_called_once()
 
 
-@patch("app.sources.transcript_cache.fetch_transcript")
-def test_missing_transcript_is_not_cached(mock_fetch, db):
-    from app.sources.transcript_cache import load_transcript
+@patch("app.sources.youtube.ytdlp.fetch_transcript")
+def test_missing_transcript_is_not_cached(mock_fetch):
+    from app.sources.youtube import load_transcript
 
     mock_fetch.return_value = None  # no subtitles
 

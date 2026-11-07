@@ -11,6 +11,8 @@ from app.jobs.models import (
     JobStatus,
     Source,
 )
+from app.jobs.outputs import output_file
+from app.sources.models import DiscoveredItem
 
 
 def create_job(payload: JobCreate) -> JobResponse:
@@ -51,24 +53,14 @@ def get_job(job_id: str) -> JobResponse | None:
     if response.status == "reviewing":
         response.discovered_items = _get_discovered_items(job_id)
     elif response.status in ("processing", "completed", "failed"):
-        # Past review only the confirmed items matter, in the order they compile:
-        # the compile screen tracks their per-item progress, and the finished
-        # screen reports which ones didn't make it. Deliberately NOT the full
-        # staged list — one Wikipedia page can stage 70 items for five picks, and
-        # this response goes out on every 2s poll. `failed` belongs here too, and
-        # arguably matters most here: it's the state where every item was written
-        # off, so the per-item reasons the runner just wrote are the only account
-        # of what happened. A job that failed during discovery (before anything
-        # was confirmed) simply has no selected items, so this comes back empty
-        # for it — no special case needed.
+        # Past review only the confirmed items matter, in compile order, with
+        # their outcome. Not the whole staged list: one Wikipedia page can stage
+        # 70 items for five picks, and this response goes out on every poll.
         response.discovered_items = get_selected_items(job_id)
+    if response.status == "completed":
+        epub = output_file(job_id, "epub")
+        response.epub_bytes = epub.stat().st_size if epub.exists() else None
     return response
-
-
-def list_jobs() -> list[JobResponse]:
-    with get_connection() as conn:
-        rows = conn.execute("SELECT * FROM jobs ORDER BY created_at DESC").fetchall()
-    return [_row_to_response(row) for row in rows]
 
 
 def update_job_status(
@@ -76,8 +68,6 @@ def update_job_status(
     status: JobStatus,
     *,
     book_title: str | None = None,
-    output_path: str | None = None,
-    output_md_path: str | None = None,
     error: str | None = None,
 ) -> None:
     columns = ["status = ?", "updated_at = ?"]
@@ -85,8 +75,6 @@ def update_job_status(
 
     for column, value in (
         ("book_title", book_title),
-        ("output_path", output_path),
-        ("output_md_path", output_md_path),
         ("error", error),
     ):
         if value is not None:
@@ -123,7 +111,7 @@ def reap_orphaned_jobs() -> int:
         # on the job's status: once the job below is flipped to `failed`, the
         # `WHERE job_id IN (...)` subselect below would find nothing to settle.
         conn.execute(
-            "UPDATE job_discovered_items SET compile_state = 'failed', "
+            "UPDATE job_items SET compile_state = 'failed', "
             "compile_note = ? "
             "WHERE compile_state IN ('compiling', 'pending') "
             "AND job_id IN (SELECT id FROM jobs WHERE status IN "
@@ -156,37 +144,19 @@ def set_job_sources(job_id: str, sources: list[Source]) -> None:
 
 
 def save_discovered_items(job_id: str, items: list[DiscoveredItemResponse]) -> None:
-    now_iso = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
-        conn.execute("DELETE FROM job_discovered_items WHERE job_id = ?", (job_id,))
+        conn.execute("DELETE FROM job_items WHERE job_id = ?", (job_id,))
         conn.executemany(
-            """INSERT INTO job_discovered_items
-               (id, job_id, source_index, item_index, item_type, title, url,
-                estimated_duration_s, estimated_size_chars, preview_html,
-                selected, created_at, has_transcript, transcript_lang,
-                is_punctuated, word_count, reading_time_min, uncertain, set_aside)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            "INSERT INTO job_items (id, job_id, item, source_index, item_index, selected) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             [
                 (
                     item.id,
                     job_id,
+                    item.model_dump_json(include=set(DiscoveredItem.model_fields)),
                     item.source_index,
                     item.item_index,
-                    item.item_type,
-                    item.title,
-                    item.url,
-                    item.estimated_duration_s,
-                    item.estimated_size_chars,
-                    item.preview_html,
                     int(item.selected),
-                    now_iso,
-                    _bool_to_int(item.has_transcript),
-                    item.transcript_lang,
-                    _bool_to_int(item.is_punctuated),
-                    item.word_count,
-                    item.reading_time_min,
-                    int(item.uncertain),
-                    item.set_aside,
                 )
                 for item in items
             ],
@@ -242,7 +212,7 @@ def confirm_items(job_id: str, selected_ids: list[str]) -> list[DiscoveredItemRe
     # selected batch starts at `pending`.
     with get_connection() as conn:
         conn.execute(
-            "UPDATE job_discovered_items "
+            "UPDATE job_items "
             "SET selected = 0, selected_order = NULL, "
             "    compile_state = NULL, compile_note = NULL "
             "WHERE job_id = ?",
@@ -250,7 +220,7 @@ def confirm_items(job_id: str, selected_ids: list[str]) -> list[DiscoveredItemRe
         )
         if selected_ids:
             conn.executemany(
-                "UPDATE job_discovered_items "
+                "UPDATE job_items "
                 "SET selected = 1, selected_order = ?, compile_state = 'pending' "
                 "WHERE job_id = ? AND id = ?",
                 [
@@ -266,7 +236,7 @@ def confirm_items(job_id: str, selected_ids: list[str]) -> list[DiscoveredItemRe
 def get_selected_items(job_id: str) -> list[DiscoveredItemResponse]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM job_discovered_items "
+            "SELECT * FROM job_items "
             "WHERE job_id = ? AND selected = 1 "
             # selected_order carries the user's drag order; source/item index is a
             # stable tiebreak (and the fallback for jobs confirmed before it existed).
@@ -288,7 +258,7 @@ def set_item_compile_state(
     """
     with get_connection() as conn:
         conn.execute(
-            "UPDATE job_discovered_items SET compile_state = ?, compile_note = ? "
+            "UPDATE job_items SET compile_state = ?, compile_note = ? "
             "WHERE job_id = ? AND id = ?",
             (state, note, job_id, item_id),
         )
@@ -298,7 +268,7 @@ def set_item_compile_state(
 def get_discovered_item(job_id: str, item_id: str) -> DiscoveredItemResponse | None:
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM job_discovered_items WHERE job_id = ? AND id = ?",
+            "SELECT * FROM job_items WHERE job_id = ? AND id = ?",
             (job_id, item_id),
         ).fetchone()
     return _item_row_to_response(row) if row is not None else None
@@ -307,7 +277,7 @@ def get_discovered_item(job_id: str, item_id: str) -> DiscoveredItemResponse | N
 def _get_discovered_items(job_id: str) -> list[DiscoveredItemResponse]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM job_discovered_items "
+            "SELECT * FROM job_items "
             "WHERE job_id = ? ORDER BY source_index, item_index",
             (job_id,),
         ).fetchall()
@@ -316,34 +286,12 @@ def _get_discovered_items(job_id: str) -> list[DiscoveredItemResponse]:
 
 def _item_row_to_response(row) -> DiscoveredItemResponse:
     return DiscoveredItemResponse(
+        **json.loads(row["item"]),
         id=row["id"],
-        source_index=row["source_index"],
-        item_index=row["item_index"],
-        item_type=row["item_type"],
-        title=row["title"],
-        url=row["url"],
-        estimated_duration_s=row["estimated_duration_s"],
-        estimated_size_chars=row["estimated_size_chars"],
-        preview_html=row["preview_html"],
         selected=bool(row["selected"]),
-        has_transcript=_int_to_bool(row["has_transcript"]),
-        transcript_lang=row["transcript_lang"],
-        is_punctuated=_int_to_bool(row["is_punctuated"]),
-        word_count=row["word_count"],
-        reading_time_min=row["reading_time_min"],
-        uncertain=bool(row["uncertain"]),
-        set_aside=row["set_aside"],
         compile_state=row["compile_state"],
         compile_note=row["compile_note"],
     )
-
-
-def _bool_to_int(value: bool | None) -> int | None:
-    return None if value is None else int(value)
-
-
-def _int_to_bool(value: int | None) -> bool | None:
-    return None if value is None else bool(value)
 
 
 def _row_to_response(row) -> JobResponse:
@@ -356,8 +304,6 @@ def _row_to_response(row) -> JobResponse:
         updated_at=row["updated_at"],
         book_title=row["book_title"],
         title_named=bool(row["title_named"]),
-        output_path=row["output_path"],
-        output_md_path=row["output_md_path"],
         error=row["error"],
     )
 

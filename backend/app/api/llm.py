@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, SecretStr
@@ -21,8 +22,8 @@ class RoleInfo(BaseModel):
     id: str
     label: str
     description: str
-    scope: str
-    tier: str  # "auto" | "default" | "extra" — see app/pipeline/roles.py
+    scope: Literal["item", "book"]
+    tier: Literal["default", "extra"]  # see app/pipeline/roles.py
     # Shown to the user when they connect their own key: it is their model and
     # their money, so they see exactly what it is told to do.
     system_prompt: str
@@ -92,7 +93,7 @@ def get_llm_config() -> LLMConfig:
                 description=r.description,
                 scope=r.scope,
                 tier=r.tier,
-                system_prompt=r.system_prompt,
+                system_prompt=r.prompt(None),
             )
             for r in ROLES
         ],
