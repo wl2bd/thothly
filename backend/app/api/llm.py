@@ -15,8 +15,7 @@ from app.pipeline.providers import (
     resolve_endpoint,
 )
 from app.pipeline.roles import ROLES
-from app.pipeline.transcribe import list_models as list_stt_models
-from app.pipeline.transcribe import stt_available
+from app.pipeline.transcribe import elevenlabs_models, stt_available
 from app.sources import exa_podcast
 
 logger = logging.getLogger(__name__)
@@ -147,7 +146,7 @@ def verify_key(payload: VerifyRequest) -> VerifyResponse:
 
     name = provider.label if provider else "your server"
     try:
-        models = list_stt_models(endpoint) if stt_only else list_models(endpoint)
+        models = elevenlabs_models(endpoint) if payload.provider == "elevenlabs" else list_models(endpoint)
     except KeyRefused as exc:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=f"{name} refused that key. Check it and try again."

@@ -253,7 +253,7 @@ def test_verify_reports_a_refused_key(client: TestClient) -> None:
 
 
 def test_verify_checks_an_elevenlabs_key_on_the_transcription_side(client: TestClient) -> None:
-    with patch("app.api.llm.list_models") as text_list,          patch("app.api.llm.list_stt_models", return_value=["scribe_v2"]) as stt_list:
+    with patch("app.api.llm.list_models") as text_list,          patch("app.api.llm.elevenlabs_models", return_value=["scribe_v2"]) as stt_list:
         resp = client.post("/llm/verify", json={"provider": "elevenlabs", "api_key": "xi"})
     assert resp.status_code == 200
     assert resp.json() == {"models": ["scribe_v2"]}

@@ -182,7 +182,7 @@ def test_elevenlabs_retries_plainly_when_diarize_is_refused(tmp_path):
 
 def test_elevenlabs_key_check_lists_the_scribe_models():
     with patch.object(transcribe.httpx, "get", return_value=_http(200, [])) as get:
-        assert transcribe.list_models(ELEVENLABS) == ["scribe_v2", "scribe_v1"]
+        assert transcribe.elevenlabs_models(ELEVENLABS) == ["scribe_v2", "scribe_v1"]
     assert get.call_args.kwargs["headers"] == {"xi-api-key": "xi-key"}
 
 
@@ -190,7 +190,7 @@ def test_elevenlabs_key_check_accepts_a_key_scoped_to_transcription():
     # A restricted key may lack the models permission yet transcribe fine.
     scoped = _http(401, {"detail": {"status": "missing_permissions"}})
     with patch.object(transcribe.httpx, "get", return_value=scoped):
-        assert transcribe.list_models(ELEVENLABS) == ["scribe_v2", "scribe_v1"]
+        assert transcribe.elevenlabs_models(ELEVENLABS) == ["scribe_v2", "scribe_v1"]
 
 
 def test_elevenlabs_key_check_refuses_a_bad_key():
@@ -199,4 +199,4 @@ def test_elevenlabs_key_check_refuses_a_bad_key():
     bad = _http(401, {"detail": {"status": "invalid_api_key"}})
     with patch.object(transcribe.httpx, "get", return_value=bad):
         with pytest.raises(KeyRefused):
-            transcribe.list_models(ELEVENLABS)
+            transcribe.elevenlabs_models(ELEVENLABS)

@@ -250,8 +250,8 @@ def _segments_from_words(words: list[dict]) -> list[STTSegment]:
     return segments
 
 
-def list_models(endpoint: Endpoint) -> list[str]:
-    """Check a transcription-only provider's key and return its models.
+def elevenlabs_models(endpoint: Endpoint) -> list[str]:
+    """Check an ElevenLabs key and return its transcription models.
 
     Scribe has no model listing, so the key is checked against `GET /models`; a
     key scoped to transcription only is refused there with `missing_permissions`
