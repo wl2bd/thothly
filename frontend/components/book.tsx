@@ -220,7 +220,7 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
       );
     case "quote":
       return (
-        <blockquote key={key} className="border-border text-muted-foreground flex flex-col gap-2 border-l-2 pl-4">
+        <blockquote key={key} className="border-foreground/20 text-muted-foreground flex flex-col gap-2 border-l-2 pl-4">
           {block.blocks.map((b, i) => renderBlock(b, i, reading))}
         </blockquote>
       );
@@ -254,6 +254,9 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
     }
     case "table":
       // An all-blank header (a table with no <th> row at the source) is left out.
+      // Rules drawn from the ink, not the UI's near-invisible --border: a firm
+      // one under the header, faint ones between rows. The outer cells drop
+      // their side padding so the table lines up with the text around it.
       return (
         <div key={key} className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
@@ -261,7 +264,7 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
               <thead>
                 <tr>
                   {block.head.map((cell, j) => (
-                    <th key={j} className="border-border text-foreground border-b px-2 py-1.5 align-bottom font-semibold">
+                    <th key={j} className="border-foreground/30 text-foreground border-b px-3 pb-2 align-bottom font-semibold first:pl-0 last:pr-0">
                       {renderInline(cell)}
                     </th>
                   ))}
@@ -270,9 +273,9 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
             )}
             <tbody>
               {block.rows.map((row, r) => (
-                <tr key={r} className="border-border border-b last:border-0">
+                <tr key={r} className="border-foreground/10 border-b last:border-0">
                   {row.map((cell, j) => (
-                    <td key={j} className="px-2 py-1.5 align-top">
+                    <td key={j} className="px-3 py-2.5 align-top first:pl-0 last:pr-0">
                       {renderInline(cell)}
                     </td>
                   ))}
