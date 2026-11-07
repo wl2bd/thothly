@@ -61,25 +61,33 @@ export default function ExamplePage() {
         </WorkPane>
         <CompilationPane
           eyebrow="Example"
+          action={
+            <Link
+              href="/"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "text-muted-foreground -my-1.5 -mr-2.5",
+              )}
+            >
+              Make your own
+            </Link>
+          }
           title={example.title}
           meta={`3 Wikipedia articles${words != null ? ` · ~${words.toLocaleString("en-US")} words` : ""}`}
           footer={
             <div className="flex flex-col gap-2">
-              <BookActions
-                epubUrl={epubUrl}
-                mdUrl={mdUrl}
-                title={example.title}
-                epubNote="For your e-reader"
-                mdNote="For an AI"
-              />
-              <div className="flex w-full gap-2">
+              <div className="flex gap-2">
+                <BookActions
+                  epubUrl={epubUrl}
+                  mdUrl={mdUrl}
+                  title={example.title}
+                  epubNote="For your e-reader"
+                  mdNote="For an AI"
+                />
                 <CopyMarkdownButton md={md} />
-                <Link href="/" className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground flex-1")}>
-                  Make your own
-                </Link>
               </div>
               <p className="text-muted-foreground text-xs">
-                The full compilation as Markdown, ready to paste into an AI.
+                EPUB for your e-reader · Markdown for your AI
               </p>
             </div>
           }

@@ -23,7 +23,10 @@ export function PaneFrame({
   footer,
   footerRef,
   onBack,
+  action,
 }: {
+  // A quiet way out, at the header's right edge, level with the eyebrow.
+  action?: ReactNode;
   // Present: a Back link above the header, for a view that saves as it goes
   // and so has nothing to confirm (Settings).
   onBack?: () => void;
@@ -55,7 +58,14 @@ export function PaneFrame({
             <Kbd>Esc</Kbd>
           </Button>
         )}
-        <p className="eyebrow flex items-center gap-2">{eyebrow}</p>
+        {action ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="eyebrow flex items-center gap-2">{eyebrow}</p>
+            {action}
+          </div>
+        ) : (
+          <p className="eyebrow flex items-center gap-2">{eyebrow}</p>
+        )}
         {onTitleChange ? (
           // The compilation's name, in its own voice, in the same field as
           // every other input.

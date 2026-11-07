@@ -24,8 +24,11 @@ export function CompilationPane({
   className,
   titleClassName,
   morphOn,
+  action,
 }: {
   eyebrow: ReactNode;
+  // See PaneFrame.
+  action?: ReactNode;
   title: string;
   // Present: the title is editable in place.
   onTitleChange?: (value: string) => void;
@@ -83,6 +86,7 @@ export function CompilationPane({
             meta={meta}
             footer={footer}
             footerRef={footerRef}
+            action={action}
           >
             {children}
           </PaneFrame>

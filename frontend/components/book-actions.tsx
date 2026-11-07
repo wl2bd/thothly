@@ -56,14 +56,14 @@ export function CopyMarkdownButton({
       onClick={copy}
       disabled={!md}
       aria-keyshortcuts={shortcut ? "C" : undefined}
-      className="flex-1"
+      className="shrink-0"
     >
       {copied ? <Check /> : <Copy />}
       {/* Both labels share one grid cell, the idle one hidden, so "Copied" never
           widens the button or shifts its row. */}
       <span className="grid">
-        <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy Markdown</span>
-        <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Markdown copied</span>
+        <span className={cn("col-start-1 row-start-1", copied && "invisible")}>Copy for AI</span>
+        <span className={cn("col-start-1 row-start-1", !copied && "invisible")}>Copied</span>
       </span>
       {shortcut && <Kbd>C</Kbd>}
     </Button>
@@ -126,7 +126,7 @@ export function BookActions({
     <>
       {/* A split button: the common case, the EPUB, in one click (as D does);
           the chevron holds the Markdown and the e-reader paths. */}
-      <div className="flex flex-1">
+      <div className="flex min-w-0 flex-1">
         <a
           href={epubUrl}
           download
@@ -134,7 +134,7 @@ export function BookActions({
           className={cn(buttonVariants(), "flex-1 gap-2 rounded-r-none bg-clip-border")}
         >
           <DownloadIcon />
-          Download EPUB
+          Download
           <Kbd>D</Kbd>
         </a>
         <DropdownMenu>
@@ -154,6 +154,12 @@ export function BookActions({
           <DropdownMenuContent align="end" className="min-w-60">
             <DropdownMenuGroup>
               <DropdownMenuLabel>Download</DropdownMenuLabel>
+              <DropdownMenuItem className="py-2" render={<a href={epubUrl} download />}>
+                <span className="flex flex-col">
+                  <span>EPUB</span>
+                  <span className="text-muted-foreground text-xs">{epubNote}</span>
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuItem className="py-2" render={<a href={mdUrl} download />}>
                 <span className="flex flex-col">
                   <span>Markdown</span>

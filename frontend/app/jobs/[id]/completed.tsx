@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { PlusIcon } from "lucide-react";
 
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/shortcuts";
@@ -111,41 +112,48 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
           </>
         }
         title={job.book_title ?? ""}
+        // Starting over is the quietest move, so it sits in the header, out
+        // of the row of things to do with this book (N does it from anywhere).
+        action={
+          <Link
+            href="/"
+            onClick={clearDraft}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "text-muted-foreground -my-1.5 -mr-2.5",
+            )}
+          >
+            <PlusIcon />
+            New
+            <Kbd>N</Kbd>
+          </Link>
+        }
         titleClassName="ink-in"
         meta={meta}
         // What you do with the book, pinned under its contents so a long
-        // table never pushes the downloads off screen. EPUB is the one gold
-        // action; the Markdown copy is for an AI; starting over is the quietest.
+        // table never pushes the downloads off screen. Download (the EPUB) is
+        // the one gold action, the copy for an AI sits beside it; the formats
+        // are named once, in the line under them.
         footer={
           <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
-            {/* The gold menu on its own line (download a format, or send to an
-                e-reader), the two quieter actions side by side under it. */}
-            <BookActions
-              epubUrl={getDownloadUrl(jobId)}
-              mdUrl={getDownloadUrl(jobId, "md")}
-              title={job.book_title ?? ""}
-              epubNote={
-                epubBytes != null
-                  ? `For your e-reader · ${formatBytes(epubBytes)}`
-                  : "For your e-reader"
-              }
-              mdNote={
-                tokens != null ? `For an AI · ~${formatTokens(tokens)} tokens` : "For an AI"
-              }
-            />
-            <div className="flex w-full gap-2">
+            <div className="flex gap-2">
+              <BookActions
+                epubUrl={getDownloadUrl(jobId)}
+                mdUrl={getDownloadUrl(jobId, "md")}
+                title={job.book_title ?? ""}
+                epubNote={
+                  epubBytes != null
+                    ? `For your e-reader · ${formatBytes(epubBytes)}`
+                    : "For your e-reader"
+                }
+                mdNote={
+                  tokens != null ? `For an AI · ~${formatTokens(tokens)} tokens` : "For an AI"
+                }
+              />
               <CopyMarkdownButton md={md} shortcut tip="Copy the Markdown, to paste into an AI" />
-              <Link
-                href="/"
-                onClick={clearDraft}
-                className={cn(buttonVariants({ variant: "ghost" }), "text-muted-foreground flex-1")}
-              >
-                New compilation
-                <Kbd>N</Kbd>
-              </Link>
             </div>
             <p className="text-muted-foreground text-xs">
-              The full compilation as Markdown, ready to paste into an AI.
+              EPUB for your e-reader · Markdown for your AI
             </p>
             {tokens != null && tokens > 200000 && (
               <p className="text-muted-foreground text-xs">
