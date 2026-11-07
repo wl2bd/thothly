@@ -12,10 +12,10 @@ import re
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 
 from app.core.config import settings
 from app.core.database import get_connection
+from app.pipeline.fidelity import norm_words, similarity
 from app.pipeline.transcript_md import chapter_buckets, segments_to_markdown
 from app.pipeline.models import escape_tags
 from app.pipeline.llm import LLMError, complete, llm_available, llm_endpoint
@@ -387,36 +387,25 @@ def _budget(text: str) -> int:
 
 # --- Fidelity validators (compare normalised word content, ignoring case
 # and punctuation, since that is exactly what these roles are allowed to add) ---
-_WORD_RE = re.compile(r"[^\w]+", re.UNICODE)
-
-
-def _norm_words(text: str) -> list[str]:
-    return _WORD_RE.sub(" ", text.lower()).split()
-
-
-def _similar(a: list[str], b: list[str]) -> float:
-    if not a and not b:
-        return 1.0
-    return SequenceMatcher(None, a, b, autojunk=False).ratio()
 
 
 def validate_preserve(src: str, out: str) -> bool:
     """Punctuate/sections: word content must be virtually identical."""
     if not out.strip():
         return False
-    s = _norm_words(src)
-    o = _norm_words(out)
+    s = norm_words(src)
+    o = norm_words(out)
     if not s:
         return True
-    return 0.95 <= len(o) / len(s) <= 1.05 and _similar(s, o) >= 0.92
+    return 0.95 <= len(o) / len(s) <= 1.05 and similarity(s, o) >= 0.92
 
 
 def validate_copyedit(src: str, out: str) -> bool:
     """Copyedit removes fillers (some shrink is fine) but must never inflate."""
     if not out.strip():
         return False
-    s = _norm_words(src)
-    o = _norm_words(out)
+    s = norm_words(src)
+    o = norm_words(out)
     if not s:
         return True
     return 0.55 <= len(o) / len(s) <= 1.05

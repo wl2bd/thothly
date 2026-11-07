@@ -21,11 +21,8 @@ The checks map to the two ways a compilation fails:
 import re
 import statistics
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 
-# Ignore case and punctuation: adding punctuation is exactly what the polish
-# roles are for, so it must not register as a change in content.
-_WORD_RE = re.compile(r"[^\w]+", re.UNICODE)
+from app.pipeline import fidelity
 
 # YouTube writes these into the subtitle track itself. They are faithful to the
 # video and meaningless on a page.
@@ -62,10 +59,6 @@ _SPONSOR_HINT = re.compile(
 )
 
 _NUMBER_RE = re.compile(r"\b\d[\d  .,]*\b")
-
-
-def _words(text: str) -> list[str]:
-    return _WORD_RE.sub(" ", text.lower()).split()
 
 
 def _numbers(text: str) -> set[str]:
@@ -110,11 +103,9 @@ MAX_RATIO = 1.10
 
 def audit_chapter(title: str, source_md: str, output_md: str) -> ChapterAudit:
     """Compare the shipped chapter against its zero-LLM rendering."""
-    src, out = _words(source_md), _words(output_md)
+    src, out = fidelity.norm_words(source_md), fidelity.norm_words(output_md)
     ratio = len(out) / len(src) if src else 1.0
-    similarity = (
-        SequenceMatcher(None, src, out, autojunk=False).ratio() if src and out else 0.0
-    )
+    similarity = fidelity.similarity(src, out) if src and out else 0.0
 
     paragraphs = [p for p in output_md.split("\n\n") if p.strip()]
     lengths = [len(p) for p in paragraphs]
