@@ -31,7 +31,7 @@ colors:
 typography:
   display:
     fontFamily: "Prociono, Georgia, serif"
-    fontSize: "clamp(2.25rem, 5vw, 3.75rem)"
+    fontSize: "clamp(1.875rem, 5vw, 3.75rem)"
     fontWeight: 400
     lineHeight: 1.1
   headline:
@@ -56,7 +56,7 @@ typography:
     lineHeight: 1.625
   label:
     fontFamily: "Host Grotesk, system-ui, sans-serif"
-    fontSize: "0.6875rem"
+    fontSize: "0.75rem"
     fontWeight: 500
     letterSpacing: "0.05em"
   mono:
@@ -131,7 +131,7 @@ gilt of an illuminated page), executed as a flat modern color, never a texture.
 The system is conventional shadcn on purpose. Every value is a role-named token,
 every scale is Tailwind's standard scale, and the primitives are shadcn / Base UI
 components re-skinned by tokens. The few additions (status colors, field fill,
-pane width, header height, two small type steps, two easing curves) are declared
+pane width, header height, the fluid display size, two easing curves) are declared
 once in the theme and shipped in the registry. Brand lives in the token values
 and in three signatures: the page glow, the grain, and the serif on titles.
 
@@ -200,14 +200,18 @@ work. The serif gives the product its edition feel; the grotesk keeps the tool
 from reading as corporate or costume.
 
 ### Hierarchy
+The scale is five of Tailwind's steps: 12 (`text-xs`), 14 (`text-sm`), 16
+(`text-base`), 20 (`text-xl`), 30 (`text-3xl`), plus the fluid display size.
+Nothing sits below 12 px, and no arbitrary size is written. Sizes in `em`
+inside chapter text (footnote markers, code) follow the text they sit in.
+
 - **Display** (Prociono 400, `text-display`, `leading-display`): the home catchline only.
 - **Headline** (Prociono 400, `text-3xl` page titles, `text-xl` pane titles).
 - **Title** (Host Grotesk 500, `text-base`): item, card and dialog titles.
 - **Body** (Host Grotesk 350, `text-sm`): the interface. Bold inside text is 600.
 - **Reading** (Host Grotesk 350, `text-base`, `leading-relaxed`, `max-w-prose`): chapter text.
-- **Label** (Host Grotesk 500, `text-2xs`, wide tracking, uppercase, muted): the `eyebrow` utility.
-- **Miniature** (`text-3xs`): key caps and the home sketch's labels. Never interface text.
-- **Mono** (Geist Mono, `text-xs`): durations, counts, the Markdown twin.
+- **Label** (Host Grotesk 500, `text-xs`, wide tracking, uppercase, muted): the `eyebrow` utility.
+- **Mono** (Geist Mono, `text-xs`): durations, counts, key caps, the Markdown twin.
 
 ### Named Rules
 **The Display Restraint Rule.** Prociono sets titles only, at Regular. Never
