@@ -71,14 +71,14 @@ export default function JobPage() {
           {error ? (
             <Notice variant="error">{error}</Notice>
           ) : (
-            <StatusMessage label="Loading…" />
+            <StatusMessage label="Opening the compilation…" />
           )}
         </WorkPane>
         <CompilationPane
-          eyebrow="Opening"
+          eyebrow="Compilation"
           title="Loading…"
           titleClassName="text-muted-foreground"
-          footer={error ? newCompilation : <WaitingButton label="Loading…" />}
+          footer={error ? newCompilation : undefined}
         />
       </>
     );
@@ -90,10 +90,10 @@ export default function JobPage() {
           <DiscoveringView sources={job.sources} />
         </WorkPane>
         <CompilationPane
-          eyebrow="Finding sources"
+          eyebrow="Opening sources"
           title={job.book_title ?? ""}
           meta={plural(job.sources.length, "source")}
-          footer={<WaitingButton label="Finding sources…" />}
+          footer={<WaitingButton label="Opening sources…" />}
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
             Listing what each source contains. You pick what goes in next.

@@ -229,7 +229,7 @@ function LeftOutNotice({
     <div className={className} style={style}>
       <Notice variant="warning">
         <span className="font-medium">
-          {plural(leftOut.length, "item")} didn’t make it in
+          {plural(leftOut.length, "chapter")} didn’t make it in
         </span>
         {/* Bounded rather than truncated: a long list scrolls, so a compilation
             that lost twenty items says so twenty times instead of hiding the tail

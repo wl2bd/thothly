@@ -193,8 +193,8 @@ export function SourceGroup({
             onCheckedChange={() => selectItems(ids, !allSelected)}
             aria-label={
               allSelected
-                ? "Deselect all items in this source"
-                : "Select all items in this source"
+                ? "Deselect all chapters in this source"
+                : "Select all chapters in this source"
             }
           />
           <button

@@ -65,7 +65,7 @@ export function CollectionNote() {
   return (
     <>
       <MetaSep />
-      <span className="shrink-0" title="Expands into its items when you review">
+      <span className="shrink-0" title="Opens into its videos, episodes or posts at review">
         Collection
       </span>
     </>

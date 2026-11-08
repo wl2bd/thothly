@@ -75,7 +75,7 @@ export function DiscoveringView({ sources }: { sources: Source[] }) {
                 </span>
               ) : s.resolved ? (
                 <span className="text-muted-foreground shrink-0 tabular-nums">
-                  {plural(count, "item")}
+                  {plural(count, "chapter")}
                 </span>
               ) : isActive ? (
                 <span className="text-muted-foreground shrink-0">Opening</span>

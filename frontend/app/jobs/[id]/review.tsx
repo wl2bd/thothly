@@ -23,6 +23,7 @@ import { Notice } from "@/components/ui/notice";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
+import { plural } from "@/lib/utils";
 import { ConnectModelStep, type ModelKind } from "@/components/connect-model";
 import { useStoredModels } from "@/lib/use-stored-models";
 import {
@@ -246,8 +247,8 @@ export function ReviewView({
           }
           aria-label={
             allMaster
-              ? "Deselect all items"
-              : "Select all items"
+              ? "Deselect all chapters"
+              : "Select all chapters"
           }
         />
         <span className="text-muted-foreground">Select all</span>
@@ -334,7 +335,7 @@ export function ReviewView({
         eyebrow="Review"
         title={title}
         onTitleChange={onTitleChange}
-        meta={`${includedCount} of ${items.length} included`}
+        meta={`${includedCount} of ${plural(items.length, "chapter")} included`}
         notice={error && <Notice variant="error">{error}</Notice>}
         footer={
           <>
@@ -350,7 +351,7 @@ export function ReviewView({
               {confirming
                 ? "Starting…"
                 : includedCount === 0
-                  ? "Select an item"
+                  ? "Select a chapter"
                   : title.trim() === ""
                     ? "Add a title"
                     : costLabel(cost)

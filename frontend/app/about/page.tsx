@@ -36,7 +36,7 @@ export default function AboutPage() {
           <h2 className="font-display text-xl tracking-tight">How it works</h2>
           <ol className="text-muted-foreground flex list-decimal flex-col gap-2 pl-5 leading-relaxed">
             <li>Search, or paste a link. Add up to 5 sources.</li>
-            <li>Pick the items you want from each source.</li>
+            <li>Pick the chapters you want from each source.</li>
             <li>Compile, then read it here or download it.</li>
           </ol>
         </section>
@@ -98,7 +98,7 @@ export default function AboutPage() {
 const faq = [
   {
     q: "What can I put in?",
-    a: "Videos, podcasts, articles and blog posts. A single link, or a whole playlist, channel or blog, which expands into its items.",
+    a: "Videos, podcasts, articles and blog posts. A single link, or a whole playlist, channel or blog, which opens into its videos, episodes or posts.",
   },
   {
     q: "Is it free?",
