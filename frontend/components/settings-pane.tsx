@@ -91,7 +91,7 @@ export function SettingsLink({ className }: { className?: string }) {
         className={cn(className, "flex items-center gap-1.5", open && "text-foreground")}
       >
         Settings
-        <Kbd className="max-sm:hidden">,</Kbd>
+        <Kbd>,</Kbd>
       </button>
       {/* Portalled to the body: the header's backdrop blur would otherwise
           trap a fixed panel inside its 56px. */}

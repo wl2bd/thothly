@@ -17,13 +17,14 @@ const isMac = () =>
 
 // A key, written next to the action it triggers so shortcuts can be found by
 // looking. Takes its colour from where it sits (a gold button, a muted link);
-// hidden where there is no keyboard to press it with.
+// hidden where there is no keyboard to press it with: touch screens (hover:none
+// or a coarse pointer) and phone-width windows, wherever the browser reports.
 export function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <kbd
       aria-hidden="true"
       className={cn(
-        "inline-flex h-4 min-w-4 items-center justify-center gap-1 rounded-sm border border-current/25 bg-current/10 px-0.75 font-mono text-3xs font-medium uppercase opacity-70 [@media(hover:none)]:hidden",
+        "inline-flex h-4 min-w-4 items-center justify-center gap-1 rounded-sm border border-current/25 bg-current/10 px-0.75 font-mono text-3xs font-medium uppercase opacity-70 max-sm:hidden [@media(hover:none)]:hidden [@media(pointer:coarse)]:hidden",
         className,
       )}
     >
