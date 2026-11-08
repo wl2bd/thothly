@@ -59,12 +59,15 @@ export function SourceTypePill({
 }
 
 // A collection is not unfolded at search: the item count and per-item weights
-// are resolved at review, and the row says so.
+// are resolved at review. One short word, so the domain beside it keeps its
+// room in the narrow compilation panel; the hover says the rest.
 export function CollectionNote() {
   return (
     <>
       <MetaSep />
-      <span className="shrink-0">Collection, expands when you review</span>
+      <span className="shrink-0" title="Expands into its items when you review">
+        Collection
+      </span>
     </>
   );
 }
