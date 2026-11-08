@@ -1,13 +1,14 @@
 "use client";
 
 import { Kbd, KeyLabel } from "@/components/ui/kbd";
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Popover } from "@base-ui/react/popover";
 import katex from "katex";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ListIcon } from "lucide-react";
 import "katex/dist/katex.min.css";
 
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { tokenizeInline, type InlineToken } from "@/lib/inline-md";
 import { countWords, type Chapter } from "@/lib/book-md";
 import { parseBlocks, type Block } from "@/lib/md-blocks";
@@ -48,7 +49,8 @@ export function BookReader({
   // Bottom room (pb-16) so Previous / Next never sit on the window's edge
   // once scrolled to the end: a scroll box drops its own bottom padding.
   return (
-    <div ref={topRef} className="flex scroll-mt-20 flex-col gap-6 pb-16">
+    // scroll-mt clears the app header and, on a phone, the bar under it.
+    <div ref={topRef} className="flex scroll-mt-28 flex-col gap-6 pb-16">
         <span className="text-muted-foreground text-xs tabular-nums">
           Chapter {at + 1} of {chapters.length}
         </span>
@@ -103,17 +105,20 @@ export function BookContents({
   chapters,
   at,
   onGo,
+  className,
+  title = true,
 }: {
   chapters: Chapter[];
   at: number;
   onGo: (i: number) => void;
+  className?: string;
+  // False where the list already sits under a heading of its own (the sheet).
+  title?: boolean;
 }) {
   if (chapters.length < 2) return null;
   return (
-    <nav aria-label="Contents" className="flex flex-col gap-2">
-      <h3 className="eyebrow">
-        Contents
-      </h3>
+    <nav aria-label="Contents" className={cn("flex flex-col gap-2", className)}>
+      {title && <h3 className="eyebrow">Contents</h3>}
       <ol className="-mx-2 flex flex-col">
         {chapters.map((c, i) => (
           <li key={i} className="line-in" style={{ "--i": i } as React.CSSProperties}>
@@ -138,6 +143,67 @@ export function BookContents({
         ))}
       </ol>
     </nav>
+  );
+}
+
+// On a phone the compilation pane sits under the whole reader, so its contents
+// and its way out are a chapter's length (tens of thousands of pixels, in a
+// big book) away. This bar stays pinned under the app header instead: the
+// contents open in a sheet, and `action` is the pane's quiet way out. Not on
+// a wide screen, where the pane sits beside the reader.
+export function MobileBookBar({
+  chapters,
+  at,
+  onGo,
+  action,
+}: {
+  chapters: Chapter[];
+  at: number;
+  onGo: (i: number) => void;
+  action?: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const many = chapters.length > 1;
+  if (!many && !action) return null;
+  return (
+    // Bleeds to the column's edges (its padding is p-6 / sm:p-8), and its blur
+    // matches the app header's.
+    <div className="bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-header z-10 -mx-6 -mt-6 flex items-center justify-between gap-3 border-b px-6 py-2 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 lg:hidden">
+      {many ? (
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger
+            render={
+              <Button type="button" variant="ghost" size="sm" className="text-foreground -ml-2.5" />
+            }
+          >
+            <ListIcon />
+            Contents
+            <span className="text-muted-foreground tabular-nums">
+              {Math.min(at, chapters.length - 1) + 1} of {chapters.length}
+            </span>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="max-h-[80svh] gap-0">
+            <SheetHeader className="px-6 pt-5 pb-3">
+              <SheetTitle className="eyebrow">Contents</SheetTitle>
+            </SheetHeader>
+            <div className="overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <BookContents
+                chapters={chapters}
+                at={at}
+                title={false}
+                onGo={(i) => {
+                  onGo(i);
+                  setOpen(false);
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <span />
+      )}
+      {action}
+    </div>
   );
 }
 

@@ -7,7 +7,7 @@ import { notFound, useParams } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { BackLink } from "@/components/back-link";
 import { BookActions, CopyMarkdownButton } from "@/components/book-actions";
-import { BookContents, BookReader } from "@/components/book";
+import { BookContents, BookReader, MobileBookBar } from "@/components/book";
 import { countWords, splitBook } from "@/lib/book-md";
 import { CompilationPane, WorkPane, Workspace } from "@/components/compilation-pane";
 import { buttonVariants } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export default function ExamplePage() {
       <AppHeader />
       <Workspace>
         <WorkPane label="Example">
+          {asBook && <MobileBookBar chapters={chapters} at={at} onGo={setAt} />}
           <BackLink href="/">Home</BackLink>
           {example.view === "markdown" && (
             <Tabs value={view} onValueChange={(v) => setView(v as "markdown" | "formatted")}>
@@ -93,7 +94,7 @@ export default function ExamplePage() {
           }
         >
           {asBook ? (
-            <BookContents chapters={chapters} at={at} onGo={setAt} />
+            <BookContents chapters={chapters} at={at} onGo={setAt} className="max-lg:hidden" />
           ) : (
             <p className="text-muted-foreground text-sm">
               The file as your AI gets it: one Markdown document, its sources listed first,

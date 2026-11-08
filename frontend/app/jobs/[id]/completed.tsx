@@ -11,7 +11,7 @@ import { Logomark } from "@/components/brand";
 import { CompilationPane, WorkPane } from "@/components/compilation-pane";
 import { clearDraft } from "@/lib/workspace-draft";
 import { cn, plural } from "@/lib/utils";
-import { BookContents, BookReader } from "@/components/book";
+import { BookContents, BookReader, MobileBookBar } from "@/components/book";
 import { countWords, splitBook } from "@/lib/book-md";
 import { getDownloadUrl, type DiscoveredItem, type JobResponse } from "@/lib/api";
 import { isLeftOutState, itemTitle, TOKENS_PER_WORD } from "@/lib/review";
@@ -92,11 +92,38 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
     shownWords != null ? ` · ~${shownWords.toLocaleString("en-US")} words` : ""
   }`;
 
+  // Starting over is the quietest move, so it sits in the pane's header, out
+  // of the row of things to do with this book (N does it from anywhere). On a
+  // phone the pane is a whole chapter down the page, so the bar over the
+  // reader carries it instead.
+  const newCompilation = (
+    <Link
+      href="/"
+      onClick={clearDraft}
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "sm" }),
+        "text-muted-foreground -my-1.5 -mr-2.5",
+      )}
+    >
+      <PlusIcon />
+      New
+      <Kbd>N</Kbd>
+    </Link>
+  );
+
   return (
     <>
       {/* The book itself, open on the left: the thing just made, to check
           before it goes to an e-reader or an AI. */}
       <WorkPane label="Your compilation">
+        {md && (
+          <MobileBookBar
+            chapters={chapters}
+            at={at}
+            onGo={setAt}
+            action={newCompilation}
+          />
+        )}
         {md ? (
           <BookReader chapters={chapters} at={at} onGo={setAt} />
         ) : (
@@ -112,22 +139,7 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
           </>
         }
         title={job.book_title ?? ""}
-        // Starting over is the quietest move, so it sits in the header, out
-        // of the row of things to do with this book (N does it from anywhere).
-        action={
-          <Link
-            href="/"
-            onClick={clearDraft}
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "text-muted-foreground -my-1.5 -mr-2.5",
-            )}
-          >
-            <PlusIcon />
-            New
-            <Kbd>N</Kbd>
-          </Link>
-        }
+        action={<span className="max-lg:hidden">{newCompilation}</span>}
         titleClassName="ink-in"
         meta={meta}
         // What you do with the book, pinned under its contents so a long
@@ -163,7 +175,7 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
           </div>
         }
       >
-        <BookContents chapters={chapters} at={at} onGo={setAt} />
+        <BookContents chapters={chapters} at={at} onGo={setAt} className="max-lg:hidden" />
 
         <LeftOutNotice
           items={job.discovered_items}
