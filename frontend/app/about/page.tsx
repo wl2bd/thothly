@@ -41,19 +41,24 @@ export default function AboutPage() {
           </ol>
         </section>
 
-        {/* Only what is true of the hosted demo (checked 2026-09-29): no
-            analytics in the code, history and keys in localStorage, queries
-            in the URL and so in the host's request logs, no volume on Fly. */}
+        {/* Only what is true of the hosted demo (checked 2026-11-08): the
+            server counts anonymous events (PostHog, numbers and types only,
+            never a query, URL or title: backend/app/core/posthog.py), history
+            and keys in localStorage, no volume on Fly. */}
         <section id="privacy" className="flex scroll-mt-20 flex-col gap-3">
           <h2 className="font-display text-xl tracking-tight">Privacy</h2>
           <ul className="text-muted-foreground flex list-disc flex-col gap-2 pl-5 leading-relaxed">
-            <li>No account, no analytics, no tracking.</li>
+            <li>
+              No account, no ads, no tracking across sites. The server counts
+              anonymous usage, numbers only: never your searches, links or
+              titles.
+            </li>
             <li>
               Your compilation history and your AI key stay in this browser.
             </li>
             <li>
               Searching and compiling run on our server. Your searches go to
-              the search providers (Exa, YouTube, Apple Podcasts) and to a
+              the services that search the web, YouTube and podcasts, and to a
               model that sorts the results.
             </li>
             <li>
@@ -97,14 +102,14 @@ const faq = [
   },
   {
     q: "Is it free?",
-    a: "Yes. The default path uses no AI. AI polish is optional and runs on your own model, so any cost is yours and goes straight to your provider.",
+    a: "Yes. The default path is free. AI polish and podcast transcription are optional; with your own key, their cost goes straight to your provider.",
   },
   {
     q: "Where does my AI key go?",
     a: "It stays in this browser, and is only sent along with the requests that use your model.",
   },
   {
-    q: "A video has no subtitles?",
+    q: "A video has no transcript?",
     a: "It's flagged before you compile, and left out of the compilation.",
   },
 ];
