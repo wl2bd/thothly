@@ -102,6 +102,7 @@ def scrape_article(url: str, downloaded: str | None = None) -> Article:
     if _is_paywalled(downloaded):
         raise Paywalled(url)
 
+    page = downloaded
     downloaded = _captions_to_titles(_unwrap_image_links(_drop_site_chrome(downloaded)))
     # Extractors drop a page's notes and unlink its calls: they leave first.
     downloaded, notes = lift_footnotes(downloaded)
@@ -127,10 +128,10 @@ def scrape_article(url: str, downloaded: str | None = None) -> Article:
     title, author, published_at = _extract_metadata(downloaded, url)
     return Article(
         url=url,
-        title=title,
+        title=_checked_title(title, page),
         published_at=published_at,
         author=author,
-        site_name=_og_site_name(downloaded),
+        site_name=_og_site_name(page),
         content_html=content_html,
         language=_html_language(downloaded),
     )
@@ -429,6 +430,55 @@ def _extract_metadata(
         meta.get("author") or None,
         _parse_date(meta.get("date")),
     )
+
+
+_TITLE_SEP = re.compile(r"\s+[-–—|·•]\s+")
+_TITLE_PARENS = re.compile(r"^(.*\S)\s*\(([^()]+)\)$")
+
+
+def _fold(text: str) -> str:
+    return " ".join(text.casefold().split())
+
+
+def _checked_title(extracted: str, html: str) -> str:
+    """The extractor's title, unless the page itself says otherwise.
+
+    The extractor can latch onto the wrong heading: a sidebar's "Stay
+    Connected", or the site's own name in a page-level <h1>. Most pages name
+    the article in their <title>, ahead of the site ("Stoicism | Some
+    Encyclopedia", "Stoicism (Some Encyclopedia)"). When the extracted title
+    is missing from that <title>, or is just its site part, and the <title>'s
+    head is also one of the page's own headings, that head wins. A <title>
+    with no site part (every page titled "My Blog") never overrides, nor does
+    a heading from the site's header or menus (its name, a section's), nor
+    one that is the site's declared name. An extracted title that is itself
+    the article's <h1> stays.
+    """
+    soup = BeautifulSoup(html[:500_000], "html.parser")
+    page_title = soup.title.get_text(" ", strip=True) if soup.title else ""
+    if match := _TITLE_PARENS.match(page_title):
+        head, site = match.group(1), match.group(2)
+    else:
+        seps = list(_TITLE_SEP.finditer(page_title))
+        if not seps:
+            return extracted
+        head, site = page_title[: seps[-1].start()], page_title[seps[-1].end():]
+    if extracted and _fold(extracted) in _fold(page_title) and _fold(extracted) != _fold(site):
+        return extracted
+    own = [
+        _fold(h.get_text(" ", strip=True)) for h in soup.find_all(["h1", "h2"])
+        if h.find_parent(["article", "main"]) or not h.find_parent(["header", "nav", "footer", "aside"])
+    ]
+    in_body = {
+        _fold(h.get_text(" ", strip=True)) for h in soup.find_all("h1")
+        if h.find_parent(["article", "main"])
+    }
+    if extracted and _fold(extracted) in in_body:
+        return extracted
+    declared = soup.find("meta", attrs={"property": "og:site_name"})
+    if declared and _fold(declared.get("content") or "") == _fold(head):
+        return extracted
+    return head.strip() if _fold(head) in own else extracted
 
 
 def _og_site_name(html: str) -> str | None:

@@ -9,6 +9,7 @@ from app.sources.models import Article
 from app.sources.blog import (
     Paywalled,
     FeedUnavailable,
+    _checked_title,
     _clean_extracted_html,
     _unwrap_image_links,
     list_feed,
@@ -435,3 +436,27 @@ def test_og_site_name_is_read_off_the_page():
     html = '<html><head><meta property="og:site_name" content=" Example Review "></head></html>'
     assert _og_site_name(html) == "Example Review"
     assert _og_site_name("<html><head></head></html>") is None
+
+
+@pytest.mark.parametrize("extracted, page, expected", [
+    # A sidebar heading taken for the title: the <title>'s head, also a heading, wins.
+    ("Stay Connected", "<title>Stoicism | Some Encyclopedia</title><h1>Stoicism</h1><h1>Stay Connected</h1>", "Stoicism"),
+    # The site's own name taken for the title.
+    ("Some Encyclopedia", "<title>Stoicism (Some Encyclopedia)</title><h1>Some Encyclopedia</h1><h1>Stoicism</h1>", "Stoicism"),
+    # Nothing extracted.
+    ("", "<title>Stoicism - Some Encyclopedia</title><h2>Stoicism</h2>", "Stoicism"),
+    # The extracted title is in the <title>: kept.
+    ("Stoicism", "<title>Stoicism | Some Encyclopedia</title><h1>Stoicism</h1>", "Stoicism"),
+    # A <title> with no site part never overrides.
+    ("How I write", "<title>My Blog</title><h1>My Blog</h1>", "How I write"),
+    # The <title>'s head isn't a heading on the page: no proof, kept.
+    ("How I write", "<title>Home | My Blog</title><h1>How I write</h1>", "How I write"),
+    # The site's name in its own header is no proof.
+    ("How I write", "<title>Acme Notes - thoughts on code</title><header><h1>Acme Notes</h1></header>", "How I write"),
+    # The extracted title is the article's own <h1>: a hero "Blog" doesn't win.
+    ("How I write", "<title>Blog | Acme</title><h1>Blog</h1><article><h1>How I write</h1></article>", "How I write"),
+    # Nor does the site's declared name.
+    ("How I write", '<title>Acme | Tagline</title><meta property="og:site_name" content="Acme"><h1>Acme</h1>', "How I write"),
+])
+def test_the_title_is_checked_against_the_page_title(extracted, page, expected):
+    assert _checked_title(extracted, f"<html><head>{page}</head></html>") == expected
