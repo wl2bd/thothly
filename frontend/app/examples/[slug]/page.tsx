@@ -83,7 +83,7 @@ export default function ExamplePage() {
                   mdUrl={mdUrl}
                   title={example.title}
                   epubNote="For your e-reader"
-                  mdNote="For an AI"
+                  mdNote="For your AI"
                 />
                 <CopyMarkdownButton md={md} />
               </div>

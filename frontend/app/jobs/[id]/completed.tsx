@@ -159,10 +159,10 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
                     : "For your e-reader"
                 }
                 mdNote={
-                  tokens != null ? `For an AI · ~${formatTokens(tokens)} tokens` : "For an AI"
+                  tokens != null ? `For your AI · ~${formatTokens(tokens)} tokens` : "For your AI"
                 }
               />
-              <CopyMarkdownButton md={md} shortcut tip="Copy the Markdown, to paste into an AI" />
+              <CopyMarkdownButton md={md} shortcut tip="Copy the Markdown, to paste into your AI" />
             </div>
             <p className="text-muted-foreground text-xs">
               EPUB for your e-reader · Markdown for your AI
