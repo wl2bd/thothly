@@ -194,7 +194,7 @@ export function FailedView({ job }: { job: JobResponse }) {
   return (
     <div className="flex flex-col gap-2">
       <Notice variant="error">
-        <span className="block font-medium">Compilation failed.</span>
+        <span className="block font-medium">This compilation didn’t finish.</span>
         {job.error}
       </Notice>
       {job.discovered_items.length > 0 && (
@@ -232,7 +232,7 @@ export function StopButton({ jobId, built }: { jobId: string; built: number }) {
     ? "Stopping…"
     : built > 0
       ? `Stop and keep ${plural(built, "chapter")}`
-      : "Stop";
+      : "Cancel compilation";
   return (
     <div className="flex flex-col gap-2">
       <Button type="button" variant="outline" onClick={stop} disabled={stopping} className="w-full">

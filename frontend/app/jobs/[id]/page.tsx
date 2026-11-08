@@ -10,7 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { AppHeader } from "@/components/app-header";
 import { CompilationPane, WorkPane, Workspace } from "@/components/compilation-pane";
-import { clearDraft } from "@/lib/workspace-draft";
+import { clearDraft, restoreJobDraft } from "@/lib/workspace-draft";
 import { withBrowserModels } from "@/lib/model-keys";
 import { useStoredModels } from "@/lib/use-stored-models";
 import { cn, plural } from "@/lib/utils";
@@ -137,7 +137,20 @@ export default function JobPage() {
           eyebrow="Did not finish"
           title={job.book_title ?? ""}
           meta={plural(job.sources.length, "source")}
-          footer={newCompilation}
+          footer={
+            <>
+              {/* The way out that keeps the work: the same sources, back in
+                  the workspace, to review and compile again. */}
+              <Link
+                href="/"
+                onClick={() => restoreJobDraft(id, job.sources, job.book_title ?? null)}
+                className={cn(buttonVariants(), "w-full")}
+              >
+                Try again with these sources
+              </Link>
+              {newCompilation}
+            </>
+          }
         />
       </>
     );

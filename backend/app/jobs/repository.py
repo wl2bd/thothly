@@ -102,7 +102,7 @@ def reap_orphaned_jobs() -> int:
     """
     message = (
         "The server restarted while this compilation was still running, so it "
-        "stopped. Start a new one."
+        "stopped."
     )
     item_message = "The server restarted before this item was built."
     now_iso = datetime.now(timezone.utc).isoformat()

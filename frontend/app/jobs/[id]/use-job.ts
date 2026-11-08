@@ -64,7 +64,15 @@ export function useJob(id: string) {
         const terminal = err instanceof ApiError && err.status >= 400 && err.status < 500;
         failures += 1;
         if (terminal || failures >= MAX_POLL_FAILURES) {
-          setError(err instanceof Error ? err.message : String(err));
+          // Gone is the common case (the server keeps nothing across a
+          // restart), and the raw 404 says nothing a reader can act on.
+          setError(
+            err instanceof ApiError && err.status === 404
+              ? "This compilation is no longer on the server. Files are wiped whenever it restarts, so it has to be made again."
+              : err instanceof Error
+                ? err.message
+                : String(err),
+          );
           nextDelay = null;
         } else {
           nextDelay = Math.min(BASE_POLL_MS * 2 ** (failures - 1), MAX_POLL_MS);
