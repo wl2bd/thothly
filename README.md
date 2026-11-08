@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><em>Make anything readable. Turn video, podcast and article links into one clean document.</em></p>
+<p align="center"><em>Make anything readable. Turn videos, podcasts and articles into one clean compilation.</em></p>
 
 <p align="center"><a href="https://thothly.vercel.app"><strong>Try the demo</strong></a></p>
 
@@ -33,22 +33,28 @@ dump.
 - **Search or paste.** Type a query to search YouTube, podcasts, and the web at
   once (all keyless), or paste a link directly: single videos, playlists,
   channels, blog homepages, Wikipedia articles, or RSS feeds. The source type is
-  auto-detected, with no dropdowns. Filter results by type (video, episode,
-  article) and sort by relevance, duration, or title. Titles show in the source's
+  auto-detected, with no dropdowns. Filter results by type (video, audio,
+  text) and sort by relevance, duration, or title. Titles show in the source's
   own language, never an auto-translation. Job boards, shops and social posts are
   never offered as articles, and an optional triage model drops results that
   can't be compiled or are off topic.
 - **Build it in one workspace.** Search and your sources on the left, the
   compilation on the right, from the first link to the finished book. Up to five
-  sources per compilation, each one named and removable (with undo).
-- **Review before you compile.** Discovery tags every item with what was actually
-  retrieved (a clean transcript, raw captions, web text, or nothing usable), plus
-  a no-LLM preview of exactly what each item would contribute. Each row says up
+  sources per compilation (a playlist, channel or site counts as one), each one
+  named and removable, with undo, Clear all included.
+- **Review before you compile.** Each source opens into its chapters, and
+  discovery tags every one with what was actually retrieved (a clean transcript,
+  raw captions, web text, or nothing usable), plus a no-LLM preview of exactly
+  what it would contribute. Each row says up
   front what will happen to it (left out, raw captions, transcribed) and how to
   fix it. You tick what makes the book; anything metered (transcription, AI
   polish on your key) shows its estimated cost, down to the Compile button.
+  Going back to the sources and reviewing again reopens the same review when
+  nothing changed.
 - **Stop when you want.** A long compile can be stopped at any time: it ends
-  before the next AI call and keeps the chapters already built.
+  before the next AI call and keeps the chapters already built (with none ready
+  yet, it is cancelled). A compilation that didn't finish can be tried again
+  with the same sources.
 - **Two formats, one compilation.** Every job produces a clean EPUB (sources
   index, per-chapter attribution, YouTube chapters as sub-headings, an editorial
   cover, Instapaper-grade typography) and a standalone Markdown twin of the same
@@ -57,18 +63,20 @@ dump.
   with its contents beside it. Download the EPUB in one click, get the Markdown,
   copy the Markdown to paste into a chat, or send the book to an e-reader (the
   device's share sheet, Send to Kindle, or instructions for Kobo and others).
-- **Zero-LLM by default.** Native subtitles and article text, never rewritten,
+- **Zero-LLM by default.** Native transcripts and article text, never rewritten,
   and kept in the source's original language (titles, chapters, and body),
   never auto-translated.
 - **Optional AI polish.** Re-punctuate raw captions, copyedit, infer section
   headings, or generate a preface. Entirely opt-in, with the server's model or
   your own key (see below).
 - **Your compilations, in your browser.** Past books are listed by status (To
-  review, Ready) and reopen in one click. History and keys are stored only in
-  the browser; deleting a book can be undone for a few seconds.
-- **Keyboard first.** `/` to search, `Mod+Enter` for the next step, `A` to select
-  every item, `D` to download, `C` to copy, arrows to turn chapters, `,` for
-  Settings. Press `?` for the full list.
+  review, In progress, Ready, Did not finish), reopen in one click, and stay
+  reachable while you stage a new one. History and keys are stored only in the
+  browser; removing a book from the list can be undone for a few seconds (its
+  files stay on the server until it restarts).
+- **Keyboard first.** `/` to search (`Enter` searches at once), `Mod+Enter` for
+  the next step, `A` to select every chapter, `D` to download, `C` to copy,
+  arrows to turn chapters, `,` for AI models. Press `?` for the full list.
 - **Examples to start from.** Two ready-made compilations on the home page (a
   book about Stoicism, and the Markdown an AI gets for "How transformers work"),
   both downloadable.
@@ -135,7 +143,7 @@ your book. Results are cached per (content, role-set, model), so re-compiling is
 free, and any failure falls back to the zero-LLM path, so it never breaks a
 compile. Leave the variables empty to keep Thothly fully free.
 
-Visitors can also bring their own model: **Settings** (the `,` key) takes one key
+Visitors can also bring their own model: **AI models** (the `,` key) takes one key
 per provider and a provider and model per task (cleanup, podcast transcription).
 Keys are checked when pasted, kept only in the browser, and sent with a job only
 to run it. By default only the listed providers are allowed; set
@@ -152,7 +160,7 @@ turning it into a chapter needs a speech-to-text endpoint. Point `STT_BASE_URL`,
 (and `STT_API_KEY` when required) at any OpenAI-compatible `audio/transcriptions`
 endpoint: **Mistral Voxtral** (`voxtral-mini-latest`), a local vLLM/whisper.cpp
 server (no key), or OpenAI. Visitors can also use their own ElevenLabs key from
-Settings. See `.env.example`.
+AI models. See `.env.example`.
 
 Transcription runs lazily, only for the episodes you select, and is cached by
 audio URL, so re-compiling never re-pays for it. Episodes keep their diarized
@@ -161,7 +169,7 @@ are resolved by default (`PODCAST_SPEAKER_NAMING`), so disable it for plain
 "Speaker N" labels. Long episodes are split into chunks (default 55 min), which
 needs `ffmpeg` installed (short ones transcribe without it). Leave the variables
 empty and episodes are simply skipped; many podcasts are also on YouTube, where
-native subtitles already cover them for free.
+native transcripts already cover them for free.
 
 ## ▸ Configuration
 
