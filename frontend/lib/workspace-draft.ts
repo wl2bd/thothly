@@ -37,7 +37,16 @@ const jobKey = (id: string) => `thothly:draft:${id}`;
 function read(key: string): Draft | null {
   try {
     const raw = window.sessionStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as Draft) : null;
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as Draft;
+    // A draft saved before kinds had two axes stored a bare word: read it again.
+    for (const s of draft.staged) {
+      if (typeof s.type === "string") {
+        s.type =
+          s.source === "podcast" ? { medium: "audio", collection: false } : kindOfUrl(s.url);
+      }
+    }
+    return draft;
   } catch {
     return null;
   }
@@ -94,7 +103,7 @@ export function stagedFromUrl(url: string): StagedSource {
     url,
     title: prettyUrl(url),
     type: kind,
-    source: kind === "episode" ? "podcast" : backendKindOfUrl(url).startsWith("youtube") ? "youtube" : "web",
+    source: kind.medium === "audio" ? "podcast" : backendKindOfUrl(url).startsWith("youtube") ? "youtube" : "web",
     thumbnail: null,
     durationS: null,
     author: null,
@@ -127,7 +136,7 @@ function stagedFromSource(s: Source): StagedSource {
     // name, read during discovery, is often "Article | Site".
     title: s.title?.trim() || sourceName(s),
     ...(s.kind === "podcast"
-      ? { type: "episode", source: "podcast", durationS: s.duration_s ?? null, feedUrl: s.feed_url ?? undefined }
+      ? { type: { medium: "audio", collection: false }, source: "podcast", durationS: s.duration_s ?? null, feedUrl: s.feed_url ?? undefined }
       : {}),
   };
 }

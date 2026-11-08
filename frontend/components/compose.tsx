@@ -76,9 +76,9 @@ import {
   MetaSep,
   SourceMedia,
   SourceTypePill,
-  isContainerKind,
-  KIND_ORDER,
-  kindLabel,
+  CollectionNote,
+  MEDIUM_ORDER,
+  mediumLabel,
 } from "@/components/source-kind";
 import { kindFromResultType } from "@/lib/kinds";
 import { hostOf } from "@/lib/url";
@@ -441,7 +441,7 @@ function ComposeWorkspace({
   const filteredResults =
     typeFilter === "all"
       ? results
-      : results.filter((r) => kindFromResultType(r.type, r.url) === typeFilter);
+      : results.filter((r) => kindFromResultType(r.type, r.url).medium === typeFilter);
   const visibleResults = sortResults(filteredResults, sortBy);
   // Checkbox state for each result is read from the staged list (by URL), so the
   // results, the compilation and the count never drift apart.
@@ -928,12 +928,7 @@ function StagedRow({
           <SourceTypePill kind={kind} className="shrink-0" />
           <MetaSep />
           <span className="min-w-0 truncate">{s.author ?? hostOf(s.url)}</span>
-          {isContainerKind(kind) && (
-            <>
-              <MetaSep />
-              <span className="shrink-0">expands when you review</span>
-            </>
-          )}
+          {kind.collection && <CollectionNote />}
         </span>
       </span>
       <Tooltip content="Remove source">
@@ -1152,12 +1147,7 @@ function ResultRow({
                 <span className="min-w-0 truncate">{r.author}</span>
               </>
             )}
-            {isContainerKind(kind) && (
-              <>
-                <MetaSep />
-                <span className="shrink-0">expands when you review</span>
-              </>
-            )}
+            {kind.collection && <CollectionNote />}
           </span>
         </span>
       </label>
@@ -1165,8 +1155,8 @@ function ResultRow({
   );
 }
 
-// Content-type filter chips above the results. Grouping is by TYPE (Video /
-// Episode / Article), not by provider, so "YouTube" and "Video" can't disagree
+// Content-type filter chips above the results. Grouping is by MEDIUM (Video /
+// Audio / Text), not by provider, so "YouTube" and "Video" can't disagree
 // and a new platform folds into the matching type instead of adding a chip. Only
 // shown when more than one type is present; counts are per type.
 function TypeFilter({
@@ -1180,10 +1170,10 @@ function TypeFilter({
 }) {
   const counts: Record<string, number> = {};
   for (const r of results) {
-    const k = kindFromResultType(r.type, r.url);
+    const k = kindFromResultType(r.type, r.url).medium;
     counts[k] = (counts[k] ?? 0) + 1;
   }
-  const kinds = KIND_ORDER.filter((k) => counts[k]);
+  const kinds = MEDIUM_ORDER.filter((k) => counts[k]);
   // Shown even with a single type: results stream in by provider, so hiding
   // the row until a second type lands would make it pop in under the bar and
   // push the list down (a whole line on a phone, where it sits alone).
@@ -1193,7 +1183,7 @@ function TypeFilter({
     { key: "all", label: "All", count: results.length },
     ...kinds.map((k) => ({
       key: k,
-      label: kindLabel(k),
+      label: mediumLabel(k),
       count: counts[k],
     })),
   ];

@@ -1,47 +1,52 @@
 // What kind of thing a source is, in the one vocabulary every screen shows.
 // Search hits speak ResultType, discovered items speak ItemType and a pasted
 // link speaks the backend's SourceKind; all three fold into this.
+//
+// Two independent questions, both answerable for sure without fetching:
+//   medium      how the text is obtained: a video's captions, an audio's
+//               transcription, or a page's own text
+//   collection  whether it unfolds into many items at review (a playlist, a
+//               channel, a site's home)
+// A web page's genre (encyclopedia, forum, blog post) is deliberately not one:
+// guessed from the URL alone it was often wrong, and it changes nothing in the
+// compilation.
 import type { ItemType, ResultType, Source } from "@/lib/api";
-import { webKind } from "./web-kind.ts";
+import { isSiteHome } from "./site-home.ts";
 
-// A web link is split further by its URL (see lib/web-kind.ts): "Article" alone
-// would also cover homes that unfold into many posts, encyclopedia entries,
-// Q&A threads and docs.
-export type Kind =
-  | "video"
-  | "episode"
-  | "article"
-  | "encyclopedia"
-  | "discussion"
-  | "page"
-  | "site"
-  | "playlist"
-  | "channel";
+export type Medium = "video" | "audio" | "text";
+
+export interface Kind {
+  medium: Medium;
+  collection: boolean;
+}
 
 type BackendKind = NonNullable<Source["kind"]>;
 
-const FROM_BACKEND: Record<BackendKind, Kind> = {
-  youtube_video: "video",
-  youtube_playlist: "playlist",
-  youtube_channel: "channel",
-  podcast: "episode",
-  blog: "article",
-};
-
-const FROM_RESULT: Record<ResultType, Kind> = { video: "video", episode: "episode", web: "article" };
-
-const FROM_ITEM: Record<ItemType, Kind> = { youtube: "video", podcast: "episode", blog: "article" };
-
-export const kindFromResultType = (type: ResultType, url?: string): Kind =>
-  type === "web" && url ? webKind(url) : FROM_RESULT[type];
-
-// A discovered item is one page already: a site's home has been unfolded into
-// its posts by now, so a lone home here is read as a page.
-export function kindFromItemType(type: ItemType, url?: string): Kind {
-  if (type !== "blog" || !url) return FROM_ITEM[type];
-  const kind = webKind(url);
-  return kind === "site" ? "page" : kind;
+function fromBackend(kind: BackendKind, url: string): Kind {
+  switch (kind) {
+    case "youtube_video":
+      return { medium: "video", collection: false };
+    case "youtube_playlist":
+    case "youtube_channel":
+      return { medium: "video", collection: true };
+    case "podcast":
+      return { medium: "audio", collection: false };
+    case "blog":
+      return { medium: "text", collection: isSiteHome(url) };
+  }
 }
+
+export function kindFromResultType(type: ResultType, url?: string): Kind {
+  if (type === "episode") return { medium: "audio", collection: false };
+  if (type === "web") return { medium: "text", collection: url ? isSiteHome(url) : false };
+  // A video search can return a playlist or a channel: its URL says which.
+  return { medium: "video", collection: url ? fromBackend(backendKindOfUrl(url), url).collection : false };
+}
+
+// A discovered item is one item already: containers have been unfolded by now.
+const ITEM_MEDIUM: Record<ItemType, Medium> = { youtube: "video", podcast: "audio", blog: "text" };
+
+export const kindFromItemType = (type: ItemType): Kind => ({ medium: ITEM_MEDIUM[type], collection: false });
 
 // The same reading as the backend's detect_kind; fixtures/url-kinds.json holds
 // the cases both sides are tested against.
@@ -63,4 +68,4 @@ export function backendKindOfUrl(url: string): BackendKind {
   return "blog";
 }
 
-export const kindOfUrl = (url: string): Kind => FROM_BACKEND[backendKindOfUrl(url)];
+export const kindOfUrl = (url: string): Kind => fromBackend(backendKindOfUrl(url), url);

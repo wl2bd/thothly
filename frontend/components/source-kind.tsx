@@ -2,20 +2,16 @@
 
 import { useEffect, useState } from "react";
 import {
-  BookOpenIcon,
-  FileIcon,
-  MessagesSquareIcon,
   FileTextIcon,
   GlobeIcon,
   ListVideoIcon,
   MicIcon,
   PlayIcon,
-  TvIcon,
   type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { Kind } from "@/lib/kinds";
+import type { Kind, Medium } from "@/lib/kinds";
 import { faviconUrl } from "@/lib/url";
 
 // ── Source presentation, shared across screens ───────────────────────────────
@@ -24,42 +20,34 @@ import { faviconUrl } from "@/lib/url";
 // same icon, same text-vs-media treatment. The brand pins one rule down:
 // types are told apart by ICON, never by colour. The identity carries ONE accent
 // (desert gold), reserved for selection/action; multi-coloured type chips would
-// break it. The glyph alone disambiguates Video / Episode / Article / Playlist.
+// break it. The glyph alone disambiguates Video / Audio / Text.
 
-interface KindMeta {
+interface MediumMeta {
   label: string;
   Icon: LucideIcon;
-  // Text sources (articles, blog posts) read as a document, not a photo tile.
+  // The glyph a collection of this medium shows when it has no thumbnail.
+  CollectionIcon: LucideIcon;
+  // Text sources read as a document, not a photo tile.
   text: boolean;
-  // Containers (playlists, channels, blogs) hold many items but are NOT unfolded
-  // at search — the item count and per-item weights are resolved at review.
-  container: boolean;
 }
 
-const KIND_META: Record<Kind, KindMeta> = {
-  video: { label: "Video", Icon: PlayIcon, text: false, container: false },
-  episode: { label: "Episode", Icon: MicIcon, text: false, container: false },
-  article: { label: "Article", Icon: FileTextIcon, text: true, container: false },
-  encyclopedia: { label: "Encyclopedia", Icon: BookOpenIcon, text: true, container: false },
-  discussion: { label: "Discussion", Icon: MessagesSquareIcon, text: true, container: false },
-  page: { label: "Page", Icon: FileIcon, text: true, container: false },
-  // A site's home: discovery reads its feed and unfolds it into posts.
-  site: { label: "Site", Icon: GlobeIcon, text: true, container: true },
-  playlist: { label: "Playlist", Icon: ListVideoIcon, text: false, container: true },
-  channel: { label: "Channel", Icon: TvIcon, text: false, container: true },
+const MEDIUM_META: Record<Medium, MediumMeta> = {
+  video: { label: "Video", Icon: PlayIcon, CollectionIcon: ListVideoIcon, text: false },
+  audio: { label: "Audio", Icon: MicIcon, CollectionIcon: MicIcon, text: false },
+  text: { label: "Text", Icon: FileTextIcon, CollectionIcon: GlobeIcon, text: true },
 };
 
-// The one display order for kinds, wherever they are listed side by side.
-export const KIND_ORDER = Object.keys(KIND_META) as Kind[];
+// The one display order for media, wherever they are listed side by side.
+export const MEDIUM_ORDER = Object.keys(MEDIUM_META) as Medium[];
 
-export function isContainerKind(kind: Kind): boolean {
-  return KIND_META[kind].container;
+export function mediumLabel(medium: Medium): string {
+  return MEDIUM_META[medium].label;
 }
 
-// The type label: small tracked capitals, no chip around it. The word alone disambiguates the
-// kind — these labels are content-type terms (Video / Episode / Article / Page), not
-// provider names, so they generalize as new platforms are added and read the
-// same wherever they appear: the chip here, the filter above the results.
+// The type label: small tracked capitals, no chip around it. It names the
+// medium (Video / Audio / Text), a content-type term rather than a provider, so
+// it generalizes as new platforms are added and reads the same wherever it
+// appears: the label here, the filter above the results.
 export function SourceTypePill({
   kind,
   className,
@@ -67,20 +55,18 @@ export function SourceTypePill({
   kind: Kind;
   className?: string;
 }) {
-  return (
-    <span
-      className={cn(
-        "eyebrow",
-        className,
-      )}
-    >
-      {KIND_META[kind].label}
-    </span>
-  );
+  return <span className={cn("eyebrow", className)}>{MEDIUM_META[kind.medium].label}</span>;
 }
 
-export function kindLabel(kind: Kind): string {
-  return KIND_META[kind].label;
+// A collection is not unfolded at search: the item count and per-item weights
+// are resolved at review, and the row says so.
+export function CollectionNote() {
+  return (
+    <>
+      <MetaSep />
+      <span className="shrink-0">Collection, expands when you review</span>
+    </>
+  );
 }
 
 // A discreet vertical hairline between meta fields (type · domain) so
@@ -118,7 +104,8 @@ export function SourceMedia({
   url?: string;
   className?: string;
 }) {
-  const { text, Icon } = KIND_META[kind];
+  const { text, Icon: SingleIcon, CollectionIcon } = MEDIUM_META[kind.medium];
+  const Icon = kind.collection ? CollectionIcon : SingleIcon;
 
   return (
     <span

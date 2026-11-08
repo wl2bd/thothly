@@ -396,12 +396,12 @@ export function ReviewView({
     // the matches of is useless, so any group with hits is force-expanded while
     // filtering (the collapse state is kept and restored once the query clears).
     const isCollapsed = needle === "" && collapsed.has(sourceIndex);
-    // When every item in the source is the same kind (a channel of videos, a
-    // Wikipedia page of articles, a podcast of episodes), the per-row type pill
+    // When every item in the source is the same medium (a channel of videos, a
+    // site of pages, a podcast of episodes), the per-row type pill
     // repeats what the group already is — so we show the kind ONCE in the header
     // and drop it from each row. A mixed group keeps its per-row pills.
-    const kinds = new Set(groupItems.map((it) => kindFromItemType(it.item_type, it.url)));
-    const uniformKind = kinds.size === 1 ? [...kinds][0] : null;
+    const media = new Set(groupItems.map((it) => it.item_type));
+    const uniformKind = media.size === 1 ? kindFromItemType([...media][0]) : null;
     // The header reads like a source on the home page (a name in normal case,
     // its favicon + domain, its type), so the two screens speak the same visual
     // language. The domain is dropped when it would just echo the name.
