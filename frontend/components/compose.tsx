@@ -215,7 +215,7 @@ function ComposeWorkspace({
     // The query's first answer: its results replace the last query's, with the
     // filter and sort back to their defaults.
     const settle = (rows: SearchResult[], failed: string[]) => {
-      setResults(rows);
+      setResults(uniqueByUrl([], rows));
       setFailedProviders(failed);
       setTypeFilter("all");
       setSortBy("relevance");
@@ -255,10 +255,7 @@ function ComposeWorkspace({
               if (isFirst) {
                 settle(batch.results, failed);
               } else {
-                setResults((prev) => {
-                  const seen = new Set(prev.map((r) => r.id));
-                  return [...prev, ...batch.results.filter((r) => !seen.has(r.id))];
-                });
+                setResults((prev) => uniqueByUrl(prev, batch.results));
                 setFailedProviders((prev) => [...prev, ...failed]);
               }
             });
@@ -1232,6 +1229,20 @@ function TypeFilter({
 // untouched; the others are client-side. Date isn't available across providers,
 // so it's not offered. Results without a duration (web) sort last when ordering
 // by length.
+// A row is picked by its URL, so two rows sharing one (a feed listing the same
+// episode twice, or two providers finding the same page) would check and
+// uncheck together. Keep the first one seen.
+function uniqueByUrl(prev: SearchResult[], incoming: SearchResult[]): SearchResult[] {
+  const seen = new Set(prev.map((r) => r.url));
+  const out = [...prev];
+  for (const r of incoming) {
+    if (seen.has(r.url)) continue;
+    seen.add(r.url);
+    out.push(r);
+  }
+  return out;
+}
+
 function sortResults(results: SearchResult[], sortBy: string): SearchResult[] {
   if (sortBy === "relevance") return results;
   const sorted = [...results];
