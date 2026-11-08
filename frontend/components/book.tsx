@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { tokenizeInline, type InlineToken } from "@/lib/inline-md";
 import { countWords, type Chapter } from "@/lib/book-md";
 import { parseBlocks, type Block } from "@/lib/md-blocks";
-import { hostOf } from "@/lib/url";
+import { domainOf, kindOfUrl } from "@/lib/kinds";
 import { cn } from "@/lib/utils";
 
 // A compiled book, read in the app: its contents, one chapter at a time, and
@@ -63,7 +63,7 @@ export function BookReader({
               rel="noreferrer"
               className="text-muted-foreground hover:text-foreground -mt-2 inline-flex w-fit items-center gap-1 text-xs transition-colors"
             >
-              Open original on {hostOf(chapter.source)}
+              {originalLabel(chapter.source)}
               <ExternalLink className="size-3" />
             </a>
           )}
@@ -88,6 +88,13 @@ export function BookReader({
         )}
     </div>
   );
+}
+
+// An audio chapter's source is its file, on a host that names nobody (see
+// domainOf): the link says what it opens instead.
+function originalLabel(url: string): string {
+  const domain = domainOf(kindOfUrl(url), url);
+  return domain ? `Open original on ${domain}` : "Open original audio";
 }
 
 // The book's contents in the side pane, next to the downloads: every chapter
