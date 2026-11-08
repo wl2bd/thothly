@@ -427,3 +427,11 @@ def test_an_excerpt_feed_elsewhere_is_not_taken_for_a_paywall(mock_parse):
     ])
     _title, articles = list_feed("https://blog.example/feed")
     assert articles[0].paywalled is False
+
+
+def test_og_site_name_is_read_off_the_page():
+    from app.sources.blog import _og_site_name
+
+    html = '<html><head><meta property="og:site_name" content=" Example Review "></head></html>'
+    assert _og_site_name(html) == "Example Review"
+    assert _og_site_name("<html><head></head></html>") is None

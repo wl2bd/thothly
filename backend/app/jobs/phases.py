@@ -8,6 +8,7 @@ from app.jobs.repository import (
     update_job_status,
 )
 from app.pipeline.compiler import derive_book_title
+from app.pipeline.titles import disambiguate_titles, host_of
 from app.search.triage import MAX_JUDGED_ITEMS, describe, judge_items, triage_enabled
 from app.sources.discovery import discover_source
 from app.sources.models import DiscoveredItem
@@ -69,6 +70,7 @@ def run_discovery(
             update_job_status(job_id, "failed", error=error)
             return
 
+        disambiguate_titles(items, _site_of(items, source_names))
         save_discovered_items(job_id, items)
         update_job_status(
             job_id,
@@ -109,3 +111,28 @@ def _set_aside_doubtful(
     ]
     for i, reason in judge_items(query, described).items():
         judged[i].set_aside = reason
+
+
+def _site_of(items: list[DiscoveredItemResponse], source_names: list[str | None]):
+    """Where each item comes from, for telling same-titled items apart.
+
+    A web page: its host decides, its declared site name (else the host) is
+    shown. A video or episode from a channel or feed: the channel or show
+    name. A lone video or episode: its source name is its own title, so its
+    host stands in.
+    """
+    counts: dict[int, int] = {}
+    for item in items:
+        counts[item.source_index] = counts.get(item.source_index, 0) + 1
+
+    def site_of(item: DiscoveredItem) -> tuple[str, str]:
+        host = host_of(item.url)
+        if item.item_type == "blog":
+            if host == "wikipedia.org" or host.endswith(".wikipedia.org"):
+                return "wikipedia.org", "Wikipedia"
+            return host, item.site_name or host
+        name = source_names[item.source_index] if item.source_index < len(source_names) else None
+        label = name if name and counts[item.source_index] > 1 else host
+        return label.casefold(), label
+
+    return site_of

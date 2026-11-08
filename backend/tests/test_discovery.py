@@ -365,3 +365,21 @@ def test_pasted_urls_read_as_the_frontend_reads_them():
 def test_a_paywalled_feed_article_is_flagged_for_review():
     article = Article(url="https://news.example/p/paid", title="Paid", content_html="<p>…</p>", paywalled=True)
     assert discovery._article_to_item(article, 0, 0, "https://news.example/feed").paywalled is True
+
+
+@pytest.mark.parametrize(
+    "page_title,expected",
+    [
+        ("Stoicism (Stanford Encyclopedia of Philosophy)", "Stanford Encyclopedia of Philosophy"),
+        ("Stoicism - Wikipedia", "Wikipedia"),
+        ("Stoicism | Internet Encyclopedia of Philosophy", "Internet Encyclopedia of Philosophy"),
+        ("Stoicism — A Site", "A Site"),
+        ("Stoicism", None),  # nothing beyond the article title
+        ("Stoicism: An Introduction", None),  # a subtitle, not a site
+        ("Stoicism - Part 2 - Example Blog", "Example Blog"),  # the last part only
+        ("Something else entirely", None),  # doesn't start with the title
+        (None, None),
+    ],
+)
+def test_site_name_read_off_the_page_title(page_title, expected):
+    assert discovery._site_from_page_title(page_title, "Stoicism") == expected

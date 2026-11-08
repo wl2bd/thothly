@@ -378,6 +378,10 @@ export interface components {
              * @default false
              */
             unreadable: boolean;
+            /** Site Name */
+            site_name?: string | null;
+            /** Title Suffix */
+            title_suffix?: string | null;
             /** Id */
             id: string;
             /**

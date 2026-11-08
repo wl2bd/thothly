@@ -130,6 +130,7 @@ def scrape_article(url: str, downloaded: str | None = None) -> Article:
         title=title,
         published_at=published_at,
         author=author,
+        site_name=_og_site_name(downloaded),
         content_html=content_html,
         language=_html_language(downloaded),
     )
@@ -428,6 +429,15 @@ def _extract_metadata(
         meta.get("author") or None,
         _parse_date(meta.get("date")),
     )
+
+
+def _og_site_name(html: str) -> str | None:
+    """The name the site declares for itself (og:site_name), if any."""
+    tag = BeautifulSoup(html[:200_000], "html.parser").find(
+        "meta", attrs={"property": "og:site_name"}
+    )
+    name = (tag.get("content") or "").strip() if tag else ""
+    return name or None
 
 
 def _parse_date(date_str: str | None) -> datetime | None:

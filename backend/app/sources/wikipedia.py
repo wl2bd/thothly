@@ -85,6 +85,7 @@ def scrape_wikipedia(url: str, timeout: float) -> Article:
         title=article_title(url),
         published_at=None,
         author="Wikipedia contributors",
+        site_name="Wikipedia",
         # The subdomain is the edition: fr.wikipedia.org is French.
         language=normalize_language(host.split(".")[0]),
         content_html=clean_wikipedia_html(html, f"https://{host}/wiki/{title}"),

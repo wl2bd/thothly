@@ -216,6 +216,10 @@ export function ReviewItem({
               )}
             >
               {highlightMatch(item.title, highlight ?? "")}
+              {/* Where it comes from, only when another item reads the same. */}
+              {item.title_suffix && (
+                <span className="text-muted-foreground"> ({item.title_suffix})</span>
+              )}
             </span>
             {metaParts.length > 0 && (
               <span className={metaClass}>

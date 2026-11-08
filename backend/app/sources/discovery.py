@@ -353,8 +353,27 @@ def _single_article(
         item_index=0,
         paywalled=paywalled,
         unreadable=not readable and not paywalled,
+        site_name=(article.site_name if article else None)
+        or _site_from_page_title(_html_title(html) if html else None, title),
     )
     return title, [item]
+
+
+def _site_from_page_title(page_title: str | None, title: str) -> str | None:
+    """The site's name when the page's <title> appends it to the article's
+    ("Stoicism (Stanford Encyclopedia of Philosophy)", "Stoicism - Wikipedia"),
+    for sites that don't declare og:site_name. Only what follows the last
+    separator counts ("Intro - Part 2 - Blog" gives "Blog"); a colon opens a
+    subtitle, never a site."""
+    if not page_title or not page_title.casefold().startswith(title.casefold()):
+        return None
+    rest = page_title[len(title):].strip()
+    if rest.startswith("(") and rest.endswith(")"):
+        return rest[1:-1].strip() or None
+    parts = re.split(r"\s+[-–—|·•]\s+", " " + rest)
+    if len(parts) < 2:
+        return None
+    return parts[-1].strip() or None
 
 
 def _html_title(html: str) -> str | None:
@@ -469,6 +488,7 @@ def _article_to_item(
         estimated_size_chars=len(article.content_html) if article.content_html else None,
         preview_html=preview,
         paywalled=article.paywalled,
+        site_name=article.site_name,
     )
 
 

@@ -97,6 +97,8 @@ class Article(ArticleMeta):
     duration_s: int | None = None
     # A feed entry that is a paid post's teaser (see blog.list_feed).
     paywalled: bool = False
+    # The name the site gives itself (og:site_name), when it does.
+    site_name: str | None = None
 
 
 class DiscoveredItem(BaseModel):
@@ -137,6 +139,12 @@ class DiscoveredItem(BaseModel):
     # A page that gave no text when discovery read it (refused, empty or not
     # an article): left out at review, the compile would skip it anyway.
     unreadable: bool = False
+    # The name the item's site gives itself, when known.
+    site_name: str | None = None
+    # Set when another source's item reads the same: where this one comes
+    # from ("Wikipedia"), shown after the title at review and in the chapter
+    # heading. The title itself stays raw, transcript lookups match on it.
+    title_suffix: str | None = None
 
 
 class SourceSpec(BaseModel):

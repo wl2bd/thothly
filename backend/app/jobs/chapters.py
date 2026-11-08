@@ -19,7 +19,7 @@ from app.pipeline.transcript_md import transcript_to_markdown
 from app.pipeline.i18n import chrome, detect_language, normalize_language
 from app.pipeline.models import CompiledChapter
 from app.pipeline.providers import Endpoint
-from app.pipeline.titles import normalize_title
+from app.pipeline.titles import chapter_title
 from app.sources import youtube
 from app.sources.blog import Paywalled, ScrapeUnavailable, scrape_article
 from app.sources.models import DiscoveredItem, Transcript
@@ -156,7 +156,7 @@ def _youtube(item: DiscoveredItem, step: Step) -> Draft:
         raise ItemSkipped(SkipReason.NO_CONTENT)
     return Draft(
         CompiledChapter(
-            title=normalize_title(item.title),
+            title=chapter_title(item),
             source_type="youtube",
             source_url=item.url,
             author=transcript.uploader,
@@ -184,7 +184,7 @@ def _podcast(
         raise ItemSkipped(SkipReason.NO_CONTENT)
     return Draft(
         CompiledChapter(
-            title=normalize_title(item.title),
+            title=chapter_title(item),
             source_type="podcast",
             source_url=item.url,
             content_md=content,
@@ -213,7 +213,7 @@ def _blog(item: DiscoveredItem, step: Step) -> Draft:
     declared = article.language if article else None
     return Draft(
         CompiledChapter(
-            title=normalize_title(item.title),
+            title=chapter_title(item),
             source_type="blog",
             source_url=item.url,
             author=article.author if article else None,

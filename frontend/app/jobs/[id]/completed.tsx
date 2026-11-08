@@ -14,7 +14,7 @@ import { cn, plural } from "@/lib/utils";
 import { BookContents, BookReader } from "@/components/book";
 import { countWords, splitBook } from "@/lib/book-md";
 import { getDownloadUrl, type DiscoveredItem, type JobResponse } from "@/lib/api";
-import { isLeftOutState, TOKENS_PER_WORD } from "@/lib/review";
+import { isLeftOutState, itemTitle, TOKENS_PER_WORD } from "@/lib/review";
 import { StatusMessage } from "./shared";
 
 // Which items count as "in the compilation": items that actually became
@@ -225,7 +225,7 @@ function LeftOutNotice({
         <ul className="mt-1.5 flex max-h-40 flex-col gap-1.5 overflow-y-auto">
           {leftOut.map((it) => (
             <li key={it.id} className="flex min-w-0 flex-col">
-              <span className="truncate" title={it.title}>{it.title}</span>
+              <span className="truncate" title={itemTitle(it)}>{itemTitle(it)}</span>
               {it.compile_note && <span className="text-xs">{it.compile_note}</span>}
             </li>
           ))}

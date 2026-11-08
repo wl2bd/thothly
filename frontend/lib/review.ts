@@ -34,6 +34,12 @@ export function defaultSelection(items: DiscoveredItem[]): Set<string> {
 // What "all" means, for the whole list and for one source: the items discovery
 // is sure of. Uncertain links are picked from their own fold; a list of nothing
 // but uncertain links falls back to all of them.
+// An item's title as the reader should see it: with where it comes from when
+// another source's item reads the same ("Stoicism (Wikipedia)").
+export function itemTitle(item: Pick<DiscoveredItem, "title" | "title_suffix">): string {
+  return item.title_suffix ? `${item.title} (${item.title_suffix})` : item.title;
+}
+
 export function sureItems(items: DiscoveredItem[]): DiscoveredItem[] {
   const sure = items.filter((it) => !it.uncertain);
   return sure.length > 0 ? sure : items;

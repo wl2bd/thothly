@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Minus, X } from "lucide-react";
-import { isFinished, isLeftOutState } from "@/lib/review";
+import { isFinished, isLeftOutState, itemTitle } from "@/lib/review";
 import { sourceName } from "@/lib/url";
 
 import { Button } from "@/components/ui/button";
@@ -117,7 +117,7 @@ export function CompilingView({ items }: { items: DiscoveredItem[] }) {
           <CompileStep
             key={it.id}
             state={it.compile_state ?? "pending"}
-            label={it.title}
+            label={itemTitle(it)}
             note={it.compile_note}
           />
         ))}
@@ -203,7 +203,7 @@ export function FailedView({ job }: { job: JobResponse }) {
             <CompileStep
               key={it.id}
               state={it.compile_state ?? "pending"}
-              label={it.title}
+              label={itemTitle(it)}
               note={it.compile_note}
             />
           ))}

@@ -12,6 +12,7 @@ import {
   isFinished,
   isLeftOut,
   isLeftOutState,
+  itemTitle,
   orderedSelection,
   sureItems,
   toggled,
@@ -143,4 +144,9 @@ test("a paid post is left out, a free one is not", () => {
   assert.equal(isLeftOut(item({ item_type: "blog", paywalled: true }), false), true);
   assert.equal(isLeftOut(item({ item_type: "blog" }), false), false);
   assert.equal(isLeftOut(item({ item_type: "blog", unreadable: true }), false), true);
+});
+
+test("a title carries where it comes from only when another reads the same", () => {
+  assert.equal(itemTitle({ title: "Stoicism", title_suffix: "Wikipedia" }), "Stoicism (Wikipedia)");
+  assert.equal(itemTitle({ title: "Stoicism", title_suffix: null }), "Stoicism");
 });

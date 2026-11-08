@@ -911,6 +911,28 @@
             "title": "Unreadable",
             "default": false
           },
+          "site_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Name"
+          },
+          "title_suffix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Suffix"
+          },
           "id": {
             "type": "string",
             "title": "Id"

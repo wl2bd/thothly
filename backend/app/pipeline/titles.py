@@ -13,6 +13,11 @@ source data and the EPUB metadata.
 """
 
 import re
+from collections import defaultdict
+from collections.abc import Callable
+from urllib.parse import urlparse
+
+from app.sources.models import DiscoveredItem
 
 # Words a title-case keeps lowercase unless they lead or close the line.
 _SMALL = {
@@ -94,3 +99,45 @@ def _cap_first(word: str) -> str:
         if ch.isalpha():
             return word[:i] + ch.upper() + word[i + 1:]
     return word
+
+
+
+def disambiguate_titles(
+    items: list[DiscoveredItem],
+    site_of: Callable[[DiscoveredItem], tuple[str, str]],
+) -> None:
+    """Say where an item comes from when its title reads like another's.
+
+    Two sources can share a title ("Stoicism" on Wikipedia and on the Stanford
+    Encyclopedia), and review, the contents and the chapters couldn't tell them
+    apart. `site_of` gives each item its (origin, label): the origin decides
+    whether two items come from different places, the label is what is shown.
+    Only titles that collide across origins get `title_suffix` set to their
+    label; unique titles and duplicates from one origin are left alone. The
+    title itself is never touched.
+    """
+    groups: dict[str, list[DiscoveredItem]] = defaultdict(list)
+    for item in items:
+        groups[_collision_key(item.title)].append(item)
+    for group in groups.values():
+        if len(group) < 2 or len({site_of(i)[0] for i in group}) < 2:
+            continue
+        for item in group:
+            item.title_suffix = site_of(item)[1]
+
+
+def chapter_title(item: DiscoveredItem) -> str:
+    """The chapter heading: the tidied title, then where it comes from when
+    another chapter would read the same."""
+    title = normalize_title(item.title)
+    return f"{title} ({item.title_suffix})" if item.title_suffix else title
+
+
+def _collision_key(title: str) -> str:
+    """A title reduced to its words: case, spacing and punctuation ignored."""
+    return " ".join(re.sub(r"[^\w\s]", " ", title.casefold()).split())
+
+
+def host_of(url: str) -> str:
+    """A URL's host without its www."""
+    return (urlparse(url).hostname or "").removeprefix("www.")
