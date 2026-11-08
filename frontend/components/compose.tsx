@@ -565,7 +565,7 @@ function ComposeWorkspace({
                   <h1 className="font-display text-display leading-display tracking-tight text-balance">
                     Make anything readable
                   </h1>
-                  <p className="text-muted-foreground max-w-lg text-lg text-balance">
+                  <p className="text-muted-foreground max-w-2xl text-xl text-balance">
                     Turn video, podcast and article links into one clean document.
                   </p>
                 </div>

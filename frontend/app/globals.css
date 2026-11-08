@@ -52,15 +52,11 @@
   --font-sans: var(--font-host-grotesk);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-prociono);
-  /* The hero headline: fluid between two steps of the type scale, 4xl
-     (2.25rem) and 6xl (3.75rem). */
-  --text-display: clamp(2.25rem, 5vw, 3.75rem);
+  /* The hero headline: fluid between two steps of the type scale, 3xl
+     (1.875rem) and 6xl (3.75rem). The rest of the scale is Tailwind's own:
+     xs 12, sm 14, base 16, xl 20, 3xl 30. */
+  --text-display: clamp(1.875rem, 5vw, 3.75rem);
   --leading-display: 1.1;
-  /* Two steps below Tailwind's xs (0.75rem): 2xs for the small uppercase
-     labels (`eyebrow`), 3xs for key caps, source glyphs and the home sketch's
-     miniature labels. */
-  --text-2xs: 0.6875rem;
-  --text-3xs: 0.625rem;
   /* The sticky app header; whatever sits under it offsets by the same step. */
   --spacing-header: 3.5rem;
   /* The right-hand pane (compilation, Settings) on large screens. */
@@ -194,7 +190,7 @@
 /* The one small label style: section names (Contents, Recent compilations,
    the menu's Download / Send groups, the pane's Ready). */
 @utility eyebrow {
-  @apply text-muted-foreground text-2xs font-medium tracking-wider uppercase;
+  @apply text-muted-foreground text-xs font-medium tracking-wider uppercase;
 }
 
 @layer base {

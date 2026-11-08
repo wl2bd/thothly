@@ -81,10 +81,10 @@ function RawSheet({ className }: { className?: string }) {
 
 function MarkdownSheet({ className }: { className?: string }) {
   return (
-    <div className={cn(SHEET, "font-mono text-3xs leading-relaxed", className)}>
+    <div className={cn(SHEET, "font-mono text-xs leading-relaxed", className)}>
       <span className="text-foreground"># Stoicism</span>
       <span className="mt-3 text-foreground">## 1. Stoicism, TED-Ed</span>
-      <span className="text-muted-foreground">&gt; source: youtube.com/watch?v=…</span>
+      <span className="text-muted-foreground">&gt; source: youtube.com/…</span>
       <p className="mt-2">{P1}</p>
       <span className="mt-3 text-foreground">## 2. 10 Stoic principles</span>
       <p className="mt-2">
@@ -98,12 +98,12 @@ function MarkdownSheet({ className }: { className?: string }) {
 function BookSheet({ className }: { className?: string }) {
   return (
     <div className={cn(SHEET, "px-6 pt-5", className)}>
-      <span className="eyebrow text-3xs! text-inherit">Chapter 1</span>
-      <span className="font-display text-foreground mt-1 text-lg tracking-tight">
+      <span className="eyebrow text-inherit">Chapter 1</span>
+      <span className="font-display text-foreground mt-1 text-base tracking-tight">
         The painted porch
       </span>
       <p className="mt-3 text-xs leading-relaxed">
-        <span className="font-display text-foreground float-left mt-0.5 mr-1.5 text-4xl leading-[0.8]">
+        <span className="font-display text-foreground float-left mt-0.5 mr-1.5 text-3xl leading-[0.8]">
           S
         </span>
         {P1.slice(1)} The idea returns in every source of this book{" "}
@@ -164,7 +164,7 @@ export function ToolSketch() {
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-xs">{title}</span>
               <span className="text-muted-foreground flex items-center gap-1.5 text-xs tabular-nums">
-                <span className="eyebrow text-3xs! text-inherit">{kind}</span>
+                <span className="eyebrow text-inherit">{kind}</span>
                 <MetaSep />
                 {meta}
               </span>

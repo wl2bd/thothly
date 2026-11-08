@@ -24,7 +24,7 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
     <kbd
       aria-hidden="true"
       className={cn(
-        "inline-flex h-4 min-w-4 items-center justify-center gap-1 rounded-sm border border-current/25 bg-current/10 px-0.75 font-mono text-3xs font-medium uppercase opacity-70 max-sm:hidden [@media(hover:none)]:hidden [@media(pointer:coarse)]:hidden",
+        "inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-sm border border-current/25 bg-current/10 px-1 font-mono text-xs font-medium uppercase opacity-70 max-sm:hidden [@media(hover:none)]:hidden [@media(pointer:coarse)]:hidden",
         className,
       )}
     >
@@ -35,7 +35,7 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
 
 // Symbol keys as icons: the ↵ ⌘ ⌥ glyphs render tiny in the mono face, and
 // the arrows wide and thin.
-const KEY_ICON = { className: "size-2.5", strokeWidth: 2.5, "aria-hidden": true } as const;
+const KEY_ICON = { className: "size-3", strokeWidth: 2.5, "aria-hidden": true } as const;
 
 const KEY_ICONS: Record<string, typeof CornerDownLeftIcon> = {
   "↵": CornerDownLeftIcon,

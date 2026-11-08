@@ -393,7 +393,7 @@ function PreviewBody({
           <MarkdownPreview md={preview.content_md ?? ""} />
         </div>
         {rawCaptions && (
-          <span className="bg-background text-muted-foreground border-border absolute top-2 right-4 rounded-full border px-2 py-0.5 text-[11px]">
+          <span className="bg-background text-muted-foreground border-border absolute top-2 right-4 rounded-full border px-2 py-0.5 text-xs">
             Raw captions
           </span>
         )}
