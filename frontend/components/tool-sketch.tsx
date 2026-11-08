@@ -23,7 +23,7 @@ const SOURCES = [
   {
     src: "/sketch/podcast.jpg",
     media: "aspect-square",
-    kind: "Episode",
+    kind: "Audio",
     title: "10 Stoic principles",
     meta: "17:12",
     tilt: 1.5,
@@ -32,7 +32,7 @@ const SOURCES = [
   {
     src: "/sketch/wikipedia.png",
     media: "aspect-square bg-white p-2.5",
-    kind: "Article",
+    kind: "Text",
     title: "Stoicism, Wikipedia",
     meta: "12 min",
     tilt: 4,
