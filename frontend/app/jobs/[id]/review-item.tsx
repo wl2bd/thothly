@@ -471,7 +471,7 @@ function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
     return (
       <Tag className="text-destructive">
         <Ban />
-        No subtitles, will be left out
+        No transcript, will be left out
       </Tag>
     );
   }
@@ -479,7 +479,7 @@ function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
     return (
       <Tag className="text-warning">
         <CircleHelp />
-        Subtitles not checked, may be left out
+        Transcript not checked, may be left out
       </Tag>
     );
   }
@@ -487,7 +487,7 @@ function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
     return (
       <Tag className="text-warning">
         <TriangleAlert />
-        Auto captions, no punctuation
+        Raw captions, no punctuation
       </Tag>
     );
   }

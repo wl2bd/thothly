@@ -36,7 +36,7 @@ def compile_book(chapters: list[CompiledChapter], title: str) -> CompiledBook:
     if not usable:
         raise CompilationError(
             "The selected items had no usable content. Check that the videos have "
-            "subtitles and the articles have readable text."
+            "transcripts and the articles have readable text."
         )
 
     return CompiledBook(

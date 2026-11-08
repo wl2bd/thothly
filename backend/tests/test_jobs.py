@@ -234,11 +234,11 @@ def test_set_item_compile_state_roundtrips(client: TestClient) -> None:
     assert repository.get_discovered_item(job.id, "item-0").compile_state == "compiling"
 
     repository.set_item_compile_state(
-        job.id, "item-0", "skipped", "No subtitles available."
+        job.id, "item-0", "skipped", "No transcript available."
     )
     first = repository.get_discovered_item(job.id, "item-0")
     assert first.compile_state == "skipped"
-    assert first.compile_note == "No subtitles available."
+    assert first.compile_note == "No transcript available."
 
     # A later transition clears the reason (it belonged to the previous state).
     repository.set_item_compile_state(job.id, "item-0", "done")
@@ -281,13 +281,13 @@ def test_processing_job_exposes_only_the_confirmed_items(
 
     # And they stay visible once it's over, so the finished screen can report
     # what was left out.
-    repository.set_item_compile_state(job_id, "item-0", "skipped", "No subtitles available.")
+    repository.set_item_compile_state(job_id, "item-0", "skipped", "No transcript available.")
     repository.set_item_compile_state(job_id, "item-2", "done")
     repository.update_job_status(job_id, "completed")
 
     done = client.get(f"/jobs/{job_id}").json()
     assert [it["compile_state"] for it in done["discovered_items"]] == ["done", "skipped"]
-    assert done["discovered_items"][1]["compile_note"] == "No subtitles available."
+    assert done["discovered_items"][1]["compile_note"] == "No transcript available."
 
 
 @patch("app.jobs.router.run_discovery")
@@ -308,7 +308,7 @@ def test_get_job_exposes_confirmed_items_when_failed(
     repository.save_discovered_items(job_id, items)
     repository.confirm_items(job_id, ["item-0", "item-1"])
     repository.set_item_compile_state(
-        job_id, "item-0", "skipped", "No subtitles available."
+        job_id, "item-0", "skipped", "No transcript available."
     )
     repository.set_item_compile_state(
         job_id, "item-1", "failed", "This item could not be built."
@@ -326,7 +326,7 @@ def test_get_job_exposes_confirmed_items_when_failed(
         "skipped",
         "failed",
     ]
-    assert body["discovered_items"][0]["compile_note"] == "No subtitles available."
+    assert body["discovered_items"][0]["compile_note"] == "No transcript available."
     assert body["discovered_items"][1]["compile_note"] == "This item could not be built."
 
 
@@ -364,7 +364,7 @@ def test_confirm_items_clears_the_previous_compile_outcome(client: TestClient) -
     repository.confirm_items(job.id, ["item-0", "item-1"])
     repository.set_item_compile_state(job.id, "item-0", "done")
     repository.set_item_compile_state(
-        job.id, "item-1", "skipped", "No subtitles available."
+        job.id, "item-1", "skipped", "No transcript available."
     )
 
     again = repository.confirm_items(job.id, ["item-1"])

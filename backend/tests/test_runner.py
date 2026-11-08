@@ -16,7 +16,7 @@ from tests.conftest import confirmed_job
 
 NO_USABLE_CONTENT = (
     "The selected items had no usable content. Check that the videos have "
-    "subtitles and the articles have readable text."
+    "transcripts and the articles have readable text."
 )
 
 
@@ -87,7 +87,7 @@ def test_an_article_becomes_a_chapter(scrape):
 @pytest.mark.parametrize(
     ("item", "target", "value", "reason"),
     [
-        (_video(0), "app.jobs.chapters.youtube.load_transcript", None, "No subtitles available."),
+        (_video(0), "app.jobs.chapters.youtube.load_transcript", None, "No transcript available."),
         (
             _item(0, "podcast", "https://cdn.example/ep1.mp3"),
             "app.jobs.chapters.load_episode_transcript", None, "Transcription unavailable.",
@@ -120,7 +120,7 @@ def test_a_skipped_item_does_not_stop_the_others(load):
 
     assert repository.get_job(job_id).status == "completed"
     assert _outcomes(job_id) == [
-        ("i0", "skipped", "No subtitles available."),
+        ("i0", "skipped", "No transcript available."),
         ("i1", "done", None),
     ]
 
@@ -225,7 +225,7 @@ def test_the_preview_says_why_a_video_has_nothing_to_show(_load):
     preview = build_item_preview(_video(0))
 
     assert not preview.available
-    assert "no subtitles" in preview.note
+    assert "no transcript" in preview.note
 
 
 def test_a_paywalled_post_is_skipped_instead_of_compiling_its_teaser():

@@ -45,8 +45,8 @@ class SkipReason(Enum):
     """
 
     NO_SUBTITLES = (
-        "No subtitles available.",
-        "This video has no subtitles, so it would be skipped when compiling.",
+        "No transcript available.",
+        "This video has no transcript, so it would be skipped when compiling.",
     )
     NO_TRANSCRIPTION = (
         "Transcription unavailable.",
