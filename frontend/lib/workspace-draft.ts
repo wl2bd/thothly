@@ -4,6 +4,7 @@
 import type { SearchResult, Source, SourceSpec } from "@/lib/api";
 import { backendKindOfUrl, kindFromResultType, kindOfUrl, type Kind } from "@/lib/kinds";
 import { prettyUrl, sourceName } from "@/lib/url";
+import type { FromJob } from "@/lib/job-reuse";
 
 export interface StagedSource {
   url: string;
@@ -29,6 +30,9 @@ export interface Draft {
   typedTitle: string | null;
   // The searches that brought sources in, newest first, to go back to one.
   queries?: string[];
+  // The compilation this list came back from ("← Sources"), so Review can
+  // reopen it when nothing changed instead of making a twin.
+  fromJob?: FromJob;
 }
 
 const KEY = "thothly:draft";
@@ -72,13 +76,19 @@ export const saveJobDraft = (jobId: string, draft: Draft) => write(jobKey(jobId)
 // Back from a compilation to the workspace: its own snapshot when this tab
 // launched it, otherwise rebuilt from what the job knows about its sources.
 export function restoreJobDraft(jobId: string, sources: Source[], bookTitle: string | null) {
-  saveDraft(
-    read(jobKey(jobId)) ?? {
-      staged: sources.map(stagedFromSource),
-      suggestedTitle: "",
-      typedTitle: bookTitle,
+  const draft = read(jobKey(jobId)) ?? {
+    staged: sources.map(stagedFromSource),
+    suggestedTitle: "",
+    typedTitle: bookTitle,
+  };
+  saveDraft({
+    ...draft,
+    fromJob: {
+      id: jobId,
+      urls: draft.staged.map((s) => s.url),
+      title: draft.typedTitle ?? draft.suggestedTitle,
     },
-  );
+  });
 }
 
 // A search hit, picked.

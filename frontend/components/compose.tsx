@@ -52,6 +52,7 @@ import {
 } from "@/lib/api";
 import {
   getHistoryServerSnapshot,
+  forgetCompilation,
   getHistorySnapshot,
   recordCompilation,
   subscribeHistory,
@@ -69,6 +70,7 @@ import {
 } from "@/lib/workspace-draft";
 import { Skeleton } from "skullet/react";
 import { examplePath } from "@/lib/examples";
+import { reusableJob, type FromJob } from "@/lib/job-reuse";
 import { cn, plural } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
 import {
@@ -157,6 +159,9 @@ function ComposeWorkspace({
   const [typedTitle, setTypedTitle] = useState<string | null>(initialDraft?.typedTitle ?? null);
   const title = typedTitle ?? suggestedTitle;
   const [queries, setQueries] = useState<string[]>(initialDraft?.queries ?? []);
+  // The compilation this list came back from, reopened by Review when nothing
+  // changed (see reusableJob). Forgotten as soon as a new compilation starts.
+  const [fromJob, setFromJob] = useState<FromJob | undefined>(initialDraft?.fromJob);
   // No pane until there is something to put in it: a staged source, or a
   // compilation this browser remembers. The search takes the full width.
   const history = useSyncExternalStore(subscribeHistory, getHistorySnapshot, getHistoryServerSnapshot);
@@ -166,8 +171,8 @@ function ComposeWorkspace({
   // client-side mount writes: the hydration pass starts empty and must not
   // wipe what the remount is about to read.
   useEffect(() => {
-    if (persist) saveDraft({ staged, suggestedTitle, typedTitle, queries });
-  }, [persist, staged, suggestedTitle, typedTitle, queries]);
+    if (persist) saveDraft({ staged, suggestedTitle, typedTitle, queries, fromJob });
+  }, [persist, staged, suggestedTitle, typedTitle, queries, fromJob]);
   const [submitting, setSubmitting] = useState(false);
   // Two error slots, one per pane: a failed search is said where the search
   // is, a failed Review where the Review button is.
@@ -321,6 +326,7 @@ function ComposeWorkspace({
     if (staged.length === 0) {
       setSuggestedTitle(sentenceCase(trimmed));
       setTypedTitle(null);
+      setFromJob(undefined);
     }
     if (trimmed !== "" && !staged.some((s) => s.url === r.url))
       setQueries((prev) => [trimmed, ...prev.filter((q) => q !== trimmed)].slice(0, 5));
@@ -366,6 +372,7 @@ function ComposeWorkspace({
     if (staged.length === 0) {
       setSuggestedTitle("");
       setTypedTitle(null);
+      setFromJob(undefined);
     }
     paneChange(staged.length === 0, () => stageSources([stagedFromUrl(url)]));
     setQuery("");
@@ -398,12 +405,13 @@ function ComposeWorkspace({
   // sources" escape hatch beside Review. Undoable like a single removal: it is
   // the bigger loss of the two.
   function resetStaged() {
-    const before = { staged, suggestedTitle, typedTitle, queries };
+    const before = { staged, suggestedTitle, typedTitle, queries, fromJob };
     paneChange(true, () => {
       setStaged([]);
       setSuggestedTitle("");
       setTypedTitle(null);
       setQueries([]);
+      setFromJob(undefined);
     });
     toast("Sources cleared", {
       description: plural(before.staged.length, "source"),
@@ -415,6 +423,7 @@ function ComposeWorkspace({
             setSuggestedTitle(before.suggestedTitle);
             setTypedTitle(before.typedTitle);
             setQueries(before.queries);
+            setFromJob(before.fromJob);
           }),
       },
     });
@@ -429,10 +438,20 @@ function ComposeWorkspace({
 
   async function onCompile() {
     if (staged.length === 0) return;
+    // Back from a review with nothing changed: that review is still there.
+    const fromStatus = history?.find((e) => e.id === fromJob?.id)?.status;
+    const reopen = reusableJob(fromJob, staged.map((s) => s.url), title, fromStatus);
+    if (reopen) {
+      router.push(`/jobs/${reopen}`);
+      return;
+    }
     setSubmitting(true);
     setCompileError(null);
     try {
       const job = await createJob(staged.map(toSourceSpec), title.trim());
+      // The review this one replaces was never compiled: it would only sit in
+      // the history as a second To review.
+      if (fromJob && fromStatus === "reviewing") forgetCompilation(fromJob.id);
       // Remembered before the navigation, so a compile that is still running
       // when the tab is closed is already in this browser's list to come back
       // to. The response carries everything the snapshot needs.
