@@ -888,15 +888,28 @@ function ComposeWorkspace({
           {staged.length === 0 ? (
             <CompilationHistory />
           ) : (
-            <ul className="flex flex-col gap-2">
-              {staged.map((s) => (
-                <StagedRow
-                  key={s.url}
-                  source={s}
-                  onRemove={() => removeStaged(s.url)}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="flex flex-col gap-2">
+                {staged.map((s) => (
+                  <StagedRow
+                    key={s.url}
+                    source={s}
+                    onRemove={() => removeStaged(s.url)}
+                  />
+                ))}
+              </ul>
+              {/* A playlist of 200 videos is one of the five: said once, in
+                  words, since the row's own note only explains on hover. */}
+              {staged.some((s) => s.type.collection) && (
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  A playlist, channel or site counts as one source. It opens
+                  into its chapters at review, where you pick the ones you want.
+                </p>
+              )}
+              {/* The compilations already made stay one click away while a
+                  new one is built, so one still compiling can be found again. */}
+              {(history?.length ?? 0) > 0 && <EarlierCompilations count={history!.length} />}
+            </>
           )}
         </CompilationPane>
       )}
@@ -916,6 +929,25 @@ function ComposeWorkspace({
         </div>
       )}
     </>
+  );
+}
+
+// The history, folded under the sources being staged: a quiet toggle, the
+// full list once opened.
+function EarlierCompilations({ count }: { count: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-4 border-t pt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="text-muted-foreground hover:text-foreground text-link w-fit text-sm"
+      >
+        {open ? "Hide your compilations" : `Your compilations (${count})`}
+      </button>
+      {open && <CompilationHistory />}
+    </div>
   );
 }
 

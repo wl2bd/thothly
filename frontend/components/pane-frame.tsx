@@ -75,7 +75,7 @@ export function PaneFrame({
           <Input
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="Untitled compilation"
+            placeholder="Name this compilation"
             aria-label="Compilation title"
             maxLength={100}
             className="font-display text-xl md:text-xl"
