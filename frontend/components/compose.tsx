@@ -415,6 +415,20 @@ function ComposeWorkspace({
     inputRef.current?.focus();
   }
 
+  // A suggestion chip runs its search. The chips sit far down the page, and
+  // the page below the field collapses into results, so the scroll position
+  // is brought back to the field or the search (and its alerts) land off
+  // screen. The field's measured top is renewed so the glide that follows
+  // starts from where the field now is. Focus only where a keyboard exists:
+  // on a touch screen it would open the on-screen keyboard over the results.
+  function runSuggestion(q: string) {
+    window.scrollTo(0, 0);
+    liftTop.current = fieldRef.current?.getBoundingClientRect().top ?? null;
+    setQuery(q);
+    setSearchTerm(q);
+    if (matchMedia("(pointer: fine)").matches) inputRef.current?.focus({ preventScroll: true });
+  }
+
   async function onCompile() {
     if (staged.length === 0) return;
     setSubmitting(true);
@@ -644,11 +658,7 @@ function ComposeWorkspace({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setQuery(q);
-                      setSearchTerm(q);
-                      inputRef.current?.focus();
-                    }}
+                    onClick={() => runSuggestion(q)}
                   >
                     <HistoryIcon />
                     {q}
@@ -704,11 +714,7 @@ function ComposeWorkspace({
                           variant="outline"
                           size="sm"
                           className="border-input text-foreground bg-transparent shadow-none"
-                          onClick={() => {
-                            setQuery(q);
-                            setSearchTerm(q);
-                            inputRef.current?.focus();
-                          }}
+                          onClick={() => runSuggestion(q)}
                         >
                           {q}
                         </Button>
