@@ -401,7 +401,14 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
       return (
         <span
           key={key}
-          className={cn(token.display && "block max-w-full overflow-x-auto py-1")}
+          // A long inline formula (a matrix, a sentence in \text) can't wrap
+          // and would widen the whole page on a phone: it scrolls in its own
+          // box instead. Short ones stay inline, on the text's baseline.
+          className={cn(
+            token.display
+              ? "block max-w-full overflow-x-auto py-1"
+              : token.tex.length > 40 && "inline-block max-w-full overflow-x-auto overflow-y-hidden py-0.5 align-middle",
+          )}
           dangerouslySetInnerHTML={{
             __html: katex.renderToString(token.tex, { displayMode: token.display, throwOnError: false }),
           }}
