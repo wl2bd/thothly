@@ -323,9 +323,11 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
     case "figure": {
       const img = <FigureImage src={block.src} className="max-h-96 max-w-full object-contain" />;
       // w-fit plus the caption's inline-size containment: the caption wraps at
-      // the image's width instead of stretching the figure past it.
+      // the image's width instead of stretching the figure past it. A floor
+      // under that width: a lazy image not loaded yet is 0 wide, and its
+      // caption would stack one letter per line until it arrives.
       return block.caption ? (
-        <figure key={key} className="flex w-fit max-w-full flex-col gap-2 self-center">
+        <figure key={key} className="flex w-fit max-w-full min-w-[min(16rem,100%)] flex-col gap-2 self-center">
           {img}
           <FigureCaption text={block.caption} />
         </figure>
