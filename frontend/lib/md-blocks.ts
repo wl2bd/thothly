@@ -1,6 +1,6 @@
 // The block half of the reader's small Markdown renderer, for the subset the
 // compiler writes: headings, paragraphs, fenced code, blockquotes, bullet and
-// numbered lists (nested by indentation), pipe tables and figures. Inline
+// numbered lists (nested by indentation), pipe tables, figures and footnotes. Inline
 // markup inside the text is left to tokenizeInline.
 import { parseFigure } from "./inline-md.ts";
 
@@ -11,13 +11,16 @@ export type Block =
   | { t: "quote"; blocks: Block[] }
   | { t: "list"; ordered: boolean; items: ListItem[] }
   | { t: "table"; head: string[]; rows: string[][] }
-  | { t: "figure"; caption: string; src: string };
+  | { t: "figure"; caption: string; src: string }
+  // A footnote's text ("[^c1fn1]: ..."), called from the text by its label.
+  | { t: "note"; label: string; blocks: Block[] };
 
 export type ListItem = { text: string; blocks: Block[] };
 
 const FENCE = /^\s*(```|~~~)/;
 const HEADING = /^(#{1,6})\s+(.*)$/;
 const MARKER = /^([-*]|\d+\.)\s+(.*)$/;
+const NOTE = /^\[\^([^\]\s]+)\]:\s*(.*)$/;
 
 // Lines into chunks: a fenced block whole, a heading alone, everything else
 // up to the next blank line.
@@ -95,6 +98,10 @@ function parseChunk(lines: string[]): Block {
   if (lines.every((l) => l.startsWith(">"))) {
     return { t: "quote", blocks: parseBlocks(lines.map((l) => l.replace(/^> ?/, "")).join("\n")) };
   }
+  const note = NOTE.exec(first);
+  if (note) {
+    return { t: "note", label: note[1], blocks: parseBlocks([note[2], ...dedent(lines.slice(1))].join("\n")) };
+  }
   const figure = lines.length === 1 ? parseFigure(first) : null;
   if (figure) return { t: "figure", ...figure };
   if (lines.length > 1 && lines.every((l) => l.startsWith("|")) && /^\|[\s|:-]+$/.test(lines[1])) {
@@ -110,6 +117,11 @@ export function parseBlocks(md: string): Block[] {
   const blocks: Block[] = [];
   for (let lines of chunks(md.replace(/\r\n?/g, "\n").split("\n"))) {
     const last = blocks[blocks.length - 1];
+    // Indented lines after a note are its next paragraphs.
+    if (last?.t === "note" && lines.every(indented)) {
+      last.blocks.push(...parseBlocks(dedent(lines).join("\n")));
+      continue;
+    }
     // Indented lines after a list continue its last item (a loose list's
     // second paragraph); a list right after a list of the same kind is one.
     if (last?.t === "list") {

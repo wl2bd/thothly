@@ -1,7 +1,8 @@
 "use client";
 
 import { Kbd, KeyLabel } from "@/components/ui/kbd";
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
+import { Popover } from "@base-ui/react/popover";
 import katex from "katex";
 import { ExternalLink } from "lucide-react";
 import "katex/dist/katex.min.css";
@@ -135,12 +136,16 @@ export function BookContents({
 
 // A deliberately small Markdown renderer for the subset the compiler writes
 // (lib/md-blocks: headings, fenced code, quotes, nested lists, tables, figures;
-// lib/inline-md: emphasis, links, code, sup/sub, math). It reads "$10 and $20"
+// lib/inline-md: emphasis, links, code, sup/sub, math, footnote calls). It reads "$10 and $20"
 // as prices the way Pandoc does, which a stock Markdown library would not.
 // `reading`: the chapter in the reader, set for long reading (ink, 16px, open
 // leading). Without it, a compact muted excerpt (the review preview).
 export function MarkdownPreview({ md, reading = false }: { md: string; reading?: boolean }) {
+  const all = parseBlocks(md);
+  const notes = collectNotes(md, all);
+  const flow = all.filter((b) => b.t !== "note");
   return (
+    <Notes.Provider value={notes}>
     <div
       className={cn(
         "flex flex-col",
@@ -149,7 +154,7 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
           : "text-muted-foreground gap-2 text-sm leading-relaxed",
       )}
     >
-      {groupFigures(parseBlocks(md)).map((block, i) =>
+      {groupFigures(flow).map((block, i) =>
         Array.isArray(block) ? (
           // Figures in a row at the source (a gallery, an article's run of
           // examples) sit side by side, not stacked as a strip of thumbnails.
@@ -165,7 +170,70 @@ export function MarkdownPreview({ md, reading = false }: { md: string; reading?:
           renderBlock(block, i, reading)
         ),
       )}
+      {reading && notes.size > 0 && <NoteList notes={notes} />}
     </div>
+    </Notes.Provider>
+  );
+}
+
+// A chapter's footnotes by label, numbered in the order the text calls them.
+type Note = { n: number; blocks: Block[] };
+const Notes = createContext<Map<string, Note>>(new Map());
+
+function collectNotes(md: string, blocks: Block[]): Map<string, Note> {
+  const bodies = new Map<string, Block[]>();
+  for (const b of blocks) if (b.t === "note") bodies.set(b.label, b.blocks);
+  const notes = new Map<string, Note>();
+  for (const m of md.matchAll(/\[\^([^\]\s]+)\](?!:)/g)) {
+    const body = bodies.get(m[1]);
+    if (body && !notes.has(m[1])) notes.set(m[1], { n: notes.size + 1, blocks: body });
+  }
+  return notes;
+}
+
+// The call: its number, opening the note beside the text (an e-reader's
+// popup), so reading never jumps to the chapter's end.
+function NoteRef({ label }: { label: string }) {
+  const note = useContext(Notes).get(label);
+  if (!note) return null;
+  return (
+    <Popover.Root>
+      <Popover.Trigger
+        aria-label={`Note ${note.n}`}
+        className="text-link focus-visible:ring-ring -my-1 rounded-sm px-px align-super text-[0.7em] leading-none tabular-nums focus-visible:ring-2 focus-visible:outline-none"
+      >
+        {note.n}
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="top" sideOffset={6} collisionPadding={16} className="z-50">
+          <Popover.Popup
+            className={cn(
+              "bg-popover text-popover-foreground ring-foreground/10 flex max-h-72 w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto rounded-md px-4 py-3 text-sm leading-relaxed shadow-lg ring-1",
+              "origin-(--transform-origin) transition-[opacity,scale] duration-150 ease-out-quint data-[ending-style]:scale-97 data-[ending-style]:opacity-0 data-[starting-style]:scale-97 data-[starting-style]:opacity-0 motion-reduce:transition-opacity",
+            )}
+          >
+            {note.blocks.map((b, i) => renderBlock(b, i, false))}
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+// Every note again at the chapter's end, as a printed book sets them.
+function NoteList({ notes }: { notes: Map<string, Note> }) {
+  return (
+    <section aria-label="Notes" className="border-foreground/10 mt-6 flex flex-col gap-3 border-t pt-6">
+      <h3 className="eyebrow">Notes</h3>
+      <ol className="text-muted-foreground flex flex-col gap-2 text-sm leading-relaxed">
+        {[...notes.values()].map((note) => (
+          <li key={note.n} className="flex gap-3">
+            <span className="w-6 shrink-0 text-right tabular-nums">{note.n}</span>
+            <div className="flex min-w-0 flex-col gap-2">{note.blocks.map((b, i) => renderBlock(b, i, false))}</div>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -265,6 +333,8 @@ function renderBlock(block: Block, key: number, reading: boolean): React.ReactNo
         <div key={key} className="self-center">{img}</div>
       );
     }
+    case "note":
+      return null; // set apart by MarkdownPreview
     case "table":
       // An all-blank header (a table with no <th> row at the source) is left out.
       // Rules drawn from the ink, not the UI's near-invisible --border: a firm
@@ -337,6 +407,8 @@ function renderToken(token: InlineToken, key: number): React.ReactNode {
           }}
         />
       );
+    case "noteref":
+      return <NoteRef key={key} label={token.label} />;
     case "sup":
       return <sup key={key}>{token.children.map(renderToken)}</sup>;
     case "sub":

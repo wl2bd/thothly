@@ -61,3 +61,19 @@ test("a line opening with a year is a paragraph, not a list", () => {
     { t: "paragraph", text: "1999. A year that opens a sentence and goes on." },
   ]);
 });
+
+test("a footnote definition is a note block, its indented paragraphs with it", () => {
+  const blocks = parseBlocks("Text[^c1fn1].\n\n[^c1fn1]: One *a*.\n\n    Two.\n\n[^c1fn2]: Three.");
+  assert.deepEqual(blocks, [
+    { t: "paragraph", text: "Text[^c1fn1]." },
+    {
+      t: "note",
+      label: "c1fn1",
+      blocks: [
+        { t: "paragraph", text: "One *a*." },
+        { t: "paragraph", text: "Two." },
+      ],
+    },
+    { t: "note", label: "c1fn2", blocks: [{ t: "paragraph", text: "Three." }] },
+  ]);
+});

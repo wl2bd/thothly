@@ -89,3 +89,13 @@ test("prices are not math", () => {
     { t: "text", text: "$10 and $20, or 5 $ each" },
   ]);
 });
+
+test("a footnote call is a note reference, not a link", () => {
+  assert.deepEqual(tokenizeInline("Stoa[^c1fn1][^c1fn2]. See [x](https://a)"), [
+    { t: "text", text: "Stoa" },
+    { t: "noteref", label: "c1fn1" },
+    { t: "noteref", label: "c1fn2" },
+    { t: "text", text: ". See " },
+    { t: "link", text: "x", href: "https://a" },
+  ]);
+});
