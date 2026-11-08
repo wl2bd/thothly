@@ -144,11 +144,11 @@ export function CompletedView({ jobId, job }: { jobId: string; job: JobResponse 
         meta={meta}
         // What you do with the book, pinned under its contents so a long
         // table never pushes the downloads off screen. Download (the EPUB) is
-        // the one gold action, the copy for an AI sits beside it; the formats
+        // the one gold action, the copy for an AI sits under it; the formats
         // are named once, in the line under them.
         footer={
           <div className={cn("flex flex-col gap-2", rise, riseIn)} style={delay(350)}>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2">
               <BookActions
                 epubUrl={getDownloadUrl(jobId)}
                 mdUrl={getDownloadUrl(jobId, "md")}

@@ -56,7 +56,7 @@ export function CopyMarkdownButton({
       onClick={copy}
       disabled={!md}
       aria-keyshortcuts={shortcut ? "C" : undefined}
-      className="shrink-0"
+      className="w-full"
     >
       {copied ? <Check /> : <Copy />}
       {/* Both labels share one grid cell, the idle one hidden, so "Copied" never
