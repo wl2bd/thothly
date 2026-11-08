@@ -22,7 +22,6 @@ import {
   PodcastIcon,
   SearchIcon,
   SearchXIcon,
-  Trash2Icon,
   XIcon,
 } from "lucide-react";
 
@@ -348,26 +347,28 @@ function ComposeWorkspace({
     });
   }
 
-  // Enter only acts on a pasted link: it's added straight to the sources (the
-  // paste-a-URL flow). For a plain search term Enter does nothing — search runs
-  // automatically (debounced), and proceeding is a deliberate click (Check →
-  // Review), not a keystroke.
+  // Enter on a pasted link adds it straight to the sources (the paste-a-URL
+  // flow). On a search term it searches now, skipping the debounce: pressing
+  // Enter and seeing nothing for a second read as a dead field. Proceeding
+  // stays a deliberate click (Review), never this keystroke.
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (queryIsUrl) {
-      if (staged.length >= MAX_SOURCES) {
-        setError(SOURCES_FULL);
-        return;
-      }
-      const url = normalizeUrl(trimmed);
-      // A link names nothing, so a new compilation starts unnamed.
-      if (staged.length === 0) {
-        setSuggestedTitle("");
-        setTypedTitle(null);
-      }
-      paneChange(staged.length === 0, () => stageSources([stagedFromUrl(url)]));
-      setQuery("");
+    if (!queryIsUrl) {
+      if (trimmed !== "") setSearchTerm(trimmed);
+      return;
     }
+    if (staged.length >= MAX_SOURCES) {
+      setError(SOURCES_FULL);
+      return;
+    }
+    const url = normalizeUrl(trimmed);
+    // A link names nothing, so a new compilation starts unnamed.
+    if (staged.length === 0) {
+      setSuggestedTitle("");
+      setTypedTitle(null);
+    }
+    paneChange(staged.length === 0, () => stageSources([stagedFromUrl(url)]));
+    setQuery("");
   }
 
   // Removing is instant and undoable: the toast puts the source back where it
@@ -394,13 +395,28 @@ function ComposeWorkspace({
   }
 
   // Wipe the whole staged compilation — the "start over with entirely different
-  // sources" escape hatch beside Review.
+  // sources" escape hatch beside Review. Undoable like a single removal: it is
+  // the bigger loss of the two.
   function resetStaged() {
+    const before = { staged, suggestedTitle, typedTitle, queries };
     paneChange(true, () => {
       setStaged([]);
       setSuggestedTitle("");
       setTypedTitle(null);
       setQueries([]);
+    });
+    toast("Sources cleared", {
+      description: plural(before.staged.length, "source"),
+      action: {
+        label: "Undo",
+        onClick: () =>
+          paneChange(true, () => {
+            setStaged(before.staged);
+            setSuggestedTitle(before.suggestedTitle);
+            setTypedTitle(before.typedTitle);
+            setQueries(before.queries);
+          }),
+      },
     });
   }
 
@@ -946,7 +962,7 @@ function StagedRow({
           onClick={onRemove}
           aria-label="Remove source"
         >
-          <Trash2Icon />
+          <XIcon />
         </Button>
       </Tooltip>
     </li>

@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
 // declared.
 export const SHORTCUTS: { screen: string; keys: string[]; label: string }[] = [
   { screen: "Home", keys: ["/"], label: "Search" },
-  { screen: "Home", keys: ["↵"], label: "Add a pasted link" },
+  { screen: "Home", keys: ["↵"], label: "Search now, or add a pasted link" },
   { screen: "Home", keys: ["Mod", "↵"], label: "Review the sources" },
   { screen: "Review", keys: ["A"], label: "Select or deselect every chapter" },
   { screen: "Review", keys: ["Mod", "↵"], label: "Compile" },
