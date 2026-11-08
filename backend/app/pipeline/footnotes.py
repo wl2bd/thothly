@@ -121,6 +121,21 @@ def write_footnotes(markdown: str, notes: dict[int, str]) -> str:
     return body + "\n\n" + "\n\n".join(definitions)
 
 
+_FIRST_DEFINITION = re.compile(r"^\[\^fn\d+\]:", re.M)
+
+
+def split_definitions(markdown: str) -> tuple[str, str]:
+    """The text, and the notes write_footnotes set after it.
+
+    The AI polish gets the text only: the notes are mostly references, would
+    cost as much again, and are nothing to punctuate.
+    """
+    match = _FIRST_DEFINITION.search(markdown)
+    if match is None:
+        return markdown, ""
+    return markdown[: match.start()].rstrip(), markdown[match.start():].strip()
+
+
 _BOOK_LABEL = re.compile(r"\[\^fn(\d+)\]")
 
 

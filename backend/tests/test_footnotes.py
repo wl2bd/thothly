@@ -85,3 +85,13 @@ def test_book_numbering_keeps_labels_apart():
     assert number_book_footnotes(b, 2) == "Two[^c2fn1].\n\n[^c2fn1]: Second."
     # A regex class in code is not a footnote.
     assert number_book_footnotes("`[^a-z]`", 1) == "`[^a-z]`"
+
+
+def test_definitions_split_off_and_back():
+    from app.pipeline.footnotes import split_definitions
+
+    md = "Text[^fn1].\n\n[^fn1]: One.\n\n    Two.\n\n[^fn2]: Three."
+    body, defs = split_definitions(md)
+    assert body == "Text[^fn1]."
+    assert defs == "[^fn1]: One.\n\n    Two.\n\n[^fn2]: Three."
+    assert split_definitions("No notes.") == ("No notes.", "")

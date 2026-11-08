@@ -13,6 +13,7 @@ from enum import Enum
 
 from app.core.config import settings
 from app.pipeline.cleanup import StopCheck, clean_markdown, clean_transcript, map_speaker_names
+from app.pipeline.footnotes import split_definitions
 from app.pipeline.html_md import demote_headings, html_to_markdown, strip_leading_title
 from app.pipeline.transcript_md import transcript_to_markdown
 from app.pipeline.i18n import chrome, detect_language, normalize_language
@@ -133,10 +134,13 @@ def polish(
     if item.item_type == "youtube":
         content = clean_transcript(drafted.transcript, roles, llm, should_stop=should_stop)
     else:
+        text, notes = split_definitions(chapter.content_md)
         content = clean_markdown(
-            chapter.content_md, roles, content_key=item.url, language=chapter.language,
+            text, roles, content_key=item.url, language=chapter.language,
             endpoint=llm, should_stop=should_stop,
         )
+        if content and notes:
+            content = f"{content}\n\n{notes}"
     if not content:
         raise ItemSkipped(SkipReason.NO_CONTENT)
     return chapter.model_copy(update={"content_md": content})
