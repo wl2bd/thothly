@@ -383,3 +383,37 @@ def test_a_paywalled_feed_article_is_flagged_for_review():
 )
 def test_site_name_read_off_the_page_title(page_title, expected):
     assert discovery._site_from_page_title(page_title, "Stoicism") == expected
+
+
+_PROSE = "<p>" + "A sentence of the entry, long enough to be read as prose. " * 40 + "</p>"
+
+
+@patch("app.sources.discovery.list_feed", side_effect=FeedUnavailable("not a feed"))
+@patch("app.sources.blog.fetch_page")
+@patch("app.sources.discovery.fetch_page")
+def test_a_pasted_entry_is_that_entry_not_its_sites_feed(fetch, blog_fetch, mock_feed):
+    # An encyclopedia entry: no date, no dashed slug, and its site declares a feed.
+    fetch.return_value = blog_fetch.return_value = (
+        '<html><head><title>Stoicism | Some Encyclopedia</title>'
+        '<link rel="alternate" type="application/rss+xml" href="/feed/"></head>'
+        f"<body><article><h1>Stoicism</h1>{_PROSE * 3}</article></body></html>"
+    )
+    _, items = discovery.discover_source(SourceSpec(url="https://encyclo.example/stoicism/"), 0)
+    assert [(i.url, i.title) for i in items] == [("https://encyclo.example/stoicism/", "Stoicism")]
+    # Only the URL itself was tried as a feed, never the site's.
+    assert [c.args[0] for c in mock_feed.call_args_list] == ["https://encyclo.example/stoicism/"]
+
+
+@pytest.mark.parametrize("body", [
+    # A tag page: each post a headline link and a long excerpt.
+    "".join(f'<h2><a href="/2024/05/post-number-{n}/">Post {n}</a></h2>{_PROSE}' for n in range(6)),
+    # A category showing whole posts, WordPress-style: headlines in each post's header.
+    "".join(f'<article><header class="entry-header"><h2><a href="/my-post-{n}/">Post {n}</a></h2></header>{_PROSE}</article>' for n in range(10)),
+    # An index: mostly link text.
+    "<ul>" + "".join(f'<li><a href="/entries/e{n}/">Entry number {n} on a topic</a></li>' for n in range(120)) + "</ul>",
+])
+@patch("app.sources.discovery.list_feed", side_effect=FeedUnavailable("none"))
+@patch("app.sources.discovery.fetch_page")
+def test_a_list_of_posts_below_the_home_still_unfolds(fetch, _feed, body):
+    fetch.return_value = f"<html><head><title>Tag | Blog</title></head><body><main>{body}</main></body></html>"
+    assert not discovery._reads_as_article(fetch.return_value, "https://blog.example/tags/python/")

@@ -3,6 +3,7 @@ import re
 from pathlib import PurePosixPath
 from urllib.parse import unquote, urljoin, urlparse
 
+import trafilatura
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
@@ -102,6 +103,14 @@ def _is_deep_page(url: str) -> bool:
         segments = segments[1:]
     return len(segments) >= 2
 
+
+
+def _is_home(url: str) -> bool:
+    """A site's root, locale prefix aside (`/`, `/fr/`)."""
+    segments = [s for s in urlparse(url).path.split("/") if s]
+    if segments and is_locale_segment(segments[0]):
+        segments = segments[1:]
+    return not segments
 
 
 def _discover_podcast(
@@ -249,6 +258,11 @@ def _discover_blog(
     # way. It beats guessing: a page at /fr/ can declare /fr/index.xml, while
     # the guessed /index.xml at the host root is the English blog.
     html = fetch_page(url, settings.scrape_timeout_s)
+    # A page below the home that reads as one article is that article, not a
+    # door to its site: an encyclopedia entry has no date or dashed slug to go
+    # on, and its site's feed (or its cross-references) would replace it.
+    if html and not _is_home(url) and _reads_as_article(html, url):
+        return _single_article(url, source_index, html=html)
     for feed_url in _declared_feeds(html, url) if html else []:
         declared = _feed_to_items(feed_url, source_index)
         if declared is not None:
@@ -320,7 +334,7 @@ def _try_autodetect_rss(
 
 
 def _single_article(
-    url: str, source_index: int, known_title: str | None = None
+    url: str, source_index: int, known_title: str | None = None, html: str | None = None
 ) -> tuple[str | None, list[DiscoveredItem]]:
     """One discovered item for a directly-pasted article URL (no crawling).
 
@@ -329,7 +343,7 @@ def _single_article(
     it starts left out instead of failing later. The title is the article's
     own, then the one the search showed, then the page's, then the URL's.
     """
-    html = fetch_page(url, settings.scrape_timeout_s)
+    html = html or fetch_page(url, settings.scrape_timeout_s)
     article, paywalled = None, False
     if html:
         try:
@@ -357,6 +371,51 @@ def _single_article(
         or _site_from_page_title(_html_title(html) if html else None, title),
     )
     return title, [item]
+
+
+# Below this, a page is too short to tell an article from a stub or a list.
+_ARTICLE_MIN_WORDS = 300
+# A list of posts gives each one a headline link (or an <article>); an article
+# links to a few other posts at most, from inside its sentences.
+_ARTICLE_MAX_POST_LINKS = 3
+# An index (a table of contents, a bookshelf) is mostly link text.
+_ARTICLE_MAX_LINK_SHARE = 0.25
+
+
+def _reads_as_article(html: str, url: str) -> bool:
+    """Whether a page is one piece of prose rather than a door to others:
+    enough main text, few links to other posts outside its sentences, little
+    of its text in links."""
+    linked_posts = sum(1 for *_, unsure in _extract_article_links(html, url) if not unsure)
+    if max(linked_posts, _headline_links(html, url)) > _ARTICLE_MAX_POST_LINKS:
+        return False
+    main = trafilatura.extract(html, output_format="html", include_links=True, url=url)
+    if not main:
+        return False
+    soup = BeautifulSoup(main, "html.parser")
+    words = len(soup.get_text(" ").split())
+    link_words = sum(len(a.get_text(" ").split()) for a in soup.find_all("a"))
+    return words >= _ARTICLE_MIN_WORDS and link_words <= _ARTICLE_MAX_LINK_SHARE * words
+
+
+def _headline_links(html: str, url: str) -> int:
+    """How many other pages of the site the page heads with a link: a post
+    list's headlines (in its posts' own headers too, which link extraction
+    sets aside as furniture), or one <article> per post."""
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.select("nav, footer, [role=navigation], [role=contentinfo]"):
+        tag.decompose()
+    articles = len(soup.find_all("article"))
+    host, page = urlparse(url).netloc, url.split("#")[0].rstrip("/")
+    targets = set()
+    for heading in soup.find_all(["h1", "h2", "h3", "h4"]):
+        link = heading.find("a", href=True) or heading.find_parent("a", href=True)
+        if not link:
+            continue
+        href = urljoin(url, link["href"]).split("#")[0]
+        if urlparse(href).netloc == host and href.rstrip("/") != page:
+            targets.add(href)
+    return max(len(targets), articles if articles >= 2 else 0)
 
 
 def _site_from_page_title(page_title: str | None, title: str) -> str | None:
