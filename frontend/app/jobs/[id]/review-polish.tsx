@@ -107,7 +107,7 @@ export function RoleSelector({
           <p className="text-muted-foreground text-xs">
             {runsOn}
             <button type="button" onClick={onConnect} className="text-foreground text-link font-medium">
-              {browserModel ? "Change" : "Use your own key"}
+              {browserModel ? "Change model" : "Use your own key"}
             </button>
           </p>
         </>

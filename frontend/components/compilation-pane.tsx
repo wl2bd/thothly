@@ -72,7 +72,7 @@ export function CompilationPane({
     >
       <aside
         data-pane
-        aria-label={settings ? (view === "shortcuts" ? "Keyboard shortcuts" : "Settings") : "Your compilation"}
+        aria-label={settings ? (view === "shortcuts" ? "Keyboard shortcuts" : "AI models") : "Your compilation"}
         style={{ "--footer-h": `${footer ? footerHeight : 0}px` } as React.CSSProperties}
         className={cn(
           "bg-card flex min-h-0 flex-col border-t max-lg:flex-1 max-lg:pb-(--footer-h) lg:border-t-0 lg:border-l",

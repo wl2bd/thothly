@@ -28,7 +28,8 @@ export function AppHeader() {
         <span className="text-muted-foreground mb-0.5 text-xs tabular-nums max-sm:hidden">v{version}</span>
       </Link>
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* Words, not a gear: nobody guesses that a cog holds their AI key. */}
+        {/* Words, not a gear, and the words of what it holds: nobody guesses
+            that a cog, or "Settings", holds their AI key. */}
         <SettingsLink className={navLink} />
         {/* The two with a key sit together; About has none. */}
         <ShortcutsHelp className={navLink} />

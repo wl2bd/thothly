@@ -20,9 +20,9 @@ export const SHORTCUTS: { screen: string; keys: string[]; label: string }[] = [
   { screen: "Finished compilation", keys: ["C"], label: "Copy the Markdown" },
   { screen: "Finished compilation", keys: ["←", "→"], label: "Previous or next chapter" },
   { screen: "Any compilation", keys: ["N"], label: "New compilation" },
-  { screen: "Everywhere", keys: [","], label: "Settings" },
+  { screen: "Everywhere", keys: [","], label: "AI models" },
   { screen: "Everywhere", keys: ["?"], label: "This list" },
-  { screen: "Everywhere", keys: ["Esc"], label: "Clear the search, or close Settings and dialogs" },
+  { screen: "Everywhere", keys: ["Esc"], label: "Clear the search, or close a side panel or dialog" },
 ];
 
 function typing(target: EventTarget | null): boolean {

@@ -90,7 +90,7 @@ export function SettingsLink({ className }: { className?: string }) {
         onClick={() => setSettingsOpen(!open)}
         className={cn(className, "flex items-center gap-1.5", open && "text-foreground")}
       >
-        Settings
+        AI models
         <Kbd>,</Kbd>
       </button>
       {/* Portalled to the body: the header's backdrop blur would otherwise
@@ -99,7 +99,7 @@ export function SettingsLink({ className }: { className?: string }) {
         createPortal(
         <aside
           data-pane
-          aria-label={view === "shortcuts" ? "Keyboard shortcuts" : "Settings"}
+          aria-label={view === "shortcuts" ? "Keyboard shortcuts" : "AI models"}
           className="bg-card fixed inset-x-0 top-header bottom-0 z-30 flex flex-col border-t lg:left-auto lg:w-pane lg:border-t-0 lg:border-l"
         >
           <SidePaneContent />
