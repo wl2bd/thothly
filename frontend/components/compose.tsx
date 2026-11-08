@@ -80,8 +80,7 @@ import {
   MEDIUM_ORDER,
   mediumLabel,
 } from "@/components/source-kind";
-import { kindFromResultType } from "@/lib/kinds";
-import { hostOf } from "@/lib/url";
+import { domainOf, kindFromResultType } from "@/lib/kinds";
 
 // Every settled query is a paid search (ScrapeCreators + triage), so a
 // half-typed word must not go out. A space ends a word, so it searches at once;
@@ -917,6 +916,7 @@ function StagedRow({
   onRemove: () => void;
 }) {
   const kind = s.type;
+  const origin = s.author ?? domainOf(kind, s.url);
   return (
     // Slides in from the search side when picked, so the eye follows the
     // result into the compilation. @starting-style: no JS, no library.
@@ -932,8 +932,12 @@ function StagedRow({
         <span className="line-clamp-2 text-sm leading-snug" title={s.title}>{s.title}</span>
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 overflow-hidden text-xs">
           <SourceTypePill kind={kind} className="shrink-0" />
-          <MetaSep />
-          <span className="min-w-0 truncate">{s.author ?? hostOf(s.url)}</span>
+          {origin && (
+            <>
+              <MetaSep />
+              <span className="min-w-0 truncate">{origin}</span>
+            </>
+          )}
           {kind.collection && <CollectionNote />}
         </span>
       </span>
@@ -1111,6 +1115,7 @@ function ResultRow({
   // out of reach, not just its checkbox, so it never looks clickable.
   const blocked = full && !checked;
   const kind = kindFromResultType(r.type, r.url);
+  const domain = domainOf(kind, r.url);
   return (
     <li>
       <label
@@ -1145,8 +1150,12 @@ function ResultRow({
           </span>
           <span className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex-nowrap sm:overflow-hidden">
             <SourceTypePill kind={kind} className="shrink-0" />
-            <MetaSep />
-            <span className="min-w-0 truncate">{hostOf(r.url)}</span>
+            {domain && (
+              <>
+                <MetaSep />
+                <span className="min-w-0 truncate">{domain}</span>
+              </>
+            )}
             {r.author && (
               <>
                 <MetaSep />

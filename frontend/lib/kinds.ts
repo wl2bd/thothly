@@ -12,6 +12,7 @@
 // compilation.
 import type { ItemType, ResultType, Source } from "@/lib/api";
 import { isSiteHome } from "./site-home.ts";
+import { hostOf } from "./url.ts";
 
 export type Medium = "video" | "audio" | "text";
 
@@ -68,4 +69,11 @@ export function backendKindOfUrl(url: string): BackendKind {
   return "blog";
 }
 
-export const kindOfUrl = (url: string): Kind => fromBackend(backendKindOfUrl(url), url);
+// The domain a source is listed under. An audio source's URL is its file on a
+// host or tracker (pscrb.fm, api.spreaker.com, anchor.fm) that names nobody:
+// the show does, and that is what the row says instead.
+export function domainOf(kind: Kind, url: string): string {
+  return kind.medium === "audio" ? "" : hostOf(url);
+}
+
+export const kindOfUrl =(url: string): Kind => fromBackend(backendKindOfUrl(url), url);

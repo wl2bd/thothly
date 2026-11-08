@@ -116,7 +116,9 @@ export function SourceGroup({
   const host = hostOf(url);
   // Show the domain in the meta line unless the title already fell back to the
   // URL (no captured name), so it's never printed twice.
-  const showHost = host !== "" && !title.startsWith(host);
+  // An audio source has no domain worth showing (see domainOf).
+  const showHost =
+    host !== "" && !title.startsWith(host) && uniformKind?.medium !== "audio";
 
   // A source that resolved to a single item has no group to manage (collapse,
   // select-all, a 1/1 count are all moot, and a header would just repeat the
