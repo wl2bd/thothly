@@ -21,23 +21,26 @@ test("the source count is kept when valid, and an entry without one still reads"
   assert.equal(read[2].sources, undefined);
 });
 
-test("books split into To review and Ready, newest first in each", () => {
-  const { toReview, ready } = groupBooks(
+test("books split into In progress, To review, Ready and Did not finish, newest first in each", () => {
+  const { inProgress, toReview, ready, failed } = groupBooks(
     parseHistory(
       JSON.stringify([
         book("old-ready", "completed", 1),
         book("review", "reviewing", 2),
         book("new-ready", "completed", 5),
-        book("building", "discovering", 4),
+        book("opening", "discovering", 4),
         book("failed", "failed", 3),
         book("compiling", "processing", 6),
       ]),
     ),
   );
-  // Still being found, or waiting on you: the review side.
-  assert.deepEqual(toReview.map((b) => b.id), ["building", "review"]);
-  // Past review: compiling, done or stopped.
-  assert.deepEqual(ready.map((b) => b.id), ["compiling", "new-ready", "failed", "old-ready"]);
+  // Running on the server: nothing for you to do yet.
+  assert.deepEqual(inProgress.map((b) => b.id), ["compiling", "opening"]);
+  // Waiting on you.
+  assert.deepEqual(toReview.map((b) => b.id), ["review"]);
+  // Done, and only done.
+  assert.deepEqual(ready.map((b) => b.id), ["new-ready", "old-ready"]);
+  assert.deepEqual(failed.map((b) => b.id), ["failed"]);
 });
 
 test("an unparseable date sorts last instead of breaking the order", () => {

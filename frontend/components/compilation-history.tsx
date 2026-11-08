@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Trash2Icon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   forgetCompilation,
   getHistorySnapshot,
   groupBooks,
+  GROUPS,
   getHistoryServerSnapshot,
   replaceHistory,
   snapshotOf,
@@ -48,7 +49,7 @@ export function CompilationHistory() {
     const commit = () => {
       if (!undone) forgetCompilation(entry.id);
     };
-    toast("Compilation deleted", {
+    toast("Removed from your list", {
       description: entry.title ?? undefined,
       duration: UNDO_MS,
       action: {
@@ -140,17 +141,14 @@ export function CompilationHistory() {
     );
   }
 
-  const { toReview, ready } = groupBooks(visible);
+  const groups = groupBooks(visible);
 
   return (
     <div className="flex flex-col gap-6">
       {/* A section of the pane, under its title: a step below it, a step
-          above the To review and Ready labels. */}
+          above the group labels. */}
       <h3 className="text-base font-medium">Your compilations</h3>
-      {[
-        { label: "To review", books: toReview },
-        { label: "Ready", books: ready },
-      ].map(
+      {GROUPS.map(({ key, label }) => ({ label, books: groups[key] })).map(
         ({ label, books }) =>
           books.length > 0 && (
             <section key={label} aria-label={label} className="flex flex-col gap-1">
@@ -200,7 +198,9 @@ function BookRow({ entry, onDelete }: { entry: CompilationSnapshot; onDelete: ()
           ))}
         </span>
       </Link>
-      {/* A bin, not a cross: this deletes (undoable for a few seconds). Shown
+      {/* A cross, not a bin: this only takes the compilation off this
+          browser's list (undoable for a few seconds); the files stay on the
+          server until it restarts. Shown
           on hover or keyboard focus where there is a pointer to hover with;
           always there on touch, where nothing hovers. */}
       <Button
@@ -208,10 +208,10 @@ function BookRow({ entry, onDelete }: { entry: CompilationSnapshot; onDelete: ()
         variant="nav"
         size="icon-sm"
         onClick={onDelete}
-        aria-label="Delete this compilation"
+        aria-label="Remove from your list"
         className="[@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
       >
-        <Trash2Icon />
+        <XIcon />
       </Button>
     </li>
   );

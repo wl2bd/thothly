@@ -23,16 +23,27 @@ const KEY = "thothly.compilations.v1";
 // on both storage and the refresh burst the app fires on mount.
 const HISTORY_CAP = 25;
 
-// What each status means in the list: still to review (being found, or waiting
-// for picks) or past it, and what the row adds that its group label doesn't
-// say. A Record, so a status the backend adds fails the build until placed.
-export const STATUS: Record<JobStatus, { toReview: boolean; label?: string }> = {
-  discovering: { toReview: true, label: "Building…" },
-  reviewing: { toReview: true },
-  processing: { toReview: false, label: "Building…" },
-  completed: { toReview: false },
-  failed: { toReview: false, label: "Did not finish" },
+// What each status means in the list: which group it sits in, and what the row
+// adds that its group label doesn't say (the step it is at, while running). A
+// Record, so a status the backend adds fails the build until placed.
+export type BookGroup = "inProgress" | "toReview" | "ready" | "failed";
+
+export const STATUS: Record<JobStatus, { group: BookGroup; label?: string }> = {
+  discovering: { group: "inProgress", label: "Opening sources…" },
+  reviewing: { group: "toReview" },
+  processing: { group: "inProgress", label: "Compiling…" },
+  completed: { group: "ready" },
+  failed: { group: "failed" },
 };
+
+// The groups in the order the list shows them: what needs you first, then
+// what is running, then what is done.
+export const GROUPS: { key: BookGroup; label: string }[] = [
+  { key: "toReview", label: "To review" },
+  { key: "inProgress", label: "In progress" },
+  { key: "ready", label: "Ready" },
+  { key: "failed", label: "Did not finish" },
+];
 
 function isSnapshot(value: unknown): value is CompilationSnapshot {
   if (!value || typeof value !== "object") return false;
@@ -64,19 +75,14 @@ export function parseHistory(raw: string | null): CompilationSnapshot[] {
 }
 
 // Newest first in each group.
-export function groupBooks(entries: CompilationSnapshot[]): {
-  toReview: CompilationSnapshot[];
-  ready: CompilationSnapshot[];
-} {
+export function groupBooks(entries: CompilationSnapshot[]): Record<BookGroup, CompilationSnapshot[]> {
   const time = (e: CompilationSnapshot) => {
     const t = new Date(e.createdAt).getTime();
     return Number.isNaN(t) ? -Infinity : t;
   };
   const sorted = [...entries].sort((a, b) => time(b) - time(a));
-  return {
-    toReview: sorted.filter((e) => STATUS[e.status].toReview),
-    ready: sorted.filter((e) => !STATUS[e.status].toReview),
-  };
+  const of = (group: BookGroup) => sorted.filter((e) => STATUS[e.status].group === group);
+  return { inProgress: of("inProgress"), toReview: of("toReview"), ready: of("ready"), failed: of("failed") };
 }
 
 function readHistory(): CompilationSnapshot[] {
