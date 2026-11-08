@@ -23,7 +23,7 @@ const TINTS: { id: CoverTint; label: string; color: string }[] = [
 ];
 
 const EMBLEMS: { id: CoverEmblem; label: string }[] = [
-  { id: "source", label: "Source" },
+  { id: "source", label: "Source logo" },
   { id: "thothly", label: "Thothly" },
   { id: "none", label: "None" },
 ];
@@ -174,7 +174,7 @@ export function CoverEditor({
             aria-label="Authors, separated by commas"
             maxLength={200}
           />
-          <p className="text-muted-foreground text-xs">Separate authors with commas.</p>
+          <p className="text-muted-foreground text-xs">Empty: taken from the sources. Separate names with commas.</p>
         </div>
       </div>
 

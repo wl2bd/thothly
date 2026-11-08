@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  AudioLines,
   Ban,
   ChevronDown,
   CircleHelp,
@@ -441,7 +442,7 @@ function contentTag(item: DiscoveredItem, leftOut: boolean, price: number) {
     const minutes = Math.round((item.estimated_duration_s ?? 0) / 60);
     return (
       <Tag className="text-warning">
-        <TriangleAlert />
+        <AudioLines />
         Transcribed from the audio
         {minutes > 0 && ` · ${minutes} min`}
         {price > 0 && ` · ${formatUsd(price, { approx: true })}`}

@@ -238,6 +238,7 @@ export function ReviewView({
           per-source group headers — every "select this" affordance on the screen
           is a checkbox in the left column, so the master belongs there too. The
           count is status, not a heading, so it rides along muted. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
       <label className="flex w-fit cursor-pointer items-center gap-3 text-sm">
         <Checkbox
           checked={allMaster}
@@ -254,6 +255,12 @@ export function ReviewView({
         <span className="text-muted-foreground">Select all</span>
         <Kbd className="text-muted-foreground">A</Kbd>
       </label>
+      {/* Said where the grips are, and whatever the pane beside shows: it
+          used to sit in the pane and vanish as soon as AI polish appeared. */}
+      {reorderable && (
+        <span className="text-muted-foreground text-xs">Drag a source to change its place</span>
+      )}
+      </div>
 
       {items.length > 8 && (
         <div className="relative">
@@ -380,9 +387,7 @@ export function ReviewView({
           />
         ) : (
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Pick what goes in on the left.
-            {sourceOrder.length > 1 &&
-              " Drag a source to change its place in the compilation."}
+            Pick the chapters that go in, then compile.
           </p>
         )}
         {!connecting && (

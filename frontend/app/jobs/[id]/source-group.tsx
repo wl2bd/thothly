@@ -10,7 +10,7 @@ import { MetaSep, SourceFavicon, SourceTypePill } from "@/components/source-kind
 import { hostOf, sourceName } from "@/lib/url";
 import { kindFromItemType } from "@/lib/kinds";
 import { cn, plural } from "@/lib/utils";
-import { PODCAST_PRESELECT, sureItems } from "@/lib/review";
+import { PODCAST_PRESELECT, isRawCaptions, needsTranscription, sureItems } from "@/lib/review";
 import { type DiscoveredItem, type JobResponse, type LlmConfig } from "@/lib/api";
 import { ReviewItem } from "./review-item";
 import { DragGrip } from "./shared";
@@ -149,6 +149,12 @@ export function SourceGroup({
   const someSelected = selectedCount > 0 && !allSelected;
   // A search opens the fold, like it opens a collapsed source.
   const showUnsure = needle !== "" || uncertainOpen.has(sourceIndex);
+  const groupAction =
+    connectStt && groupItems.some(needsTranscription)
+      ? { label: "Connect transcription", run: connectStt }
+      : turnOnPolish && groupItems.some(isRawCaptions)
+        ? { label: "Fix with AI polish", run: turnOnPolish }
+        : null;
   const renderChild = (item: DiscoveredItem) => (
     <ReviewItem
       key={item.id}
@@ -157,8 +163,8 @@ export function SourceGroup({
       checked={selected.has(item.id)}
       leftOut={leftOut(item)}
       onToggle={() => toggle(item.id)}
-      onConnectStt={connectStt}
-        onPolish={turnOnPolish}
+      onConnectStt={groupAction ? undefined : connectStt}
+        onPolish={groupAction ? undefined : turnOnPolish}
         onChooseLanguage={(language) => chooseLanguage(item.id, language)}
         pricing={llm?.pricing ?? null}
       highlight={needle}
@@ -219,10 +225,21 @@ export function SourceGroup({
               )}
               {(uniformKind || showHost) && <MetaSep />}
               <span className="shrink-0 tabular-nums">
-                {selectedCount}/{headerItems.length}
+                {selectedCount} of {headerItems.length}
               </span>
             </span>
           </button>
+          {/* The fix for its rows, said once on the source instead of on
+              every episode or video of a long list. */}
+          {groupAction && (
+            <button
+              type="button"
+              onClick={groupAction.run}
+              className="text-foreground text-link shrink-0 text-xs font-medium"
+            >
+              {groupAction.label}
+            </button>
+          )}
           {/* The disclosure (expand/collapse) lives on the RIGHT, in the same
               slot the per-item Preview button occupies on the rows below. A +/−
               reads as "show more / show less" there, where a chevron in a
@@ -314,7 +331,7 @@ export function SourceGroup({
                     </span>
                     <MetaSep />
                     <span className="tabular-nums">
-                      {unsureSelected}/{unsureItems.length}
+                      {unsureSelected} of {unsureItems.length}
                     </span>
                   </span>
                 </button>
