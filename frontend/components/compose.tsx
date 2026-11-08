@@ -771,7 +771,7 @@ function ComposeWorkspace({
 
 
           {/* Chips and Sort share a row where there is room for one. On a phone
-              the chips wrap and Sort stacks under them. */}
+              the chips scroll sideways and Sort stacks under them. */}
           {/* Drawn in the skeleton too (from the sample results), so the row
               is already in place when the first results land and the list
               below never gets pushed down. */}
@@ -1201,8 +1201,15 @@ function TypeFilter({
   return (
     // shadcn's line tabs: the current one carries the ink and a gold
     // underline, the rest stay quiet.
-    <Tabs value={active} onValueChange={(v) => onChange(String(v))}>
-      <TabsList variant="line" aria-label="Filter by type">
+    // The row scrolls sideways when the types outgrow the screen, instead of
+    // widening the whole page on a phone. The bottom padding keeps the active
+    // underline, which hangs below the list, inside the scroll box.
+    <Tabs
+      value={active}
+      onValueChange={(v) => onChange(String(v))}
+      className="w-full min-w-0 overflow-x-auto pb-1.5 [scrollbar-width:none] sm:w-auto sm:flex-1 [&::-webkit-scrollbar]:hidden"
+    >
+      <TabsList variant="line" aria-label="Filter by type" className="w-max">
         {chips.map(({ key, label, count }) => (
           <TabsTrigger key={key} value={key} className="after:bg-primary px-2">
             {label}
