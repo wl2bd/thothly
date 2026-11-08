@@ -200,7 +200,7 @@ function NoteRef({ label }: { label: string }) {
     <Popover.Root>
       <Popover.Trigger
         aria-label={`Note ${note.n}`}
-        className="text-link focus-visible:ring-ring -my-1 rounded-sm px-px align-super text-[0.7em] leading-none tabular-nums focus-visible:ring-2 focus-visible:outline-none"
+        className="text-link focus-visible:ring-ring relative -my-1 rounded-sm after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] px-px align-super text-[0.7em] leading-none tabular-nums focus-visible:ring-2 focus-visible:outline-none"
       >
         {note.n}
       </Popover.Trigger>
