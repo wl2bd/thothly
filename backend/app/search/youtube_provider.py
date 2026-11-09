@@ -8,7 +8,6 @@ from app.core.config import settings
 from app.core import gateway
 from app.core.posthog import capture_paid_call
 from app.search.models import SearchResult
-from app.search.triage import triage_enabled
 from app.sources.youtube.common import watch_url
 
 # YouTube's keyless oEmbed endpoint returns a video's TRUE ORIGINAL title — the
@@ -31,9 +30,9 @@ _SCRAPECREATORS_TIMEOUT_S = 10.0
 
 
 def paid_search() -> bool:
-    """Whether YouTube search runs on the paid ScrapeCreators backend, which is
-    also the one whose results are worth caching."""
-    return bool(settings.treg_token) and triage_enabled()
+    """Whether YouTube search has the paid ScrapeCreators backup behind yt-dlp,
+    which makes its results worth caching (a repeat could be billed)."""
+    return bool(settings.treg_token)
 
 
 class YouTubeProvider:
@@ -58,17 +57,29 @@ class YouTubeProvider:
         # `hl` only sets the FALLBACK title language (the caller's browser
         # language) for the rare result oEmbed can't resolve; the authoritative
         # title is the oEmbed original applied below.
-        # Paid search only feeds the triage (description + date); without it,
-        # the free yt-dlp search is just as good.
-        if paid_search():
+        # yt-dlp first: ~1 s and free. The paid ScrapeCreators search (6-10 s,
+        # billed per call, and the bar searches per keystroke) is only the
+        # backup for when YouTube blocks or breaks the scraper.
+        try:
+            results = self._search_ytdlp(query, limit, hl)
+        except RuntimeError:
+            if not settings.treg_token:
+                raise
+            results = []
+        if not results and settings.treg_token:
             results = self._search_scrapecreators(query, limit)
-            self._apply_original_titles(results)
-            return results
+        self._apply_original_titles(results)
+        return results
+
+    def _search_ytdlp(self, query: str, limit: int, hl: str | None) -> list[SearchResult]:
         lang = [hl] if hl else settings.preferred_languages
         opts = {
             "extract_flat": True,  # metadata only, no per-video network calls
             "quiet": True,
             "no_warnings": True,
+            # A hung scraper must leave the backup time to answer within the
+            # provider's 12 s budget.
+            "socket_timeout": 3,
             "extractor_args": {"youtube": {"lang": lang}},
         }
         with YoutubeDL(opts) as ydl:
@@ -78,9 +89,7 @@ class YouTubeProvider:
                 raise RuntimeError(f"YouTube search failed: {exc}") from exc
 
         entries = (info or {}).get("entries") or []
-        results = [self._to_result(e) for e in entries if e and e.get("id")]
-        self._apply_original_titles(results)
-        return results
+        return [self._to_result(e) for e in entries if e and e.get("id")]
 
     def _search_scrapecreators(self, query: str, limit: int) -> list[SearchResult]:
         """Paid path (see app/sources/youtube/scrapecreators.py): unlike the flat yt-dlp

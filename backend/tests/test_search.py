@@ -477,21 +477,58 @@ def test_search_stream_endpoint_blank_query_sends_nothing(client: TestClient):
     assert res.text == ""
 
 
-def test_paid_youtube_search_follows_the_triage_whichever_backend_answers(monkeypatch):
-    """The ScrapeCreators search exists to feed the triage descriptions and
-    dates. It must switch on with the triage itself, not with one backend's key:
-    a TypeSafe-only setup used to get the triage AND the blind yt-dlp search."""
+def _yt(vid: str) -> SearchResult:
+    return SearchResult(
+        id=f"youtube:{vid}", type="video", title=vid,
+        url=f"https://www.youtube.com/watch?v={vid}", source="youtube",
+    )
+
+
+def test_youtube_search_stays_on_free_ytdlp_when_it_answers(monkeypatch):
+    """yt-dlp answers in ~1 s for free; the paid search (6-10 s, billed per
+    keystroke) must not run while it works, even with the triage on."""
+    import app.core.config as cfg
+    from app.search.youtube_provider import YouTubeProvider
+
+    monkeypatch.setattr(cfg.settings, "treg_token", "t")
+    monkeypatch.setattr(cfg.settings, "llm_api_key", "k")
+    monkeypatch.setattr(cfg.settings, "llm_base_url", "https://openrouter.ai/api/v1")
+    provider = YouTubeProvider()
+    with patch.object(provider, "_search_ytdlp", return_value=[_yt("a")]), \
+         patch.object(provider, "_search_scrapecreators") as paid, \
+         patch.object(provider, "_apply_original_titles"):
+        results = provider.search("q", 5)
+    assert [r.id for r in results] == ["youtube:a"]
+    assert not paid.called
+
+
+@pytest.mark.parametrize("free", [RuntimeError("blocked"), []])
+def test_youtube_search_falls_back_to_paid_when_ytdlp_fails_or_is_empty(monkeypatch, free):
+    """If YouTube blocks or breaks yt-dlp, the paid search keeps videos coming."""
     import app.core.config as cfg
     from app.search.youtube_provider import YouTubeProvider
 
     monkeypatch.setattr(cfg.settings, "treg_token", "t")
     provider = YouTubeProvider()
-    with patch.object(provider, "_search_scrapecreators", return_value=[]) as paid, \
+    kw = {"side_effect": free} if isinstance(free, Exception) else {"return_value": free}
+    with patch.object(provider, "_search_ytdlp", **kw), \
+         patch.object(provider, "_search_scrapecreators", return_value=[_yt("b")]), \
          patch.object(provider, "_apply_original_titles"):
-        monkeypatch.setattr(cfg.settings, "llm_api_key", "k")
-        monkeypatch.setattr(cfg.settings, "llm_base_url", "https://openrouter.ai/api/v1")
-        provider.search("q", 5)
-    assert paid.called
+        results = provider.search("q", 5)
+    assert [r.id for r in results] == ["youtube:b"]
+
+
+def test_youtube_search_without_a_key_surfaces_the_ytdlp_failure(monkeypatch):
+    import app.core.config as cfg
+    from app.search.youtube_provider import YouTubeProvider
+
+    monkeypatch.setattr(cfg.settings, "treg_token", None)
+    provider = YouTubeProvider()
+    with patch.object(provider, "_search_ytdlp", side_effect=RuntimeError("blocked")), \
+         patch.object(provider, "_search_scrapecreators") as paid:
+        with pytest.raises(RuntimeError):
+            provider.search("q", 5)
+    assert not paid.called
 
 
 # ── every web backend drops non-article hosts ────────────────────────────────
