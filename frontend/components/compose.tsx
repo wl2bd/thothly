@@ -73,6 +73,7 @@ import { examplePath } from "@/lib/examples";
 import { reusableJob, type FromJob } from "@/lib/job-reuse";
 import { cn, plural } from "@/lib/utils";
 import { useScrollFade } from "@/lib/use-scroll-fade";
+import { mergeBatch } from "@/lib/search-merge";
 import {
   MetaSep,
   SourceMedia,
@@ -133,6 +134,10 @@ function ComposeWorkspace({
   // pick hand focus back to the search bar (keeping search → pick → search
   // fluid) WITHOUT stealing it from a keyboard user tabbing the checkboxes.
   const pickedByPointer = useRef(false);
+  // Set once the user reaches for the results (pointer over the list, a scroll,
+  // a touch, focus): from then on late batches append instead of interleaving,
+  // so a row never moves under the pointer. Reset by each new query.
+  const resultsFrozen = useRef(false);
 
   // Seeded from ?q=…, so an old /app?q= link arrives with its search running.
   const [query, setQuery] = useState(initialQuery ?? "");
@@ -219,7 +224,8 @@ function ComposeWorkspace({
     // The query's first answer: its results replace the last query's, with the
     // filter and sort back to their defaults.
     const settle = (rows: SearchResult[], failed: string[]) => {
-      setResults(uniqueByUrl([], rows));
+      resultsFrozen.current = false;
+      setResults(mergeBatch([], rows, true));
       setFailedProviders(failed);
       setTypeFilter("all");
       setSortBy("relevance");
@@ -240,9 +246,9 @@ function ComposeWorkspace({
       // only the settles below are transitions.
       setSearching(true);
       // Providers answer one by one (podcasts in under a second, YouTube and
-      // the web in several): the first batch replaces the previous query's
-      // rows, later ones append below, so rows already on screen never move
-      // under the user's pointer.
+      // the web in a few): the first batch replaces the previous query's rows,
+      // later ones interleave by relevance until the user reaches for the list,
+      // then append (see `mergeBatch`).
       let first = true;
       try {
         await searchStream(
@@ -259,7 +265,8 @@ function ComposeWorkspace({
               if (isFirst) {
                 settle(batch.results, failed);
               } else {
-                setResults((prev) => uniqueByUrl(prev, batch.results));
+                const frozen = resultsFrozen.current;
+                setResults((prev) => mergeBatch(prev, batch.results, frozen));
                 setFailedProviders((prev) => [...prev, ...failed]);
               }
             });
@@ -843,6 +850,7 @@ function ComposeWorkspace({
               onToggle={toggleResultStaged}
               onBlocked={() => setBlockedTick((t) => t + 1)}
               onPointerPick={() => (pickedByPointer.current = true)}
+              onEngage={() => (resultsFrozen.current = true)}
             />
           )}
 
@@ -1038,6 +1046,8 @@ interface SearchResultsProps {
   // Fired on a pointer press of a row, so the parent can tell a click pick from
   // a keyboard pick and only return focus to the bar for the former.
   onPointerPick: () => void;
+  // The user reached for the list: its order must stop changing.
+  onEngage: () => void;
 }
 
 function SearchResults({
@@ -1051,6 +1061,7 @@ function SearchResults({
   onToggle,
   onBlocked,
   onPointerPick,
+  onEngage,
 }: SearchResultsProps) {
   // The list scrolls inside the card between the filter row and the sources
   // footer, so it fades on both edges that hide content — the same softening as
@@ -1100,6 +1111,11 @@ function SearchResults({
         ref={listRef}
         style={fade}
         aria-busy={searching || undefined}
+        onPointerEnter={onEngage}
+        onTouchStart={onEngage}
+        onWheel={onEngage}
+        onScroll={onEngage}
+        onFocus={onEngage}
         className={cn(
           "flex min-h-0 flex-1 flex-col gap-1 transition-opacity",
           pendingFirst ? "overflow-hidden" : "overflow-y-auto",
@@ -1296,20 +1312,6 @@ function TypeFilter({
 // untouched; the others are client-side. Date isn't available across providers,
 // so it's not offered. Results without a duration (web) sort last when ordering
 // by length.
-// A row is picked by its URL, so two rows sharing one (a feed listing the same
-// episode twice, or two providers finding the same page) would check and
-// uncheck together. Keep the first one seen.
-function uniqueByUrl(prev: SearchResult[], incoming: SearchResult[]): SearchResult[] {
-  const seen = new Set(prev.map((r) => r.url));
-  const out = [...prev];
-  for (const r of incoming) {
-    if (seen.has(r.url)) continue;
-    seen.add(r.url);
-    out.push(r);
-  }
-  return out;
-}
-
 function sortResults(results: SearchResult[], sortBy: string): SearchResult[] {
   if (sortBy === "relevance") return results;
   const sorted = [...results];
