@@ -26,6 +26,10 @@ class SearchResult(BaseModel):
     duration_s: int | None = None
     author: str | None = None  # channel name / podcast / site author
     source: ResultSource
+    # 0-3, comparable across providers: the triage's judgment when it ran,
+    # else the keyword score scaled onto the same range. The UI merges each
+    # provider's batch into the list by it.
+    relevance: float | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
 
 

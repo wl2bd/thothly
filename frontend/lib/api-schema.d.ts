@@ -622,6 +622,8 @@ export interface components {
              * @enum {string}
              */
             source: "youtube" | "podcast" | "web";
+            /** Relevance */
+            relevance?: number | null;
             /** Meta */
             meta?: {
                 [key: string]: unknown;

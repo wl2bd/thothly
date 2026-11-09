@@ -149,3 +149,9 @@ def test_triage_runs_only_on_an_openrouter_llm_key(monkeypatch):
     monkeypatch.setattr(t.settings, "llm_base_url", "http://localhost:11434/v1")
     assert not t.triage_enabled()
 
+
+
+def test_kept_results_carry_the_judged_relevance_so_providers_can_be_interleaved():
+    results = [_r(0), _r(1)]
+    ranked = rank(results, _v([_j(0, relevance=1.4), _j(1, relevance=2.6)]))
+    assert [(r.id, r.relevance) for r in ranked] == [("x:1", 2.6), ("x:0", 1.4)]

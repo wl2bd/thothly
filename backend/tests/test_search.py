@@ -607,3 +607,21 @@ def test_an_article_about_jobs_is_still_an_article():
 
     assert is_article_like("https://blog.example.com/what-a-design-engineer-does") is True
     assert is_article_like("https://blog.example.com/posts/jobs-to-be-done") is True
+
+
+# ── a relevance every provider's results share ───────────────────────────────
+
+def test_keyword_rank_gives_every_result_a_0_to_3_relevance():
+    """Without the triage, the keyword score still sets `relevance` on the same
+    0-3 scale, so the UI can interleave providers either way."""
+    hits = [
+        SearchResult(id="a", type="web", title="Unrelated page", url="https://a.example/x", source="web"),
+        SearchResult(id="b", type="video", title="Stoic letters explained", url="https://y/b", source="youtube"),
+        SearchResult(id="c", type="web", title="Stoic basics", url="https://c.example/", source="web"),
+    ]
+    ranked = service._rank(hits, "stoic letters")
+    by_id = {r.id: r.relevance for r in ranked}
+    assert by_id["a"] == 0
+    assert 0 < by_id["b"] <= 3
+    assert all(0 <= v <= 3 for v in by_id.values())
+    assert by_id["b"] > by_id["c"] > by_id["a"]

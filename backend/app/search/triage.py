@@ -239,6 +239,8 @@ def rank(results: list[SearchResult], verdict: _Verdict) -> list[SearchResult]:
     kept = sorted(
         (i for i, j in judged.items() if j.compilable and j.relevance >= _MIN_RELEVANCE), key=key
     )
+    for i in kept:
+        results[i].relevance = judged[i].relevance
     skipped = [r for i, r in enumerate(results) if i not in judged]
     return [results[i] for i in kept] + skipped
 

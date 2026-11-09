@@ -201,7 +201,13 @@ def _rank(results: list[SearchResult], query: str) -> list[SearchResult]:
     q_norm = query.strip().lower()
     q_tokens = re.findall(r"\w+", q_norm)
     q_compact = re.sub(r"\W+", "", q_norm)
-    return sorted(results, key=lambda r: -_relevance(r, q_compact, q_tokens))
+    # A title holding every query token scores 5 per token + 20; that is the
+    # top of the 0-3 range the triage also uses, so both scales line up.
+    full_match = 5 * len(q_tokens) + 20
+    scores = {id(r): _relevance(r, q_compact, q_tokens) for r in results}
+    for r in results:
+        r.relevance = round(min(3.0, 3.0 * scores[id(r)] / full_match), 2)
+    return sorted(results, key=lambda r: -scores[id(r)])
 
 
 def _relevance(result: SearchResult, q_compact: str, q_tokens: list[str]) -> int:

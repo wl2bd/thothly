@@ -1538,6 +1538,17 @@
             ],
             "title": "Source"
           },
+          "relevance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevance"
+          },
           "meta": {
             "additionalProperties": true,
             "type": "object",
